@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tabcast</title>
+    <link rel="stylesheet" href="./app.css" />
+  </head>
+  <body data-mode="studio">
+    <div class="app">
+      <header class="topbar">
+        <div class="brand drag">
+          <span class="mark" aria-hidden="true"></span>
+          <strong>Tabcast</strong>
+          <span class="version">0.2</span>
+        </div>
+        <div class="tabs" role="tablist">
+          <button type="button" class="tab active" data-tab="studio" role="tab" aria-selected="true">
+            Studio
+          </button>
+          <button type="button" class="tab" data-tab="browse" role="tab" aria-selected="false">
+            Browse
+          </button>
+        </div>
+        <div class="relay-chip" id="relay-chip" data-state="stopped">
+          <span class="dot"></span>
+          <span id="relay-label">Relay offline</span>
+        </div>
+        <button type="button" class="ghost" id="btn-settings" title="Settings">Settings</button>
+        <button type="button" class="go-live" id="btn-go-live">Go Live</button>
+        <div class="win-controls no-drag">
+          <button type="button" id="btn-win-min" aria-label="Minimize">─</button>
+          <button type="button" id="btn-win-max" aria-label="Maximize">□</button>
+          <button type="button" id="btn-win-close" aria-label="Close">×</button>
+        </div>
+      </header>
+
+      <div class="browsetabs" id="browsetabs" hidden>
+        <div class="browse-tab-list" id="browse-tab-list"></div>
+        <div class="browse-tab-actions no-drag">
+          <button type="button" id="btn-new-tab" title="New tab">+</button>
+          <button type="button" id="btn-pin-twitch" title="Twitch">Twitch</button>
+          <button type="button" id="btn-pin-yt" title="YouTube Studio">YT</button>
+          <button type="button" id="btn-pin-chat" title="Chat tab">Chat</button>
+          <button type="button" id="btn-popout-chat" title="Pop out chat">↗ Chat</button>
+        </div>
+      </div>
+
+      <div class="navrow" id="navrow" hidden>
+        <div class="nav-controls">
+          <button type="button" id="btn-back" title="Back" aria-label="Back">←</button>
+          <button type="button" id="btn-forward" title="Forward" aria-label="Forward">→</button>
+          <button type="button" id="btn-reload" title="Reload" aria-label="Reload">↻</button>
+        </div>
+        <form id="url-form" class="url-form">
+          <input
+            id="url-input"
+            type="text"
+            spellcheck="false"
+            autocomplete="off"
+            placeholder="Search or enter address"
+          />
+        </form>
+      </div>
+
+      <aside class="sidebar left" aria-label="Sources">
+        <h2>Sources</h2>
+        <p class="hint">Gameplay, webcam, and mic feed the studio. Browse is for chat & dashboards.</p>
+
+        <button type="button" class="btn-block" id="btn-refresh-sources">Scan displays & windows</button>
+        <div class="source-list" id="source-list"></div>
+
+        <h2 class="spaced">Camera</h2>
+        <select id="camera-select" class="select">
+          <option value="">No camera</option>
+        </select>
+
+        <h2 class="spaced">Microphone</h2>
+        <select id="mic-select" class="select">
+          <option value="">No microphone</option>
+        </select>
+        <div class="meter" aria-label="Mic level">
+          <div class="meter-fill" id="mic-meter"></div>
+        </div>
+
+        <h2 class="spaced">Relay</h2>
+        <dl class="facts">
+          <div><dt>Status</dt><dd id="relay-status">—</dd></div>
+          <div><dt>Version</dt><dd id="relay-version">—</dd></div>
+          <div><dt>Port</dt><dd>38473</dd></div>
+        </dl>
+        <p class="error" id="relay-error" hidden></p>
+        <div class="row">
+          <button type="button" id="btn-start-relay">Start</button>
+          <button type="button" id="btn-stop-relay">Stop</button>
+        </div>
+        <button type="button" class="btn-block spaced-btn" id="btn-reveal-relay">Show relay on disk</button>
+        <button type="button" class="btn-block" id="btn-verify">Run verification</button>
+        <button type="button" class="btn-block" id="btn-toggle-diag">Diagnostics / traceback</button>
+        <pre class="diag-drawer" id="diag-drawer" hidden></pre>
+      </aside>
+
+      <main class="stage" aria-label="Program">
+        <section class="program" id="program">
+          <div class="program-label">Program</div>
+          <video id="program-video" autoplay muted playsinline></video>
+          <p class="program-empty" id="program-empty">Select a display or window to start the studio</p>
+        </section>
+        <div class="stage-frame" id="stage-frame" aria-hidden="true"></div>
+      </main>
+
+      <aside class="sidebar right" aria-label="Scene">
+        <h2>Scene</h2>
+        <div class="pip" id="pip">
+          <p id="pip-empty">Camera off</p>
+          <video id="pip-video" autoplay muted playsinline hidden></video>
+        </div>
+        <ul class="layers" id="layers">
+          <li id="layer-game" data-active="0" data-enabled="1" tabindex="0">Gameplay — none</li>
+          <li id="layer-cam" data-active="0" data-enabled="1" tabindex="0">Webcam — off</li>
+          <li id="layer-mic" data-active="0" data-enabled="1" tabindex="0">Mic — off</li>
+          <li id="layer-browser" data-active="0" data-enabled="0" tabindex="0">Browser overlay</li>
+        </ul>
+        <p class="hint tight">Click a layer to show/hide it in the program mix.</p>
+
+        <h2 class="spaced">Layout</h2>
+        <label class="field-label" for="cam-scale">Webcam size</label>
+        <input id="cam-scale" class="range" type="range" min="12" max="40" value="22" />
+
+        <h2 class="spaced">Destinations</h2>
+        <label class="field-label" for="profile-select">Encode profile</label>
+        <select id="profile-select" class="select">
+          <option value="720p" selected>720p30 · 3 Mbps</option>
+          <option value="1080p">1080p60 · 6 Mbps</option>
+        </select>
+
+        <label class="check"><input type="checkbox" id="dest-twitch" checked /> Twitch</label>
+        <input id="twitch-key" class="key-input" type="password" autocomplete="off" spellcheck="false" placeholder="live_… Twitch stream key" />
+
+        <label class="check"><input type="checkbox" id="dest-youtube" /> YouTube</label>
+        <input id="youtube-key" class="key-input" type="password" autocomplete="off" spellcheck="false" placeholder="YouTube stream key" disabled />
+
+        <div class="row tight-row">
+          <button type="button" id="btn-verify-keys">Verify keys</button>
+          <button type="button" id="btn-toggle-log">FFmpeg log</button>
+        </div>
+        <p class="hint tight" id="dest-hint">Keys stay in relay RAM only. Go Live publishes WHIP to localhost.</p>
+        <p class="error" id="dest-error" hidden></p>
+        <pre class="log-drawer" id="ffmpeg-log" hidden></pre>
+      </aside>
+    </div>
+
+    <dialog id="settings-dialog">
+      <form method="dialog" id="settings-form" class="settings-form">
+        <h2>Settings</h2>
+        <label class="check"><input type="checkbox" id="set-tray-live" /> Minimize to tray while live</label>
+        <label class="check"><input type="checkbox" id="set-lab-mode" /> Lab mode (skip key validation)</label>
+        <label class="field-label" for="set-startup">Startup mode</label>
+        <select id="set-startup" class="select">
+          <option value="studio">Studio</option>
+          <option value="browse">Browse</option>
+        </select>
+        <div class="row">
+          <button type="submit" value="save" id="btn-settings-save">Save</button>
+          <button type="submit" value="cancel">Cancel</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script type="module" src="./app.ts"></script>
+  </body>
+</html>

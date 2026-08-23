@@ -1,0 +1,70 @@
+{
+  "name": "tabcast-browser",
+  "version": "0.2.0",
+  "private": false,
+  "description": "Tabcast Browser — Chromium + local relay for educational gaming/streaming capture",
+  "author": "n0social",
+  "license": "MIT",
+  "homepage": "https://github.com/n0social/tabcast-browser",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/n0social/tabcast-browser.git"
+  },
+  "main": "out/main/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "start": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "fetch:relay": "node scripts/fetch-relay.mjs",
+    "verify": "node scripts/verify.mjs",
+    "dist": "npm run build && electron-builder --win nsis",
+    "dist:dir": "npm run build && electron-builder --win dir"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.29",
+    "electron": "^37.2.6",
+    "electron-builder": "^26.0.12",
+    "electron-vite": "^4.0.0",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.6"
+  },
+  "engines": {
+    "node": ">=22.5"
+  },
+  "build": {
+    "appId": "work.skydav.tabcast.browser",
+    "productName": "Tabcast Browser",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "vendor/relay",
+        "to": "relay",
+        "filter": [
+          "TabcastRelay.exe",
+          "relay-manifest.json"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "artifactName": "TabcastBrowser-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Tabcast Browser"
+    },
+    "publish": null
+  }
+}

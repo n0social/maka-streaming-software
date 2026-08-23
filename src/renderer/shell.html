@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tabcast Relay</title>
+    <link rel="stylesheet" href="./shell.css" />
+  </head>
+  <body>
+    <main class="panel">
+      <header class="brand">
+        <div class="mark" aria-hidden="true"></div>
+        <div>
+          <p class="eyebrow">Tabcast Browser</p>
+          <h1>Relay</h1>
+        </div>
+      </header>
+
+      <section class="status" aria-live="polite">
+        <div class="light" id="light" data-state="stopped"></div>
+        <div>
+          <p class="label" id="lifecycle">Relay off</p>
+          <p class="meta" id="meta">Waiting for local encoder…</p>
+        </div>
+      </section>
+
+      <dl class="facts">
+        <div>
+          <dt>Health</dt>
+          <dd id="health">—</dd>
+        </div>
+        <div>
+          <dt>Stream</dt>
+          <dd id="stream">—</dd>
+        </div>
+        <div>
+          <dt>PID</dt>
+          <dd id="pid">—</dd>
+        </div>
+      </dl>
+
+      <p class="error" id="error" hidden></p>
+
+      <div class="actions">
+        <button type="button" class="primary" id="btn-start">Start relay</button>
+        <button type="button" id="btn-stop">Stop</button>
+      </div>
+      <div class="actions">
+        <button type="button" id="btn-stream">Open Stream</button>
+        <button type="button" id="btn-home">Home</button>
+      </div>
+
+      <p class="hint">
+        Capture stays in Chromium. This sidecar only encodes and pushes to Twitch /
+        YouTube — the OBS-cost cut.
+      </p>
+    </main>
+    <script type="module" src="./shell.ts"></script>
+  </body>
+</html>

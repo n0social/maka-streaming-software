@@ -1,0 +1,8 @@
+﻿{
+  "version": "0.1.0",
+  "artifact": "TabcastRelay.exe",
+  "port": 38473,
+  "streamUrl": "http://127.0.0.1:38473/whip",
+  "size": 394267438,
+  "sha256": "91407d3d0b90d51690e6897ffd11c75d079f5e08f89d741636f7078f7ea98410"
+}
