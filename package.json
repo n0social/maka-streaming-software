@@ -20,6 +20,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "fetch:relay": "node scripts/fetch-relay.mjs",
     "verify": "node scripts/verify.mjs",
+    "marketing": "python scripts/generate-marketing.py",
     "dist": "npm run build && electron-builder --win nsis",
     "dist:dir": "npm run build && electron-builder --win dir"
   },
@@ -37,8 +38,9 @@
   "build": {
     "appId": "work.skydav.tabcast.browser",
     "productName": "Tabcast Browser",
+    "electronDist": "node_modules/electron/dist",
     "directories": {
-      "output": "release"
+      "output": "dist-installer"
     },
     "files": [
       "out/**/*",
@@ -52,13 +54,23 @@
           "TabcastRelay.exe",
           "relay-manifest.json"
         ]
+      },
+      {
+        "from": "resources/icons",
+        "to": "icons",
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "win": {
       "target": [
         "nsis"
       ],
-      "artifactName": "TabcastBrowser-Setup-${version}.${ext}"
+      "icon": "resources/icons/icon.ico",
+      "executableName": "TabcastBrowser",
+      "artifactName": "TabcastBrowser-Setup-${version}.${ext}",
+      "signAndEditExecutable": false
     },
     "nsis": {
       "oneClick": false,

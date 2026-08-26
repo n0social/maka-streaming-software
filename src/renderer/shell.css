@@ -1,15 +1,21 @@
 :root {
   color-scheme: dark;
-  --bg: #050506;
-  --panel: #0c0c0e;
-  --text: #f4f4f5;
-  --muted: #a3a3a3;
-  --line: #27272a;
-  --accent: #ffb800;
-  --ready: #22c55e;
-  --warn: #f59e0b;
-  --bad: #ef4444;
+  --crew-cyan: #2af5ff;
+  --crew-pink: #ff2ad4;
+  --crew-lime: #c6ff2a;
+  --crew-orange: #ff7a2a;
+  --bg: #0a0e14;
+  --panel: #10151d;
+  --text: #f2f4f6;
+  --muted: #939da8;
+  --line: rgba(255, 255, 255, 0.1);
+  --accent: var(--crew-cyan);
+  --ready: var(--crew-lime);
+  --warn: var(--crew-orange);
+  --bad: #e54d42;
   --off: #52525b;
+  --font-headline: "League Spartan", system-ui, sans-serif;
+  --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
 }
 
 * {
@@ -20,11 +26,13 @@ html,
 body {
   margin: 0;
   min-height: 100%;
-  background:
-    radial-gradient(ellipse 90% 60% at 50% -30%, rgba(255, 184, 0, 0.14), transparent),
-    var(--bg);
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse 100% 70% at 50% -20%, rgba(42, 245, 255, 0.18), transparent 55%),
+    radial-gradient(ellipse 80% 50% at 100% 20%, rgba(255, 42, 212, 0.12), transparent 50%),
+    linear-gradient(180deg, #0b1018 0%, #070a10 100%);
   color: var(--text);
-  font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  font-family: var(--font-body);
 }
 
 .panel {
@@ -39,26 +47,34 @@ body {
 }
 
 .mark {
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: 0.4rem;
-  background:
-    linear-gradient(135deg, #ffb800 0%, #f59e0b 45%, #111 46%, #111 100%);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 0.65rem;
+  background: radial-gradient(120% 120% at 30% 20%, var(--crew-cyan), var(--crew-pink) 75%);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 
 .eyebrow {
   margin: 0;
-  font-size: 0.7rem;
+  font-family: var(--font-headline);
+  font-size: 0.62rem;
   letter-spacing: 0.28em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--crew-lime);
+  font-weight: 700;
 }
 
 h1 {
   margin: 0.15rem 0 0;
-  font-size: 1.35rem;
-  font-weight: 600;
+  font-family: var(--font-headline);
+  font-size: 1.45rem;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: -0.02em;
+  background: linear-gradient(100deg, var(--crew-cyan) 10%, var(--crew-pink) 55%, var(--crew-lime) 95%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .status {
@@ -67,9 +83,10 @@ h1 {
   align-items: center;
   padding: 0.9rem 1rem;
   border: 1px solid var(--line);
-  border-radius: 0.55rem;
-  background: var(--panel);
+  border-radius: 1rem;
+  background: rgba(16, 21, 29, 0.92);
   margin-bottom: 1rem;
+  backdrop-filter: blur(12px);
 }
 
 .light {
@@ -82,38 +99,42 @@ h1 {
 
 .light[data-state='ready'] {
   background: var(--ready);
-  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.18);
+  box-shadow: 0 0 0 4px rgba(198, 255, 42, 0.18);
 }
 
 .light[data-state='live'] {
-  background: var(--accent);
-  box-shadow: 0 0 0 4px rgba(255, 184, 0, 0.2);
-  animation: pulse 1.4s ease-in-out infinite;
+  background: var(--crew-lime);
+  box-shadow: 0 0 0 4px rgba(198, 255, 42, 0.22);
+  animation: pulse 1.8s ease-out infinite;
 }
 
 .light[data-state='starting'] {
   background: var(--warn);
-  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.18);
+  box-shadow: 0 0 0 4px rgba(255, 122, 42, 0.18);
 }
 
 .light[data-state='error'] {
   background: var(--bad);
-  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.18);
+  box-shadow: 0 0 0 4px rgba(229, 77, 66, 0.18);
 }
 
 @keyframes pulse {
   0%,
   100% {
     transform: scale(1);
+    opacity: 1;
   }
   50% {
     transform: scale(1.12);
+    opacity: 0.85;
   }
 }
 
 .label {
   margin: 0;
-  font-weight: 600;
+  font-family: var(--font-headline);
+  font-weight: 800;
+  letter-spacing: 0.02em;
 }
 
 .meta {
@@ -150,8 +171,8 @@ dd {
 .error {
   margin: 0 0 1rem;
   padding: 0.75rem 0.85rem;
-  border-radius: 0.45rem;
-  background: rgba(239, 68, 68, 0.12);
+  border-radius: 0.85rem;
+  background: rgba(229, 77, 66, 0.12);
   color: #fecaca;
   font-size: 0.82rem;
   white-space: pre-wrap;
@@ -166,14 +187,16 @@ dd {
 
 button {
   appearance: none;
-  border: 1px solid var(--line);
-  background: #18181b;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
   color: var(--text);
-  border-radius: 0.4rem;
+  border-radius: 999px;
   padding: 0.65rem 0.75rem;
-  font: inherit;
-  font-size: 0.85rem;
-  font-weight: 500;
+  font-family: var(--font-headline);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   cursor: pointer;
 }
 
@@ -182,9 +205,13 @@ button:hover {
 }
 
 button.primary {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: #111;
+  border: 0;
+  background: linear-gradient(100deg, var(--crew-cyan), var(--crew-pink));
+  color: var(--bg);
+}
+
+button.primary:active {
+  transform: scale(0.98);
 }
 
 .hint {

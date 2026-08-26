@@ -10,7 +10,7 @@ import { existsSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { RelayManager } from './relay'
 import { BrowseTabsManager, PINNED_PRESETS, normalizeBrowseUrl } from './browse-tabs'
-import { createAppTray, destroyAppTray, maybeMinimizeToTray } from './tray'
+import { createAppTray, destroyAppTray, maybeMinimizeToTray, appIconPath } from './tray'
 import { loadSettings, saveSettings } from './settings-store'
 import {
   clearDiagnostics,
@@ -181,6 +181,7 @@ function createMainWindow(): BrowserWindow {
     frame: false,
     titleBarStyle: 'hidden',
     autoHideMenuBar: true,
+    icon: appIconPath(),
     webPreferences: {
       preload: preloadPath(),
       contextIsolation: true,

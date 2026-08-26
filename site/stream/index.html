@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en" theme="prestige">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Tabcast web studio — browser-based capture with local Tabcast Relay."
+    />
+    <meta name="theme-color" content="#0A0E14" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self' 'wasm-unsafe-eval' https://pagead2.googlesyndication.com https://www.googletagservices.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self' blob: https:; connect-src 'self' https: http://127.0.0.1:38473 http://127.0.0.1:38474 http://127.0.0.1:38475 http://127.0.0.1:38476 http://127.0.0.1:38477 http://localhost:38473 http://localhost:38474 http://localhost:38475 http://localhost:38476 http://localhost:38477; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com; worker-src 'self' blob:"
+    />
+    <title>Tabcast Web Studio</title>
+    <link rel="icon" type="image/png" href="/marketing/favicon-32.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script
+      async
+      src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4592416964615162"
+      crossorigin="anonymous"
+    ></script>
+    <script type="module" crossorigin src="/assets/index-Bc05P7jZ.js"></script>
+  </head>
+  <body>
+    <noscript>
+      <main
+        style="
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 1rem;
+          padding: 2rem;
+          text-align: center;
+          background: #0a0e14;
+          color: #f2f4f6;
+          font-family: 'IBM Plex Sans', system-ui, sans-serif;
+        "
+      >
+        <h1 style="font-size: 1.25rem; font-weight: 600">Tabcast requires JavaScript</h1>
+        <p style="max-width: 24rem; font-size: 0.875rem; color: #939da8">
+          Enable JavaScript in your browser to use Tabcast Web Studio.
+        </p>
+        <p style="font-size: 0.875rem">
+          <a href="/legacy.html" style="color: #2af5ff">Relay setup instructions</a>
+        </p>
+      </main>
+    </noscript>
+    <div id="root">
+      <main
+        id="tabcast-boot-placeholder"
+        style="
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 0.75rem;
+          padding: 2rem;
+          text-align: center;
+          background: #0a0e14;
+          color: #f2f4f6;
+          font-family: 'IBM Plex Sans', system-ui, sans-serif;
+        "
+      >
+        <img
+          src="/marketing/icons/icon-128.png"
+          alt=""
+          width="40"
+          height="40"
+          style="border-radius: 0.35rem; object-fit: contain"
+        />
+        <p style="font-size: 0.75rem; letter-spacing: 0.3em; text-transform: uppercase; color: #939da8">
+          Tabcast Web Studio
+        </p>
+        <p style="font-size: 0.875rem; color: #939da8">Loading…</p>
+        <p style="font-size: 0.78rem; color: #939da8; max-width: 20rem">
+          Legacy relay workflow —
+          <a href="/legacy.html" style="color: #2af5ff">setup help</a> ·
+          <a href="/" style="color: #2af5ff">Try Tabcast Browser</a>
+        </p>
+      </main>
+    </div>
+    <script id="tabcast-boot-timeout">
+      (function () {
+        var BOOT_MS = 12000;
+        window.setTimeout(function () {
+          var root = document.getElementById("root");
+          var placeholder = document.getElementById("tabcast-boot-placeholder");
+          if (!placeholder || !root || !root.contains(placeholder)) return;
+          if (root.childElementCount > 1) return;
+          window.location.replace("/404.html?reason=boot");
+        }, BOOT_MS);
+      })();
+    </script>
+  </body>
+</html>

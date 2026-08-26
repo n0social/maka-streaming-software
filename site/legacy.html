@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Legacy Tabcast workflow — download Tabcast Relay and use the browser-based web studio with extension capture."
+    />
+    <meta name="theme-color" content="#0A0E14" />
+    <title>Tabcast Relay — Legacy Web Studio Workflow</title>
+    <link rel="icon" type="image/png" href="/marketing/favicon-32.png" sizes="32x32" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=League+Spartan:ital,wght@0,700;0,800;0,900;1,800;1,900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+        --cyan: #2af5ff;
+        --pink: #ff2ad4;
+        --lime: #c6ff2a;
+        --bg: #0a0e14;
+        --panel: #10151d;
+        --ink: #f2f4f6;
+        --muted: #939da8;
+        --line: rgba(255, 255, 255, 0.1);
+        --headline: "League Spartan", system-ui, sans-serif;
+        --body: "Inter", system-ui, sans-serif;
+        --radius: 1.25rem;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: var(--body);
+        color: var(--ink);
+        background-color: var(--bg);
+        background-image:
+          radial-gradient(ellipse 80% 50% at 100% 0%, rgba(255, 42, 212, 0.12), transparent 50%),
+          radial-gradient(ellipse 70% 45% at 0% 20%, rgba(42, 245, 255, 0.1), transparent 55%),
+          linear-gradient(180deg, #0b1018, #070a10);
+      }
+      .wrap {
+        max-width: 42rem;
+        margin: 0 auto;
+        padding: 3rem 1.25rem 4rem;
+      }
+      .back {
+        display: inline-block;
+        margin-bottom: 1.5rem;
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 0.82rem;
+      }
+      .back:hover {
+        color: var(--cyan);
+      }
+      .pill {
+        display: inline-block;
+        margin-bottom: 1rem;
+        padding: 0.28rem 0.65rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid var(--line);
+        font-family: var(--headline);
+        font-size: 0.62rem;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      h1 {
+        font-family: var(--headline);
+        font-weight: 900;
+        font-style: italic;
+        font-size: clamp(2rem, 5vw, 2.75rem);
+        line-height: 1;
+        letter-spacing: -0.02em;
+        margin: 0 0 0.85rem;
+        background: linear-gradient(100deg, var(--cyan), var(--pink));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .lead {
+        margin: 0 0 1.75rem;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+      .steps {
+        display: grid;
+        gap: 0.85rem;
+        margin: 0 0 1.75rem;
+        padding: 0;
+        list-style: none;
+      }
+      .steps li {
+        padding: 1rem 1.05rem;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: rgba(16, 21, 29, 0.88);
+      }
+      .steps strong {
+        display: block;
+        font-family: var(--headline);
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--lime);
+        margin-bottom: 0.35rem;
+      }
+      .steps p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.88rem;
+        line-height: 1.5;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 1.25rem;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        border-radius: 999px;
+        font-family: var(--headline);
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        font-size: 0.72rem;
+        padding: 0.85rem 1.15rem;
+      }
+      .btn-primary {
+        background: linear-gradient(100deg, var(--cyan), var(--pink));
+        color: var(--bg);
+      }
+      .btn-ghost {
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        color: var(--ink);
+        background: rgba(255, 255, 255, 0.06);
+      }
+      .note {
+        padding: 1rem 1.05rem;
+        border-radius: var(--radius);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--muted);
+        font-size: 0.84rem;
+        line-height: 1.55;
+      }
+      .note a {
+        color: var(--cyan);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <a class="back" href="/">← Back to Tabcast Browser</a>
+      <span class="pill">Legacy workflow</span>
+      <h1>Relay + Web Studio</h1>
+      <p class="lead">
+        This path is for the original Tabcast setup: install the standalone relay executable, then use
+        the browser-based capture studio with the Chrome extension workflow. If you want the new
+        all-in-one app, use <a href="/">Tabcast Browser</a> instead.
+      </p>
+
+      <ol class="steps">
+        <li>
+          <strong>Step 1 — Relay</strong>
+          <p>Download and run <code>TabcastRelay.exe</code>. It listens on <code>127.0.0.1:38473</code>.</p>
+        </li>
+        <li>
+          <strong>Step 2 — Web studio</strong>
+          <p>Open the Tabcast web studio in Chrome. Capture runs in the browser; the relay handles encode + WHIP.</p>
+        </li>
+        <li>
+          <strong>Step 3 — Go live</strong>
+          <p>Connect your stream keys in the web UI and publish through the local relay — same as before v0.2.</p>
+        </li>
+      </ol>
+
+      <div class="actions">
+        <a class="btn btn-primary" href="/downloads/TabcastRelay.exe">Download Tabcast Relay</a>
+        <a class="btn btn-ghost" href="/stream/">Open Web Studio</a>
+      </div>
+
+      <p class="note">
+        Recommended for existing users on the extension + relay stack. New installs should prefer
+        <a href="/downloads/TabcastBrowser-Setup-0.2.0.exe">Tabcast Browser 0.2.0</a>, which bundles
+        the relay and removes the separate browser tab setup.
+      </p>
+    </div>
+  </body>
+</html>

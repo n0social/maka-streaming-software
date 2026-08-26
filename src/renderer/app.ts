@@ -39,6 +39,9 @@ const relayError = document.getElementById('relay-error')!
 const sourceList = document.getElementById('source-list')!
 const programVideo = document.getElementById('program-video') as HTMLVideoElement
 const programEmpty = document.getElementById('program-empty')!
+const programCam = document.getElementById('program-cam')!
+const programCamVideo = document.getElementById('program-cam-video') as HTMLVideoElement
+const pip = document.getElementById('pip')!
 const pipVideo = document.getElementById('pip-video') as HTMLVideoElement
 const pipEmpty = document.getElementById('pip-empty')!
 const cameraSelect = document.getElementById('camera-select') as HTMLSelectElement
@@ -198,6 +201,36 @@ function syncLayerTracks(): void {
   layerCam.dataset.enabled = layerEnabled.cam ? '1' : '0'
   layerMic.dataset.enabled = layerEnabled.mic ? '1' : '0'
   layerBrowser.dataset.enabled = layerEnabled.browser ? '1' : '0'
+  updateProgramCamOverlay()
+}
+
+function updateProgramCamOverlay(): void {
+  const show = Boolean(cameraStream) && layerEnabled.cam
+  const scale = Math.max(12, Math.min(40, Number(camScale.value) || 22))
+  programCam.style.width = `${scale}%`
+  programCam.hidden = !show
+  if (show) {
+    if (programCamVideo.srcObject !== cameraStream) {
+      programCamVideo.srcObject = cameraStream
+    }
+    void programCamVideo.play().catch(() => undefined)
+  } else if (!cameraStream) {
+    programCamVideo.srcObject = null
+  }
+}
+
+function setCameraPreview(on: boolean, label?: string): void {
+  pip.dataset.on = on ? '1' : '0'
+  pipVideo.hidden = !on
+  pipEmpty.hidden = on
+  if (!on) {
+    pipEmpty.textContent = 'Camera off'
+    pipVideo.srcObject = null
+    programCam.hidden = true
+    programCamVideo.srcObject = null
+  } else if (label) {
+    layerCam.textContent = label
+  }
 }
 
 async function pushSceneLayout(): Promise<void> {
@@ -387,11 +420,10 @@ async function refreshAvDevices(): Promise<void> {
 async function applyCamera(): Promise<void> {
   stopStream(cameraStream)
   cameraStream = null
-  pipVideo.srcObject = null
-  pipVideo.hidden = true
-  pipEmpty.hidden = false
+  setCameraPreview(false)
   layerCam.dataset.active = '0'
   layerCam.textContent = 'Webcam — off'
+  syncLayerTracks()
 
   const deviceId = cameraSelect.value
   if (!deviceId) return
@@ -403,13 +435,17 @@ async function applyCamera(): Promise<void> {
     })
     cameraStream = stream
     pipVideo.srcObject = stream
-    pipVideo.hidden = false
-    pipEmpty.hidden = true
+    setCameraPreview(true, `Webcam — ${cameraSelect.selectedOptions[0]?.textContent ?? 'on'}`)
     layerCam.dataset.active = '1'
-    layerCam.textContent = `Webcam — ${cameraSelect.selectedOptions[0]?.textContent ?? 'on'}`
+    layerEnabled.cam = true
+    syncLayerTracks()
+    void pipVideo.play().catch(() => undefined)
+    void pushSceneLayout()
   } catch (err) {
+    setCameraPreview(false)
     pipEmpty.hidden = false
     pipEmpty.textContent = err instanceof Error ? err.message : 'Camera failed'
+    layerCam.dataset.active = '0'
   }
 }
 
@@ -686,7 +722,11 @@ document.getElementById('settings-form')!.addEventListener('submit', async (even
       : 'Keys stay in relay RAM only. Go Live publishes WHIP to localhost.'
   }
 })
+camScale.addEventListener('input', () => {
+  updateProgramCamOverlay()
+})
 camScale.addEventListener('change', () => {
+  updateProgramCamOverlay()
   void pushSceneLayout()
 })
 for (const [el, key] of [

@@ -2,6 +2,10 @@ node_modules
 dist
 out
 release
+dist-installer
+pack-out-*
+electron-builder-log.txt
+unpack-test
 vendor/relay/**
 !vendor/relay/README.md
 !vendor/relay/relay-manifest.json

@@ -4,6 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tabcast</title>
+    <meta name="theme-color" content="#0A0E14" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=League+Spartan:ital,wght@0,700;0,800;0,900;1,700;1,800;1,900&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="./app.css" />
   </head>
   <body data-mode="studio">
@@ -11,7 +18,10 @@
       <header class="topbar">
         <div class="brand drag">
           <span class="mark" aria-hidden="true"></span>
-          <strong>Tabcast</strong>
+          <div class="brand-lockup">
+            <strong class="wordmark">Tabcast</strong>
+            <span class="brand-tag">Live · Studio · Capture</span>
+          </div>
           <span class="version">0.2</span>
         </div>
         <div class="tabs" role="tablist">
@@ -104,6 +114,10 @@
         <section class="program" id="program">
           <div class="program-label">Program</div>
           <video id="program-video" autoplay muted playsinline></video>
+          <div class="program-cam" id="program-cam" hidden>
+            <video id="program-cam-video" autoplay muted playsinline></video>
+            <span class="program-cam-tag">Webcam</span>
+          </div>
           <p class="program-empty" id="program-empty">Select a display or window to start the studio</p>
         </section>
         <div class="stage-frame" id="stage-frame" aria-hidden="true"></div>

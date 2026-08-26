@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Download Tabcast Browser — Chromium studio + local relay for game capture and streaming."
+    />
+    <title>Download Tabcast Browser</title>
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Instrument+Sans:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg0: #070708;
+        --bg1: #121214;
+        --ink: #f4f4f5;
+        --muted: #a1a1aa;
+        --line: #2a2a2e;
+        --amber: #e9a802;
+        --amber-ink: #17140a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "IBM Plex Sans", system-ui, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(900px 480px at 12% -10%, rgba(233, 168, 2, 0.18), transparent 55%),
+          radial-gradient(700px 420px at 90% 10%, rgba(80, 80, 90, 0.25), transparent 50%),
+          linear-gradient(180deg, #0b0b0d, var(--bg0) 40%);
+      }
+      main {
+        max-width: 40rem;
+        margin: 0 auto;
+        padding: 4.5rem 1.5rem 3rem;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 2.5rem;
+      }
+      .brand img {
+        width: 40px;
+        height: 40px;
+        border-radius: 0.4rem;
+        object-fit: contain;
+      }
+      .brand span {
+        font-family: "Instrument Sans", "IBM Plex Sans", sans-serif;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        font-size: 1.35rem;
+      }
+      h1 {
+        font-family: "Instrument Sans", "IBM Plex Sans", sans-serif;
+        font-size: clamp(2rem, 5vw, 2.75rem);
+        line-height: 1.1;
+        letter-spacing: -0.03em;
+        margin: 0 0 0.85rem;
+      }
+      .lead {
+        margin: 0 0 2rem;
+        color: var(--muted);
+        font-size: 1.05rem;
+        line-height: 1.55;
+        max-width: 34rem;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 2.25rem;
+      }
+      a.btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        text-decoration: none;
+        border-radius: 0.55rem;
+        padding: 0.85rem 1.2rem;
+        font-weight: 600;
+        font-size: 0.95rem;
+      }
+      a.btn-primary {
+        background: var(--amber);
+        color: var(--amber-ink);
+      }
+      a.btn-primary:hover {
+        filter: brightness(1.05);
+      }
+      a.btn-ghost {
+        border: 1px solid var(--line);
+        color: var(--ink);
+        background: rgba(255, 255, 255, 0.03);
+      }
+      a.btn-ghost:hover {
+        border-color: #3f3f46;
+        background: rgba(255, 255, 255, 0.06);
+      }
+      .meta {
+        border-top: 1px solid var(--line);
+        padding-top: 1.25rem;
+        color: var(--muted);
+        font-size: 0.875rem;
+        line-height: 1.6;
+      }
+      .meta code {
+        font-family: ui-monospace, "Cascadia Code", monospace;
+        font-size: 0.8rem;
+        color: #d4d4d8;
+      }
+      .note {
+        margin-top: 1.5rem;
+        padding: 1rem 1.1rem;
+        border: 1px solid var(--line);
+        border-radius: 0.65rem;
+        background: var(--bg1);
+        color: var(--muted);
+        font-size: 0.875rem;
+        line-height: 1.55;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="brand">
+        <img src="/logo.png" alt="" width="40" height="40" />
+        <span>Tabcast</span>
+      </div>
+      <h1>Tabcast Browser</h1>
+      <p class="lead">
+        Windows studio app with Chromium browse + local WHIP relay. Capture, lay out camera, and go
+        live without juggling a separate relay install.
+      </p>
+      <div class="actions">
+        <a class="btn btn-primary" href="/downloads/TabcastBrowser-Setup-0.2.0.exe"
+          >Download for Windows</a
+        >
+        <a class="btn btn-ghost" href="/downloads/TabcastRelay.exe">Relay only (.exe)</a>
+        <a class="btn btn-ghost" href="https://github.com/n0social/tabcast-browser">GitHub</a>
+      </div>
+      <div class="meta">
+        <div>Version <code>0.2.0</code> · Windows x64 installer (NSIS)</div>
+        <div>Includes bundled Tabcast Relay · unsigned build (SmartScreen may warn)</div>
+      </div>
+      <p class="note">
+        After install, launch <strong>Tabcast Browser</strong>, open Studio, verify the relay, then
+        Go Live. Stream keys stay on your machine and are sent only to the local relay.
+      </p>
+    </main>
+  </body>
+</html>

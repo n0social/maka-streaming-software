@@ -138,6 +138,28 @@ async function killProcessImage(imageName: string): Promise<void> {
   }
 }
 
+/** Relay launcher spawns tray.ps1 via PowerShell; those survive taskkill of the exe. */
+async function killOrphanRelayTrays(): Promise<void> {
+  if (process.platform !== 'win32') return
+  try {
+    await execFileAsync(
+      'powershell.exe',
+      [
+        '-NoProfile',
+        '-Command',
+        [
+          "Get-CimInstance Win32_Process -Filter \"Name='powershell.exe' OR Name='pwsh.exe'\" -ErrorAction SilentlyContinue |",
+          "Where-Object { $_.CommandLine -match 'TabcastRelay.*tray\\.ps1' } |",
+          'ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }',
+        ].join(' '),
+      ],
+      { windowsHide: true, timeout: 10_000 },
+    )
+  } catch {
+    // ignore
+  }
+}
+
 async function killListenersOnPort(port: number): Promise<void> {
   if (process.platform !== 'win32') return
   try {
@@ -164,6 +186,54 @@ async function isRelayHealthy(): Promise<boolean> {
   }
 }
 
+type DirectRelayLaunch = {
+  command: string
+  args: string[]
+  cwd: string
+  env: NodeJS.ProcessEnv
+  mode: 'direct' | 'launcher'
+}
+
+/** Prefer installed Node relay (no tray). Fall back to TabcastRelay.exe for first extract. */
+function resolveLaunch(): DirectRelayLaunch {
+  const localApp = process.env.LOCALAPPDATA
+  if (localApp) {
+    const root = join(localApp, 'TabcastRelay', 'v0.1.0')
+    const node = join(root, 'runtime', 'node.exe')
+    const entry = join(root, 'relay', 'dist', 'index.js')
+    const ffmpeg = join(root, 'ffmpeg', 'bin', 'ffmpeg.exe')
+    const relayRoot = join(root, 'relay')
+    if (existsSync(node) && existsSync(entry)) {
+      return {
+        command: node,
+        args: [entry],
+        cwd: relayRoot,
+        mode: 'direct',
+        env: {
+          ...process.env,
+          TABCAST_NO_OPEN: '1',
+          TABCAST_STREAM_URL: RELAY_WHIP_URL,
+          TABCAST_RELAY_ROOT: relayRoot,
+          FFMPEG_PATH: existsSync(ffmpeg) ? ffmpeg : (process.env.FFMPEG_PATH ?? ''),
+        },
+      }
+    }
+  }
+
+  const exe = resolveRelayExe()
+  return {
+    command: exe,
+    args: [],
+    cwd: dirname(exe),
+    mode: 'launcher',
+    env: {
+      ...process.env,
+      TABCAST_NO_OPEN: '1',
+      TABCAST_STREAM_URL: RELAY_WHIP_URL,
+    },
+  }
+}
+
 async function terminateAllRelays(owned: ChildProcess | null): Promise<void> {
   await postRelayStop()
   await sleep(400)
@@ -176,13 +246,19 @@ async function terminateAllRelays(owned: ChildProcess | null): Promise<void> {
     }
   }
 
+  await killOrphanRelayTrays()
   await killProcessImage('TabcastRelay.exe')
   await killListenersOnPort(RELAY_DEFAULT_PORT)
+  await killOrphanRelayTrays()
 
   const deadline = Date.now() + 8_000
   while (Date.now() < deadline) {
-    if (!(await isRelayHealthy())) return
+    if (!(await isRelayHealthy())) {
+      await killOrphanRelayTrays()
+      return
+    }
     await postRelayStop()
+    await killOrphanRelayTrays()
     await killProcessImage('TabcastRelay.exe')
     await killListenersOnPort(RELAY_DEFAULT_PORT)
     await sleep(350)
@@ -264,9 +340,11 @@ export class RelayManager {
       return
     }
 
-    recordDiagnostic('info', 'relay.start', `Starting relay (${reason})`, undefined, {
+    const launch = resolveLaunch()
+    recordDiagnostic('info', 'relay.start', `Starting relay (${reason}, ${launch.mode})`, undefined, {
       restarts: this.restartCount,
-      exe,
+      command: launch.command,
+      mode: launch.mode,
     })
 
     this.emit({ lifecycle: 'starting', error: null })
@@ -278,15 +356,11 @@ export class RelayManager {
 
     let child: ChildProcess
     try {
-      child = spawn(exe, [], {
-        cwd: dirname(exe),
+      child = spawn(launch.command, launch.args, {
+        cwd: launch.cwd,
         windowsHide: true,
         stdio: 'ignore',
-        env: {
-          ...process.env,
-          TABCAST_NO_OPEN: '1',
-          TABCAST_STREAM_URL: RELAY_WHIP_URL,
-        },
+        env: launch.env,
       })
     } catch (err) {
       recordDiagnostic('error', 'relay.spawn', 'Failed to spawn relay', err)
@@ -359,7 +433,9 @@ export class RelayManager {
         const health = localizeRelayHealth(await fetchJson<RelayHealth>(RELAY_HEALTH_PATH))
         this.healthFailStreak = 0
         this.restartCount = Math.max(0, this.restartCount - 1)
-        recordDiagnostic('info', 'relay.ready', `Relay ready v${health.version}`)
+        // Launcher mode always starts tray.ps1 — strip orphans so only Tabcast Browser tray remains.
+        await killOrphanRelayTrays()
+        recordDiagnostic('info', 'relay.ready', `Relay ready v${health.version} (${launch.mode})`)
         this.emit({ lifecycle: 'ready', health, error: null })
         this.startPolling()
         return
