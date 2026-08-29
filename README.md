@@ -58,6 +58,8 @@ npm run verify        # health + binary checks
 | `npm run fetch:relay` | Fetch relay binary |
 | `npm run verify` | Offline verification |
 | `npm run dist` | Windows installer via electron-builder |
+| `npm run dist:signed` | Signed release (needs `CSC_LINK` — see [docs/CODE-SIGNING.md](./docs/CODE-SIGNING.md)) |
+| `npm run release:manifest` | Update `site/browser-manifest.json` from latest build |
 
 ## Privacy / lab use
 

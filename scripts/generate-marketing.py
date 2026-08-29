@@ -16,15 +16,19 @@ ICONS = OUT / "icons"
 STORE = OUT / "store"
 BADGES = OUT / "badges"
 SITE = ROOT / "site" / "marketing"
+RESOURCES = ROOT / "resources" / "icons"
 
-CYAN = (42, 245, 255)
-PINK = (255, 42, 212)
-LIME = (198, 255, 42)
-ORANGE = (255, 122, 42)
-BG = (10, 14, 20)
-BG2 = (16, 21, 29)
-INK = (242, 244, 246)
-MUTED = (147, 157, 168)
+CYAN = (200, 200, 208)  # silver highlight
+PINK = (232, 220, 200)  # champagne
+LIME = (240, 215, 140)  # gold light
+ORANGE = (212, 175, 55)  # gold
+BG = (17, 17, 20)
+BG2 = (26, 26, 31)
+INK = (250, 250, 250)
+MUTED = (142, 142, 154)
+GOLD = (212, 175, 55)
+GOLD_LIGHT = (240, 215, 140)
+SILVER = (200, 200, 208)
 
 
 def font(bold=False, size=32):
@@ -55,10 +59,10 @@ def hero_bg(w: int, h: int) -> Image.Image:
         for x in range(w):
             d1 = ((x - cx1) ** 2 + (y - cy1) ** 2) ** 0.5
             d2 = ((x - cx2) ** 2 + (y - cy2) ** 2) ** 0.5
-            glow = max(0, 1 - d1 / (w * 0.55)) * 0.18 + max(0, 1 - d2 / (w * 0.5)) * 0.14
-            r = min(255, int(BG[0] + CYAN[0] * glow))
-            g = min(255, int(BG[1] + CYAN[1] * glow * 0.6 + PINK[1] * glow * 0.4))
-            b = min(255, int(BG[2] + CYAN[2] * glow * 0.5 + PINK[2] * glow * 0.3))
+            glow = max(0, 1 - d1 / (w * 0.55)) * 0.14 + max(0, 1 - d2 / (w * 0.5)) * 0.1
+            r = min(255, int(BG[0] + GOLD[0] * glow))
+            g = min(255, int(BG[1] + GOLD[1] * glow * 0.85 + SILVER[1] * glow * 0.15))
+            b = min(255, int(BG[2] + GOLD[2] * glow * 0.5 + SILVER[2] * glow * 0.2))
             px[x, y] = (r, g, b, 255)
     return im
 
@@ -72,9 +76,9 @@ def draw_icon(size: int) -> Image.Image:
     for y in range(pad, size - pad):
         for x in range(pad, size - pad):
             t = (x - pad) / max(1, size - 2 * pad)
-            r = int(CYAN[0] * (1 - t) + PINK[0] * t)
-            g = int(CYAN[1] * (1 - t) + PINK[1] * t)
-            b = int(CYAN[2] * (1 - t) + PINK[2] * t)
+            r = int(SILVER[0] * (1 - t) + GOLD[0] * t)
+            g = int(SILVER[1] * (1 - t) + GOLD[1] * t)
+            b = int(SILVER[2] * (1 - t) + GOLD[2] * t)
             if (x - pad) ** 2 + (y - pad) ** 2 < (size - 2 * pad) ** 2:
                 im.putpixel((x, y), (r, g, b, 255))
     d.rounded_rectangle([pad, pad, size - pad, size - pad], radius=radius, outline=(255, 255, 255, 40))
@@ -98,8 +102,8 @@ def draw_feature_graphic() -> Image.Image:
     f_big = font(bold=True, size=92)
     f_tag = font(bold=True, size=22)
     f_sub = font(bold=False, size=20)
-    d.text((72, 120), "TABCAST", font=f_big, fill=CYAN)
-    d.text((72, 220), "LIVE · STUDIO · CAPTURE", font=f_tag, fill=LIME)
+    d.text((72, 120), "TABCAST", font=f_big, fill=GOLD)
+    d.text((72, 220), "LIVE · STUDIO · CAPTURE", font=f_tag, fill=GOLD_LIGHT)
     d.text(
         (72, 270),
         "Chromium studio + local relay.\nGo live without OBS.",
@@ -242,6 +246,12 @@ def main() -> None:
     save_png(master.resize((512, 512), Image.Resampling.LANCZOS), SITE / "icons" / "icon-512.png")
     save_png(master.resize((192, 192), Image.Resampling.LANCZOS), SITE / "apple-touch-icon.png")
     save_png(master.resize((32, 32), Image.Resampling.LANCZOS), SITE / "favicon-32.png")
+
+    for s in [16, 24, 32, 48, 64, 128, 256]:
+        save_png(master.resize((s, s), Image.Resampling.LANCZOS), RESOURCES / f"icon-{s}.png")
+    save_png(master.resize((16, 16), Image.Resampling.LANCZOS), RESOURCES / "tray.png")
+    save_png(master.resize((32, 32), Image.Resampling.LANCZOS), RESOURCES / "tray@2x.png")
+    write_ico(RESOURCES / "icon.ico", [16, 24, 32, 48, 64, 128, 256])
 
     manifest = {
         "product": "Tabcast Browser",

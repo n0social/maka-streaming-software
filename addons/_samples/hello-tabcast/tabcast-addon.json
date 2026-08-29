@@ -1,0 +1,10 @@
+{
+  "id": "com.example.hello-tabcast",
+  "name": "Hello Tabcast",
+  "version": "0.0.1",
+  "apiVersion": 1,
+  "entry": "index.html",
+  "permissions": ["ui.toast", "live.events"],
+  "hooks": ["app.ready", "live.start", "live.end", "studio.sidebar.panel"],
+  "description": "Sample user addon manifest. Copy this folder to %APPDATA%/Tabcast Browser/addons/ to test discovery."
+}

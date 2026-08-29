@@ -20,9 +20,16 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "fetch:relay": "node scripts/fetch-relay.mjs",
     "verify": "node scripts/verify.mjs",
+    "verify:offline": "node scripts/verify.mjs --offline",
+    "export:marketplace": "node scripts/export-marketplace.mjs",
     "marketing": "python scripts/generate-marketing.py",
-    "dist": "npm run build && electron-builder --win nsis",
-    "dist:dir": "npm run build && electron-builder --win dir"
+    "dist": "npm run typecheck && npm run build && node scripts/verify.mjs --offline && electron-builder --win nsis",
+    "dist:dir": "npm run build && electron-builder --win dir",
+    "dist:signed": "node scripts/dist-signed.mjs",
+    "dist:ci": "npm run typecheck && npm run build && node scripts/verify.mjs --offline && electron-builder --win nsis --publish always",
+    "sign:relay": "node scripts/sign-windows.mjs vendor/relay/TabcastRelay.exe",
+    "sign:verify": "node scripts/sign-windows.mjs --verify --all",
+    "release:manifest": "node scripts/update-browser-manifest.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.15.29",
@@ -31,6 +38,9 @@
     "electron-vite": "^4.0.0",
     "typescript": "^5.8.3",
     "vite": "^7.0.6"
+  },
+  "dependencies": {
+    "electron-updater": "^6.6.2"
   },
   "engines": {
     "node": ">=22.5"
@@ -70,13 +80,24 @@
       "icon": "resources/icons/icon.ico",
       "executableName": "TabcastBrowser",
       "artifactName": "TabcastBrowser-Setup-${version}.${ext}",
-      "signAndEditExecutable": false
+      "signAndEditExecutable": true,
+      "forceCodeSigning": false,
+      "signtoolOptions": {
+        "timeStampServer": "http://timestamp.digicert.com"
+      }
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "shortcutName": "Tabcast Browser"
     },
-    "publish": null
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "n0social",
+        "repo": "tabcast-browser",
+        "releaseType": "release"
+      }
+    ]
   }
 }

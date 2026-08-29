@@ -6,7 +6,8 @@
     "includesRelay":  true,
     "artifact":  "TabcastBrowser-Setup-0.2.0.exe",
     "sha256":  "143d380229267fa568fd3bd96e6d2eb330b8c6705de2a69ffdf4a9ce909da31e",
-    "signed":  false,
+    "signed": false,
+    "signing": null,
     "size":  189723278,
     "productName":  "Tabcast Browser",
     "releasedAt":  "2026-08-23T14:55:11.8351346Z"

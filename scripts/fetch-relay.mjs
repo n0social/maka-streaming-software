@@ -1,4 +1,4 @@
-import { createWriteStream, existsSync, mkdirSync, unlinkSync, statSync } from 'node:fs'
+import { createWriteStream, existsSync, mkdirSync, unlinkSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { pipeline } from 'node:stream/promises'
 import { createHash } from 'node:crypto'
@@ -38,6 +38,11 @@ async function main() {
       if (digest === expectedSha) {
         console.log(`Relay already present and verified at ${OUT_FILE}`)
         console.log(`Manifest version ${manifest.version} (${manifest.size} bytes).`)
+        writeFileSync(
+          join(OUT_DIR, 'relay-manifest.json'),
+          `${JSON.stringify(manifest, null, 2)}\n`,
+          'utf8',
+        )
         return
       }
       console.warn('SHA mismatch — re-downloading…')
@@ -88,6 +93,13 @@ async function main() {
 
   console.log(`OK — TabcastRelay.exe ready (sha256 ${digest.slice(0, 12)}…)`)
   console.log(`Port ${manifest.port} · stream ${manifest.streamUrl}`)
+
+  writeFileSync(
+    join(OUT_DIR, 'relay-manifest.json'),
+    `${JSON.stringify(manifest, null, 2)}\n`,
+    'utf8',
+  )
+  console.log(`Wrote ${join(OUT_DIR, 'relay-manifest.json')}`)
 }
 
 main().catch((err) => {

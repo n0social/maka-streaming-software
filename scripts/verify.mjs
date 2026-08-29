@@ -1,15 +1,29 @@
 #!/usr/bin/env node
 /**
  * Offline verification for Tabcast Browser + local relay.
- * Usage: node scripts/verify.mjs
+ * Usage: node scripts/verify.mjs [--offline]
+ *
+ * --offline  Skip live relay HTTP checks (build + binary only).
  */
-import { existsSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, statSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+const offline = process.argv.includes('--offline')
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const exe = join(root, 'vendor', 'relay', 'TabcastRelay.exe')
-const expected = 394_267_438
+const manifestPath = join(root, 'vendor', 'relay', 'relay-manifest.json')
+
+function readExpectedSize() {
+  try {
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
+    return Number(manifest.size || 0) || 394_267_438
+  } catch {
+    return 394_267_438
+  }
+}
+
+const expected = readExpectedSize()
 
 const checks = []
 
@@ -26,24 +40,29 @@ check(
   existsSync(exe) ? `${statSync(exe).size} bytes` : 'missing',
 )
 
-try {
-  const health = await fetch('http://127.0.0.1:38473/health', {
-    signal: AbortSignal.timeout(4000),
-  })
-  const body = await health.json()
-  check('relay-health', health.ok && body?.ok === true, `v${body?.version ?? '?'}`)
-} catch (err) {
-  check('relay-health', false, err instanceof Error ? err.message : String(err))
-}
+if (offline) {
+  check('relay-health', true, 'skipped (--offline)')
+  check('relay-status', true, 'skipped (--offline)')
+} else {
+  try {
+    const health = await fetch('http://127.0.0.1:38473/health', {
+      signal: AbortSignal.timeout(4000),
+    })
+    const body = await health.json()
+    check('relay-health', health.ok && body?.ok === true, `v${body?.version ?? '?'}`)
+  } catch (err) {
+    check('relay-health', false, err instanceof Error ? err.message : String(err))
+  }
 
-try {
-  const status = await fetch('http://127.0.0.1:38473/status', {
-    signal: AbortSignal.timeout(4000),
-  })
-  const body = await status.json()
-  check('relay-status', status.ok, body?.status ?? JSON.stringify(body))
-} catch (err) {
-  check('relay-status', false, err instanceof Error ? err.message : String(err))
+  try {
+    const status = await fetch('http://127.0.0.1:38473/status', {
+      signal: AbortSignal.timeout(4000),
+    })
+    const body = await status.json()
+    check('relay-status', status.ok, body?.status ?? JSON.stringify(body))
+  } catch (err) {
+    check('relay-status', false, err instanceof Error ? err.message : String(err))
+  }
 }
 
 const failed = checks.filter((c) => !c.ok)

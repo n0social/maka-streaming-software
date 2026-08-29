@@ -1,6 +1,7 @@
-import { BrowserWindow, WebContentsView } from 'electron'
+import { BrowserWindow, WebContents, WebContentsView } from 'electron'
 import { randomUUID } from 'node:crypto'
-import { isBlockedHost } from '../shared/tabcast'
+import { isAllowedBrowseUrl, normalizeBrowseUrl } from '../shared/browse-url'
+import type { BrowseCaptureInfo } from '../shared/capture'
 import { loadSession, saveSession, type SavedBrowseTab } from './settings-store'
 import { recordDiagnostic } from './diagnostics'
 
@@ -15,7 +16,8 @@ export type BrowseTabInfo = {
 export const PINNED_PRESETS: Array<{ id: string; title: string; url: string }> = [
   { id: 'pin-twitch', title: 'Twitch', url: 'https://www.twitch.tv/directory' },
   { id: 'pin-yt-studio', title: 'YT Studio', url: 'https://studio.youtube.com/' },
-  { id: 'pin-chat', title: 'Chat', url: 'https://www.twitch.tv/popout/directory/chat?popout=' },
+  { id: 'pin-yt-chat', title: 'YT Live Chat', url: 'https://studio.youtube.com/livestreaming/chat' },
+  { id: 'pin-chat', title: 'Twitch Chat', url: 'https://www.twitch.tv/popout/directory/chat?popout=' },
 ]
 
 type TabRecord = {
@@ -25,29 +27,7 @@ type TabRecord = {
   view: WebContentsView
 }
 
-function isAllowedBrowseUrl(raw: string): boolean {
-  try {
-    const url = new URL(raw)
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') return false
-    if (isBlockedHost(url.hostname)) return false
-    return true
-  } catch {
-    return false
-  }
-}
-
-export function normalizeBrowseUrl(raw: string): string | null {
-  let url = raw.trim()
-  if (!url) return null
-  if (!/^https?:\/\//i.test(url)) {
-    url =
-      url.includes('.') && !url.includes(' ')
-        ? `https://${url}`
-        : `https://www.google.com/search?q=${encodeURIComponent(url)}`
-  }
-  if (!isAllowedBrowseUrl(url)) return null
-  return url
-}
+export { normalizeBrowseUrl } from '../shared/browse-url'
 
 export class BrowseTabsManager {
   private win: BrowserWindow | null = null
@@ -56,6 +36,7 @@ export class BrowseTabsManager {
   private activeId: string | null = null
   private bounds = { x: 0, y: 0, width: 0, height: 0 }
   private visible = false
+  private capturePinned = false
 
   attach(win: BrowserWindow): void {
     this.win = win
@@ -70,15 +51,18 @@ export class BrowseTabsManager {
   }
 
   list(): BrowseTabInfo[] {
-    return this.order.map((id) => {
-      const tab = this.tabs.get(id)!
-      return {
-        id,
-        title: tab.title || 'New Tab',
-        url: tab.view.webContents.getURL() || 'about:blank',
-        pinned: tab.pinned,
-        active: id === this.activeId,
-      }
+    return this.order.flatMap((id) => {
+      const tab = this.tabs.get(id)
+      if (!tab) return []
+      return [
+        {
+          id,
+          title: tab.title || 'New Tab',
+          url: tab.view.webContents.getURL() || 'about:blank',
+          pinned: tab.pinned,
+          active: id === this.activeId,
+        },
+      ]
     })
   }
 
@@ -87,16 +71,23 @@ export class BrowseTabsManager {
     return this.tabs.get(this.activeId)?.view ?? null
   }
 
+  private emitTitle(title: string): void {
+    if (!this.win || this.win.isDestroyed()) return
+    this.win.webContents.send('browser:title', title)
+  }
+
   private emit(): void {
     if (!this.win || this.win.isDestroyed()) return
     this.win.webContents.send('browser:tabs', this.list())
     const active = this.getActiveView()
     if (active) {
+      const title = active.webContents.getTitle()
+      this.emitTitle(title)
       this.win.webContents.send('browser:navigated', {
         url: active.webContents.getURL(),
         canGoBack: active.webContents.navigationHistory.canGoBack(),
         canGoForward: active.webContents.navigationHistory.canGoForward(),
-        title: active.webContents.getTitle(),
+        title,
       })
     }
     this.persist()
@@ -126,6 +117,10 @@ export class BrowseTabsManager {
       if (!isAllowedBrowseUrl(url)) event.preventDefault()
     })
 
+    wc.on('will-redirect', (event, url) => {
+      if (!isAllowedBrowseUrl(url)) event.preventDefault()
+    })
+
     const bump = () => {
       tab.title = wc.getTitle() || tab.title
       if (tab.id === this.activeId) this.emit()
@@ -139,6 +134,7 @@ export class BrowseTabsManager {
     wc.on('did-navigate-in-page', bump)
     wc.on('page-title-updated', (_e, title) => {
       tab.title = title
+      if (tab.id === this.activeId) this.emitTitle(title)
       bump()
     })
   }
@@ -154,12 +150,50 @@ export class BrowseTabsManager {
     })
   }
 
+  isCapturePinned(): boolean {
+    return this.capturePinned
+  }
+
+  setCapturePinned(pinned: boolean): void {
+    this.capturePinned = pinned
+    this.layoutActive()
+  }
+
+  getActiveCaptureTarget(requester: WebContents): BrowseCaptureInfo | null {
+    this.ensureSeeded()
+    const view = this.getActiveView()
+    if (!view || !this.win || this.win.isDestroyed()) return null
+
+    const wc = view.webContents
+    if (wc.isDestroyed()) return null
+    const url = wc.getURL()
+    if (!url || url === 'about:blank') return null
+
+    const getMediaSourceId = (
+      wc as WebContents & { getMediaSourceId?: (requester: WebContents) => string }
+    ).getMediaSourceId
+    if (typeof getMediaSourceId !== 'function') return null
+
+    try {
+      const mediaSourceId = getMediaSourceId.call(wc, requester)
+      if (!mediaSourceId) return null
+      return {
+        mediaSourceId,
+        title: wc.getTitle() || 'Browse tab',
+        url,
+      }
+    } catch (err) {
+      recordDiagnostic('warn', 'browse.capture', 'getMediaSourceId failed', err)
+      return null
+    }
+  }
+
   private layoutActive(): void {
     if (!this.win || this.win.isDestroyed()) return
     for (const id of this.order) {
       const tab = this.tabs.get(id)
       if (!tab) continue
-      const active = id === this.activeId && this.visible
+      const active = id === this.activeId && (this.visible || this.capturePinned)
       if (active) {
         tab.view.setBounds(this.bounds)
         const v = tab.view as WebContentsView & { setVisible?: (x: boolean) => void }

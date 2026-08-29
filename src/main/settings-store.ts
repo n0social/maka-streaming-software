@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { app } from 'electron'
+import { coerceSettings, isValidTabId, sanitizeSavedTabs } from './security'
 
 export type AppSettings = {
   bitrateProfile: '720p' | '1080p'
@@ -8,6 +9,8 @@ export type AppSettings = {
   minimizeToTrayWhileLive: boolean
   openChatOnBrowse: boolean
   labMode: boolean
+  onboardingComplete: boolean
+  setupWizardComplete: boolean
 }
 
 export type SavedBrowseTab = {
@@ -28,6 +31,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   minimizeToTrayWhileLive: true,
   openChatOnBrowse: false,
   labMode: false,
+  onboardingComplete: false,
+  setupWizardComplete: false,
 }
 
 function storeDir(): string {
@@ -51,7 +56,8 @@ function writeJson(name: string, value: unknown): void {
 }
 
 export function loadSettings(): AppSettings {
-  return readJson<AppSettings>('settings.json', { ...DEFAULT_SETTINGS })
+  const raw = readJson<Partial<AppSettings>>('settings.json', {})
+  return { ...DEFAULT_SETTINGS, ...coerceSettings(raw) }
 }
 
 export function saveSettings(partial: Partial<AppSettings>): AppSettings {
@@ -61,7 +67,13 @@ export function saveSettings(partial: Partial<AppSettings>): AppSettings {
 }
 
 export function loadSession(): SessionState {
-  return readJson<SessionState>('browse-session.json', { tabs: [], activeTabId: null })
+  const raw = readJson<SessionState>('browse-session.json', { tabs: [], activeTabId: null })
+  const tabs = sanitizeSavedTabs(Array.isArray(raw.tabs) ? raw.tabs : [])
+  let activeTabId = isValidTabId(raw.activeTabId) ? raw.activeTabId : null
+  if (activeTabId && !tabs.some((t) => t.id === activeTabId)) {
+    activeTabId = tabs[0]?.id ?? null
+  }
+  return { tabs, activeTabId }
 }
 
 export function saveSession(session: SessionState): void {

@@ -6,8 +6,9 @@ import type {
   TabcastBridge,
 } from '../preload/index'
 import type { RelaySnapshot } from '../shared/relay-snapshot'
-import type { StreamProfile } from '../shared/tabcast'
-import { validateRelayStreamKeys } from '../shared/stream-keys'
+import type { StreamProfile, SceneLayout, RelayHealth } from '../shared/tabcast'
+import { BROWSE_CAPTURE_SOURCE_ID } from '../shared/capture'
+import { validateRelayStreamKeys, KICK_RTMP_URL } from '../shared/stream-keys'
 import {
   authHeaders,
   defaultSceneLayout,
@@ -18,6 +19,10 @@ import {
   whipUrlFromHealth,
 } from './relay-client'
 import { publishWhip, type WhipPublisher } from './whip'
+import { OnboardingTour } from './onboarding'
+import { SetupWizard } from './onboarding-wizard'
+import { initMarketplace } from './marketplace'
+import './onboarding.css'
 
 declare global {
   interface Window {
@@ -63,9 +68,26 @@ const layerGame = document.getElementById('layer-game')!
 const layerCam = document.getElementById('layer-cam')!
 const layerMic = document.getElementById('layer-mic')!
 const layerBrowser = document.getElementById('layer-browser')!
+const addonPanels = document.getElementById('addon-panels')!
+const platTwitch = document.getElementById('plat-twitch')!
+const platYoutube = document.getElementById('plat-youtube')!
+const platCustom = document.getElementById('plat-custom')!
+const destCustomBlock = document.getElementById('dest-custom-block')!
+const destCustom = document.getElementById('dest-custom') as HTMLInputElement
+const customRtmpUrl = document.getElementById('custom-rtmp-url') as HTMLInputElement
+const customRtmpKey = document.getElementById('custom-rtmp-key') as HTMLInputElement
+const programBrowser = document.getElementById('program-browser')!
+const programBrowserVideo = document.getElementById('program-browser-video') as HTMLVideoElement
+
+const CUSTOM_RTM_ADDON_ID = 'com.tabcast.custom-rtmp'
 
 let selectedSourceId: string | null = null
+let captureKind: 'desktop' | 'browse' | null = null
+let whipReconnectAttempts = 0
+let whipReconnecting = false
+const MAX_WHIP_RECONNECT = 2
 let programStream: MediaStream | null = null
+let browserStream: MediaStream | null = null
 let cameraStream: MediaStream | null = null
 let micStream: MediaStream | null = null
 let currentMode: AppMode = 'studio'
@@ -187,6 +209,11 @@ function syncLayerTracks(): void {
       track.enabled = layerEnabled.game
     }
   }
+  if (browserStream) {
+    for (const track of browserStream.getVideoTracks()) {
+      track.enabled = layerEnabled.browser
+    }
+  }
   if (cameraStream) {
     for (const track of cameraStream.getVideoTracks()) {
       track.enabled = layerEnabled.cam
@@ -202,6 +229,20 @@ function syncLayerTracks(): void {
   layerMic.dataset.enabled = layerEnabled.mic ? '1' : '0'
   layerBrowser.dataset.enabled = layerEnabled.browser ? '1' : '0'
   updateProgramCamOverlay()
+  updateProgramBrowserOverlay()
+}
+
+function updateProgramBrowserOverlay(): void {
+  const show = Boolean(browserStream) && layerEnabled.browser
+  programBrowser.hidden = !show
+  if (show) {
+    if (programBrowserVideo.srcObject !== browserStream) {
+      programBrowserVideo.srcObject = browserStream
+    }
+    void programBrowserVideo.play().catch(() => undefined)
+  } else if (!browserStream) {
+    programBrowserVideo.srcObject = null
+  }
 }
 
 function updateProgramCamOverlay(): void {
@@ -240,6 +281,7 @@ async function pushSceneLayout(): Promise<void> {
   const layout = defaultSceneLayout({
     profile,
     hasWebcam: Boolean(cameraStream) && layerEnabled.cam,
+    hasBrowser: Boolean(browserStream) && layerEnabled.browser,
   })
   const scale = Number(camScale.value) / 100
   const cam = layout.sources.find((s) => s.id === 'webcam')
@@ -252,6 +294,9 @@ async function pushSceneLayout(): Promise<void> {
   if (!layerEnabled.game) {
     layout.sources = layout.sources.filter((s) => s.id !== 'gameplay')
   }
+  if (!layerEnabled.browser) {
+    layout.sources = layout.sources.filter((s) => s.id !== 'browser')
+  }
   await postSceneLayout(snapshot.health, layout)
 }
 
@@ -260,6 +305,7 @@ function renderRelay(snapshot: RelaySnapshot): void {
   relayLabel.textContent = lifecycleCopy[snapshot.lifecycle]
   relayStatus.textContent = snapshot.status?.status ?? snapshot.lifecycle
   relayVersion.textContent = snapshot.health ? `v${snapshot.health.version}` : '—'
+  renderPlatformStatus(snapshot)
 
   if (snapshot.error) {
     relayError.hidden = false
@@ -285,6 +331,121 @@ function renderRelay(snapshot: RelaySnapshot): void {
   }
 }
 
+type PlatformChipState = 'off' | 'idle' | 'armed' | 'live' | 'error'
+
+function platformChipState(
+  enabled: boolean,
+  hasKey: boolean,
+  live: boolean,
+  platformLive: boolean | undefined,
+): PlatformChipState {
+  if (!enabled) return 'off'
+  if (live && platformLive === true) return 'live'
+  if (live && platformLive === false) return 'error'
+  if (hasKey) return 'armed'
+  return 'idle'
+}
+
+function renderPlatformStatus(snapshot: RelaySnapshot): void {
+  const live = snapshot.lifecycle === 'live' || Boolean(whipPublisher)
+  const platforms = snapshot.status?.platforms
+
+  platTwitch.dataset.state = platformChipState(
+    destTwitch.checked,
+    Boolean(twitchKey.value.trim()),
+    live,
+    platforms?.twitch,
+  )
+  platYoutube.dataset.state = platformChipState(
+    destYoutube.checked,
+    Boolean(youtubeKey.value.trim()),
+    live,
+    platforms?.youtube,
+  )
+  platCustom.dataset.state = platformChipState(
+    destCustom.checked,
+    Boolean(customRtmpKey.value.trim()),
+    live,
+    platforms?.custom,
+  )
+}
+
+function bindProgramStream(stream: MediaStream): void {
+  bindGameplayStream(stream)
+}
+
+function onWhipConnectionState(state: RTCPeerConnectionState): void {
+  if (state === 'connected') {
+    whipReconnectAttempts = 0
+    whipReconnecting = false
+    return
+  }
+  if (state === 'failed' || state === 'disconnected') {
+    if (goingLive || whipReconnecting || !whipPublisher) return
+    void scheduleWhipReconnect(state)
+  }
+}
+
+async function scheduleWhipReconnect(reason: string): Promise<void> {
+  if (whipReconnectAttempts >= MAX_WHIP_RECONNECT) {
+    setDestError(
+      `WHIP connection ${reason}. Auto-reconnect failed — tap End Live and try again.`,
+    )
+    return
+  }
+
+  whipReconnecting = true
+  whipReconnectAttempts += 1
+  destHint.textContent = `WHIP dropped (${reason}). Reconnecting ${whipReconnectAttempts}/${MAX_WHIP_RECONNECT}…`
+
+  await new Promise((resolve) => setTimeout(resolve, 1200 * whipReconnectAttempts))
+
+  try {
+    if (!programStream) {
+      throw new Error('Program source missing — cannot reconnect WHIP.')
+    }
+
+    const snapshot = await window.tabcast.getRelay()
+    if (!snapshot.health) {
+      throw new Error(snapshot.error ?? 'Relay not ready for WHIP reconnect.')
+    }
+
+    if (whipPublisher) {
+      await whipPublisher.close().catch(() => undefined)
+      whipPublisher = null
+    }
+
+    whipPublisher = await attachWhipPublisher(snapshot.health)
+    await window.tabcast.refreshRelay()
+    destHint.textContent = 'Live — WHIP reconnected.'
+    setDestError(null)
+  } catch (err) {
+    setDestError(err instanceof Error ? err.message : String(err))
+    if (whipReconnectAttempts < MAX_WHIP_RECONNECT) {
+      void scheduleWhipReconnect(reason)
+    }
+  } finally {
+    whipReconnecting = false
+  }
+}
+
+async function attachWhipPublisher(health: RelayHealth): Promise<WhipPublisher> {
+  if (!programStream) {
+    throw new Error('Select a gameplay source before going live.')
+  }
+  return publishWhip(
+    whipUrlFromHealth(health),
+    {
+      gameplay: programStream,
+      browser: layerEnabled.browser && browserStream ? browserStream : null,
+      webcam: layerEnabled.cam ? cameraStream : null,
+      mic: layerEnabled.mic ? micStream : null,
+    },
+    authHeaders(health),
+    onWhipConnectionState,
+  )
+}
+
 function escapeHtml(value: string): string {
   return value
     .replaceAll('&', '&amp;')
@@ -305,6 +466,29 @@ function selectedProfile(): StreamProfile {
 function syncDestinationInputs(): void {
   twitchKey.disabled = !destTwitch.checked
   youtubeKey.disabled = !destYoutube.checked
+  customRtmpUrl.disabled = !destCustom.checked
+  customRtmpKey.disabled = !destCustom.checked
+}
+
+function syncCustomRtmpBlock(show: boolean): void {
+  destCustomBlock.hidden = !show
+  platCustom.hidden = !show
+}
+
+async function loadCustomRtmpSettings(): Promise<void> {
+  const settings = await window.tabcast.getAddonSettings(CUSTOM_RTM_ADDON_ID)
+  if (settings.customRtmpUrl) customRtmpUrl.value = settings.customRtmpUrl
+  if (settings.customRtmpKeyConfigured) {
+    customRtmpKey.placeholder = 'Stream key saved'
+  }
+}
+
+async function persistCustomRtmpSettings(): Promise<void> {
+  if (destCustomBlock.hidden) return
+  await window.tabcast.setAddonSettings(CUSTOM_RTM_ADDON_ID, {
+    customRtmpUrl: customRtmpUrl.value.trim(),
+    customRtmpKey: customRtmpKey.value.trim() || undefined,
+  })
 }
 
 function renderSources(sources: CaptureSource[]): void {
@@ -319,15 +503,22 @@ function renderSources(sources: CaptureSource[]): void {
     btn.type = 'button'
     btn.className = 'source-card' + (source.id === selectedSourceId ? ' active' : '')
     btn.dataset.id = source.id
+    const thumbHtml = source.type === 'browser'
+      ? '<span class="source-thumb browser-thumb" aria-hidden="true">🌐</span>'
+      : `<img src="${source.thumbnailDataUrl}" alt="" />`
     btn.innerHTML = `
-      <img src="${source.thumbnailDataUrl}" alt="" />
+      ${thumbHtml}
       <span>
         <strong>${escapeHtml(source.name)}</strong>
-        <span>${source.type}</span>
+        <span>${source.type === 'browser' ? 'browse tab' : source.type}</span>
       </span>
     `
     btn.addEventListener('click', () => {
-      void selectDesktopSource(source)
+      if (source.type === 'browser' || source.id === BROWSE_CAPTURE_SOURCE_ID) {
+        void selectBrowseTabSource()
+      } else {
+        void selectDesktopSource(source)
+      }
     })
     sourceList.appendChild(btn)
   }
@@ -335,6 +526,8 @@ function renderSources(sources: CaptureSource[]): void {
 
 async function selectDesktopSource(source: CaptureSource): Promise<void> {
   selectedSourceId = source.id
+  captureKind = 'desktop'
+
   for (const el of sourceList.querySelectorAll('.source-card')) {
     el.classList.toggle('active', (el as HTMLElement).dataset.id === source.id)
   }
@@ -343,23 +536,14 @@ async function selectDesktopSource(source: CaptureSource): Promise<void> {
   programStream = null
 
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: false,
-      video: {
-        mandatory: {
-          chromeMediaSource: 'desktop',
-          chromeMediaSourceId: source.id,
-          maxWidth: 1920,
-          maxHeight: 1080,
-          maxFrameRate: 60,
-        },
-      } as MediaTrackConstraints,
-    })
+    const stream = await captureDesktopMedia(source)
     programStream = stream
+    bindGameplayStream(stream)
     programVideo.srcObject = stream
     programEmpty.hidden = true
     layerGame.dataset.active = '1'
     layerGame.textContent = `Gameplay — ${source.name}`
+    syncLayerTracks()
     if (currentMode !== 'studio') {
       await window.tabcast.setMode('studio')
     }
@@ -370,12 +554,147 @@ async function selectDesktopSource(source: CaptureSource): Promise<void> {
       err instanceof Error ? err.message : 'Could not capture this source'
     layerGame.dataset.active = '0'
     layerGame.textContent = 'Gameplay — none'
+    captureKind = null
+  }
+}
+
+async function captureDesktopMedia(source: CaptureSource): Promise<MediaStream> {
+  if (source.type === 'screen') {
+    try {
+      return await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          frameRate: { ideal: 60 },
+        },
+        audio: false,
+      })
+    } catch {
+      // Fall through to desktopCapturer source id path.
+    }
+  }
+
+  return navigator.mediaDevices.getUserMedia({
+    audio: false,
+    video: {
+      mandatory: {
+        chromeMediaSource: 'desktop',
+        chromeMediaSourceId: source.id,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        maxFrameRate: 60,
+      },
+    } as MediaTrackConstraints,
+  })
+}
+
+function bindGameplayStream(stream: MediaStream): void {
+  for (const track of stream.getVideoTracks()) {
+    track.onended = () => {
+      if (programStream !== stream) return
+      programVideo.srcObject = null
+      programEmpty.hidden = false
+      programEmpty.textContent = 'Capture source ended. Select a source again.'
+      layerGame.dataset.active = '0'
+      layerGame.textContent = 'Gameplay — none'
+      programStream = null
+      captureKind = null
+      selectedSourceId = null
+    }
+  }
+}
+
+function bindBrowserStream(stream: MediaStream): void {
+  for (const track of stream.getVideoTracks()) {
+    track.onended = () => {
+      if (browserStream !== stream) return
+      void stopBrowserCapture()
+    }
+  }
+}
+
+async function stopBrowserCapture(): Promise<void> {
+  stopStream(browserStream)
+  browserStream = null
+  programBrowserVideo.srcObject = null
+  layerBrowser.dataset.active = '0'
+  layerBrowser.textContent = 'Browser — off'
+  await window.tabcast.setBrowseCaptureActive(false)
+  updateProgramBrowserOverlay()
+  syncLayerTracks()
+}
+
+async function startBrowserCapture(): Promise<void> {
+  layerEnabled.browser = true
+  stopStream(browserStream)
+  browserStream = null
+
+  const target = await window.tabcast.getBrowseCaptureTarget()
+  if (!target) {
+    layerBrowser.dataset.active = '0'
+    layerBrowser.textContent = 'Browser — no tab'
+    setDestError('Open a page in Browse mode, then enable the Browser layer.')
+    layerEnabled.browser = false
+    return
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: {
+        mandatory: {
+          chromeMediaSource: 'desktop',
+          chromeMediaSourceId: target.mediaSourceId,
+          maxWidth: 1920,
+          maxHeight: 1080,
+          maxFrameRate: 30,
+        },
+      } as MediaTrackConstraints,
+    })
+    browserStream = stream
+    bindBrowserStream(stream)
+    layerBrowser.dataset.active = '1'
+    layerBrowser.textContent = `Browser — ${target.title}`
+    syncLayerTracks()
+    setDestError(null)
+  } catch (err) {
+    await stopBrowserCapture()
+    layerEnabled.browser = false
+    setDestError(err instanceof Error ? err.message : 'Could not capture browse tab')
+  }
+}
+
+async function selectBrowseTabSource(): Promise<void> {
+  selectedSourceId = BROWSE_CAPTURE_SOURCE_ID
+  captureKind = 'browse'
+
+  for (const el of sourceList.querySelectorAll('.source-card')) {
+    el.classList.toggle(
+      'active',
+      (el as HTMLElement).dataset.id === BROWSE_CAPTURE_SOURCE_ID,
+    )
+  }
+
+  if (!programStream) {
+    programEmpty.hidden = false
+    programEmpty.textContent = 'Select gameplay (display/window) first, or use Browser layer for overlay only.'
+  }
+
+  layerEnabled.browser = true
+  await startBrowserCapture()
+
+  if (browserStream && currentMode !== 'studio') {
+    await window.tabcast.setMode('studio')
   }
 }
 
 async function refreshSources(): Promise<void> {
-  const sources = await window.tabcast.listCaptureSources()
-  renderSources(sources)
+  try {
+    const sources = await window.tabcast.listCaptureSources()
+    renderSources(sources)
+  } catch (err) {
+    sourceList.innerHTML = `<p class="hint">${escapeHtml(err instanceof Error ? err.message : 'Could not list sources')}</p>`
+  }
 }
 
 async function refreshAvDevices(): Promise<void> {
@@ -487,11 +806,37 @@ function toggleMicMute(): void {
   layerMic.textContent = micMuted ? `Mic — muted (${label})` : `Mic — ${label}`
 }
 
+async function dispatchAddonLiveEvents(
+  event: 'live.start' | 'live.end',
+): Promise<void> {
+  try {
+    const results = await window.tabcast.dispatchAddonLiveEvent(event, {
+      profile: selectedProfile(),
+      platforms: {
+        twitch: destTwitch.checked,
+        youtube: destYoutube.checked,
+        custom: destCustom.checked,
+      },
+    })
+    const notable = results.filter((r) => r.message && r.message !== 'No webhook configured — skipped')
+    if (notable.length) {
+      const summary = notable.map((r) => r.message).filter(Boolean).join(' · ')
+      if (summary) {
+        destHint.textContent = summary
+      }
+    }
+  } catch {
+    // Non-fatal — addons must not block go-live
+  }
+}
+
 async function endLive(): Promise<void> {
   goingLive = true
   btnGoLive.disabled = true
   btnGoLive.textContent = 'Ending…'
   setDestError(null)
+  whipReconnectAttempts = 0
+  whipReconnecting = false
 
   try {
     if (whipPublisher) {
@@ -501,6 +846,7 @@ async function endLive(): Promise<void> {
     const snapshot = await window.tabcast.getRelay()
     await stopRelayStream(snapshot.health)
     await window.tabcast.refreshRelay()
+    await dispatchAddonLiveEvents('live.end')
   } catch (err) {
     setDestError(err instanceof Error ? err.message : String(err))
   } finally {
@@ -519,16 +865,28 @@ async function goLive(): Promise<void> {
 
   try {
     if (!programStream) {
-      throw new Error('Select a display or window source first.')
+      throw new Error('Select a display or window for gameplay first.')
     }
 
     const twitch = destTwitch.checked ? twitchKey.value : ''
     const youtube = destYoutube.checked ? youtubeKey.value : ''
+    const customUrl = destCustom.checked ? customRtmpUrl.value.trim() : ''
+    const customKey = destCustom.checked ? customRtmpKey.value.trim() : ''
     if (!labMode) {
-      const keysOk = validateRelayStreamKeys({ twitchKey: twitch, youtubeKey: youtube })
+      const keysOk = validateRelayStreamKeys({
+        twitchKey: twitch,
+        youtubeKey: youtube,
+        customRtmpUrl: customUrl,
+        customRtmpKey: customKey,
+        customEnabled: destCustom.checked,
+      })
       if (!keysOk.ok) throw new Error(keysOk.message)
-    } else if (!twitch && !youtube) {
+    } else if (!twitch && !youtube && !(destCustom.checked && customUrl && customKey)) {
       throw new Error('Lab mode still needs a placeholder key in at least one destination.')
+    }
+
+    if (destCustom.checked && customUrl && customKey) {
+      await persistCustomRtmpSettings()
     }
 
     let snapshot = await window.tabcast.getRelay()
@@ -543,34 +901,27 @@ async function goLive(): Promise<void> {
     await postRelayConfig(snapshot.health, {
       twitchKey: twitch,
       youtubeKey: youtube,
+      customRtmpUrl: destCustom.checked ? customUrl : undefined,
+      customRtmpKey: destCustom.checked ? customKey : undefined,
       profile,
     })
 
     await postSceneLayout(
       snapshot.health,
-      defaultSceneLayout({ profile, hasWebcam: Boolean(cameraStream) && layerEnabled.cam }),
+      defaultSceneLayout({
+        profile,
+        hasWebcam: Boolean(cameraStream) && layerEnabled.cam,
+        hasBrowser: Boolean(browserStream) && layerEnabled.browser,
+      }),
     )
     await pushSceneLayout()
 
     destHint.textContent = 'Publishing WHIP to local relay…'
+    whipReconnectAttempts = 0
 
-    const publisher = await publishWhip(
-      whipUrlFromHealth(snapshot.health),
-      {
-        display: programStream,
-        webcam: layerEnabled.cam ? cameraStream : null,
-        mic: layerEnabled.mic ? micStream : null,
-      },
-      authHeaders(snapshot.health),
-      (state) => {
-        if (state === 'failed' || state === 'disconnected') {
-          setDestError(`WHIP connection ${state}`)
-        }
-      },
-    )
-
-    whipPublisher = publisher
+    whipPublisher = await attachWhipPublisher(snapshot.health)
     await window.tabcast.refreshRelay()
+    await dispatchAddonLiveEvents('live.start')
     destHint.textContent = 'Live — keys stay in relay RAM. End Live to tear down WHIP.'
     btnGoLive.dataset.live = '1'
     btnGoLive.textContent = 'End Live'
@@ -605,7 +956,15 @@ async function onVerifyKeys(): Promise<void> {
   try {
     const twitch = destTwitch.checked ? twitchKey.value : ''
     const youtube = destYoutube.checked ? youtubeKey.value : ''
-    const keysOk = validateRelayStreamKeys({ twitchKey: twitch, youtubeKey: youtube })
+    const customUrl = destCustom.checked ? customRtmpUrl.value.trim() : ''
+    const customKey = destCustom.checked ? customRtmpKey.value.trim() : ''
+    const keysOk = validateRelayStreamKeys({
+      twitchKey: twitch,
+      youtubeKey: youtube,
+      customRtmpUrl: customUrl,
+      customRtmpKey: customKey,
+      customEnabled: destCustom.checked,
+    })
     if (!keysOk.ok) throw new Error(keysOk.message)
 
     let snapshot = await window.tabcast.getRelay()
@@ -619,6 +978,8 @@ async function onVerifyKeys(): Promise<void> {
     await postRelayConfig(snapshot.health, {
       twitchKey: twitch,
       youtubeKey: youtube,
+      customRtmpUrl: destCustom.checked ? customUrl : undefined,
+      customRtmpKey: destCustom.checked ? customKey : undefined,
       profile: selectedProfile(),
     })
 
@@ -629,6 +990,9 @@ async function onVerifyKeys(): Promise<void> {
         result.twitch && !result.twitch.ok ? `Twitch: ${result.twitch.message ?? 'failed'}` : null,
         result.youtube && !result.youtube.ok
           ? `YouTube: ${result.youtube.message ?? 'failed'}`
+          : null,
+        result.custom && !result.custom.ok
+          ? `Custom RTMP: ${result.custom.message ?? 'failed'}`
           : null,
       ].filter(Boolean)
       throw new Error(parts.join('\n') || 'Verification failed')
@@ -665,6 +1029,9 @@ document.getElementById('btn-reload')!.addEventListener('click', () => {
 document.getElementById('btn-refresh-sources')!.addEventListener('click', () => {
   void refreshSources()
 })
+document.getElementById('btn-capture-browse')!.addEventListener('click', () => {
+  void selectBrowseTabSource()
+})
 document.getElementById('btn-start-relay')!.addEventListener('click', () => {
   void window.tabcast.startRelay()
 })
@@ -685,6 +1052,9 @@ document.getElementById('btn-pin-twitch')!.addEventListener('click', () => {
 document.getElementById('btn-pin-yt')!.addEventListener('click', () => {
   void window.tabcast.openPinned('pin-yt-studio').then(renderBrowseTabs)
 })
+document.getElementById('btn-pin-yt-chat')!.addEventListener('click', () => {
+  void window.tabcast.openPinned('pin-yt-chat').then(renderBrowseTabs)
+})
 document.getElementById('btn-pin-chat')!.addEventListener('click', () => {
   void window.tabcast.openPinned('pin-chat').then(renderBrowseTabs)
 })
@@ -703,6 +1073,7 @@ document.getElementById('btn-win-close')!.addEventListener('click', () => {
 document.getElementById('btn-settings')!.addEventListener('click', async () => {
   const s = await window.tabcast.getSettings()
   ;(document.getElementById('set-tray-live') as HTMLInputElement).checked = s.minimizeToTrayWhileLive
+  ;(document.getElementById('set-open-chat') as HTMLInputElement).checked = s.openChatOnBrowse
   ;(document.getElementById('set-lab-mode') as HTMLInputElement).checked = s.labMode
   ;(document.getElementById('set-startup') as HTMLSelectElement).value = s.startupMode
   settingsDialog.showModal()
@@ -713,6 +1084,7 @@ document.getElementById('settings-form')!.addEventListener('submit', async (even
     const next = await window.tabcast.setSettings({
       minimizeToTrayWhileLive: (document.getElementById('set-tray-live') as HTMLInputElement)
         .checked,
+      openChatOnBrowse: (document.getElementById('set-open-chat') as HTMLInputElement).checked,
       labMode: (document.getElementById('set-lab-mode') as HTMLInputElement).checked,
       startupMode: (document.getElementById('set-startup') as HTMLSelectElement).value as AppMode,
     })
@@ -736,10 +1108,146 @@ for (const [el, key] of [
   [layerBrowser, 'browser'],
 ] as const) {
   el.addEventListener('click', () => {
-    layerEnabled[key] = !layerEnabled[key]
+    if (key === 'browser') {
+      layerEnabled.browser = !layerEnabled.browser
+      if (layerEnabled.browser && !browserStream) {
+        void startBrowserCapture()
+        return
+      }
+      if (!layerEnabled.browser) {
+        void stopBrowserCapture()
+      }
+    } else {
+      layerEnabled[key] = !layerEnabled[key]
+    }
     syncLayerTracks()
     void pushSceneLayout()
   })
+}
+
+async function renderAddonPanels(): Promise<void> {
+  const panels = await window.tabcast.listAddonPanels()
+  const preloadPath = await window.tabcast.getAddonPreloadPath()
+  const hasCustomRtmp = panels.some((p) => p.addonId === CUSTOM_RTM_ADDON_ID)
+  syncCustomRtmpBlock(hasCustomRtmp)
+  if (hasCustomRtmp) {
+    await loadCustomRtmpSettings()
+    syncDestinationInputs()
+  }
+
+  addonPanels.innerHTML = ''
+  if (!panels.length) {
+    addonPanels.innerHTML = '<p class="hint">No addons loaded.</p>'
+    return
+  }
+
+  for (const panel of panels) {
+    const section = document.createElement('section')
+    section.className = 'addon-panel'
+    section.innerHTML = `<h3>${escapeHtml(panel.title)}</h3>`
+    if (panel.description) {
+      const p = document.createElement('p')
+      p.className = 'hint tight'
+      p.textContent = panel.description
+      section.appendChild(p)
+    }
+
+    if (panel.runtimeUrl) {
+      const webview = document.createElement('webview') as HTMLElement & {
+        src: string
+        preload: string
+        partition: string
+        className: string
+      }
+      webview.className = 'addon-webview'
+      webview.src = panel.runtimeUrl
+      if (preloadPath) webview.preload = preloadPath
+      webview.partition = `persist:addon-${panel.addonId}`
+      webview.setAttribute(
+        'webpreferences',
+        'contextIsolation=yes,nodeIntegration=no,sandbox=yes',
+      )
+      section.appendChild(webview)
+    }
+
+    if (panel.actions.length) {
+      const list = document.createElement('div')
+      list.className = 'addon-actions'
+      for (const action of panel.actions) {
+        const btn = document.createElement('button')
+        btn.type = 'button'
+        btn.textContent = action.label
+        if (action.description) btn.title = action.description
+        btn.addEventListener('click', () => {
+          void runAddonAction(panel.addonId, action.id)
+        })
+        list.appendChild(btn)
+      }
+      section.appendChild(list)
+    }
+
+    addonPanels.appendChild(section)
+  }
+}
+
+async function runAddonAction(addonId: string, actionId: string): Promise<void> {
+  if (addonId === 'com.tabcast.discord-now-live' && actionId === 'configure-webhook') {
+    const url = window.prompt(
+      'Discord channel webhook URL (https://discord.com/api/webhooks/…)',
+      '',
+    )
+    if (!url?.trim()) return
+    const res = await window.tabcast.setAddonSettings(addonId, { discordWebhookUrl: url.trim() })
+    destHint.textContent = res.message ?? (res.ok ? 'Webhook saved.' : 'Save failed.')
+    if (!res.ok) setDestError(res.message ?? 'Could not save webhook')
+    return
+  }
+
+  if (addonId === CUSTOM_RTM_ADDON_ID && actionId === 'configure-kick') {
+    customRtmpUrl.value = KICK_RTMP_URL
+    destCustom.checked = true
+    syncDestinationInputs()
+    const res = await window.tabcast.setAddonSettings(addonId, { customRtmpUrl: KICK_RTMP_URL })
+    destHint.textContent = res.ok
+      ? 'Kick ingest URL set — paste your stream key in Destinations → Custom RTMP.'
+      : (res.message ?? 'Could not save preset')
+    return
+  }
+
+  if (addonId === CUSTOM_RTM_ADDON_ID && actionId === 'configure-rtmp') {
+    const url = window.prompt('RTMP ingest URL (rtmps://…/app)', customRtmpUrl.value || KICK_RTMP_URL)
+    if (!url?.trim()) return
+    const key = window.prompt('Stream key')
+    if (!key?.trim()) return
+    customRtmpUrl.value = url.trim()
+    customRtmpKey.value = key.trim()
+    destCustom.checked = true
+    syncDestinationInputs()
+    const res = await window.tabcast.setAddonSettings(addonId, {
+      customRtmpUrl: url.trim(),
+      customRtmpKey: key.trim(),
+    })
+    destHint.textContent = res.message ?? (res.ok ? 'Custom RTMP saved.' : 'Save failed.')
+    if (!res.ok) setDestError(res.message ?? 'Could not save RTMP settings')
+    return
+  }
+
+  const snapshot = await window.tabcast.getRelay()
+  const result = await window.tabcast.runAddonAction(addonId, actionId, {
+    profile: selectedProfile(),
+    hasWebcam: Boolean(cameraStream) && layerEnabled.cam,
+  })
+  if (!result.ok) {
+    setDestError(result.message ?? 'Addon action failed')
+    return
+  }
+  if (result.sceneLayout && snapshot.health) {
+    await postSceneLayout(snapshot.health, result.sceneLayout as SceneLayout)
+    destHint.textContent = result.message ?? 'Scene updated.'
+    setDestError(null)
+  } else if (result.message) {
+    destHint.textContent = result.message
+  }
 }
 document.getElementById('btn-verify')!.addEventListener('click', () => {
   void runVerification()
@@ -754,7 +1262,45 @@ document.getElementById('btn-verify-keys')!.addEventListener('click', () => {
   void onVerifyKeys()
 })
 
-window.tabcast.onTabs(renderBrowseTabs)
+profileSelect.addEventListener('change', () => {
+  void window.tabcast.setSettings({ bitrateProfile: selectedProfile() })
+})
+
+async function teardownLiveSession(): Promise<void> {
+  try {
+    if (whipPublisher) {
+      await whipPublisher.close().catch(() => undefined)
+      whipPublisher = null
+    }
+    const snapshot = await window.tabcast.getRelay()
+    if (snapshot.health && snapshot.lifecycle === 'live') {
+      await stopRelayStream(snapshot.health).catch(() => undefined)
+    }
+    whipReconnectAttempts = 0
+    whipReconnecting = false
+    stopStream(programStream)
+    programStream = null
+    captureKind = null
+    await window.tabcast.setBrowseCaptureActive(false)
+    stopStream(cameraStream)
+    cameraStream = null
+    stopStream(micStream)
+    micStream = null
+  } catch (err) {
+    console.error('teardownLiveSession', err)
+  }
+}
+
+window.tabcast.onPrepareQuit(() => {
+  void teardownLiveSession().finally(() => {
+    window.tabcast.ackPrepareQuit()
+  })
+})
+
+window.tabcast.onTabs((tabs) => {
+  renderBrowseTabs(tabs)
+  void refreshSources()
+})
 
 void window.tabcast.getSettings().then((s) => {
   labMode = s.labMode
@@ -831,8 +1377,27 @@ cameraSelect.addEventListener('change', () => {
 micSelect.addEventListener('change', () => {
   void applyMic()
 })
-destTwitch.addEventListener('change', syncDestinationInputs)
-destYoutube.addEventListener('change', syncDestinationInputs)
+destTwitch.addEventListener('change', () => {
+  syncDestinationInputs()
+  void window.tabcast.getRelay().then(renderPlatformStatus)
+})
+destYoutube.addEventListener('change', () => {
+  syncDestinationInputs()
+  void window.tabcast.getRelay().then(renderPlatformStatus)
+})
+destCustom.addEventListener('change', () => {
+  syncDestinationInputs()
+  void window.tabcast.getRelay().then(renderPlatformStatus)
+})
+twitchKey.addEventListener('input', () => {
+  void window.tabcast.getRelay().then(renderPlatformStatus)
+})
+youtubeKey.addEventListener('input', () => {
+  void window.tabcast.getRelay().then(renderPlatformStatus)
+})
+customRtmpKey.addEventListener('input', () => {
+  void window.tabcast.getRelay().then(renderPlatformStatus)
+})
 
 btnGoLive.addEventListener('click', () => {
   void onGoLiveClick()
@@ -875,3 +1440,164 @@ void window.tabcast.getBrowserState().then((state) => {
 })
 void refreshSources()
 void refreshAvDevices()
+void renderAddonPanels()
+
+window.tabcast.onAddonStudioToast((message) => {
+  setDestError(null)
+  destHint.textContent = message
+})
+
+initMarketplace(window.tabcast, {
+  dialog: document.getElementById('marketplace-dialog') as HTMLDialogElement,
+  list: document.getElementById('marketplace-list')!,
+  onRefreshPanels: () => {
+    void renderAddonPanels()
+  },
+  onToast: (message, isError) => {
+    if (isError) setDestError(message)
+    else {
+      setDestError(null)
+      destHint.textContent = message
+    }
+  },
+})
+
+const onboardingTour = new OnboardingTour(
+  document.getElementById('onboarding-root')!,
+  document.getElementById('onboarding-spotlight')!,
+  document.querySelector('.onboarding-card')!,
+  document.getElementById('onboarding-step')!,
+  document.getElementById('onboarding-title')!,
+  document.getElementById('onboarding-body')!,
+  document.getElementById('onboarding-prev') as HTMLButtonElement,
+  document.getElementById('onboarding-next') as HTMLButtonElement,
+  document.getElementById('onboarding-skip') as HTMLButtonElement,
+  {
+    onComplete: () => {
+      void window.tabcast.setSettings({ onboardingComplete: true })
+    },
+    onSkip: () => {
+      void window.tabcast.setSettings({ onboardingComplete: true })
+    },
+  },
+)
+
+const setupWizard = new SetupWizard(
+  document.getElementById('setup-wizard-root')!,
+  document.getElementById('setup-wizard-step')!,
+  document.getElementById('setup-wizard-title')!,
+  document.getElementById('setup-wizard-body')!,
+  document.getElementById('setup-wizard-status')!,
+  document.getElementById('setup-wizard-keys')!,
+  document.getElementById('setup-twitch-key') as HTMLInputElement,
+  document.getElementById('setup-youtube-key') as HTMLInputElement,
+  document.getElementById('setup-wizard-prev') as HTMLButtonElement,
+  document.getElementById('setup-wizard-next') as HTMLButtonElement,
+  document.getElementById('setup-wizard-skip') as HTMLButtonElement,
+  {
+    onComplete: () => {
+      const setupTwitch = document.getElementById('setup-twitch-key') as HTMLInputElement
+      const setupYoutube = document.getElementById('setup-youtube-key') as HTMLInputElement
+      if (setupTwitch.value.trim()) twitchKey.value = setupTwitch.value.trim()
+      if (setupYoutube.value.trim()) youtubeKey.value = setupYoutube.value.trim()
+      syncDestinationInputs()
+      void window.tabcast.setSettings({ setupWizardComplete: true }).then((s) => {
+        if (!s.onboardingComplete) {
+          window.setTimeout(() => onboardingTour.start(), 400)
+        }
+      })
+    },
+    onSkip: () => {
+      void window.tabcast.setSettings({ setupWizardComplete: true })
+    },
+  },
+)
+
+document.getElementById('btn-replay-tour')!.addEventListener('click', () => {
+  settingsDialog.close()
+  window.setTimeout(() => onboardingTour.start(), 200)
+})
+
+document.getElementById('btn-replay-setup')!.addEventListener('click', () => {
+  settingsDialog.close()
+  window.setTimeout(() => setupWizard.start(), 200)
+})
+
+document.getElementById('btn-check-updates')!.addEventListener('click', () => {
+  void window.tabcast.checkForUpdates().then(renderUpdateBanner)
+})
+
+const updateBanner = document.getElementById('update-banner')!
+const updateBannerText = document.getElementById('update-banner-text')!
+const updateBannerAction = document.getElementById('update-banner-action') as HTMLButtonElement
+const updateBannerDismiss = document.getElementById('update-banner-dismiss') as HTMLButtonElement
+
+function renderUpdateBanner(status: import('../preload/index').UpdateStatus): void {
+  const showBanner =
+    status.state === 'checking' ||
+    status.state === 'available' ||
+    status.state === 'downloading' ||
+    status.state === 'downloaded' ||
+    status.state === 'error'
+
+  if (!showBanner) {
+    updateBanner.hidden = true
+    updateBanner.classList.add('hidden')
+    document.body.classList.remove('update-banner-visible')
+    return
+  }
+
+  updateBanner.hidden = false
+  updateBanner.classList.remove('hidden')
+  document.body.classList.add('update-banner-visible')
+  updateBannerAction.hidden = false
+  updateBannerDismiss.hidden = false
+
+  if (status.state === 'checking') {
+    updateBannerText.textContent = 'Checking for updates…'
+    updateBannerAction.hidden = true
+  } else if (status.state === 'available') {
+    updateBannerText.textContent = `Update available${status.version ? `: v${status.version}` : ''}`
+    updateBannerAction.textContent = 'Download'
+    updateBannerAction.disabled = false
+  } else if (status.state === 'downloading') {
+    const pct = status.progress != null ? `${Math.round(status.progress)}%` : '…'
+    updateBannerText.textContent = `Downloading update ${pct}`
+    updateBannerAction.hidden = true
+  } else if (status.state === 'downloaded') {
+    updateBannerText.textContent = `Update ready${status.version ? ` — v${status.version}` : ''}. Restart to install.`
+    updateBannerAction.textContent = 'Restart now'
+    updateBannerAction.hidden = false
+    updateBannerAction.disabled = false
+  } else if (status.state === 'error') {
+    updateBannerText.textContent = status.message ?? 'Update check failed'
+    updateBannerAction.hidden = true
+  }
+}
+
+updateBannerAction.addEventListener('click', () => {
+  void window.tabcast.getUpdateStatus().then(async (status) => {
+    if (status.state === 'downloaded') {
+      await window.tabcast.installUpdate()
+      return
+    }
+    if (status.state === 'available') {
+      await window.tabcast.downloadUpdate()
+    }
+  })
+})
+
+updateBannerDismiss.addEventListener('click', () => {
+  updateBanner.hidden = true
+  updateBanner.classList.add('hidden')
+})
+
+window.tabcast.onUpdateStatus(renderUpdateBanner)
+
+void window.tabcast.getSettings().then((s) => {
+  if (!s.setupWizardComplete) {
+    window.setTimeout(() => setupWizard.start(), 600)
+  } else if (!s.onboardingComplete) {
+    window.setTimeout(() => onboardingTour.start(), 800)
+  }
+})

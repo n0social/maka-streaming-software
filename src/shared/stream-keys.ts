@@ -62,15 +62,44 @@ export function validateYoutubeStreamKey(raw: string): StreamKeyValidation {
   return { ok: true }
 }
 
+/** Kick live ingest (community-documented endpoint). */
+export const KICK_RTMP_URL = 'rtmps://fa723fc1b171.global-contribute.live-video.net/app'
+
+const CUSTOM_RTMP_URL_RE = /^rtmps?:\/\/[a-zA-Z0-9.-]+(?::\d+)?(?:\/[\w./-]*)?$/i
+
+export function validateCustomRtmp(url: string, key: string): StreamKeyValidation {
+  const ingest = url.trim()
+  const streamKey = normalizeStreamKey(key)
+  if (!ingest || !streamKey) {
+    return { ok: false, message: 'Custom RTMP needs an ingest URL and stream key.' }
+  }
+  if (!CUSTOM_RTMP_URL_RE.test(ingest)) {
+    return { ok: false, message: 'Custom RTMP URL must start with rtmp:// or rtmps://' }
+  }
+  if (streamKey.length < 8 || streamKey.length > 256) {
+    return { ok: false, message: 'Custom RTMP stream key must be 8–256 characters.' }
+  }
+  return { ok: true }
+}
+
 export function validateRelayStreamKeys(input: {
   twitchKey?: string
   youtubeKey?: string
+  customRtmpUrl?: string
+  customRtmpKey?: string
+  customEnabled?: boolean
 }): StreamKeyValidation {
   const twitch = normalizeStreamKey(input.twitchKey ?? '')
   const youtube = normalizeStreamKey(input.youtubeKey ?? '')
+  const customEnabled = Boolean(input.customEnabled)
+  const customUrl = (input.customRtmpUrl ?? '').trim()
+  const customKey = normalizeStreamKey(input.customRtmpKey ?? '')
 
-  if (!twitch && !youtube) {
-    return { ok: false, message: 'Enter a Twitch or YouTube stream key.' }
+  if (!twitch && !youtube && !(customEnabled && customUrl && customKey)) {
+    return {
+      ok: false,
+      message: 'Enable at least one destination (Twitch, YouTube, or Custom RTMP).',
+    }
   }
 
   if (twitch) {
@@ -81,6 +110,11 @@ export function validateRelayStreamKeys(input: {
   if (youtube) {
     const youtubeResult = validateYoutubeStreamKey(youtube)
     if (!youtubeResult.ok) return youtubeResult
+  }
+
+  if (customEnabled && (customUrl || customKey)) {
+    const customResult = validateCustomRtmp(customUrl, customKey)
+    if (!customResult.ok) return customResult
   }
 
   return { ok: true }

@@ -1,0 +1,147 @@
+[
+  {
+    "catalogId": "com.tabcast.discord-now-live",
+    "featured": true,
+    "manifest": {
+      "id": "com.tabcast.discord-now-live",
+      "name": "Discord Now Live",
+      "version": "0.1.0",
+      "apiVersion": 1,
+      "author": "Tabcast",
+      "category": "utility",
+      "description": "Post a “now live” message to Discord via webhook when you go live (community pattern).",
+      "permissions": [
+        "network.fetch",
+        "live.events",
+        "ui.toast",
+        "ui.external"
+      ],
+      "hooks": [
+        "live.start",
+        "live.end"
+      ],
+      "contributes": {
+        "sidebarPanels": [
+          {
+            "id": "main",
+            "title": "Discord",
+            "description": "Webhook helper — posts on go-live when a webhook URL is saved.",
+            "actions": [
+              {
+                "id": "configure-webhook",
+                "label": "Set webhook URL",
+                "type": "message",
+                "message": "Use “Set webhook URL” to paste your Discord channel webhook."
+              },
+              {
+                "id": "setup",
+                "label": "Setup guide",
+                "type": "message",
+                "message": "Create a Discord channel webhook, click “Set webhook URL”, then go live — Tabcast POSTs a “now live” embed from the main process (keys never touch the renderer)."
+              },
+              {
+                "id": "docs",
+                "label": "Discord webhooks docs",
+                "type": "open-url",
+                "url": "https://discord.com/developers/docs/resources/webhook"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "catalogId": "com.tabcast.custom-rtmp",
+    "featured": true,
+    "manifest": {
+      "id": "com.tabcast.custom-rtmp",
+      "name": "Custom RTMP / Kick",
+      "version": "0.1.0",
+      "apiVersion": 1,
+      "author": "Tabcast (example)",
+      "category": "platform",
+      "description": "Stream to Kick, Facebook Live, or any RTMP endpoint — adds a Custom RTMP destination row.",
+      "permissions": [
+        "relay.config.write",
+        "ui.toast",
+        "ui.external"
+      ],
+      "hooks": [
+        "live.start",
+        "studio.sidebar.panel"
+      ],
+      "contributes": {
+        "sidebarPanels": [
+          {
+            "id": "main",
+            "title": "Custom RTMP",
+            "description": "Configure Kick or any RTMP ingest URL + stream key.",
+            "actions": [
+              {
+                "id": "configure-kick",
+                "label": "Use Kick preset",
+                "type": "message",
+                "message": "Kick ingest URL applied — paste your Kick stream key in Destinations → Custom RTMP."
+              },
+              {
+                "id": "configure-rtmp",
+                "label": "Set RTMP URL + key",
+                "type": "message",
+                "message": "Opens prompts for ingest URL and stream key."
+              },
+              {
+                "id": "docs",
+                "label": "Kick stream key help",
+                "type": "open-url",
+                "url": "https://help.kick.com/en/articles/7123456-how-to-stream-on-kick"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "catalogId": "com.tabcast.lower-thirds",
+    "manifest": {
+      "id": "com.tabcast.lower-thirds",
+      "name": "Lower thirds",
+      "version": "0.1.0",
+      "apiVersion": 1,
+      "author": "Tabcast",
+      "category": "production",
+      "description": "Quick lower-third style layouts for name/title overlays via scene API.",
+      "permissions": [
+        "scene.layout"
+      ],
+      "hooks": [
+        "scene.layout",
+        "studio.sidebar.panel"
+      ],
+      "contributes": {
+        "sidebarPanels": [
+          {
+            "id": "main",
+            "title": "Lower thirds",
+            "actions": [
+              {
+                "id": "desk",
+                "label": "Desk layout",
+                "type": "scene-template",
+                "templateId": "desk-only",
+                "description": "Full-frame webcam / talking head"
+              },
+              {
+                "id": "gaming",
+                "label": "Gaming + cam",
+                "type": "scene-template",
+                "templateId": "gaming-cam"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+]

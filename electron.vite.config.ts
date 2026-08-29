@@ -18,6 +18,7 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve('src/preload/index.ts'),
+          'addon-bridge': resolve('src/preload/addon-bridge.ts'),
         },
       },
     },

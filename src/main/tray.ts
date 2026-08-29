@@ -5,13 +5,13 @@ import { fileURLToPath } from 'node:url'
 import { recordDiagnostic } from './diagnostics'
 
 let tray: Tray | null = null
+let getMain: () => BrowserWindow | null = () => null
+let getIsLive: () => boolean = () => false
 
 function iconsDir(): string {
-  // Packaged: resources/icons next to app.asar
   if (app.isPackaged) {
     return join(process.resourcesPath, 'icons')
   }
-  // Dev / preview: resolve from app root (electron-vite) then fall back to source-relative
   const fromApp = join(app.getAppPath(), 'resources', 'icons')
   if (existsSync(fromApp)) return fromApp
   const here = dirname(fileURLToPath(import.meta.url))
@@ -20,7 +20,6 @@ function iconsDir(): string {
 
 function trayIcon() {
   const dir = iconsDir()
-  // Prefer PNG on Windows — Electron often loads broken/empty bitmaps from bad ICOs.
   const candidates = [
     join(dir, 'tray.png'),
     join(dir, 'icon-16.png'),
@@ -36,7 +35,6 @@ function trayIcon() {
       recordDiagnostic('warn', 'tray.icon', `Empty nativeImage from ${path}`)
       continue
     }
-    // Windows notification area is ~16 CSS px; provide a sharp 16px bitmap
     const size = image.getSize()
     if (size.width !== 16 || size.height !== 16) {
       image = image.resize({ width: 16, height: 16, quality: 'best' })
@@ -50,8 +48,58 @@ function trayIcon() {
   return nativeImage.createEmpty()
 }
 
-export function createAppTray(getMain: () => BrowserWindow | null): Tray {
-  if (tray) return tray
+function buildTrayMenu(): Menu {
+  const live = getIsLive()
+  const items: Electron.MenuItemConstructorOptions[] = [
+    {
+      label: 'Show Tabcast',
+      click: () => {
+        const win = getMain()
+        if (!win) return
+        win.show()
+        win.focus()
+      },
+    },
+    {
+      label: 'Hide to tray',
+      click: () => getMain()?.hide(),
+    },
+    { type: 'separator' },
+  ]
+
+  if (live) {
+    items.push({
+      label: 'Stop & Quit',
+      click: () => {
+        recordDiagnostic('info', 'tray.quit', 'Stop & Quit from tray while live')
+        app.quit()
+      },
+    })
+  } else {
+    items.push({
+      label: 'Quit',
+      click: () => app.quit(),
+    })
+  }
+
+  return Menu.buildFromTemplate(items)
+}
+
+export function rebuildTrayMenu(): void {
+  tray?.setContextMenu(buildTrayMenu())
+}
+
+export function createAppTray(options: {
+  getMain: () => BrowserWindow | null
+  getIsLive: () => boolean
+}): Tray {
+  getMain = options.getMain
+  getIsLive = options.getIsLive
+
+  if (tray) {
+    rebuildTrayMenu()
+    return tray
+  }
 
   const icon = trayIcon()
   tray = new Tray(icon)
@@ -60,33 +108,8 @@ export function createAppTray(getMain: () => BrowserWindow | null): Tray {
     tray.setImage(icon)
   }
 
-  const rebuild = () => {
-    const menu = Menu.buildFromTemplate([
-      {
-        label: 'Show Tabcast',
-        click: () => {
-          const win = getMain()
-          if (!win) return
-          win.show()
-          win.focus()
-        },
-      },
-      {
-        label: 'Hide to tray',
-        click: () => getMain()?.hide(),
-      },
-      { type: 'separator' },
-      {
-        label: 'Quit',
-        click: () => {
-          app.quit()
-        },
-      },
-    ])
-    tray?.setContextMenu(menu)
-  }
+  rebuildTrayMenu()
 
-  rebuild()
   tray.on('double-click', () => {
     const win = getMain()
     if (!win) return

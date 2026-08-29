@@ -1,18 +1,21 @@
 :root {
   color-scheme: dark;
-  --crew-cyan: #2af5ff;
-  --crew-pink: #ff2ad4;
-  --crew-lime: #c6ff2a;
-  --crew-orange: #ff7a2a;
-  --bg: #0a0e14;
-  --panel: #10151d;
-  --text: #f2f4f6;
-  --muted: #939da8;
-  --line: rgba(255, 255, 255, 0.1);
-  --accent: var(--crew-cyan);
-  --ready: var(--crew-lime);
-  --warn: var(--crew-orange);
-  --bad: #e54d42;
+  --white: #fafafa;
+  --silver: #c8c8d0;
+  --silver-dim: #8e8e9a;
+  --gold: #d4af37;
+  --gold-light: #f0d78c;
+  --gold-dark: #a8892a;
+  --champagne: #e8dcc8;
+  --bg: #111114;
+  --panel: #1a1a1f;
+  --text: var(--white);
+  --muted: var(--silver-dim);
+  --line: rgba(200, 200, 208, 0.16);
+  --accent: var(--gold);
+  --ready: var(--gold-light);
+  --warn: #c9943a;
+  --bad: #c45c5c;
   --off: #52525b;
   --font-headline: "League Spartan", system-ui, sans-serif;
   --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
@@ -28,9 +31,9 @@ body {
   min-height: 100%;
   background-color: var(--bg);
   background-image:
-    radial-gradient(ellipse 100% 70% at 50% -20%, rgba(42, 245, 255, 0.18), transparent 55%),
-    radial-gradient(ellipse 80% 50% at 100% 20%, rgba(255, 42, 212, 0.12), transparent 50%),
-    linear-gradient(180deg, #0b1018 0%, #070a10 100%);
+    radial-gradient(ellipse 100% 70% at 50% -20%, rgba(212, 175, 55, 0.14), transparent 55%),
+    radial-gradient(ellipse 80% 50% at 100% 20%, rgba(200, 200, 208, 0.1), transparent 50%),
+    linear-gradient(180deg, #141418 0%, #0e0e11 100%);
   color: var(--text);
   font-family: var(--font-body);
 }
@@ -50,7 +53,7 @@ body {
   width: 2.35rem;
   height: 2.35rem;
   border-radius: 0.65rem;
-  background: radial-gradient(120% 120% at 30% 20%, var(--crew-cyan), var(--crew-pink) 75%);
+  background: linear-gradient(145deg, var(--silver), var(--champagne) 45%, var(--gold) 100%);
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 
@@ -60,7 +63,7 @@ body {
   font-size: 0.62rem;
   letter-spacing: 0.28em;
   text-transform: uppercase;
-  color: var(--crew-lime);
+  color: var(--gold-light);
   font-weight: 700;
 }
 
@@ -71,7 +74,7 @@ h1 {
   font-weight: 900;
   font-style: italic;
   letter-spacing: -0.02em;
-  background: linear-gradient(100deg, var(--crew-cyan) 10%, var(--crew-pink) 55%, var(--crew-lime) 95%);
+  background: linear-gradient(100deg, var(--white) 0%, var(--silver) 40%, var(--gold-light) 75%, var(--gold) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -84,7 +87,7 @@ h1 {
   padding: 0.9rem 1rem;
   border: 1px solid var(--line);
   border-radius: 1rem;
-  background: rgba(16, 21, 29, 0.92);
+  background: rgba(26, 26, 31, 0.92);
   margin-bottom: 1rem;
   backdrop-filter: blur(12px);
 }
@@ -99,23 +102,23 @@ h1 {
 
 .light[data-state='ready'] {
   background: var(--ready);
-  box-shadow: 0 0 0 4px rgba(198, 255, 42, 0.18);
+  box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.2);
 }
 
 .light[data-state='live'] {
-  background: var(--crew-lime);
-  box-shadow: 0 0 0 4px rgba(198, 255, 42, 0.22);
+  background: var(--gold);
+  box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.25);
   animation: pulse 1.8s ease-out infinite;
 }
 
 .light[data-state='starting'] {
   background: var(--warn);
-  box-shadow: 0 0 0 4px rgba(255, 122, 42, 0.18);
+  box-shadow: 0 0 0 4px rgba(201, 148, 58, 0.18);
 }
 
 .light[data-state='error'] {
   background: var(--bad);
-  box-shadow: 0 0 0 4px rgba(229, 77, 66, 0.18);
+  box-shadow: 0 0 0 4px rgba(196, 92, 92, 0.18);
 }
 
 @keyframes pulse {
@@ -172,7 +175,7 @@ dd {
   margin: 0 0 1rem;
   padding: 0.75rem 0.85rem;
   border-radius: 0.85rem;
-  background: rgba(229, 77, 66, 0.12);
+  background: rgba(196, 92, 92, 0.12);
   color: #fecaca;
   font-size: 0.82rem;
   white-space: pre-wrap;
@@ -206,8 +209,8 @@ button:hover {
 
 button.primary {
   border: 0;
-  background: linear-gradient(100deg, var(--crew-cyan), var(--crew-pink));
-  color: var(--bg);
+  background: linear-gradient(100deg, var(--gold-light), var(--gold));
+  color: #1a1a1f;
 }
 
 button.primary:active {

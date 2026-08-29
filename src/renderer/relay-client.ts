@@ -13,6 +13,15 @@ import {
 } from '../shared/tabcast'
 import { normalizeStreamKey } from '../shared/stream-keys'
 
+const RELAY_FETCH_MS = 8_000
+
+function relayFetch(input: string, init?: RequestInit): Promise<Response> {
+  return fetch(input, {
+    ...init,
+    signal: init?.signal ?? AbortSignal.timeout(RELAY_FETCH_MS),
+  })
+}
+
 export function authHeaders(health: RelayHealth | null): Record<string, string> {
   if (!health?.relayToken) return {}
   return { Authorization: `Bearer ${health.relayToken}` }
@@ -23,6 +32,8 @@ export async function postRelayConfig(
   input: {
     twitchKey?: string
     youtubeKey?: string
+    customRtmpUrl?: string
+    customRtmpKey?: string
     profile: StreamProfile
   },
 ): Promise<void> {
@@ -31,10 +42,16 @@ export async function postRelayConfig(
   }
   const twitch = normalizeStreamKey(input.twitchKey ?? '')
   const youtube = normalizeStreamKey(input.youtubeKey ?? '')
+  const customKey = normalizeStreamKey(input.customRtmpKey ?? '')
+  const customUrl = (input.customRtmpUrl ?? '').trim()
   if (twitch) body.twitchKey = twitch
   if (youtube) body.youtubeKey = youtube
+  if (customUrl && customKey) {
+    body.customRtmpUrl = customUrl
+    body.customRtmpKey = customKey
+  }
 
-  const res = await fetch(`${RELAY_BASE_URL}${RELAY_CONFIG_PATH}`, {
+  const res = await relayFetch(`${RELAY_BASE_URL}${RELAY_CONFIG_PATH}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -50,7 +67,7 @@ export async function postRelayConfig(
 }
 
 export async function verifyRelayConfig(health: RelayHealth): Promise<RelayVerifyResponse> {
-  const res = await fetch(`${RELAY_BASE_URL}${RELAY_VERIFY_PATH}`, {
+  const res = await relayFetch(`${RELAY_BASE_URL}${RELAY_VERIFY_PATH}`, {
     method: 'POST',
     headers: {
       Accept: 'application/json',
@@ -65,7 +82,7 @@ export async function verifyRelayConfig(health: RelayHealth): Promise<RelayVerif
 }
 
 export async function postSceneLayout(health: RelayHealth, layout: SceneLayout): Promise<void> {
-  const res = await fetch(`${RELAY_BASE_URL}${RELAY_SCENE_PATH}`, {
+  const res = await relayFetch(`${RELAY_BASE_URL}${RELAY_SCENE_PATH}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -81,7 +98,7 @@ export async function postSceneLayout(health: RelayHealth, layout: SceneLayout):
 }
 
 export async function stopRelayStream(health: RelayHealth | null): Promise<void> {
-  await fetch(`${RELAY_BASE_URL}${RELAY_STOP_PATH}`, {
+  await relayFetch(`${RELAY_BASE_URL}${RELAY_STOP_PATH}`, {
     method: 'POST',
     headers: authHeaders(health),
   }).catch(() => undefined)
@@ -90,6 +107,7 @@ export async function stopRelayStream(health: RelayHealth | null): Promise<void>
 export function defaultSceneLayout(opts: {
   profile: StreamProfile
   hasWebcam: boolean
+  hasBrowser?: boolean
 }): SceneLayout {
   const canvas =
     opts.profile === '1080p'
@@ -118,6 +136,21 @@ export function defaultSceneLayout(opts: {
       label: 'Webcam',
       x: canvas.width - w - 24,
       y: canvas.height - h - 24,
+      width: w,
+      height: h,
+      zIndex: 2,
+    })
+  }
+
+  if (opts.hasBrowser) {
+    const w = Math.round(canvas.width * 0.35)
+    const h = Math.round(w * (9 / 16))
+    sources.push({
+      id: 'browser',
+      type: 'video',
+      label: 'Browser',
+      x: 24,
+      y: 24,
       width: w,
       height: h,
       zIndex: 1,

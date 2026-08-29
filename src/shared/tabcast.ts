@@ -19,6 +19,7 @@ export const RELAY_WHIP_URL = `${RELAY_BASE_URL}${RELAY_WHIP_PATH}`
 /** WHIP msid stream IDs — relay maps tracks to scene sources. */
 export const RELAY_TRACK_STREAM_IDS = {
   gameplay: 'gameplay',
+  browser: 'browser',
   webcam: 'webcam',
   mic: 'mic',
 } as const
@@ -29,6 +30,9 @@ export type RelayTrackStreamId =
 export type RelayConfigRequest = {
   twitchKey?: string
   youtubeKey?: string
+  /** Custom RTMP ingest (Kick, Facebook Live, etc.) — relay v0.1.1+ */
+  customRtmpUrl?: string
+  customRtmpKey?: string
   profile: StreamProfile
 }
 
@@ -36,6 +40,7 @@ export type RelayVerifyResponse = {
   ok: boolean
   twitch?: { ok: boolean; message?: string }
   youtube?: { ok: boolean; message?: string }
+  custom?: { ok: boolean; message?: string }
   message?: string
 }
 
@@ -70,7 +75,7 @@ export type RelayHealth = {
 export type RelayStatusResponse = {
   status: 'idle' | 'starting' | 'live' | 'error'
   profile?: StreamProfile
-  platforms?: { twitch?: boolean; youtube?: boolean }
+  platforms?: { twitch?: boolean; youtube?: boolean; custom?: boolean }
   whipSessionActive?: boolean
   error?: string
   ffmpegLog?: string[]

@@ -1,5 +1,6 @@
 import { ChildProcess, execFile, spawn } from 'node:child_process'
-import { existsSync, readFileSync, statSync } from 'node:fs'
+import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
@@ -68,6 +69,25 @@ function relayIntegrityError(exe: string): string | null {
   if (size < RELAY_MIN_BYTES) {
     const haveMb = (size / (1024 * 1024)).toFixed(0)
     return `Relay binary looks truncated (~${haveMb} MB). Full build is ~376 MB.\nRun: npm run fetch:relay -- --force`
+  }
+  return null
+}
+
+async function relaySha256Error(exe: string): Promise<string | null> {
+  const manifest = readLocalManifest()
+  const expected = manifest?.sha256?.toLowerCase()
+  if (!expected) return null
+
+  const digest = await new Promise<string>((resolve, reject) => {
+    const hash = createHash('sha256')
+    createReadStream(exe)
+      .on('data', (chunk) => hash.update(chunk))
+      .on('end', () => resolve(hash.digest('hex')))
+      .on('error', reject)
+  })
+
+  if (digest.toLowerCase() !== expected) {
+    return `Relay binary failed SHA-256 integrity check.\nRun: npm run fetch:relay -- --force`
   }
   return null
 }
@@ -184,6 +204,72 @@ async function isRelayHealthy(): Promise<boolean> {
   } catch {
     return false
   }
+}
+
+export type OrphanRelayReport = {
+  orphanCount: number
+  totalCount: number
+  orphanPids: number[]
+  portListenerPid: number | null
+  portConflict: boolean
+}
+
+/** TabcastRelay.exe processes not owned by this app's relay child. */
+export async function detectOrphanRelayProcesses(
+  ownedPid: number | null,
+): Promise<OrphanRelayReport> {
+  const empty: OrphanRelayReport = {
+    orphanCount: 0,
+    totalCount: 0,
+    orphanPids: [],
+    portListenerPid: null,
+    portConflict: false,
+  }
+  if (process.platform !== 'win32') return empty
+
+  let orphanPids: number[] = []
+  try {
+    const { stdout } = await execFileAsync(
+      'tasklist',
+      ['/FI', 'IMAGENAME eq TabcastRelay.exe', '/FO', 'CSV', '/NH'],
+      { windowsHide: true, timeout: 8000 },
+    )
+    const pids = stdout
+      .split(/\r?\n/)
+      .map((line) => {
+        const match = line.match(/"TabcastRelay\.exe","(\d+)"/i)
+        return match ? Number.parseInt(match[1], 10) : null
+      })
+      .filter((pid): pid is number => pid !== null && Number.isFinite(pid))
+
+    orphanPids = ownedPid ? pids.filter((pid) => pid !== ownedPid) : pids
+    empty.totalCount = pids.length
+    empty.orphanPids = orphanPids
+    empty.orphanCount = orphanPids.length
+  } catch {
+    // tasklist unavailable
+  }
+
+  try {
+    const { stdout } = await execFileAsync(
+      'powershell.exe',
+      [
+        '-NoProfile',
+        '-Command',
+        `$c = Get-NetTCPConnection -LocalPort ${RELAY_DEFAULT_PORT} -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1; if ($c) { $c.OwningProcess }`,
+      ],
+      { windowsHide: true, timeout: 8000 },
+    )
+    const portPid = Number.parseInt(stdout.trim(), 10)
+    if (Number.isFinite(portPid) && portPid > 0) {
+      empty.portListenerPid = portPid
+      empty.portConflict = ownedPid !== null && portPid !== ownedPid
+    }
+  } catch {
+    // ignore
+  }
+
+  return empty
 }
 
 type DirectRelayLaunch = {
@@ -333,6 +419,19 @@ export class RelayManager {
       this.emit({
         lifecycle: 'error',
         error: integrity,
+        health: null,
+        status: null,
+        pid: null,
+      })
+      return
+    }
+
+    const shaError = await relaySha256Error(exe)
+    if (shaError) {
+      recordDiagnostic('error', 'relay.integrity', shaError)
+      this.emit({
+        lifecycle: 'error',
+        error: shaError,
         health: null,
         status: null,
         pid: null,

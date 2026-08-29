@@ -3,6 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:38473 ws://127.0.0.1:*; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'"
+    />
     <title>Tabcast</title>
     <meta name="theme-color" content="#0A0E14" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -14,6 +18,13 @@
     <link rel="stylesheet" href="./app.css" />
   </head>
   <body data-mode="studio">
+    <div id="update-banner" class="update-banner hidden" hidden role="status" aria-live="polite">
+      <span id="update-banner-text">Update available</span>
+      <div class="update-banner-actions">
+        <button type="button" class="primary" id="update-banner-action">Download</button>
+        <button type="button" class="ghost" id="update-banner-dismiss">Later</button>
+      </div>
+    </div>
     <div class="app">
       <header class="topbar">
         <div class="brand drag">
@@ -24,7 +35,7 @@
           </div>
           <span class="version">0.2</span>
         </div>
-        <div class="tabs" role="tablist">
+        <div class="tabs" role="tablist" data-tour="modes">
           <button type="button" class="tab active" data-tab="studio" role="tab" aria-selected="true">
             Studio
           </button>
@@ -32,12 +43,12 @@
             Browse
           </button>
         </div>
-        <div class="relay-chip" id="relay-chip" data-state="stopped">
+        <div class="relay-chip" id="relay-chip" data-state="stopped" data-tour="relay">
           <span class="dot"></span>
           <span id="relay-label">Relay offline</span>
         </div>
         <button type="button" class="ghost" id="btn-settings" title="Settings">Settings</button>
-        <button type="button" class="go-live" id="btn-go-live">Go Live</button>
+        <button type="button" class="go-live" id="btn-go-live" data-tour="go-live">Go Live</button>
         <div class="win-controls no-drag">
           <button type="button" id="btn-win-min" aria-label="Minimize">─</button>
           <button type="button" id="btn-win-max" aria-label="Maximize">□</button>
@@ -51,7 +62,8 @@
           <button type="button" id="btn-new-tab" title="New tab">+</button>
           <button type="button" id="btn-pin-twitch" title="Twitch">Twitch</button>
           <button type="button" id="btn-pin-yt" title="YouTube Studio">YT</button>
-          <button type="button" id="btn-pin-chat" title="Chat tab">Chat</button>
+          <button type="button" id="btn-pin-yt-chat" title="YouTube Live Chat">YT Chat</button>
+          <button type="button" id="btn-pin-chat" title="Twitch Chat">Twitch Chat</button>
           <button type="button" id="btn-popout-chat" title="Pop out chat">↗ Chat</button>
         </div>
       </div>
@@ -73,11 +85,12 @@
         </form>
       </div>
 
-      <aside class="sidebar left" aria-label="Sources">
+      <aside class="sidebar left" aria-label="Sources" data-tour="sources">
         <h2>Sources</h2>
-        <p class="hint">Gameplay, webcam, and mic feed the studio. Browse is for chat & dashboards.</p>
+        <p class="hint">Pick a display or window for gameplay. Enable the Browser layer to overlay your active Browse tab.</p>
 
         <button type="button" class="btn-block" id="btn-refresh-sources">Scan displays & windows</button>
+        <button type="button" class="btn-block" id="btn-capture-browse">Capture active Browse tab</button>
         <div class="source-list" id="source-list"></div>
 
         <h2 class="spaced">Camera</h2>
@@ -111,12 +124,16 @@
       </aside>
 
       <main class="stage" aria-label="Program">
-        <section class="program" id="program">
+        <section class="program" id="program" data-tour="program">
           <div class="program-label">Program</div>
           <video id="program-video" autoplay muted playsinline></video>
           <div class="program-cam" id="program-cam" hidden>
             <video id="program-cam-video" autoplay muted playsinline></video>
             <span class="program-cam-tag">Webcam</span>
+          </div>
+          <div class="program-browser" id="program-browser" hidden>
+            <video id="program-browser-video" autoplay muted playsinline></video>
+            <span class="program-browser-tag">Browser</span>
           </div>
           <p class="program-empty" id="program-empty">Select a display or window to start the studio</p>
         </section>
@@ -133,14 +150,19 @@
           <li id="layer-game" data-active="0" data-enabled="1" tabindex="0">Gameplay — none</li>
           <li id="layer-cam" data-active="0" data-enabled="1" tabindex="0">Webcam — off</li>
           <li id="layer-mic" data-active="0" data-enabled="1" tabindex="0">Mic — off</li>
-          <li id="layer-browser" data-active="0" data-enabled="0" tabindex="0">Browser overlay</li>
+          <li id="layer-browser" data-active="0" data-enabled="0" tabindex="0">Browser — off</li>
         </ul>
         <p class="hint tight">Click a layer to show/hide it in the program mix.</p>
+
+        <h2 class="spaced">Addons</h2>
+        <button type="button" class="btn-block" id="btn-open-marketplace">Addon marketplace</button>
+        <div id="addon-panels" class="addon-panels" data-tour="addons"></div>
 
         <h2 class="spaced">Layout</h2>
         <label class="field-label" for="cam-scale">Webcam size</label>
         <input id="cam-scale" class="range" type="range" min="12" max="40" value="22" />
 
+        <div class="destinations-block" data-tour="destinations">
         <h2 class="spaced">Destinations</h2>
         <label class="field-label" for="profile-select">Encode profile</label>
         <select id="profile-select" class="select">
@@ -154,6 +176,18 @@
         <label class="check"><input type="checkbox" id="dest-youtube" /> YouTube</label>
         <input id="youtube-key" class="key-input" type="password" autocomplete="off" spellcheck="false" placeholder="YouTube stream key" disabled />
 
+        <div id="dest-custom-block" class="dest-custom-block" hidden>
+          <label class="check"><input type="checkbox" id="dest-custom" /> Custom RTMP</label>
+          <input id="custom-rtmp-url" class="key-input" type="text" autocomplete="off" spellcheck="false" placeholder="rtmps://…/app" disabled />
+          <input id="custom-rtmp-key" class="key-input" type="password" autocomplete="off" spellcheck="false" placeholder="Stream key" disabled />
+        </div>
+
+        <div class="platform-chips" id="platform-chips" aria-label="Platform stream status">
+          <span class="platform-chip" id="plat-twitch" data-state="off">Twitch</span>
+          <span class="platform-chip" id="plat-youtube" data-state="off">YouTube</span>
+          <span class="platform-chip" id="plat-custom" data-state="off" hidden>Custom</span>
+        </div>
+
         <div class="row tight-row">
           <button type="button" id="btn-verify-keys">Verify keys</button>
           <button type="button" id="btn-toggle-log">FFmpeg log</button>
@@ -161,6 +195,7 @@
         <p class="hint tight" id="dest-hint">Keys stay in relay RAM only. Go Live publishes WHIP to localhost.</p>
         <p class="error" id="dest-error" hidden></p>
         <pre class="log-drawer" id="ffmpeg-log" hidden></pre>
+        </div>
       </aside>
     </div>
 
@@ -168,18 +203,75 @@
       <form method="dialog" id="settings-form" class="settings-form">
         <h2>Settings</h2>
         <label class="check"><input type="checkbox" id="set-tray-live" /> Minimize to tray while live</label>
+        <label class="check"><input type="checkbox" id="set-open-chat" /> Open chat pop-out when entering Browse</label>
         <label class="check"><input type="checkbox" id="set-lab-mode" /> Lab mode (skip key validation)</label>
         <label class="field-label" for="set-startup">Startup mode</label>
         <select id="set-startup" class="select">
           <option value="studio">Studio</option>
           <option value="browse">Browse</option>
         </select>
+        <button type="button" class="btn-block spaced-btn" id="btn-replay-setup">Replay setup wizard</button>
+        <button type="button" class="btn-block spaced-btn" id="btn-check-updates">Check for updates</button>
+        <button type="button" class="btn-block spaced-btn" id="btn-replay-tour">Replay onboarding tour</button>
         <div class="row">
           <button type="submit" value="save" id="btn-settings-save">Save</button>
           <button type="submit" value="cancel">Cancel</button>
         </div>
       </form>
     </dialog>
+
+    <dialog id="marketplace-dialog" class="marketplace-dialog">
+      <header class="marketplace-header">
+        <h2>Addon Marketplace</h2>
+        <p class="hint">
+          VS Code-style extensions for the streaming shell. Core capture, relay, and go-live stay built-in.
+        </p>
+      </header>
+      <div id="marketplace-list" class="marketplace-list"></div>
+      <footer class="marketplace-footer">
+        <button type="button" id="marketplace-refresh">Refresh catalog</button>
+        <button type="button" id="marketplace-close">Close</button>
+      </footer>
+    </dialog>
+
+    <div id="setup-wizard-root" class="setup-wizard hidden" hidden aria-modal="true" role="dialog" aria-labelledby="setup-wizard-title">
+      <div class="setup-wizard-backdrop"></div>
+      <div class="setup-wizard-panel">
+        <p class="setup-wizard-step" id="setup-wizard-step">Step 1 of 5</p>
+        <h2 class="setup-wizard-title" id="setup-wizard-title">Set up Tabcast Browser</h2>
+        <p class="setup-wizard-body" id="setup-wizard-body"></p>
+        <div class="setup-wizard-keys" id="setup-wizard-keys" hidden>
+          <label class="field-label" for="setup-twitch-key">Twitch stream key (optional)</label>
+          <input id="setup-twitch-key" class="key-input" type="password" autocomplete="off" spellcheck="false" placeholder="live_…" />
+          <label class="field-label" for="setup-youtube-key">YouTube stream key (optional)</label>
+          <input id="setup-youtube-key" class="key-input" type="password" autocomplete="off" spellcheck="false" placeholder="xxxx-xxxx-xxxx" />
+        </div>
+        <pre class="setup-wizard-status" id="setup-wizard-status"></pre>
+        <div class="setup-wizard-actions">
+          <button type="button" class="ghost" id="setup-wizard-skip">Skip setup</button>
+          <div class="setup-wizard-nav">
+            <button type="button" id="setup-wizard-prev" disabled>Back</button>
+            <button type="button" class="primary" id="setup-wizard-next">Next</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="onboarding-root" class="onboarding hidden" hidden aria-modal="true" role="dialog" aria-labelledby="onboarding-title">
+      <div class="onboarding-spotlight" id="onboarding-spotlight" hidden></div>
+      <div class="onboarding-card">
+        <p class="onboarding-step" id="onboarding-step">1 / 8</p>
+        <h2 class="onboarding-title" id="onboarding-title">Welcome</h2>
+        <p class="onboarding-body" id="onboarding-body"></p>
+        <div class="onboarding-actions">
+          <button type="button" class="ghost" id="onboarding-skip">Skip tour</button>
+          <div class="onboarding-nav">
+            <button type="button" id="onboarding-prev" disabled>Back</button>
+            <button type="button" class="primary" id="onboarding-next">Next</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <script type="module" src="./app.ts"></script>
   </body>

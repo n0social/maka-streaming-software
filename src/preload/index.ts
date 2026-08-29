@@ -6,7 +6,7 @@ export type AppMode = 'studio' | 'browse'
 export type CaptureSource = {
   id: string
   name: string
-  type: 'screen' | 'window'
+  type: 'screen' | 'window' | 'browser'
   thumbnailDataUrl: string
 }
 
@@ -31,6 +31,15 @@ export type AppSettings = {
   minimizeToTrayWhileLive: boolean
   openChatOnBrowse: boolean
   labMode: boolean
+  onboardingComplete: boolean
+  setupWizardComplete: boolean
+}
+
+export type UpdateStatus = {
+  state: 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error'
+  version?: string
+  progress?: number
+  message?: string
 }
 
 export type DiagEvent = {
@@ -41,6 +50,53 @@ export type DiagEvent = {
   message: string
   stack?: string
   detail?: Record<string, unknown>
+}
+
+export type AddonPanel = {
+  addonId: string
+  title: string
+  description?: string
+  runtimeUrl?: string
+  actions: Array<{ id: string; label: string; description?: string }>
+}
+
+export type AddonActionResult = {
+  ok: boolean
+  message?: string
+  sceneLayout?: unknown
+  openUrl?: string
+}
+
+export type MarketplaceItem = {
+  catalogId: string
+  id: string
+  name: string
+  version: string
+  author?: string
+  description?: string
+  category?: string
+  permissions: string[]
+  featured: boolean
+  builtin: boolean
+  installed: boolean
+  enabled: boolean
+}
+
+export type AddonInstallResult = {
+  ok: boolean
+  message?: string
+}
+
+export type AddonSettingsSnapshot = {
+  discordWebhookUrl?: string
+  customRtmpUrl?: string
+  customRtmpKeyConfigured?: boolean
+}
+
+export type AddonLiveEventResult = {
+  addonId: string
+  ok: boolean
+  message?: string
 }
 
 export type VerifyReport = {
@@ -67,6 +123,38 @@ export type TabcastBridge = {
   onNavigated: (cb: (state: BrowserState) => void) => () => void
   onTitle: (cb: (title: string) => void) => () => void
   listCaptureSources: () => Promise<CaptureSource[]>
+  getBrowseCaptureTarget: () => Promise<{ mediaSourceId: string; title: string; url: string } | null>
+  setBrowseCaptureActive: (active: boolean) => Promise<boolean>
+  listAddonPanels: () => Promise<AddonPanel[]>
+  listMarketplace: () => Promise<MarketplaceItem[]>
+  refreshMarketplace: () => Promise<MarketplaceItem[]>
+  installAddon: (catalogId: string) => Promise<AddonInstallResult>
+  uninstallAddon: (addonId: string) => Promise<AddonInstallResult>
+  setAddonEnabled: (addonId: string, enabled: boolean) => Promise<AddonInstallResult>
+  reloadAddons: () => Promise<boolean>
+  getAddonPreloadPath: () => Promise<string>
+  onAddonStudioToast: (cb: (message: string) => void) => () => void
+  getAddonSettings: (addonId: string) => Promise<AddonSettingsSnapshot>
+  setAddonSettings: (
+    addonId: string,
+    partial: {
+      discordWebhookUrl?: string
+      customRtmpUrl?: string
+      customRtmpKey?: string
+    },
+  ) => Promise<AddonInstallResult>
+  dispatchAddonLiveEvent: (
+    event: 'live.start' | 'live.end',
+    ctx: {
+      profile: '720p' | '1080p'
+      platforms?: { twitch?: boolean; youtube?: boolean; custom?: boolean }
+    },
+  ) => Promise<AddonLiveEventResult[]>
+  runAddonAction: (
+    addonId: string,
+    actionId: string,
+    ctx: { profile: '720p' | '1080p'; hasWebcam: boolean },
+  ) => Promise<AddonActionResult>
   revealRelay: () => Promise<string>
   listDiagnostics: () => Promise<DiagEvent[]>
   clearDiagnostics: () => Promise<DiagEvent[]>
@@ -85,6 +173,15 @@ export type TabcastBridge = {
   windowMinimize: () => Promise<void>
   windowMaximize: () => Promise<boolean>
   windowClose: () => Promise<void>
+  openStream: () => Promise<void>
+  openHome: () => Promise<void>
+  onPrepareQuit: (cb: () => void) => () => void
+  ackPrepareQuit: () => void
+  getUpdateStatus: () => Promise<UpdateStatus>
+  checkForUpdates: () => Promise<UpdateStatus>
+  downloadUpdate: () => Promise<UpdateStatus>
+  installUpdate: () => Promise<void>
+  onUpdateStatus: (cb: (status: UpdateStatus) => void) => () => void
 }
 
 const api: TabcastBridge = {
@@ -120,6 +217,27 @@ const api: TabcastBridge = {
     return () => ipcRenderer.removeListener('browser:title', handler)
   },
   listCaptureSources: () => ipcRenderer.invoke('capture:list-sources'),
+  getBrowseCaptureTarget: () => ipcRenderer.invoke('capture:get-browse-target'),
+  setBrowseCaptureActive: (active) => ipcRenderer.invoke('capture:set-browse-capture-active', active),
+  listAddonPanels: () => ipcRenderer.invoke('addons:list-panels'),
+  listMarketplace: () => ipcRenderer.invoke('addons:list-marketplace'),
+  refreshMarketplace: () => ipcRenderer.invoke('addons:refresh-marketplace'),
+  installAddon: (catalogId) => ipcRenderer.invoke('addons:install', catalogId),
+  uninstallAddon: (addonId) => ipcRenderer.invoke('addons:uninstall', addonId),
+  setAddonEnabled: (addonId, enabled) => ipcRenderer.invoke('addons:set-enabled', addonId, enabled),
+  reloadAddons: () => ipcRenderer.invoke('addons:reload'),
+  getAddonPreloadPath: () => ipcRenderer.invoke('addons:get-preload-path'),
+  onAddonStudioToast: (cb) => {
+    const handler = (_event: Electron.IpcRendererEvent, message: string) => cb(message)
+    ipcRenderer.on('addon-runtime:studio-toast', handler)
+    return () => ipcRenderer.removeListener('addon-runtime:studio-toast', handler)
+  },
+  getAddonSettings: (addonId) => ipcRenderer.invoke('addons:get-settings', addonId),
+  setAddonSettings: (addonId, partial) => ipcRenderer.invoke('addons:set-settings', addonId, partial),
+  dispatchAddonLiveEvent: (event, ctx) =>
+    ipcRenderer.invoke('addons:dispatch-live-event', event, ctx),
+  runAddonAction: (addonId, actionId, ctx) =>
+    ipcRenderer.invoke('addons:run-action', addonId, actionId, ctx),
   revealRelay: () => ipcRenderer.invoke('relay:reveal'),
   listDiagnostics: () => ipcRenderer.invoke('diagnostics:list'),
   clearDiagnostics: () => ipcRenderer.invoke('diagnostics:clear'),
@@ -146,6 +264,25 @@ const api: TabcastBridge = {
   windowMinimize: () => ipcRenderer.invoke('window:minimize'),
   windowMaximize: () => ipcRenderer.invoke('window:maximize'),
   windowClose: () => ipcRenderer.invoke('window:close'),
+  openStream: () => ipcRenderer.invoke('shell:open-stream'),
+  openHome: () => ipcRenderer.invoke('shell:open-home'),
+  onPrepareQuit: (cb) => {
+    const handler = () => cb()
+    ipcRenderer.on('app:prepare-quit', handler)
+    return () => ipcRenderer.removeListener('app:prepare-quit', handler)
+  },
+  ackPrepareQuit: () => {
+    ipcRenderer.send('app:prepare-quit-done')
+  },
+  getUpdateStatus: () => ipcRenderer.invoke('app:update-status'),
+  checkForUpdates: () => ipcRenderer.invoke('app:check-updates'),
+  downloadUpdate: () => ipcRenderer.invoke('app:download-update'),
+  installUpdate: () => ipcRenderer.invoke('app:install-update'),
+  onUpdateStatus: (cb) => {
+    const handler = (_event: Electron.IpcRendererEvent, status: UpdateStatus) => cb(status)
+    ipcRenderer.on('app:update-status', handler)
+    return () => ipcRenderer.removeListener('app:update-status', handler)
+  },
 }
 
 contextBridge.exposeInMainWorld('tabcast', api)

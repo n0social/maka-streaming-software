@@ -1,0 +1,52 @@
+/** Bundled Hello Tabcast sample files (mirrors addons/_samples/hello-tabcast/). */
+export const HELLO_TABCAST_FILES: Record<string, string> = {
+  'index.html': `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline';" />
+    <title>Hello Tabcast</title>
+    <style>
+      :root { color-scheme: dark; font-family: system-ui, sans-serif; }
+      body { margin: 0; padding: 0.65rem 0.75rem; background: #121218; color: #e8e8ec; font-size: 0.82rem; }
+      strong { color: #d4af37; }
+      button { margin-top: 0.5rem; padding: 0.35rem 0.65rem; border-radius: 0.35rem; border: 1px solid #555; background: #1e1e28; color: inherit; cursor: pointer; }
+      button:hover { border-color: #d4af37; }
+      #status { margin-top: 0.45rem; color: #9a9aa8; font-size: 0.75rem; }
+    </style>
+  </head>
+  <body>
+    <div><strong>Hello Tabcast</strong> — sandboxed addon runtime</div>
+    <div id="meta"></div>
+    <button type="button" id="btn-toast">Send studio toast</button>
+    <div id="status">Loading…</div>
+    <script src="index.js"></script>
+  </body>
+</html>
+`,
+  'index.js': `/** Hello Tabcast — minimal sandboxed addon using tabcast.addons API. */
+;(async () => {
+  const status = document.getElementById('status')
+  const meta = document.getElementById('meta')
+  const btn = document.getElementById('btn-toast')
+  if (!window.tabcast?.addons) {
+    status.textContent = 'tabcast.addons bridge not available'
+    return
+  }
+  const api = window.tabcast.addons
+  try {
+    const info = await api.getInfo()
+    meta.textContent = info.name + ' v' + info.version + ' · API ' + info.apiVersion
+    status.textContent = 'Runtime ready'
+    api.onLiveEvent((payload) => {
+      status.textContent = 'Event: ' + payload.event
+    })
+    btn?.addEventListener('click', () => {
+      void api.toast('Hello from sandboxed addon runtime!')
+    })
+  } catch (err) {
+    status.textContent = err instanceof Error ? err.message : String(err)
+  }
+})()
+`,
+}

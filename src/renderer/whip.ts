@@ -10,7 +10,10 @@ export type WhipPublisher = {
 }
 
 export type WhipPublishSources = {
-  display: MediaStream
+  /** Primary program / gameplay video track. */
+  gameplay: MediaStream
+  /** Optional browse-tab overlay track. */
+  browser?: MediaStream | null
   webcam?: MediaStream | null
   mic?: MediaStream | null
 }
@@ -43,10 +46,18 @@ export function createNamedMediaStream(
 }
 
 function attachWhipSources(pc: RTCPeerConnection, sources: WhipPublishSources): void {
-  const gameplayTracks = sources.display.getTracks().filter((t) => t.readyState === 'live')
+  const gameplayTracks = sources.gameplay.getTracks().filter((t) => t.readyState === 'live')
   if (gameplayTracks.length > 0) {
     const gameplayStream = createNamedMediaStream(RELAY_TRACK_STREAM_IDS.gameplay, gameplayTracks)
     for (const track of gameplayTracks) pc.addTrack(track, gameplayStream)
+  }
+
+  if (sources.browser) {
+    const browserTracks = sources.browser.getVideoTracks().filter((t) => t.readyState === 'live')
+    if (browserTracks.length > 0) {
+      const browserNamed = createNamedMediaStream(RELAY_TRACK_STREAM_IDS.browser, browserTracks)
+      for (const track of browserTracks) pc.addTrack(track, browserNamed)
+    }
   }
 
   if (sources.webcam) {
