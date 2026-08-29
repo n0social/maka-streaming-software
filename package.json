@@ -2,7 +2,7 @@
   "name": "tabcast-browser",
   "version": "0.2.0",
   "private": false,
-  "description": "Tabcast Browser — Chromium + local relay for educational gaming/streaming capture",
+  "description": "Tabcast Browser — Chromium + local relay for game capture and multi-platform streaming",
   "author": "n0social",
   "license": "MIT",
   "homepage": "https://github.com/n0social/tabcast-browser",

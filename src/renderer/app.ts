@@ -882,7 +882,7 @@ async function goLive(): Promise<void> {
       })
       if (!keysOk.ok) throw new Error(keysOk.message)
     } else if (!twitch && !youtube && !(destCustom.checked && customUrl && customKey)) {
-      throw new Error('Lab mode still needs a placeholder key in at least one destination.')
+      throw new Error('Demo mode still needs a placeholder key in at least one destination.')
     }
 
     if (destCustom.checked && customUrl && customKey) {
@@ -1090,7 +1090,7 @@ document.getElementById('settings-form')!.addEventListener('submit', async (even
     })
     labMode = next.labMode
     destHint.textContent = labMode
-      ? 'Lab mode on — key shape checks relaxed for classroom demos.'
+      ? 'Demo mode on — key format checks skipped (for testing and walkthroughs).'
       : 'Keys stay in relay RAM only. Go Live publishes WHIP to localhost.'
   }
 })

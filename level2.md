@@ -2,13 +2,13 @@
 
 **Version baseline:** 0.2.0  
 **Last reviewed:** 2026-08-28  
-**Scope:** Error pass, security hardening, and roadmap to ship Tabcast Browser beyond the v0.2 classroom/lab release.
+**Scope:** Error pass, security hardening, and roadmap to ship Tabcast Browser beyond the v0.2 early release.
 
 ---
 
 ## Executive summary
 
-Tabcast Browser is a functional Windows desktop app (Chromium studio + local WHIP relay) suitable for **controlled lab and maker use**. It is **not yet production-ready** for broad public distribution without addressing code signing, auto-update, onboarding, and several UX/reliability gaps documented below.
+Tabcast Browser is a functional Windows desktop app (Chromium studio + local WHIP relay) for **streamers who want a self-contained capture and go-live stack**. It is **not yet production-ready** for broad public distribution without addressing code signing, auto-update, onboarding, and several UX/reliability gaps documented below.
 
 This document captures what was hardened in the latest pass, what still fails or risks failure, and a prioritized path to a trustworthy v1.0.
 
@@ -262,7 +262,7 @@ Ship in the first post-0.2 minor (0.2.x or 0.3.0).
 
 ## Launch & education (P3)
 
-- **Lab mode** docs for teachers (keys in RAM, blocked hosts, minimize-to-tray while live).
+- **Lab mode** docs for teachers (keys in RAM, Browse limited to streaming sites, minimize-to-tray while live).
 - **Crash/opt-in telemetry** — Sentry or self-hosted; respect FERPA/classroom privacy.
 - **macOS / Linux** builds (Electron supports; relay is Windows `.exe` today — blocker for cross-platform).
 - **Optional ad/script blocking** in browse while live (`UPGRADES.md`).
