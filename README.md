@@ -1,4 +1,4 @@
-# Tabcast Browser
+# Maka
 
 **Chromium + local relay** for streamers who want capture, scene, and Go Live in one desktop app — without wiring up OBS first.
 
@@ -34,7 +34,7 @@ npm run verify        # health + binary checks
 [Desktop / webcam / mic]
         │  getUserMedia / desktopCapturer
         ▼
-[Tabcast Browser UI]  ──WHIP──►  [TabcastRelay :38473]  ──RTMP──►  Twitch / YouTube / Custom
+[Maka UI]  ──WHIP──►  [TabcastRelay :38473]  ──RTMP──►  Twitch / YouTube / Custom
 [Browse tabs / chat]
 ```
 
@@ -66,7 +66,7 @@ npm run verify        # health + binary checks
 
 - Keys are not written to disk by the browser UI (relay RAM only).
 - **Demo mode** (Settings) skips stream-key format checks — useful for walkthroughs and testing without real keys.
-- **Browse stays on streaming sites** — the built-in browser can't open Tabcast download or project pages (keeps you on Twitch, YouTube, and chat).
+- **Browse stays on streaming sites** — the built-in browser can't open Maka download or project pages (keeps you on Twitch, YouTube, and chat).
 
 ## License
 

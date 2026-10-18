@@ -50,7 +50,7 @@ export const MARKETPLACE_CATALOG: CatalogEntry[] = [
                 label: 'Setup guide',
                 type: 'message',
                 message:
-                  'Create a Discord channel webhook, click “Set webhook URL”, then go live — Tabcast POSTs a “now live” embed from the main process (keys never touch the renderer).',
+                  'Create a Discord channel webhook, click “Set webhook URL”, then go live — Maka POSTs a “now live” embed from the main process (keys never touch the renderer).',
               },
               {
                 id: 'docs',

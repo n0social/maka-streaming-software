@@ -1428,7 +1428,7 @@ window.tabcast.onNavigated((state) => {
   urlInput.value = state.url
 })
 window.tabcast.onTitle((title) => {
-  document.title = title ? `${title} · Tabcast` : 'Tabcast'
+  document.title = title ? `${title} · Maka` : 'Maka'
 })
 
 syncDestinationInputs()

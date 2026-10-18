@@ -1,4 +1,4 @@
-# Tabcast Browser — Marketing Package
+# Maka — Marketing Package
 
 Generated assets for store listings, landing pages, and portfolio use.  
 Regenerate anytime:
@@ -51,7 +51,7 @@ bash site/deploy-site.sh
 
 Publishes:
 
-- `/` — Tabcast Browser landing (`site/index.html`)
+- `/` — Maka landing (`site/index.html`)
 - `/legacy.html` — Relay + web studio workflow
 - `/stream/` — Legacy SPA web studio
 - `/marketing/*` — Icons, feature graphic, download badges

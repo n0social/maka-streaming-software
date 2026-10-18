@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate Tabcast Browser marketing PNGs (Play Store / Chrome Web Store style)."""
+"""Generate Maka marketing PNGs (Play Store / Chrome Web Store style)."""
 from __future__ import annotations
 
 import json
@@ -254,7 +254,7 @@ def main() -> None:
     write_ico(RESOURCES / "icon.ico", [16, 24, 32, 48, 64, 128, 256])
 
     manifest = {
-        "product": "Tabcast Browser",
+        "product": "Maka",
         "version": "0.2.0",
         "generatedBy": "scripts/generate-marketing.py",
         "icons": {f"icon-{s}.png": f"{s}x{s}" for s in icon_sizes},

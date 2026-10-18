@@ -68,7 +68,7 @@ async function main() {
     arch: 'x64',
     platform: 'win32',
     version,
-    productName: 'Tabcast Browser',
+    productName: 'Maka',
     artifact,
     downloadPath: `/downloads/${artifact}`,
     includesRelay: true,

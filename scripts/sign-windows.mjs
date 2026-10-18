@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Windows Authenticode signing helper for Tabcast Browser + TabcastRelay.
+ * Windows Authenticode signing helper for Maka + TabcastRelay.
  *
  * Usage:
  *   node scripts/sign-windows.mjs <file.exe> [file2.exe ...]
@@ -95,7 +95,7 @@ export function collectDistArtifacts() {
   const relayVendor = join(root, 'vendor', 'relay', 'TabcastRelay.exe')
   if (existsSync(relayVendor)) out.push(relayVendor)
 
-  const unpacked = join(distDir, 'win-unpacked', 'TabcastBrowser.exe')
+  const unpacked = join(distDir, 'win-unpacked', 'Maka.exe')
   if (existsSync(unpacked)) out.push(unpacked)
 
   const relayBundled = join(distDir, 'win-unpacked', 'resources', 'relay', 'TabcastRelay.exe')
@@ -128,7 +128,7 @@ export function signFile(signtool, cfg, filePath) {
     '/f',
     cfg.pfxPath,
     '/d',
-    'Tabcast Browser',
+    'Maka',
     abs,
   ]
   if (cfg.password) {

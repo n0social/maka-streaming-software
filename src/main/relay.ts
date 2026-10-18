@@ -532,7 +532,7 @@ export class RelayManager {
         const health = localizeRelayHealth(await fetchJson<RelayHealth>(RELAY_HEALTH_PATH))
         this.healthFailStreak = 0
         this.restartCount = Math.max(0, this.restartCount - 1)
-        // Launcher mode always starts tray.ps1 — strip orphans so only Tabcast Browser tray remains.
+        // Launcher mode always starts tray.ps1 — strip orphans so only the Maka tray remains.
         await killOrphanRelayTrays()
         recordDiagnostic('info', 'relay.ready', `Relay ready v${health.version} (${launch.mode})`)
         this.emit({ lifecycle: 'ready', health, error: null })

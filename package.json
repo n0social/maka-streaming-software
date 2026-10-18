@@ -2,7 +2,7 @@
   "name": "tabcast-browser",
   "version": "0.2.0",
   "private": false,
-  "description": "Tabcast Browser — Chromium + local relay for game capture and multi-platform streaming",
+  "description": "Maka — Chromium + local relay for game capture and multi-platform streaming",
   "author": "n0social",
   "license": "MIT",
   "homepage": "https://github.com/n0social/tabcast-browser",
@@ -47,7 +47,7 @@
   },
   "build": {
     "appId": "work.skydav.tabcast.browser",
-    "productName": "Tabcast Browser",
+    "productName": "Maka",
     "electronDist": "node_modules/electron/dist",
     "directories": {
       "output": "dist-installer"
@@ -78,8 +78,8 @@
         "nsis"
       ],
       "icon": "resources/icons/icon.ico",
-      "executableName": "TabcastBrowser",
-      "artifactName": "TabcastBrowser-Setup-${version}.${ext}",
+      "executableName": "Maka",
+      "artifactName": "Maka-Setup-${version}.${ext}",
       "signAndEditExecutable": true,
       "forceCodeSigning": false,
       "signtoolOptions": {
@@ -89,7 +89,7 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "shortcutName": "Tabcast Browser"
+      "shortcutName": "Maka"
     },
     "publish": [
       {

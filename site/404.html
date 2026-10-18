@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Maka — Working on fixes</title>
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        background:
+          radial-gradient(ellipse 80% 50% at 50% -20%, rgba(255, 184, 0, 0.12), transparent),
+          #050506;
+        color: #f4f4f5;
+        font-family: "IBM Plex Sans", system-ui, sans-serif;
+      }
+      main {
+        max-width: 28rem;
+        text-align: center;
+      }
+      img {
+        width: 48px;
+        height: 48px;
+        border-radius: 0.4rem;
+        object-fit: contain;
+        margin-bottom: 1rem;
+      }
+      .eyebrow {
+        margin: 0 0 0.75rem;
+        font-size: 0.75rem;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+        color: #a3a3a3;
+      }
+      h1 {
+        margin: 0 0 0.75rem;
+        font-size: clamp(1.35rem, 3vw, 1.75rem);
+        font-weight: 600;
+        line-height: 1.25;
+      }
+      p {
+        margin: 0 0 1.5rem;
+        font-size: 0.95rem;
+        line-height: 1.55;
+        color: #a3a3a3;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        justify-content: center;
+      }
+      a,
+      button {
+        appearance: none;
+        border: 1px solid #3f3f46;
+        background: #18181b;
+        color: #f4f4f5;
+        border-radius: 0.4rem;
+        padding: 0.65rem 1.1rem;
+        font: inherit;
+        font-size: 0.875rem;
+        font-weight: 500;
+        text-decoration: none;
+        cursor: pointer;
+      }
+      a.primary,
+      button.primary {
+        border-color: #ffb800;
+        background: #ffb800;
+        color: #000;
+      }
+      a:hover,
+      button:hover {
+        filter: brightness(1.08);
+      }
+      .code {
+        margin-top: 1.75rem;
+        font-size: 0.75rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #52525b;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/logo.png" alt="" width="48" height="48" />
+      <p class="eyebrow">Maka</p>
+      <h1>We're working on fixes</h1>
+      <p>
+        This page isn't available right now while we shore things up. Check back
+        soon — Maka will be back shortly.
+      </p>
+      <div class="actions">
+        <a class="primary" href="/">Back to home</a>
+        <button type="button" onclick="location.reload()">Try again</button>
+      </div>
+      <p class="code">404</p>
+    </main>
+  </body>
+</html>

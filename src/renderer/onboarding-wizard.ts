@@ -9,13 +9,13 @@ export type WizardStep = {
 export const SETUP_WIZARD_STEPS: WizardStep[] = [
   {
     id: 'welcome',
-    title: 'Set up Tabcast Browser',
+    title: 'Set up Maka',
     body: 'This quick setup checks your relay, capture sources, and optional stream keys. It takes about a minute — skip anytime if you already know the studio.',
   },
   {
     id: 'relay',
     title: 'Relay health',
-    body: 'Tabcast runs a local encoder on port 38473. We will verify the relay binary and health endpoint before you go live.',
+    body: 'Maka runs a local encoder on port 38473. We will verify the relay binary and health endpoint before you go live.',
   },
   {
     id: 'capture',
@@ -222,7 +222,7 @@ export class SetupWizard {
         statusEl.textContent = 'No capture sources found — check display permissions.'
         statusEl.dataset.state = 'fail'
         bodyEl.textContent =
-          'Windows may block screen capture for new apps. Open Settings → Privacy → Screen capture and allow Tabcast Browser, then retry.'
+          'Windows may block screen capture for new apps. Open Settings → Privacy → Screen capture and allow Maka, then retry.'
         nextBtn.textContent = 'Test capture'
       }
     } catch (err) {

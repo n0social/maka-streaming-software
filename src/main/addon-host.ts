@@ -434,8 +434,8 @@ export class AddonHost {
 
     const content =
       event === 'live.end'
-        ? 'Stream ended on Tabcast Browser.'
-        : `Now live on Tabcast Browser${platforms ? ` (${platforms})` : ''} · ${ctx.profile}`
+        ? 'Stream ended on Maka.'
+        : `Now live on Maka${platforms ? ` (${platforms})` : ''} · ${ctx.profile}`
 
     const body =
       event === 'live.start'

@@ -11,7 +11,7 @@ export type TourStep = {
 export const ONBOARDING_STEPS: TourStep[] = [
   {
     id: 'welcome',
-    title: 'Welcome to Tabcast Browser',
+    title: 'Welcome to Maka',
     body: 'A streaming browser with a fixed core — capture, scene, and go live — plus room for addons like VS Code extensions. This quick tour points at the essentials.',
     placement: 'center',
   },

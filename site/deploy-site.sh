@@ -4,7 +4,7 @@ set -euo pipefail
 WEB_ROOT="${WEB_ROOT:-/opt/tabcast/web}"
 SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-echo "Publishing Tabcast site from ${SRC_DIR}…"
+echo "Publishing Maka site from ${SRC_DIR}…"
 
 chmod 755 "${WEB_ROOT}" "${WEB_ROOT}/marketing" "${WEB_ROOT}/stream" 2>/dev/null || true
 

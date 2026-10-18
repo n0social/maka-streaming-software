@@ -1,4 +1,4 @@
-# Windows code signing — Tabcast Browser
+# Windows code signing — Maka
 
 Authenticode signing reduces SmartScreen warnings and helps enterprise allow-listing. This repo ships **signing infrastructure**; you supply the certificate.
 
@@ -19,8 +19,8 @@ Authenticode signing reduces SmartScreen warnings and helps enterprise allow-lis
 | Artifact | When | Tool |
 |----------|------|------|
 | `TabcastRelay.exe` (vendor + bundled) | Before `electron-builder` | `scripts/sign-windows.mjs` |
-| `TabcastBrowser.exe` | During `electron-builder` | electron-builder + `@electron/windows-sign` |
-| `TabcastBrowser-Setup-*.exe` (NSIS) | During `electron-builder` | electron-builder |
+| `Maka.exe` | During `electron-builder` | electron-builder + `@electron/windows-sign` |
+| `Maka-Setup-*.exe` (NSIS) | During `electron-builder` | electron-builder |
 | Optional: unpacked outputs | After build (`--all`) | `scripts/sign-windows.mjs` |
 
 All signatures use **SHA-256** + a **timestamp server** (Digicert by default) so they stay valid after cert expiry.
@@ -86,7 +86,7 @@ npm run dist
 ### 4. Verify only
 
 ```bash
-node scripts/sign-windows.mjs --verify dist-installer/TabcastBrowser-Setup-0.2.0.exe
+node scripts/sign-windows.mjs --verify dist-installer/Maka-Setup-0.2.0.exe
 node scripts/sign-windows.mjs --verify vendor/relay/TabcastRelay.exe
 ```
 
@@ -125,7 +125,7 @@ env:
 run: npm run dist:signed
 ```
 
-Upload `dist-installer/TabcastBrowser-Setup-*.exe` to GitHub Releases.
+Upload `dist-installer/Maka-Setup-*.exe` to GitHub Releases.
 
 ---
 
