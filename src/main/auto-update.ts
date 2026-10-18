@@ -1,5 +1,9 @@
 import { BrowserWindow, app } from 'electron'
-import { autoUpdater } from 'electron-updater'
+import electronUpdater from 'electron-updater'
+
+// electron-updater is CommonJS and exposes autoUpdater via a getter.
+// Electron 37's ESM loader does not accept that as a named export.
+const { autoUpdater } = electronUpdater
 import { recordDiagnostic } from './diagnostics'
 
 export type UpdateStatus = {
