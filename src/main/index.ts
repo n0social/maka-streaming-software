@@ -290,7 +290,7 @@ function createMainWindow(): BrowserWindow {
     height: 960,
     minWidth: 1280,
     minHeight: 760,
-    backgroundColor: '#07070a',
+    backgroundColor: '#faf8f4',
     title: 'Maka',
     show: false,
     frame: false,
