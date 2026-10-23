@@ -18,8 +18,9 @@
   --warn: #8a5a12;
   --bad: #9a3b3b;
   --off: #a39888;
-  --font-headline: "League Spartan", system-ui, sans-serif;
-  --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-hero: "Barlow Condensed", system-ui, sans-serif;
+  --font-headline: var(--font-hero);
+  --font-body: var(--font-hero);
 }
 
 * {
@@ -33,7 +34,7 @@ body {
   background-color: #faf8f4;
   background-image: radial-gradient(ellipse 100% 70% at 50% -20%, rgba(201, 162, 39, 0.12), transparent 55%);
   color: #1a1408;
-  font-family: var(--font-body);
+  font-family: var(--font-hero);
 }
 
 .panel {
