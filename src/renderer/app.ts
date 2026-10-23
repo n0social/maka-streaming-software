@@ -78,6 +78,7 @@ const customRtmpUrl = document.getElementById('custom-rtmp-url') as HTMLInputEle
 const customRtmpKey = document.getElementById('custom-rtmp-key') as HTMLInputElement
 const programBrowser = document.getElementById('program-browser')!
 const programBrowserVideo = document.getElementById('program-browser-video') as HTMLVideoElement
+const brandTag = document.getElementById('brand-tag')
 
 const CUSTOM_RTM_ADDON_ID = 'com.tabcast.custom-rtmp'
 
@@ -126,8 +127,14 @@ function setDestError(message: string | null): void {
 function applyMode(mode: AppMode): void {
   currentMode = mode
   body.dataset.mode = mode
-  navrow.hidden = mode !== 'browse'
-  browsetabs.hidden = mode !== 'browse'
+  const searchOpen = mode === 'browse'
+  navrow.hidden = !searchOpen
+  browsetabs.hidden = !searchOpen
+
+  if (brandTag) {
+    brandTag.textContent = searchOpen ? 'Search · optional browser' : 'Streaming studio'
+  }
+  document.title = searchOpen ? 'Maka — Search' : 'Maka — Streaming'
 
   for (const tab of document.querySelectorAll<HTMLButtonElement>('.tab')) {
     const active = tab.dataset.tab === mode
@@ -510,7 +517,7 @@ function renderSources(sources: CaptureSource[]): void {
       ${thumbHtml}
       <span>
         <strong>${escapeHtml(source.name)}</strong>
-        <span>${source.type === 'browser' ? 'browse tab' : source.type}</span>
+        <span>${source.type === 'browser' ? 'search tab' : source.type}</span>
       </span>
     `
     btn.addEventListener('click', () => {
@@ -618,7 +625,7 @@ async function stopBrowserCapture(): Promise<void> {
   browserStream = null
   programBrowserVideo.srcObject = null
   layerBrowser.dataset.active = '0'
-  layerBrowser.textContent = 'Browser — off'
+  layerBrowser.textContent = 'Search tab — off'
   await window.tabcast.setBrowseCaptureActive(false)
   updateProgramBrowserOverlay()
   syncLayerTracks()
@@ -632,8 +639,8 @@ async function startBrowserCapture(): Promise<void> {
   const target = await window.tabcast.getBrowseCaptureTarget()
   if (!target) {
     layerBrowser.dataset.active = '0'
-    layerBrowser.textContent = 'Browser — no tab'
-    setDestError('Open a page in Browse mode, then enable the Browser layer.')
+    layerBrowser.textContent = 'Search tab — no tab'
+    setDestError('Open a page in the Search tab, then enable the Search tab layer.')
     layerEnabled.browser = false
     return
   }
@@ -654,13 +661,13 @@ async function startBrowserCapture(): Promise<void> {
     browserStream = stream
     bindBrowserStream(stream)
     layerBrowser.dataset.active = '1'
-    layerBrowser.textContent = `Browser — ${target.title}`
+    layerBrowser.textContent = `Search tab — ${target.title}`
     syncLayerTracks()
     setDestError(null)
   } catch (err) {
     await stopBrowserCapture()
     layerEnabled.browser = false
-    setDestError(err instanceof Error ? err.message : 'Could not capture browse tab')
+    setDestError(err instanceof Error ? err.message : 'Could not capture Search tab')
   }
 }
 
@@ -677,7 +684,7 @@ async function selectBrowseTabSource(): Promise<void> {
 
   if (!programStream) {
     programEmpty.hidden = false
-    programEmpty.textContent = 'Select gameplay (display/window) first, or use Browser layer for overlay only.'
+    programEmpty.textContent = 'Select gameplay (display/window) first, or use the Search tab layer for overlay only.'
   }
 
   layerEnabled.browser = true
@@ -1428,7 +1435,8 @@ window.tabcast.onNavigated((state) => {
   urlInput.value = state.url
 })
 window.tabcast.onTitle((title) => {
-  document.title = title ? `${title} · Maka` : 'Maka'
+  if (currentMode !== 'browse') return
+  document.title = title ? `${title} · Maka — Search` : 'Maka — Search'
 })
 
 syncDestinationInputs()

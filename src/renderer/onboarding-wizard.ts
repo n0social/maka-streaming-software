@@ -10,7 +10,7 @@ export const SETUP_WIZARD_STEPS: WizardStep[] = [
   {
     id: 'welcome',
     title: 'Set up Maka',
-    body: 'This quick setup checks your relay, capture sources, and optional stream keys. It takes about a minute — skip anytime if you already know the studio.',
+    body: 'This quick setup checks your relay, capture sources, and optional stream keys. Streaming is the home screen after this. Search, the browser, stays a separate tab. Skip anytime if you already know the studio.',
   },
   {
     id: 'relay',
@@ -30,7 +30,7 @@ export const SETUP_WIZARD_STEPS: WizardStep[] = [
   {
     id: 'ready',
     title: 'Ready to stream',
-    body: 'Setup complete. Choose a source, verify destinations, then hit Go Live — or replay the UI tour from Settings.',
+    body: 'Setup complete. You land in the streaming studio. Choose a source, verify destinations, then hit Go Live. Open Search only when you want the browser.',
   },
 ]
 
@@ -214,7 +214,7 @@ export class SetupWizard {
         const parts: string[] = []
         if (screens) parts.push(`${screens} display${screens === 1 ? '' : 's'}`)
         if (windows) parts.push(`${windows} window${windows === 1 ? '' : 's'}`)
-        if (browser) parts.push('Browse tab')
+        if (browser) parts.push('Search tab')
         statusEl.textContent = `Found ${sources.length} source${sources.length === 1 ? '' : 's'} (${parts.join(', ')})`
         statusEl.dataset.state = 'ok'
         nextBtn.textContent = 'Next'
