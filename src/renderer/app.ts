@@ -68,6 +68,14 @@ const relayLabel = document.getElementById('relay-label')!
 const relayStatus = document.getElementById('relay-status')!
 const relayVersion = document.getElementById('relay-version')!
 const relayError = document.getElementById('relay-error')!
+const relaySummaryPill = document.getElementById('relay-summary-pill')!
+const studioStatus = document.getElementById('studio-status')!
+const studioStatusText = document.getElementById('studio-status-text')!
+const streamInfoStatus = document.getElementById('stream-info-status')!
+const streamInfoLabel = document.getElementById('stream-info-label')!
+const statProfile = document.getElementById('stat-profile')!
+const statRelay = document.getElementById('stat-relay')!
+const scenesList = document.getElementById('scenes-list')!
 const sourceList = document.getElementById('source-list')!
 const programVideo = document.getElementById('program-video') as HTMLVideoElement
 const programEmpty = document.getElementById('program-empty')!
@@ -150,6 +158,16 @@ const layerEnabled = {
 
 const WEBCAM_OFFLINE_TEXT = 'video is offline'
 
+const STUDIO_SCENES: { id: string; label: string; templateId: string }[] = [
+  { id: 'gameplay', label: 'Gameplay', templateId: 'gaming-cam' },
+  { id: 'starting-soon', label: 'Starting Soon', templateId: 'browse-showcase' },
+  { id: 'just-chatting', label: 'Just Chatting', templateId: 'desk-only' },
+  { id: 'intermission', label: 'Intermission', templateId: 'gaming-cam' },
+  { id: 'ending', label: 'Ending Scene', templateId: 'desk-only' },
+]
+
+let activeSceneId = 'gameplay'
+
 const lifecycleCopy: Record<RelaySnapshot['lifecycle'], string> = {
   stopped: 'Relay offline',
   starting: 'Relay starting…',
@@ -176,7 +194,7 @@ function applyMode(mode: AppMode): void {
   browsetabs.hidden = !searchOpen
 
   if (brandTag) {
-    brandTag.textContent = searchOpen ? 'Search · optional browser' : 'Streaming studio'
+    brandTag.textContent = searchOpen ? 'Search' : 'Studio'
   }
   document.title = searchOpen ? 'Maka — Search' : 'Maka — Streaming'
 
@@ -413,6 +431,143 @@ function liveReconnectStatusLine(): string {
   return `${label} — reconnecting (${liveRecoveryAttempts}/${MAX_LIVE_RETRY_ATTEMPTS})`
 }
 
+function syncProfileStat(): void {
+  const opt = profileSelect.selectedOptions[0]
+  statProfile.textContent = opt?.textContent?.trim() ?? profileSelect.value
+}
+
+function renderStudioChrome(snapshot: RelaySnapshot): void {
+  const live = isSessionLive()
+  const lifecycle = snapshot.lifecycle
+
+  relaySummaryPill.textContent = lifecycleCopy[lifecycle] ?? lifecycle
+  relaySummaryPill.dataset.state =
+    live && liveReconnecting
+      ? 'starting'
+      : live && liveRecoveryExhausted
+        ? 'error'
+        : lifecycle
+
+  let statusState: string = 'warn'
+  let statusText = 'Relay offline — expand Relay to start'
+  if (live) {
+    statusState = 'live'
+    statusText = liveReconnecting ? 'Live — reconnecting encoder' : 'All systems nominal'
+  } else if (liveRecoveryExhausted) {
+    statusState = 'error'
+    statusText = 'Stream recovery failed — check Relay'
+  } else if (snapshot.error) {
+    statusState = 'error'
+    statusText = 'Relay needs attention'
+  } else if (lifecycle === 'ready') {
+    statusState = 'ready'
+    statusText = 'All systems nominal'
+  } else if (lifecycle === 'starting') {
+    statusState = 'warn'
+    statusText = 'Relay starting…'
+  } else if (lifecycle === 'live') {
+    statusState = 'ready'
+    statusText = 'Relay encoder ready'
+  }
+
+  studioStatus.dataset.state = statusState
+  studioStatusText.textContent = statusText
+
+  streamInfoStatus.dataset.live = live ? '1' : '0'
+  streamInfoLabel.textContent = live ? 'Live' : 'Offline'
+
+  statRelay.textContent = relayLabel.textContent
+  syncProfileStat()
+}
+
+async function applyStudioScene(sceneId: string): Promise<void> {
+  const scene = STUDIO_SCENES.find((s) => s.id === sceneId)
+  if (!scene) return
+  activeSceneId = sceneId
+  for (const btn of scenesList.querySelectorAll<HTMLButtonElement>('.studio-list-item')) {
+    const on = btn.dataset.sceneId === sceneId
+    btn.classList.toggle('active', on)
+    btn.setAttribute('aria-current', on ? 'true' : 'false')
+  }
+
+  const snapshot = await window.tabcast.getRelay()
+  const result = await window.tabcast.runAddonAction('tabcast.scene-templates', scene.templateId, {
+    profile: selectedProfile(),
+    hasWebcam: hasLiveWebcamVideo() && layerEnabled.cam,
+  })
+  if (!result.ok) {
+    destHint.textContent = result.message ?? 'Could not apply scene layout'
+    return
+  }
+  if (result.sceneLayout && snapshot.health) {
+    await postSceneLayout(snapshot.health, result.sceneLayout as SceneLayout)
+    destHint.textContent = result.message ?? `Scene: ${scene.label}`
+    setDestError(null)
+    if (isSessionLive()) void pushSceneLayout()
+  }
+}
+
+function initStudioSceneList(): void {
+  scenesList.innerHTML = ''
+  for (const scene of STUDIO_SCENES) {
+    const li = document.createElement('li')
+    const btn = document.createElement('button')
+    btn.type = 'button'
+    btn.className = 'studio-list-item' + (scene.id === activeSceneId ? ' active' : '')
+    btn.dataset.sceneId = scene.id
+    btn.setAttribute('aria-current', scene.id === activeSceneId ? 'true' : 'false')
+    const icon = document.createElement('span')
+    icon.className = 'item-icon'
+    icon.setAttribute('aria-hidden', 'true')
+    icon.textContent = '▦'
+    const label = document.createElement('span')
+    label.className = 'item-label'
+    label.textContent = scene.label
+    btn.append(icon, label)
+    btn.addEventListener('click', () => {
+      void applyStudioScene(scene.id)
+    })
+    li.append(btn)
+    scenesList.append(li)
+  }
+}
+
+function initSourceShortcuts(): void {
+  document.querySelectorAll<HTMLButtonElement>('[data-source-action]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const action = btn.dataset.sourceAction
+      if (action === 'game') {
+        layerEnabled.game = true
+        syncLayerTracks()
+        void document.getElementById('btn-refresh-sources')!.click()
+        sourceList.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+        return
+      }
+      if (action === 'webcam') {
+        if (!layerEnabled.cam) {
+          layerEnabled.cam = true
+          syncLayerTracks()
+          void pushSceneLayout()
+        }
+        cameraSelect.focus()
+        return
+      }
+      if (action === 'mic') {
+        if (!layerEnabled.mic) {
+          layerEnabled.mic = true
+          syncLayerTracks()
+          void pushSceneLayout()
+        }
+        micSelect.focus()
+        return
+      }
+      if (action === 'overlay') {
+        layerBrowser.click()
+      }
+    })
+  })
+}
+
 function renderRelay(snapshot: RelaySnapshot): void {
   const live = isSessionLive()
   const relayUiState =
@@ -472,6 +627,8 @@ function renderRelay(snapshot: RelaySnapshot): void {
   if (lines?.length) {
     ffmpegLog.textContent = lines.join('\n')
   }
+
+  renderStudioChrome(snapshot)
 }
 
 type PlatformChipState = 'off' | 'idle' | 'armed' | 'live' | 'error'
@@ -2206,6 +2363,14 @@ const onboardingTour = new OnboardingTour(
     },
   },
 )
+
+document.getElementById('btn-help')!.addEventListener('click', () => {
+  onboardingTour.start()
+})
+
+initStudioSceneList()
+initSourceShortcuts()
+syncProfileStat()
 
 const setupWizard = new SetupWizard(
   document.getElementById('setup-wizard-root')!,

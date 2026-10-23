@@ -12,20 +12,20 @@ export const ONBOARDING_STEPS: TourStep[] = [
   {
     id: 'welcome',
     title: 'Welcome to Maka',
-    body: 'Maka is a streaming studio. Capture, scene, destinations, and Go Live are the main job. Search is an optional browser tab for Twitch, YouTube, and chat — open it on purpose.',
+    body: 'Maka is a streaming studio. Capture, scenes, destinations, and Go Live are the main job. Search is a separate tab for Twitch, YouTube, and chat when you need it.',
     placement: 'center',
   },
   {
     id: 'modes',
     title: 'Stream & Search',
-    body: 'Stream is home: sources, the stream monitor, layers, and destinations stay on screen. Search is a separate optional browser tab. It is not the starting surface and it is not equal weight.',
+    body: 'Stream is home: sources, the program monitor, layers, and destinations stay on screen. Search opens the in-app browser when you choose that tab.',
     target: '[data-tour="modes"]',
     placement: 'bottom',
   },
   {
     id: 'sources',
     title: 'Sources',
-    body: 'Pick a display or window for the stream. Add camera and mic here. Capture the Search tab only when you have opened that optional browser. The relay encoder runs locally on port 38473.',
+    body: 'Pick a display or window for the stream. Add camera and mic here. Capture the Search tab when you want that page on the program. The relay encoder runs locally on port 38473.',
     target: '[data-tour="sources"]',
     placement: 'right',
   },
