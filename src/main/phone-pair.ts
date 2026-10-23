@@ -6,12 +6,16 @@ import {
   PHONE_PAIR_PAIR_PATH,
   PHONE_PAIR_PORT,
   PHONE_PAIR_TOKEN_TTL_MS,
+  PHONE_PAIR_WEBRTC_ANSWER_PATH,
+  PHONE_PAIR_WEBRTC_OFFER_PATH,
   type PhonePairSnapshot,
   type PhonePairStatus,
+  type PhoneWebRtcSessionDescription,
 } from '../shared/phone-pair'
 import { recordDiagnostic } from './diagnostics'
 
 type Listener = (snapshot: PhonePairSnapshot) => void
+type OfferListener = (offer: PhoneWebRtcSessionDescription) => void
 
 type ActiveToken = {
   value: string
@@ -122,12 +126,14 @@ function mobilePageHtml(): string {
     }
     .mic.on { color: #6ee7a8; border-color: #2d5a40; }
     .mic.off { color: #f87171; border-color: #5a2d2d; }
+    .hint-audio { color: #d4af37; font-size: 0.88rem; margin-top: 0.5rem; }
   </style>
 </head>
 <body>
   <main>
     <h1>Maka</h1>
     <p>Pair this phone with your studio on the same Wi‑Fi.</p>
+    <p class="hint-audio">Use headphones for clearer audio</p>
     <p class="state spin" id="status">Connecting to Maka…</p>
     <div id="preview-wrap"><video id="preview" playsinline muted autoplay></video></div>
     <div class="controls" id="controls">
@@ -149,6 +155,9 @@ function mobilePageHtml(): string {
       var offlineSent = false;
       var currentStream = null;
       var facingMode = 'environment';
+      var peer = null;
+      var PHONE_CAM_STREAM_ID = 'phone-cam';
+      var PHONE_MIC_STREAM_ID = 'phone-mic';
 
       function signalOffline() {
         if (!sessionId || offlineSent) return;
@@ -191,10 +200,95 @@ function mobilePageHtml(): string {
       }
 
       function stopStream() {
+        if (peer) {
+          peer.close();
+          peer = null;
+        }
         if (!currentStream) return;
         currentStream.getTracks().forEach(function (t) { t.stop(); });
         currentStream = null;
         preview.srcObject = null;
+      }
+
+      function waitIce(pc) {
+        if (pc.iceGatheringState === 'complete') return Promise.resolve();
+        return new Promise(function (resolve) {
+          var timer = setTimeout(function () { resolve(); }, 4000);
+          pc.addEventListener('icegatheringstatechange', function () {
+            if (pc.iceGatheringState === 'complete') {
+              clearTimeout(timer);
+              resolve();
+            }
+          });
+        });
+      }
+
+      function namedStream(id, track) {
+        var s = new MediaStream([track]);
+        try {
+          Object.defineProperty(s, 'id', { value: id, writable: false, configurable: true });
+        } catch (e) { /* ignore */ }
+        return s;
+      }
+
+      function pollAnswer() {
+        return fetch('${PHONE_PAIR_WEBRTC_ANSWER_PATH}?session=' + encodeURIComponent(sessionId))
+          .then(function (res) { return res.json(); })
+          .then(function (body) {
+            if (body && body.ok && body.answer) return body.answer;
+            return null;
+          });
+      }
+
+      function waitForAnswer(attempts) {
+        if (!attempts) attempts = 40;
+        return pollAnswer().then(function (answer) {
+          if (answer) return answer;
+          if (attempts <= 1) throw new Error('timeout');
+          return new Promise(function (r) { setTimeout(r, 250); }).then(function () {
+            return waitForAnswer(attempts - 1);
+          });
+        });
+      }
+
+      function startWebRtc(stream) {
+        peer = new RTCPeerConnection({ iceServers: [] });
+        var video = stream.getVideoTracks()[0];
+        var audio = stream.getAudioTracks()[0];
+        if (video) peer.addTrack(video, namedStream(PHONE_CAM_STREAM_ID, video));
+        if (audio) peer.addTrack(audio, namedStream(PHONE_MIC_STREAM_ID, audio));
+
+        peer.getSenders().forEach(function (sender) {
+          if (sender.track && sender.track.kind === 'video') {
+            try {
+              var params = sender.getParameters();
+              if (!params.encodings || !params.encodings.length) params.encodings = [{}];
+              params.encodings[0].maxBitrate = 2_000_000;
+              params.encodings[0].scaleResolutionDownBy = 1;
+              void sender.setParameters(params);
+            } catch (e) { /* ignore */ }
+          }
+        });
+
+        return peer.createOffer().then(function (offer) {
+          return peer.setLocalDescription(offer).then(function () { return waitIce(peer); });
+        }).then(function () {
+          var local = peer.localDescription;
+          return fetch('${PHONE_PAIR_WEBRTC_OFFER_PATH}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              session: sessionId,
+              type: local.type,
+              sdp: local.sdp,
+            }),
+          }).then(function (res) { return res.json(); });
+        }).then(function (body) {
+          if (!body || !body.ok) throw new Error('offer failed');
+          return waitForAnswer();
+        }).then(function (answer) {
+          return peer.setRemoteDescription(answer);
+        });
       }
 
       function bindTrackEnded(stream) {
@@ -210,19 +304,33 @@ function mobilePageHtml(): string {
           return Promise.resolve();
         }
         var constraints = {
-          video: { facingMode: facingMode },
-          audio: true,
+          video: {
+            facingMode: facingMode,
+            width: { ideal: 1280, max: 1280 },
+            height: { ideal: 720, max: 720 },
+            frameRate: { ideal: 30, max: 30 },
+          },
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+          },
         };
         return navigator.mediaDevices.getUserMedia(constraints).then(function (stream) {
           stopStream();
           currentStream = stream;
           preview.srcObject = stream;
+          preview.muted = true;
           previewWrap.style.display = 'block';
           controls.classList.add('visible');
-          status.textContent = 'Connected to Maka';
-          status.className = 'state ok';
+          status.textContent = 'Connecting media…';
+          status.className = 'state spin';
           updateMicIndicator(stream);
           bindTrackEnded(stream);
+          return startWebRtc(stream).then(function () {
+            status.textContent = 'Connected to Maka';
+            status.className = 'state ok';
+          });
+        }).then(function () {
           return navigator.mediaDevices.enumerateDevices();
         }).then(function (devices) {
           if (!devices) return;
@@ -279,14 +387,37 @@ function mobilePageHtml(): string {
 export class PhonePairServer {
   private server: Server | null = null
   private listeners = new Set<Listener>()
+  private offerListeners = new Set<OfferListener>()
+  private resetListeners = new Set<() => void>()
   private status: PhonePairStatus = 'waiting'
   private activeToken: ActiveToken | null = null
   private usedTokens = new Set<string>()
   private sessionToken: string | null = null
+  private pendingAnswer: PhoneWebRtcSessionDescription | null = null
 
   subscribe(listener: Listener): () => void {
     this.listeners.add(listener)
     return () => this.listeners.delete(listener)
+  }
+
+  onWebRtcOffer(listener: OfferListener): () => void {
+    this.offerListeners.add(listener)
+    return () => this.offerListeners.delete(listener)
+  }
+
+  onWebRtcReset(listener: () => void): () => void {
+    this.resetListeners.add(listener)
+    return () => this.resetListeners.delete(listener)
+  }
+
+  private clearWebRtc(): void {
+    this.pendingAnswer = null
+    for (const listener of this.resetListeners) listener()
+  }
+
+  setWebRtcAnswer(answer: PhoneWebRtcSessionDescription): void {
+    if (answer.type !== 'answer' || !answer.sdp.trim()) return
+    this.pendingAnswer = answer
   }
 
   getSnapshot(): PhonePairSnapshot {
@@ -324,6 +455,7 @@ export class PhonePairServer {
   resetPairing(): PhonePairSnapshot {
     this.status = 'waiting'
     this.sessionToken = null
+    this.clearWebRtc()
     this.mintToken()
     this.emit()
     return this.getSnapshot()
@@ -423,12 +555,69 @@ export class PhonePairServer {
 
     if (this.status === 'connected') {
       this.status = 'offline'
+      this.clearWebRtc()
       this.emit()
       recordDiagnostic('info', 'phone-pair', 'Phone went offline')
     }
 
     res.writeHead(200, { 'Content-Type': 'application/json' })
     res.end(JSON.stringify({ ok: true, status: this.status }))
+  }
+
+  private sessionOk(session: string): boolean {
+    return Boolean(session && this.sessionToken && session === this.sessionToken)
+  }
+
+  private async handleWebRtcOffer(req: IncomingMessage, res: ServerResponse, body: string): Promise<void> {
+    let parsed: { session?: string; type?: string; sdp?: string }
+    try {
+      parsed = JSON.parse(body) as { session?: string; type?: string; sdp?: string }
+    } catch {
+      res.writeHead(400, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: false, message: 'Invalid request.' }))
+      return
+    }
+
+    const session = typeof parsed.session === 'string' ? parsed.session.trim() : ''
+    if (!this.sessionOk(session)) {
+      res.writeHead(403, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: false, message: 'Invalid session.' }))
+      return
+    }
+
+    const type = parsed.type === 'offer' ? 'offer' : null
+    const sdp = typeof parsed.sdp === 'string' ? parsed.sdp : ''
+    if (!type || !sdp.trim()) {
+      res.writeHead(400, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: false, message: 'Invalid offer.' }))
+      return
+    }
+
+    this.pendingAnswer = null
+    const offer: PhoneWebRtcSessionDescription = { type: 'offer', sdp }
+    for (const listener of this.offerListeners) listener(offer)
+    recordDiagnostic('info', 'phone-pair', 'Phone WebRTC offer received')
+
+    res.writeHead(200, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({ ok: true }))
+  }
+
+  private handleWebRtcAnswerQuery(url: URL, res: ServerResponse): void {
+    const session = url.searchParams.get('session')?.trim() ?? ''
+    if (!this.sessionOk(session)) {
+      res.writeHead(403, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: false, message: 'Invalid session.' }))
+      return
+    }
+
+    if (!this.pendingAnswer) {
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: true, answer: null }))
+      return
+    }
+
+    res.writeHead(200, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({ ok: true, answer: this.pendingAnswer }))
   }
 
   private onRequest(req: IncomingMessage, res: ServerResponse): void {
@@ -456,6 +645,21 @@ export class PhonePairServer {
           res.writeHead(500, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ ok: false, message: 'Server error.' }))
         })
+      return
+    }
+
+    if (req.method === 'POST' && url.pathname === PHONE_PAIR_WEBRTC_OFFER_PATH) {
+      void readBody(req)
+        .then((body) => this.handleWebRtcOffer(req, res, body))
+        .catch(() => {
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ ok: false, message: 'Server error.' }))
+        })
+      return
+    }
+
+    if (req.method === 'GET' && url.pathname === PHONE_PAIR_WEBRTC_ANSWER_PATH) {
+      this.handleWebRtcAnswerQuery(url, res)
       return
     }
 

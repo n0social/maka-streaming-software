@@ -22,6 +22,14 @@ import { publishWhip, type WhipPublisher } from './whip'
 import { OnboardingTour } from './onboarding'
 import { SetupWizard } from './onboarding-wizard'
 import { initMarketplace } from './marketplace'
+import {
+  getPhoneTracksSnapshot,
+  initPhoneTracks,
+  PHONE_CAMERA_DEVICE_VALUE,
+  PHONE_MIC_DEVICE_VALUE,
+  phoneTracksReady,
+  subscribePhoneTracks,
+} from './phone-tracks'
 import './onboarding.css'
 
 declare global {
@@ -96,6 +104,9 @@ let whipPublisher: WhipPublisher | null = null
 let goingLive = false
 let micMuted = false
 let labMode = false
+let pcCameraBeforePhone = ''
+let pcMicBeforePhone = ''
+let phoneTracksWereReady = false
 let audioCtx: AudioContext | null = null
 let analyser: AnalyserNode | null = null
 let meterRaf = 0
@@ -466,6 +477,24 @@ function stopStream(stream: MediaStream | null): void {
   for (const track of stream.getTracks()) track.stop()
 }
 
+function releaseCameraStream(): void {
+  if (!cameraStream) return
+  const phoneVideo = getPhoneTracksSnapshot().videoTrack
+  for (const track of cameraStream.getVideoTracks()) {
+    if (track !== phoneVideo) track.stop()
+  }
+  cameraStream = null
+}
+
+function releaseMicStream(): void {
+  if (!micStream) return
+  const phoneAudio = getPhoneTracksSnapshot().audioTrack
+  for (const track of micStream.getAudioTracks()) {
+    if (track !== phoneAudio) track.stop()
+  }
+  micStream = null
+}
+
 function selectedProfile(): StreamProfile {
   return profileSelect.value === '1080p' ? '1080p' : '720p'
 }
@@ -739,13 +768,69 @@ async function refreshAvDevices(): Promise<void> {
     micSelect.appendChild(opt)
   }
 
+  const snap = getPhoneTracksSnapshot()
+  if (phoneTracksReady(snap)) {
+    const phoneCam = document.createElement('option')
+    phoneCam.value = PHONE_CAMERA_DEVICE_VALUE
+    phoneCam.textContent = 'Phone'
+    cameraSelect.appendChild(phoneCam)
+    const phoneMic = document.createElement('option')
+    phoneMic.value = PHONE_MIC_DEVICE_VALUE
+    phoneMic.textContent = 'Phone'
+    micSelect.appendChild(phoneMic)
+  }
+
   if ([...cameraSelect.options].some((o) => o.value === camValue)) cameraSelect.value = camValue
   if ([...micSelect.options].some((o) => o.value === micValue)) micSelect.value = micValue
 }
 
+async function handlePhoneTracksConnected(): Promise<void> {
+  const camBefore = cameraSelect.value
+  const micBefore = micSelect.value
+  if (camBefore && camBefore !== PHONE_CAMERA_DEVICE_VALUE) {
+    pcCameraBeforePhone = camBefore
+  }
+  if (micBefore && micBefore !== PHONE_MIC_DEVICE_VALUE) {
+    pcMicBeforePhone = micBefore
+  }
+
+  await refreshAvDevices()
+
+  if (!camBefore) {
+    cameraSelect.value = PHONE_CAMERA_DEVICE_VALUE
+    lastCameraSelectValue = PHONE_CAMERA_DEVICE_VALUE
+    await applyCamera()
+  }
+}
+
+async function handlePhoneTracksDisconnected(): Promise<void> {
+  const onPhoneCam = cameraSelect.value === PHONE_CAMERA_DEVICE_VALUE
+  const onPhoneMic = micSelect.value === PHONE_MIC_DEVICE_VALUE
+
+  await refreshAvDevices()
+
+  if (onPhoneCam) {
+    const restore = pcCameraBeforePhone
+    cameraSelect.value =
+      restore && [...cameraSelect.options].some((o) => o.value === restore) ? restore : ''
+    lastCameraSelectValue = cameraSelect.value
+    await applyCamera()
+  }
+
+  if (onPhoneMic) {
+    const restore = pcMicBeforePhone
+    micSelect.value =
+      restore && [...micSelect.options].some((o) => o.value === restore) ? restore : ''
+    lastMicSelectValue = micSelect.value
+    await applyMic()
+  }
+
+  pcCameraBeforePhone = ''
+  pcMicBeforePhone = ''
+}
+
 async function applyCamera(): Promise<void> {
-  stopStream(cameraStream)
-  cameraStream = null
+  releaseCameraStream()
   setCameraPreview(false)
   layerCam.dataset.active = '0'
   layerCam.textContent = 'Webcam — off'
@@ -755,6 +840,22 @@ async function applyCamera(): Promise<void> {
   if (!deviceId) return
 
   try {
+    if (deviceId === PHONE_CAMERA_DEVICE_VALUE) {
+      const phoneVideo = getPhoneTracksSnapshot().videoTrack
+      if (!phoneVideo || phoneVideo.readyState !== 'live') {
+        throw new Error('Phone camera not available')
+      }
+      cameraStream = new MediaStream([phoneVideo])
+      pipVideo.srcObject = cameraStream
+      setCameraPreview(true, 'Webcam — Phone')
+      layerCam.dataset.active = '1'
+      layerEnabled.cam = true
+      syncLayerTracks()
+      void pipVideo.play().catch(() => undefined)
+      void pushSceneLayout()
+      return
+    }
+
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: false,
       video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -776,8 +877,7 @@ async function applyCamera(): Promise<void> {
 }
 
 async function applyMic(): Promise<void> {
-  stopStream(micStream)
-  micStream = null
+  releaseMicStream()
   stopMicMeter()
   layerMic.dataset.active = '0'
   layerMic.textContent = 'Mic — off'
@@ -787,6 +887,19 @@ async function applyMic(): Promise<void> {
   if (!deviceId) return
 
   try {
+    if (deviceId === PHONE_MIC_DEVICE_VALUE) {
+      const phoneAudio = getPhoneTracksSnapshot().audioTrack
+      if (!phoneAudio || phoneAudio.readyState !== 'live') {
+        throw new Error('Phone microphone not available')
+      }
+      micStream = new MediaStream([phoneAudio])
+      layerMic.dataset.active = '1'
+      layerMic.textContent = 'Mic — Phone'
+      startMicMeter(micStream)
+      syncLayerTracks()
+      return
+    }
+
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: { deviceId: { exact: deviceId } },
       video: false,
@@ -1378,10 +1491,31 @@ document.getElementById('btn-toggle-log')!.addEventListener('click', () => {
   ffmpegLog.hidden = !ffmpegLog.hidden
 })
 
+let lastCameraSelectValue = cameraSelect.value
+let lastMicSelectValue = micSelect.value
+
 cameraSelect.addEventListener('change', () => {
+  const prev = lastCameraSelectValue
+  lastCameraSelectValue = cameraSelect.value
+  if (
+    prev &&
+    prev !== PHONE_CAMERA_DEVICE_VALUE &&
+    cameraSelect.value === PHONE_CAMERA_DEVICE_VALUE
+  ) {
+    pcCameraBeforePhone = prev
+  }
   void applyCamera()
 })
 micSelect.addEventListener('change', () => {
+  const prev = lastMicSelectValue
+  lastMicSelectValue = micSelect.value
+  if (
+    prev &&
+    prev !== PHONE_MIC_DEVICE_VALUE &&
+    micSelect.value === PHONE_MIC_DEVICE_VALUE
+  ) {
+    pcMicBeforePhone = prev
+  }
   void applyMic()
 })
 destTwitch.addEventListener('change', () => {
@@ -1449,6 +1583,19 @@ void window.tabcast.getBrowserState().then((state) => {
 void refreshSources()
 void refreshAvDevices()
 void renderAddonPanels()
+
+initPhoneTracks(window.tabcast)
+subscribePhoneTracks((snap) => {
+  const ready = phoneTracksReady(snap)
+  if (ready && !phoneTracksWereReady) {
+    void handlePhoneTracksConnected()
+  } else if (!ready && phoneTracksWereReady) {
+    void handlePhoneTracksDisconnected()
+  } else if (ready) {
+    void refreshAvDevices()
+  }
+  phoneTracksWereReady = ready
+})
 
 window.tabcast.onAddonStudioToast((message) => {
   setDestError(null)

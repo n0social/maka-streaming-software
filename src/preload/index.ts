@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { RelaySnapshot } from '../shared/relay-snapshot'
+import type { PhonePairSnapshot, PhoneWebRtcSessionDescription } from '../shared/phone-pair'
 
 export type AppMode = 'studio' | 'browse'
 
@@ -182,6 +183,11 @@ export type TabcastBridge = {
   downloadUpdate: () => Promise<UpdateStatus>
   installUpdate: () => Promise<void>
   onUpdateStatus: (cb: (status: UpdateStatus) => void) => () => void
+  getPhonePair: () => Promise<PhonePairSnapshot>
+  onPhonePairUpdate: (cb: (snapshot: PhonePairSnapshot) => void) => () => void
+  onPhoneWebrtcOffer: (cb: (offer: PhoneWebRtcSessionDescription) => void) => () => void
+  onPhoneWebrtcReset: (cb: () => void) => () => void
+  submitPhoneWebrtcAnswer: (answer: PhoneWebRtcSessionDescription) => Promise<{ ok: boolean }>
 }
 
 const api: TabcastBridge = {
@@ -283,6 +289,23 @@ const api: TabcastBridge = {
     ipcRenderer.on('app:update-status', handler)
     return () => ipcRenderer.removeListener('app:update-status', handler)
   },
+  getPhonePair: () => ipcRenderer.invoke('phone-pair:get'),
+  onPhonePairUpdate: (cb) => {
+    const handler = (_event: Electron.IpcRendererEvent, snapshot: PhonePairSnapshot) => cb(snapshot)
+    ipcRenderer.on('phone-pair:update', handler)
+    return () => ipcRenderer.removeListener('phone-pair:update', handler)
+  },
+  onPhoneWebrtcOffer: (cb) => {
+    const handler = (_event: Electron.IpcRendererEvent, offer: PhoneWebRtcSessionDescription) => cb(offer)
+    ipcRenderer.on('phone-pair:webrtc-offer', handler)
+    return () => ipcRenderer.removeListener('phone-pair:webrtc-offer', handler)
+  },
+  onPhoneWebrtcReset: (cb) => {
+    const handler = () => cb()
+    ipcRenderer.on('phone-pair:webrtc-reset', handler)
+    return () => ipcRenderer.removeListener('phone-pair:webrtc-reset', handler)
+  },
+  submitPhoneWebrtcAnswer: (answer) => ipcRenderer.invoke('phone-pair:webrtc-answer', answer),
 }
 
 contextBridge.exposeInMainWorld('tabcast', api)
