@@ -117,3 +117,13 @@ MIT — see [LICENSE](./LICENSE).
 ## Repository
 
 `https://github.com/n0social/tabcast-browser`
+
+---
+
+## Support
+
+<p align="center">
+  <a href="https://donate.stripe.com/cNi5kE6F7e3xg3EfOagMw00">
+    <img src="docs/buy-me-a-coffee.png" alt="Buy Me a Coffee" width="217" />
+  </a>
+</p>
