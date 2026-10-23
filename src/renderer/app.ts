@@ -68,6 +68,11 @@ const relayLabel = document.getElementById('relay-label')!
 const relayStatus = document.getElementById('relay-status')!
 const relayVersion = document.getElementById('relay-version')!
 const relayError = document.getElementById('relay-error')!
+const relaySummaryPill = document.getElementById('relay-summary-pill')!
+const studioStatus = document.getElementById('studio-status')!
+const studioStatusText = document.getElementById('studio-status-text')!
+const streamInfoStatus = document.getElementById('stream-info-status')!
+const streamInfoLabel = document.getElementById('stream-info-label')!
 const sourceList = document.getElementById('source-list')!
 const programVideo = document.getElementById('program-video') as HTMLVideoElement
 const programEmpty = document.getElementById('program-empty')!
@@ -413,6 +418,47 @@ function liveReconnectStatusLine(): string {
   return `${label} — reconnecting (${liveRecoveryAttempts}/${MAX_LIVE_RETRY_ATTEMPTS})`
 }
 
+function renderStudioChrome(snapshot: RelaySnapshot): void {
+  const live = isSessionLive()
+  const lifecycle = snapshot.lifecycle
+
+  relaySummaryPill.textContent = lifecycleCopy[lifecycle] ?? lifecycle
+  relaySummaryPill.dataset.state =
+    live && liveReconnecting
+      ? 'starting'
+      : live && liveRecoveryExhausted
+        ? 'error'
+        : lifecycle
+
+  let statusState: string = 'warn'
+  let statusText = 'Relay offline — expand Relay to start'
+  if (live) {
+    statusState = 'live'
+    statusText = liveReconnecting ? 'Live — reconnecting encoder' : 'Live on air'
+  } else if (liveRecoveryExhausted) {
+    statusState = 'error'
+    statusText = 'Stream recovery failed — check Relay'
+  } else if (snapshot.error) {
+    statusState = 'error'
+    statusText = 'Relay needs attention'
+  } else if (lifecycle === 'ready') {
+    statusState = 'ready'
+    statusText = 'All systems nominal'
+  } else if (lifecycle === 'starting') {
+    statusState = 'warn'
+    statusText = 'Relay starting…'
+  } else if (lifecycle === 'live') {
+    statusState = 'ready'
+    statusText = 'Relay encoder ready'
+  }
+
+  studioStatus.dataset.state = statusState
+  studioStatusText.textContent = statusText
+
+  streamInfoStatus.dataset.live = live ? '1' : '0'
+  streamInfoLabel.textContent = live ? 'Live' : 'Offline'
+}
+
 function renderRelay(snapshot: RelaySnapshot): void {
   const live = isSessionLive()
   const relayUiState =
@@ -472,6 +518,8 @@ function renderRelay(snapshot: RelaySnapshot): void {
   if (lines?.length) {
     ffmpegLog.textContent = lines.join('\n')
   }
+
+  renderStudioChrome(snapshot)
 }
 
 type PlatformChipState = 'off' | 'idle' | 'armed' | 'live' | 'error'
