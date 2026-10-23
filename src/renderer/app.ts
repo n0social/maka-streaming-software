@@ -27,7 +27,8 @@ import {
   initPhoneTracks,
   PHONE_CAMERA_DEVICE_VALUE,
   PHONE_MIC_DEVICE_VALUE,
-  phoneTracksReady,
+  phoneHasAudioTrack,
+  phoneHasVideoTrack,
   subscribePhoneTracks,
 } from './phone-tracks'
 import './onboarding.css'
@@ -106,7 +107,8 @@ let micMuted = false
 let labMode = false
 let pcCameraBeforePhone = ''
 let pcMicBeforePhone = ''
-let phoneTracksWereReady = false
+let phoneVideoWasLive = false
+let phoneAudioWasLive = false
 let audioCtx: AudioContext | null = null
 let analyser: AnalyserNode | null = null
 let meterRaf = 0
@@ -769,11 +771,13 @@ async function refreshAvDevices(): Promise<void> {
   }
 
   const snap = getPhoneTracksSnapshot()
-  if (phoneTracksReady(snap)) {
+  if (phoneHasVideoTrack(snap)) {
     const phoneCam = document.createElement('option')
     phoneCam.value = PHONE_CAMERA_DEVICE_VALUE
     phoneCam.textContent = 'Phone'
     cameraSelect.appendChild(phoneCam)
+  }
+  if (phoneHasAudioTrack(snap)) {
     const phoneMic = document.createElement('option')
     phoneMic.value = PHONE_MIC_DEVICE_VALUE
     phoneMic.textContent = 'Phone'
@@ -784,14 +788,40 @@ async function refreshAvDevices(): Promise<void> {
   if ([...micSelect.options].some((o) => o.value === micValue)) micSelect.value = micValue
 }
 
-async function handlePhoneTracksConnected(): Promise<void> {
+function syncWhipAvTracks(): void {
+  if (!whipPublisher) return
+  const pc = whipPublisher.pc
+  const gameplayIds = new Set(programStream?.getVideoTracks().map((t) => t.id) ?? [])
+  const browserIds = new Set(browserStream?.getVideoTracks().map((t) => t.id) ?? [])
+
+  let webcamSender: RTCRtpSender | null = null
+  let micSender: RTCRtpSender | null = null
+  for (const sender of pc.getSenders()) {
+    const track = sender.track
+    if (!track) continue
+    if (track.kind === 'video' && !gameplayIds.has(track.id) && !browserIds.has(track.id)) {
+      webcamSender = sender
+    }
+    if (track.kind === 'audio') micSender = sender
+  }
+
+  const nextWebcam =
+    layerEnabled.cam && cameraStream
+      ? cameraStream.getVideoTracks().find((t) => t.readyState === 'live') ?? null
+      : null
+  const nextMic =
+    layerEnabled.mic && micStream
+      ? micStream.getAudioTracks().find((t) => t.readyState === 'live') ?? null
+      : null
+
+  if (webcamSender) void webcamSender.replaceTrack(nextWebcam).catch(() => undefined)
+  if (micSender) void micSender.replaceTrack(nextMic).catch(() => undefined)
+}
+
+async function handlePhoneVideoAvailable(): Promise<void> {
   const camBefore = cameraSelect.value
-  const micBefore = micSelect.value
   if (camBefore && camBefore !== PHONE_CAMERA_DEVICE_VALUE) {
     pcCameraBeforePhone = camBefore
-  }
-  if (micBefore && micBefore !== PHONE_MIC_DEVICE_VALUE) {
-    pcMicBeforePhone = micBefore
   }
 
   await refreshAvDevices()
@@ -803,30 +833,43 @@ async function handlePhoneTracksConnected(): Promise<void> {
   }
 }
 
-async function handlePhoneTracksDisconnected(): Promise<void> {
+async function handlePhoneAudioAvailable(): Promise<void> {
+  const micBefore = micSelect.value
+  if (micBefore && micBefore !== PHONE_MIC_DEVICE_VALUE) {
+    pcMicBeforePhone = micBefore
+  }
+
+  await refreshAvDevices()
+}
+
+async function handlePhoneVideoLost(): Promise<void> {
   const onPhoneCam = cameraSelect.value === PHONE_CAMERA_DEVICE_VALUE
+
+  await refreshAvDevices()
+
+  if (!onPhoneCam) return
+
+  const restore = pcCameraBeforePhone
+  cameraSelect.value =
+    restore && [...cameraSelect.options].some((o) => o.value === restore) ? restore : ''
+  lastCameraSelectValue = cameraSelect.value
+  await applyCamera()
+  syncWhipAvTracks()
+}
+
+async function handlePhoneAudioLost(): Promise<void> {
   const onPhoneMic = micSelect.value === PHONE_MIC_DEVICE_VALUE
 
   await refreshAvDevices()
 
-  if (onPhoneCam) {
-    const restore = pcCameraBeforePhone
-    cameraSelect.value =
-      restore && [...cameraSelect.options].some((o) => o.value === restore) ? restore : ''
-    lastCameraSelectValue = cameraSelect.value
-    await applyCamera()
-  }
+  if (!onPhoneMic) return
 
-  if (onPhoneMic) {
-    const restore = pcMicBeforePhone
-    micSelect.value =
-      restore && [...micSelect.options].some((o) => o.value === restore) ? restore : ''
-    lastMicSelectValue = micSelect.value
-    await applyMic()
-  }
-
-  pcCameraBeforePhone = ''
-  pcMicBeforePhone = ''
+  const restore = pcMicBeforePhone
+  micSelect.value =
+    restore && [...micSelect.options].some((o) => o.value === restore) ? restore : ''
+  lastMicSelectValue = micSelect.value
+  await applyMic()
+  syncWhipAvTracks()
 }
 
 async function applyCamera(): Promise<void> {
@@ -853,6 +896,7 @@ async function applyCamera(): Promise<void> {
       syncLayerTracks()
       void pipVideo.play().catch(() => undefined)
       void pushSceneLayout()
+      syncWhipAvTracks()
       return
     }
 
@@ -868,6 +912,7 @@ async function applyCamera(): Promise<void> {
     syncLayerTracks()
     void pipVideo.play().catch(() => undefined)
     void pushSceneLayout()
+    syncWhipAvTracks()
   } catch (err) {
     setCameraPreview(false)
     pipEmpty.hidden = false
@@ -897,6 +942,7 @@ async function applyMic(): Promise<void> {
       layerMic.textContent = 'Mic — Phone'
       startMicMeter(micStream)
       syncLayerTracks()
+      syncWhipAvTracks()
       return
     }
 
@@ -909,6 +955,7 @@ async function applyMic(): Promise<void> {
     layerMic.textContent = `Mic — ${micSelect.selectedOptions[0]?.textContent ?? 'on'}`
     startMicMeter(stream)
     syncLayerTracks()
+    syncWhipAvTracks()
   } catch (err) {
     layerMic.textContent =
       err instanceof Error ? `Mic — ${err.message}` : 'Mic — failed'
@@ -1586,15 +1633,19 @@ void renderAddonPanels()
 
 initPhoneTracks(window.tabcast)
 subscribePhoneTracks((snap) => {
-  const ready = phoneTracksReady(snap)
-  if (ready && !phoneTracksWereReady) {
-    void handlePhoneTracksConnected()
-  } else if (!ready && phoneTracksWereReady) {
-    void handlePhoneTracksDisconnected()
-  } else if (ready) {
-    void refreshAvDevices()
-  }
-  phoneTracksWereReady = ready
+  const hasVideo = phoneHasVideoTrack(snap)
+  const hasAudio = phoneHasAudioTrack(snap)
+
+  if (hasVideo && !phoneVideoWasLive) void handlePhoneVideoAvailable()
+  else if (!hasVideo && phoneVideoWasLive) void handlePhoneVideoLost()
+
+  if (hasAudio && !phoneAudioWasLive) void handlePhoneAudioAvailable()
+  else if (!hasAudio && phoneAudioWasLive) void handlePhoneAudioLost()
+
+  if (hasVideo || hasAudio) void refreshAvDevices()
+
+  phoneVideoWasLive = hasVideo
+  phoneAudioWasLive = hasAudio
 })
 
 window.tabcast.onAddonStudioToast((message) => {
