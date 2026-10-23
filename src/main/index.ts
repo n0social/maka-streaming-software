@@ -26,7 +26,8 @@ import {
 import { isAllowedBrowseUrl } from '../shared/browse-url'
 import { BROWSE_CAPTURE_SOURCE_ID } from '../shared/capture'
 import { coerceSettings, isStudioMediaPermission, isValidPresetId, isValidTabId } from './security'
-import { isValidAddonId, isValidCatalogId } from '../shared/addon-api'
+import { addonHasPermission, isValidAddonId, isValidCatalogId } from '../shared/addon-api'
+import { PHONE_CAM_ADDON_ID } from '../shared/phone-pair'
 import { assertStudioSender, ipcTry, sanitizeChatUrlInput, sanitizeNavigateInput } from './ipc-guards'
 import type { AddonFetchInit } from '../shared/addon-runtime'
 import { ADDON_PROTOCOL } from '../shared/addon-runtime'
@@ -382,9 +383,24 @@ function broadcastRelay(): void {
 }
 
 function broadcastPhonePair(): void {
-  const snapshot = phonePair.getSnapshot()
-  for (const win of BrowserWindow.getAllWindows()) {
-    if (!win.isDestroyed()) win.webContents.send('phone-pair:update', snapshot)
+  addonRuntime.broadcastPhonePair(addonHost, phonePair.getSnapshot())
+}
+
+function isPhonePairAddonActive(): boolean {
+  const manifest = addonHost.getManifest(PHONE_CAM_ADDON_ID)
+  return Boolean(manifest && addonHost.isAddonActive(PHONE_CAM_ADDON_ID))
+}
+
+async function syncPhonePairServer(): Promise<void> {
+  if (isPhonePairAddonActive()) {
+    try {
+      await phonePair.start()
+    } catch (err) {
+      recordDiagnostic('error', 'phone-pair', 'Phone pair server failed to start', err)
+    }
+  } else {
+    phonePair.unpair()
+    await phonePair.stop()
   }
 }
 
@@ -405,17 +421,25 @@ function addonRuntimeContext(event: Electron.IpcMainInvokeEvent) {
   return { addonId, manifest }
 }
 
+function phonePairAddonContext(event: Electron.IpcMainInvokeEvent) {
+  const ctx = addonRuntimeContext(event)
+  if (!ctx) return null
+  if (ctx.addonId !== PHONE_CAM_ADDON_ID) return null
+  if (!addonHasPermission(ctx.manifest, 'device.phone-pair')) return null
+  return ctx
+}
+
 function registerIpc(): void {
-  ipcMain.handle('phone-pair:get', (event) => {
-    if (!studioOk(event)) return phonePair.getSnapshot()
+  ipcMain.handle('addon-runtime:phone-pair:get', (event) => {
+    if (!phonePairAddonContext(event)) throw new Error('Unauthorized')
     return phonePair.getSnapshot()
   })
-  ipcMain.handle('phone-pair:refresh', (event) => {
-    if (!studioOk(event)) return phonePair.getSnapshot()
+  ipcMain.handle('addon-runtime:phone-pair:refresh', (event) => {
+    if (!phonePairAddonContext(event)) throw new Error('Unauthorized')
     return phonePair.refresh()
   })
-  ipcMain.handle('phone-pair:unpair', (event) => {
-    if (!studioOk(event)) return phonePair.getSnapshot()
+  ipcMain.handle('addon-runtime:phone-pair:unpair', (event) => {
+    if (!phonePairAddonContext(event)) throw new Error('Unauthorized')
     return phonePair.unpair()
   })
 
@@ -742,34 +766,40 @@ function registerIpc(): void {
   ipcMain.handle('addons:install', async (event, catalogId: unknown) => {
     if (!studioOk(event)) return { ok: false, message: 'Unauthorized' }
     if (!isValidCatalogId(catalogId)) return { ok: false, message: 'Invalid catalog id' }
-    return ipcTry('ipc.addons.install', () => addonHost.install(catalogId), {
+    const result = await ipcTry('ipc.addons.install', () => addonHost.install(catalogId), {
       ok: false,
       message: 'Install failed',
     })
+    if (result.ok) await syncPhonePairServer()
+    return result
   })
 
-  ipcMain.handle('addons:uninstall', (event, addonId: unknown) => {
+  ipcMain.handle('addons:uninstall', async (event, addonId: unknown) => {
     if (!studioOk(event)) return { ok: false, message: 'Unauthorized' }
     if (!isValidAddonId(addonId)) return { ok: false, message: 'Invalid addon id' }
-    return ipcTry('ipc.addons.uninstall', () => addonHost.uninstall(addonId), {
+    const result = await ipcTry('ipc.addons.uninstall', () => addonHost.uninstall(addonId), {
       ok: false,
       message: 'Uninstall failed',
     })
+    if (result.ok) await syncPhonePairServer()
+    return result
   })
 
-  ipcMain.handle('addons:set-enabled', (event, addonId: unknown, enabled: unknown) => {
+  ipcMain.handle('addons:set-enabled', async (event, addonId: unknown, enabled: unknown) => {
     if (!studioOk(event)) return { ok: false, message: 'Unauthorized' }
     if (!isValidAddonId(addonId)) return { ok: false, message: 'Invalid addon id' }
-    return ipcTry(
+    const result = await ipcTry(
       'ipc.addons.set-enabled',
       () => addonHost.setEnabled(addonId, Boolean(enabled)),
       { ok: false, message: 'Update failed' },
     )
+    if (result.ok) await syncPhonePairServer()
+    return result
   })
 
-  ipcMain.handle('addons:reload', (event) => {
+  ipcMain.handle('addons:reload', async (event) => {
     if (!studioOk(event)) return false
-    return ipcTry(
+    const ok = await ipcTry(
       'ipc.addons.reload',
       () => {
         addonHost.reload()
@@ -777,6 +807,8 @@ function registerIpc(): void {
       },
       false,
     )
+    if (ok) await syncPhonePairServer()
+    return ok
   })
 
   ipcMain.handle(
@@ -972,9 +1004,7 @@ app.whenReady().then(() => {
   initAutoUpdate(() => mainWindow)
   relay.subscribe(() => broadcastRelay())
   phonePair.subscribe(() => broadcastPhonePair())
-  void phonePair.start().catch((err) => {
-    recordDiagnostic('error', 'phone-pair', 'Phone pair server failed to start', err)
-  })
+  void syncPhonePairServer()
   onDiagnostic((event) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('diagnostics:event', event)

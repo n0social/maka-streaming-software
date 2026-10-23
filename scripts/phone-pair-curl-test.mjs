@@ -1,5 +1,6 @@
 /**
  * Smoke-test phone pair HTTP contract (no Electron).
+ * Mirrors PhonePairServer paths and response shapes.
  * Usage: node scripts/phone-pair-curl-test.mjs
  */
 import { createServer } from 'node:http'

@@ -16,6 +16,7 @@ export const ADDON_PERMISSIONS = [
   'relay.config.write',
   'network.fetch',
   'live.events',
+  'device.phone-pair',
 ] as const
 
 export type AddonPermission = (typeof ADDON_PERMISSIONS)[number]

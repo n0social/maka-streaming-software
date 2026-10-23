@@ -1,5 +1,6 @@
 import type { CatalogEntry } from './addon-types'
 import { HELLO_TABCAST_FILES } from './hello-tabcast-files'
+import { PHONE_CAM_FILES } from './phone-cam-files'
 
 /** Curated marketplace catalog (bundled with the app). Remote feed can replace this in 0.4+. */
 export const MARKETPLACE_CATALOG: CatalogEntry[] = [
@@ -145,6 +146,24 @@ export const MARKETPLACE_CATALOG: CatalogEntry[] = [
         ],
       },
     },
+  },
+  {
+    catalogId: 'com.tabcast.phone-cam',
+    featured: true,
+    manifest: {
+      id: 'com.tabcast.phone-cam',
+      name: 'Phone camera',
+      version: '0.1.0',
+      apiVersion: 1,
+      author: 'Tabcast',
+      category: 'utility',
+      description:
+        'Pair a phone on the same Wi‑Fi via QR — camera preview on the device (LAN only; does not feed the program monitor).',
+      entry: 'index.html',
+      permissions: ['device.phone-pair'],
+      hooks: [],
+    },
+    files: PHONE_CAM_FILES,
   },
   {
     catalogId: 'com.example.hello-tabcast',
