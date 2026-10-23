@@ -12,14 +12,10 @@ import { validateRelayStreamKeys, KICK_RTMP_URL } from '../shared/stream-keys'
 import {
   authHeaders,
   defaultSceneLayout,
-  liveRetryBackoffMs,
-  MAX_LIVE_RETRY_ATTEMPTS,
   postRelayConfig,
   postSceneLayout,
-  relayNeedsLiveBootstrap,
   stopRelayStream,
   verifyRelayConfig,
-  waitForRelayReady,
   whipUrlFromHealth,
 } from './relay-client'
 import { publishWhip, type WhipPublisher } from './whip'
@@ -442,61 +438,6 @@ function bindProgramStream(stream: MediaStream): void {
   bindGameplayStream(stream)
 }
 
-function onWhipConnectionState(state: RTCPeerConnectionState): void {
-  if (state === 'connected') {
-    whipReconnectAttempts = 0
-    whipReconnecting = false
-    return
-  }
-  if (state === 'failed' || state === 'disconnected') {
-    if (goingLive || whipReconnecting || !whipPublisher) return
-    void scheduleWhipReconnect(state)
-  }
-}
-
-async function scheduleWhipReconnect(reason: string): Promise<void> {
-  if (whipReconnectAttempts >= MAX_WHIP_RECONNECT) {
-    setDestError(
-      `WHIP connection ${reason}. Auto-reconnect failed — tap End Live and try again.`,
-    )
-    return
-  }
-
-  whipReconnecting = true
-  whipReconnectAttempts += 1
-  destHint.textContent = `WHIP dropped (${reason}). Reconnecting ${whipReconnectAttempts}/${MAX_WHIP_RECONNECT}…`
-
-  await new Promise((resolve) => setTimeout(resolve, 1200 * whipReconnectAttempts))
-
-  try {
-    if (!programStream) {
-      throw new Error('Program source missing — cannot reconnect WHIP.')
-    }
-
-    const snapshot = await window.tabcast.getRelay()
-    if (!snapshot.health) {
-      throw new Error(snapshot.error ?? 'Relay not ready for WHIP reconnect.')
-    }
-
-    if (whipPublisher) {
-      await whipPublisher.close().catch(() => undefined)
-      whipPublisher = null
-    }
-
-    whipPublisher = await attachWhipPublisher(snapshot.health)
-    await window.tabcast.refreshRelay()
-    destHint.textContent = 'Live — WHIP reconnected.'
-    setDestError(null)
-  } catch (err) {
-    setDestError(err instanceof Error ? err.message : String(err))
-    if (whipReconnectAttempts < MAX_WHIP_RECONNECT) {
-      void scheduleWhipReconnect(reason)
-    }
-  } finally {
-    whipReconnecting = false
-  }
-}
-
 async function attachWhipPublisher(health: RelayHealth): Promise<WhipPublisher> {
   if (!programStream) {
     throw new Error('Select a gameplay source before going live.')
@@ -510,7 +451,6 @@ async function attachWhipPublisher(health: RelayHealth): Promise<WhipPublisher> 
       mic: layerEnabled.mic ? micStream : null,
     },
     authHeaders(health),
-    onWhipConnectionState,
   )
 }
 
@@ -1081,9 +1021,6 @@ async function endLive(): Promise<void> {
   btnGoLive.disabled = true
   btnGoLive.textContent = 'Ending…'
   setDestError(null)
-  whipReconnectAttempts = 0
-  whipReconnecting = false
-
   try {
     if (whipPublisher) {
       await whipPublisher.close()
@@ -1163,7 +1100,6 @@ async function goLive(): Promise<void> {
     await pushSceneLayout()
 
     destHint.textContent = 'Publishing WHIP to local relay…'
-    whipReconnectAttempts = 0
 
     whipPublisher = await attachWhipPublisher(snapshot.health)
     await window.tabcast.refreshRelay()
@@ -1522,8 +1458,6 @@ async function teardownLiveSession(): Promise<void> {
     if (snapshot.health && snapshot.lifecycle === 'live') {
       await stopRelayStream(snapshot.health).catch(() => undefined)
     }
-    whipReconnectAttempts = 0
-    whipReconnecting = false
     stopStream(programStream)
     programStream = null
     captureKind = null
