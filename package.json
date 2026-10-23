@@ -1,6 +1,6 @@
 {
   "name": "tabcast-browser",
-  "version": "0.2.0",
+  "version": "0.2.2",
   "private": false,
   "description": "Maka — Chromium + local relay for game capture and multi-platform streaming",
   "author": "n0social",
@@ -97,7 +97,7 @@
       {
         "provider": "github",
         "owner": "n0social",
-        "repo": "Maka",
+        "repo": "tabcast-browser",
         "releaseType": "release"
       }
     ]
