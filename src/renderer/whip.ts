@@ -109,8 +109,16 @@ export async function publishWhip(
 ): Promise<WhipPublisher> {
   const pc = new RTCPeerConnection({ iceServers: [] })
 
-  pc.onconnectionstatechange = () => {
+  const notifyConnection = () => {
     onConnectionStateChange?.(pc.connectionState)
+  }
+
+  pc.onconnectionstatechange = notifyConnection
+  pc.oniceconnectionstatechange = () => {
+    const ice = pc.iceConnectionState
+    if (ice === 'failed' || ice === 'disconnected') {
+      notifyConnection()
+    }
   }
 
   attachWhipSources(pc, sources)

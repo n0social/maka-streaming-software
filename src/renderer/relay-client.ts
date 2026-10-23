@@ -1,12 +1,16 @@
+import type { RelaySnapshot } from '../shared/relay-snapshot'
 import {
   DEFAULT_STREAM_PROFILE,
   RELAY_BASE_URL,
   RELAY_CONFIG_PATH,
+  RELAY_HEALTH_PATH,
   RELAY_SCENE_PATH,
+  RELAY_STATUS_PATH,
   RELAY_STOP_PATH,
   RELAY_VERIFY_PATH,
   type RelayConfigRequest,
   type RelayHealth,
+  type RelayStatusResponse,
   type RelayVerifyResponse,
   type SceneLayout,
   type StreamProfile,
@@ -163,4 +167,72 @@ export function defaultSceneLayout(opts: {
 /** Always publish to the local sidecar — never the old web stream URL. */
 export function whipUrlFromHealth(_health: RelayHealth): string {
   return `${RELAY_BASE_URL}/whip`
+}
+
+export {
+  isFatalLiveRecoveryReason,
+  liveRecoveryAttemptCap,
+  liveRecoveryReasonLabel,
+  liveRetryBackoffMs,
+  MAX_LIVE_RETRY_ATTEMPTS,
+} from '../shared/live-retry'
+
+export async function fetchRelayStatus(health: RelayHealth): Promise<RelayStatusResponse | null> {
+  try {
+    const res = await relayFetch(`${RELAY_BASE_URL}${RELAY_STATUS_PATH}`, {
+      headers: { Accept: 'application/json', ...authHeaders(health) },
+    })
+    if (!res.ok) return null
+    return (await res.json()) as RelayStatusResponse
+  } catch {
+    return null
+  }
+}
+
+/** True when the relay process likely lost WHIP/scene state (e.g. after restart). */
+export function relayNeedsLiveBootstrap(snapshot: RelaySnapshot): boolean {
+  if (!snapshot.health) return true
+  if (snapshot.lifecycle === 'stopped') return true
+  if (snapshot.status?.whipSessionActive === false) return true
+  if (snapshot.status?.status === 'idle' && snapshot.lifecycle === 'ready') return true
+  return false
+}
+
+export async function waitForRelayReady(
+  readSnapshot: () => Promise<RelaySnapshot>,
+  tick: () => Promise<void>,
+  opts: { timeoutMs?: number; pollMs?: number } = {},
+): Promise<RelaySnapshot> {
+  const timeoutMs = opts.timeoutMs ?? 45_000
+  const pollMs = opts.pollMs ?? 500
+  const deadline = Date.now() + timeoutMs
+
+  while (Date.now() < deadline) {
+    await tick().catch(() => undefined)
+    const snapshot = await readSnapshot()
+    if (snapshot.health && (snapshot.lifecycle === 'ready' || snapshot.lifecycle === 'live')) {
+      return snapshot
+    }
+    if (
+      snapshot.error &&
+      snapshot.lifecycle === 'error' &&
+      snapshot.error.includes('auto-restart exhausted')
+    ) {
+      return snapshot
+    }
+    await new Promise((r) => setTimeout(r, pollMs))
+  }
+
+  throw new Error('Relay did not become ready during reconnect wait.')
+}
+
+export async function pingRelayHealth(): Promise<boolean> {
+  try {
+    const res = await relayFetch(`${RELAY_BASE_URL}${RELAY_HEALTH_PATH}`, {
+      headers: { Accept: 'application/json' },
+    })
+    return res.ok
+  } catch {
+    return false
+  }
 }

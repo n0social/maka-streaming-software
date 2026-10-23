@@ -18,14 +18,14 @@ import {
   type RelayStatusResponse,
 } from '../shared/tabcast'
 import type { RelaySnapshot } from '../shared/relay-snapshot'
+import { MAX_LIVE_RETRY_ATTEMPTS, liveRetryBackoffMs } from '../shared/live-retry'
 import { recordDiagnostic } from './diagnostics'
 
 const execFileAsync = promisify(execFile)
 
 const RELAY_MIN_BYTES = 200_000_000
 const POLL_MS = 1500
-const MAX_AUTO_RESTARTS = 8
-const BASE_BACKOFF_MS = 1_200
+const MAX_AUTO_RESTARTS = MAX_LIVE_RETRY_ATTEMPTS
 
 type RelayManifest = {
   size?: number
@@ -649,7 +649,7 @@ export class RelayManager {
     }
 
     this.restartCount += 1
-    const delay = Math.min(20_000, BASE_BACKOFF_MS * 2 ** Math.min(this.restartCount - 1, 4))
+    const delay = liveRetryBackoffMs(this.restartCount - 1)
     recordDiagnostic('warn', 'relay.restart-scheduled', `Restart #${this.restartCount} in ${delay}ms`, undefined, {
       reason,
     })

@@ -12,10 +12,17 @@ import { validateRelayStreamKeys, KICK_RTMP_URL } from '../shared/stream-keys'
 import {
   authHeaders,
   defaultSceneLayout,
+  isFatalLiveRecoveryReason,
+  liveRecoveryAttemptCap,
+  liveRecoveryReasonLabel,
+  liveRetryBackoffMs,
+  MAX_LIVE_RETRY_ATTEMPTS,
   postRelayConfig,
   postSceneLayout,
+  relayNeedsLiveBootstrap,
   stopRelayStream,
   verifyRelayConfig,
+  waitForRelayReady,
   whipUrlFromHealth,
 } from './relay-client'
 import { publishWhip, type WhipPublisher } from './whip'
@@ -97,6 +104,8 @@ let captureKind: 'desktop' | 'browse' | null = null
 let liveRecoveryAttempts = 0
 let liveReconnecting = false
 let liveRecoveryExhausted = false
+let liveRecoveryReason: string | null = null
+let liveRecoveryFatal = false
 let sessionLiveIntent = false
 let liveReconnectTimer: ReturnType<typeof setTimeout> | null = null
 let liveReconnectRunId = 0
@@ -364,28 +373,83 @@ async function pushSceneLayout(): Promise<void> {
   await postSceneLayout(snapshot.health, layout)
 }
 
+function isSessionLive(): boolean {
+  return sessionLiveIntent || Boolean(whipPublisher)
+}
+
+function clearLiveReconnectTimer(): void {
+  if (liveReconnectTimer) {
+    clearTimeout(liveReconnectTimer)
+    liveReconnectTimer = null
+  }
+}
+
+function cancelLiveRecovery(): void {
+  clearLiveReconnectTimer()
+  liveReconnectRunId += 1
+  liveReconnecting = false
+  liveRecoveryReason = null
+  liveRecoveryFatal = false
+}
+
+function liveReconnectStatusLine(): string {
+  const reason = liveRecoveryReason ?? 'relay:recover'
+  const label = liveRecoveryReasonLabel(reason)
+  return `${label} — reconnecting (${liveRecoveryAttempts}/${MAX_LIVE_RETRY_ATTEMPTS})`
+}
+
 function renderRelay(snapshot: RelaySnapshot): void {
-  relayChip.dataset.state = snapshot.lifecycle
-  relayLabel.textContent = lifecycleCopy[snapshot.lifecycle]
-  relayStatus.textContent = snapshot.status?.status ?? snapshot.lifecycle
+  const live = isSessionLive()
+  const relayUiState =
+    live && liveReconnecting
+      ? 'starting'
+      : live && liveRecoveryExhausted
+        ? 'error'
+        : snapshot.lifecycle
+
+  relayChip.dataset.state = relayUiState
+  if (live && liveReconnecting) {
+    relayLabel.textContent = liveReconnectStatusLine()
+  } else if (live && liveRecoveryExhausted) {
+    const label = liveRecoveryReasonLabel(liveRecoveryReason ?? 'relay:recover')
+    relayLabel.textContent = liveRecoveryFatal
+      ? `${label} — ingest rejected`
+      : `${label} — reconnect failed`
+  } else {
+    relayLabel.textContent = lifecycleCopy[snapshot.lifecycle]
+  }
+  relayStatus.textContent =
+    live && liveReconnecting ? 'reconnecting' : (snapshot.status?.status ?? snapshot.lifecycle)
   relayVersion.textContent = snapshot.health ? `v${snapshot.health.version}` : '—'
   renderPlatformStatus(snapshot)
 
-  if (snapshot.error) {
+  if (live && liveRecoveryExhausted) {
+    relayError.hidden = false
+    const label = liveRecoveryReasonLabel(liveRecoveryReason ?? 'relay:recover')
+    relayError.textContent = liveRecoveryFatal
+      ? `${label} — stream key or ingest rejected (auto-retry stopped).`
+      : `${label} — could not restore the stream after ${MAX_LIVE_RETRY_ATTEMPTS} attempts.`
+  } else if (snapshot.error && !(live && liveReconnecting)) {
     relayError.hidden = false
     relayError.textContent = snapshot.error
-  } else {
+  } else if (!liveRecoveryExhausted) {
     relayError.hidden = true
     relayError.textContent = ''
   }
 
-  if (snapshot.restarts && snapshot.restarts > 0 && snapshot.lifecycle !== 'ready' && snapshot.lifecycle !== 'live') {
+  if (
+    snapshot.restarts &&
+    snapshot.restarts > 0 &&
+    snapshot.lifecycle !== 'ready' &&
+    snapshot.lifecycle !== 'live' &&
+    !(live && liveReconnecting)
+  ) {
     relayLabel.textContent = `${lifecycleCopy[snapshot.lifecycle]} · r${snapshot.restarts}`
   }
 
-  const live = snapshot.lifecycle === 'live' || Boolean(whipPublisher)
   btnGoLive.dataset.live = live ? '1' : '0'
-  if (!goingLive) {
+  btnGoLive.dataset.exhausted = liveRecoveryExhausted ? '1' : '0'
+  if (!goingLive && !liveReconnecting) {
     btnGoLive.textContent = live ? 'End Live' : 'Go Live'
   }
 
@@ -411,7 +475,7 @@ function platformChipState(
 }
 
 function renderPlatformStatus(snapshot: RelaySnapshot): void {
-  const live = snapshot.lifecycle === 'live' || Boolean(whipPublisher)
+  const live = isSessionLive()
   const platforms = snapshot.status?.platforms
 
   platTwitch.dataset.state = platformChipState(
@@ -438,6 +502,249 @@ function bindProgramStream(stream: MediaStream): void {
   bindGameplayStream(stream)
 }
 
+function whipPeerNeedsRecovery(): boolean {
+  if (!whipPublisher) return sessionLiveIntent
+  const state = whipPublisher.pc.connectionState
+  return state === 'failed' || state === 'disconnected' || state === 'closed'
+}
+
+function relaySnapshotNeedsRecovery(snapshot: RelaySnapshot): boolean {
+  if (!sessionLiveIntent || goingLive || liveRecoveryExhausted) return false
+  if (liveReconnecting || liveReconnectTimer) return false
+
+  const whipBad = whipPeerNeedsRecovery()
+
+  if (snapshot.lifecycle === 'starting') {
+    return whipBad
+  }
+
+  if (snapshot.status?.status === 'error') return true
+  if (!snapshot.health && snapshot.lifecycle !== 'stopped') return whipBad || snapshot.lifecycle === 'error'
+  if (snapshot.lifecycle === 'error' && !snapshot.error?.includes('auto-restart exhausted')) {
+    return true
+  }
+  if (relayNeedsLiveBootstrap(snapshot)) return true
+  return whipBad
+}
+
+function onWhipConnectionState(state: RTCPeerConnectionState): void {
+  if (!sessionLiveIntent) return
+  if (state === 'connected') {
+    liveRecoveryAttempts = 0
+    liveRecoveryExhausted = false
+    liveRecoveryFatal = false
+    liveReconnecting = false
+    liveRecoveryReason = null
+    setDestError(null)
+    void window.tabcast.getRelay().then(renderRelay)
+    return
+  }
+  if (state === 'failed' || state === 'disconnected' || state === 'closed') {
+    if (goingLive || liveReconnecting) return
+    queueLiveRecovery(`whip:${state}`)
+  }
+}
+
+function enabledDestinationKeysEmpty(): boolean {
+  if (destTwitch.checked && !twitchKey.value.trim()) return true
+  if (destYoutube.checked && !youtubeKey.value.trim()) return true
+  if (destCustom.checked && (!customRtmpUrl.value.trim() || !customRtmpKey.value.trim())) {
+    return true
+  }
+  return false
+}
+
+function queueLiveRecovery(reason: string, detail?: string): void {
+  if (!sessionLiveIntent || goingLive || liveRecoveryExhausted) return
+  if (liveReconnecting || liveReconnectTimer) return
+
+  if (isFatalLiveRecoveryReason(reason, detail)) {
+    markLiveRecoveryFatal(reason, detail)
+    return
+  }
+
+  const cap = liveRecoveryAttemptCap(reason, detail)
+  if (liveRecoveryAttempts >= cap) {
+    markLiveRecoveryExhausted(reason, detail)
+    return
+  }
+
+  liveRecoveryReason = reason
+  const delay = liveRetryBackoffMs(liveRecoveryAttempts)
+  liveReconnectTimer = setTimeout(() => {
+    liveReconnectTimer = null
+    void runLiveRecovery(reason)
+  }, delay)
+}
+
+async function repostRelayConfigIfNeeded(snapshot: RelaySnapshot): Promise<RelaySnapshot> {
+  if (!snapshot.health || !relayNeedsLiveBootstrap(snapshot)) {
+    return snapshot
+  }
+
+  const twitch = destTwitch.checked ? twitchKey.value : ''
+  const youtube = destYoutube.checked ? youtubeKey.value : ''
+  const customUrl = destCustom.checked ? customRtmpUrl.value.trim() : ''
+  const customKey = destCustom.checked ? customRtmpKey.value.trim() : ''
+  await postRelayConfig(snapshot.health, {
+    twitchKey: twitch,
+    youtubeKey: youtube,
+    customRtmpUrl: destCustom.checked ? customUrl : undefined,
+    customRtmpKey: destCustom.checked ? customKey : undefined,
+    profile: selectedProfile(),
+  })
+  return snapshot
+}
+
+async function runLiveRecovery(reason: string): Promise<void> {
+  if (!sessionLiveIntent || goingLive || liveRecoveryExhausted) return
+
+  const runId = ++liveReconnectRunId
+  liveRecoveryAttempts += 1
+  liveReconnecting = true
+  liveRecoveryReason = reason
+  setDestError(null)
+  destHint.textContent = liveReconnectStatusLine()
+  void window.tabcast.getRelay().then(renderRelay)
+
+  try {
+    if (!programStream) {
+      throw new Error('Program source missing — cannot reconnect live session.')
+    }
+
+    if (whipPublisher) {
+      await whipPublisher.close().catch(() => undefined)
+      whipPublisher = null
+    }
+
+    let snapshot = await window.tabcast.getRelay()
+    if (!snapshot.health || snapshot.lifecycle === 'stopped' || snapshot.lifecycle === 'error') {
+      snapshot = await window.tabcast.startRelay()
+    }
+
+    snapshot = await waitForRelayReady(
+      () => window.tabcast.getRelay(),
+      async () => {
+        await window.tabcast.refreshRelay()
+      },
+    )
+
+    if (runId !== liveReconnectRunId) return
+
+    if (!snapshot.health) {
+      throw new Error(snapshot.error ?? 'Relay not ready for live reconnect.')
+    }
+    if (snapshot.error?.includes('auto-restart exhausted')) {
+      throw new Error(snapshot.error)
+    }
+
+    snapshot = await repostRelayConfigIfNeeded(snapshot)
+    await window.tabcast.refreshRelay()
+    snapshot = await window.tabcast.getRelay()
+    if (relayNeedsLiveBootstrap(snapshot)) {
+      await pushSceneLayout()
+    }
+
+    if (!snapshot.health) {
+      throw new Error('Relay health missing after reconnect wait.')
+    }
+
+    whipPublisher = await attachWhipPublisher(snapshot.health)
+    await window.tabcast.refreshRelay()
+
+    if (runId !== liveReconnectRunId) return
+
+    liveRecoveryAttempts = 0
+    liveRecoveryExhausted = false
+    liveRecoveryFatal = false
+    liveRecoveryReason = null
+    destHint.textContent = 'Live — stream recovered. Keys stay in relay RAM.'
+    setDestError(null)
+  } catch (err) {
+    if (runId !== liveReconnectRunId) return
+    const message = err instanceof Error ? err.message : String(err)
+    if (isFatalLiveRecoveryReason(reason, message)) {
+      markLiveRecoveryFatal(reason, message)
+    } else if (liveRecoveryAttempts >= liveRecoveryAttemptCap(reason, message)) {
+      markLiveRecoveryExhausted(reason, message)
+    } else {
+      setDestError(message)
+      queueLiveRecovery(reason, message)
+    }
+  } finally {
+    if (runId === liveReconnectRunId) {
+      liveReconnecting = false
+      void window.tabcast.getRelay().then(renderRelay)
+    }
+  }
+}
+
+function markLiveRecoveryExhausted(reason: string, detail?: string): void {
+  liveRecoveryExhausted = true
+  liveRecoveryFatal = false
+  liveReconnecting = false
+  liveRecoveryReason = reason
+  clearLiveReconnectTimer()
+  const label = liveRecoveryReasonLabel(reason)
+  const extra = detail ? ` ${detail}` : ''
+  setDestError(
+    `Live stream dropped (${label}).${extra} Use Retry connection or End Live.`,
+  )
+  mountRetryConnectionHint(false)
+  void window.tabcast.getRelay().then(renderRelay)
+}
+
+function markLiveRecoveryFatal(reason: string, detail?: string): void {
+  liveRecoveryExhausted = true
+  liveRecoveryFatal = true
+  liveReconnecting = false
+  liveRecoveryReason = reason
+  if (liveRecoveryAttempts < 1) liveRecoveryAttempts = 1
+  clearLiveReconnectTimer()
+  const label = liveRecoveryReasonLabel(reason)
+  const extra = (detail ?? reason.replace(/^rtmp:/, '')).trim()
+  const keyHint = enabledDestinationKeysEmpty()
+    ? ' Enter stream keys in Destinations, then Retry connection or End Live.'
+    : ' Use Retry connection or End Live.'
+  setDestError(`Live stream stopped (${label}).${extra ? ` ${extra}` : ''}${keyHint}`)
+  mountRetryConnectionHint(true)
+  void window.tabcast.getRelay().then(renderRelay)
+}
+
+function recoveryReasonFromSnapshot(snapshot: RelaySnapshot): string {
+  if (snapshot.status?.status === 'error') {
+    return `rtmp:${snapshot.status.error ?? 'error'}`
+  }
+  if (relayNeedsLiveBootstrap(snapshot)) {
+    return 'relay:restart'
+  }
+  if (snapshot.lifecycle === 'error') {
+    const err = snapshot.error?.toLowerCase() ?? ''
+    if (err.includes('exit') || err.includes('health') || err.includes('recovering')) {
+      return 'relay:restart'
+    }
+    return 'relay:error'
+  }
+  if (!snapshot.health) return 'relay:health'
+  if (whipPeerNeedsRecovery()) {
+    const state = whipPublisher?.pc.connectionState ?? 'failed'
+    return `whip:${state}`
+  }
+  return 'relay:recover'
+}
+
+function handleRelayLiveRecovery(snapshot: RelaySnapshot): void {
+  renderRelay(snapshot)
+  if (!relaySnapshotNeedsRecovery(snapshot)) return
+  const reason = recoveryReasonFromSnapshot(snapshot)
+  const detail = snapshot.status?.error ?? snapshot.error ?? undefined
+  if (isFatalLiveRecoveryReason(reason, detail)) {
+    markLiveRecoveryFatal(reason, detail)
+    return
+  }
+  queueLiveRecovery(reason, detail)
+}
+
 async function attachWhipPublisher(health: RelayHealth): Promise<WhipPublisher> {
   if (!programStream) {
     throw new Error('Select a gameplay source before going live.')
@@ -451,6 +758,7 @@ async function attachWhipPublisher(health: RelayHealth): Promise<WhipPublisher> 
       mic: layerEnabled.mic ? micStream : null,
     },
     authHeaders(health),
+    onWhipConnectionState,
   )
 }
 
@@ -865,8 +1173,13 @@ async function handlePhoneVideoLost(): Promise<void> {
   }
 
   lastCameraSelectValue = cameraSelect.value
-  await applyCamera()
+  if (cameraSelect.value) {
+    await applyCamera()
+  } else {
+    showCameraVideoOffline()
+  }
   syncWhipAvTracks()
+  if (isSessionLive()) void pushSceneLayout()
 }
 
 async function handlePhoneAudioLost(): Promise<void> {
@@ -882,6 +1195,73 @@ async function handlePhoneAudioLost(): Promise<void> {
   lastMicSelectValue = micSelect.value
   await applyMic()
   syncWhipAvTracks()
+  if (isSessionLive()) void pushSceneLayout()
+}
+
+function bindCameraStream(stream: MediaStream): void {
+  for (const track of stream.getVideoTracks()) {
+    track.onended = () => {
+      if (cameraStream !== stream) return
+      void handleCameraTrackLost()
+    }
+  }
+}
+
+function bindMicStream(stream: MediaStream): void {
+  for (const track of stream.getAudioTracks()) {
+    track.onended = () => {
+      if (micStream !== stream) return
+      void handleMicTrackLost()
+    }
+  }
+}
+
+async function handleCameraTrackLost(): Promise<void> {
+  const onPhoneCam = cameraSelect.value === PHONE_CAMERA_DEVICE_VALUE
+  releaseCameraStream()
+  await refreshAvDevices().catch(() => undefined)
+
+  if (onPhoneCam) {
+    await handlePhoneVideoLost()
+    return
+  }
+
+  const restore = pcCameraBeforePhone
+  if (restore && [...cameraSelect.options].some((o) => o.value === restore)) {
+    cameraSelect.value = restore
+    lastCameraSelectValue = restore
+    await applyCamera()
+  } else {
+    cameraSelect.value = ''
+    lastCameraSelectValue = ''
+    showCameraVideoOffline()
+  }
+  syncWhipAvTracks()
+  if (isSessionLive()) void pushSceneLayout()
+}
+
+async function handleMicTrackLost(): Promise<void> {
+  const onPhoneMic = micSelect.value === PHONE_MIC_DEVICE_VALUE
+  releaseMicStream()
+  await refreshAvDevices().catch(() => undefined)
+
+  if (onPhoneMic) {
+    await handlePhoneAudioLost()
+    return
+  }
+
+  const restore = pcMicBeforePhone
+  micSelect.value =
+    restore && [...micSelect.options].some((o) => o.value === restore) ? restore : ''
+  lastMicSelectValue = micSelect.value
+  if (micSelect.value) {
+    await applyMic()
+  } else {
+    layerMic.dataset.active = '0'
+    layerMic.textContent = 'Mic — off'
+    syncLayerTracks()
+    syncWhipAvTracks()
+  }
 }
 
 function finishCameraApply(label: string): void {
@@ -957,6 +1337,7 @@ async function applyMic(): Promise<void> {
         throw new Error('Phone microphone not available')
       }
       micStream = new MediaStream([phoneAudio])
+      bindMicStream(micStream)
       layerMic.dataset.active = '1'
       layerMic.textContent = 'Mic — Phone'
       startMicMeter(micStream)
@@ -970,6 +1351,7 @@ async function applyMic(): Promise<void> {
       video: false,
     })
     micStream = stream
+    bindMicStream(stream)
     layerMic.dataset.active = '1'
     layerMic.textContent = `Mic — ${micSelect.selectedOptions[0]?.textContent ?? 'on'}`
     startMicMeter(stream)
@@ -1016,11 +1398,42 @@ async function dispatchAddonLiveEvents(
   }
 }
 
+function mountRetryConnectionHint(fatal: boolean): void {
+  destHint.replaceChildren()
+  if (fatal) {
+    destHint.append('Ingest rejected — auto-retry stopped. ')
+  } else {
+    destHint.append(`Reconnect failed after ${MAX_LIVE_RETRY_ATTEMPTS} attempts. `)
+  }
+  const retry = document.createElement('button')
+  retry.type = 'button'
+  retry.className = 'hint-action'
+  retry.textContent = 'Retry connection'
+  retry.addEventListener('click', () => {
+    if (!sessionLiveIntent) return
+    liveRecoveryExhausted = false
+    liveRecoveryFatal = false
+    liveRecoveryAttempts = 0
+    liveRecoveryReason = 'manual-retry'
+    setDestError(null)
+    void runLiveRecovery('manual-retry')
+  })
+  destHint.append(retry)
+  destHint.append(' or End Live to stop.')
+}
+
 async function endLive(): Promise<void> {
   goingLive = true
   btnGoLive.disabled = true
   btnGoLive.textContent = 'Ending…'
   setDestError(null)
+  sessionLiveIntent = false
+  cancelLiveRecovery()
+  liveRecoveryAttempts = 0
+  liveRecoveryExhausted = false
+  liveRecoveryFatal = false
+  liveRecoveryReason = null
+
   try {
     if (whipPublisher) {
       await whipPublisher.close()
@@ -1100,6 +1513,10 @@ async function goLive(): Promise<void> {
     await pushSceneLayout()
 
     destHint.textContent = 'Publishing WHIP to local relay…'
+    liveRecoveryAttempts = 0
+    liveRecoveryExhausted = false
+    liveRecoveryReason = null
+    sessionLiveIntent = true
 
     whipPublisher = await attachWhipPublisher(snapshot.health)
     await window.tabcast.refreshRelay()
@@ -1108,6 +1525,7 @@ async function goLive(): Promise<void> {
     btnGoLive.dataset.live = '1'
     btnGoLive.textContent = 'End Live'
   } catch (err) {
+    sessionLiveIntent = false
     setDestError(err instanceof Error ? err.message : String(err))
     if (whipPublisher) {
       await whipPublisher.close().catch(() => undefined)
@@ -1122,9 +1540,7 @@ async function goLive(): Promise<void> {
 }
 
 async function onGoLiveClick(): Promise<void> {
-  const snapshot = await window.tabcast.getRelay()
-  const live = snapshot.lifecycle === 'live' || Boolean(whipPublisher)
-  if (live) {
+  if (isSessionLive()) {
     await endLive()
     return
   }
@@ -1458,6 +1874,10 @@ async function teardownLiveSession(): Promise<void> {
     if (snapshot.health && snapshot.lifecycle === 'live') {
       await stopRelayStream(snapshot.health).catch(() => undefined)
     }
+    sessionLiveIntent = false
+    cancelLiveRecovery()
+    liveRecoveryAttempts = 0
+    liveRecoveryExhausted = false
     stopStream(programStream)
     programStream = null
     captureKind = null
@@ -1641,7 +2061,7 @@ window.tabcast.onTitle((title) => {
 syncDestinationInputs()
 void window.tabcast.getMode().then(applyMode)
 void window.tabcast.getRelay().then(renderRelay)
-window.tabcast.onRelayUpdate(renderRelay)
+window.tabcast.onRelayUpdate(handleRelayLiveRecovery)
 void window.tabcast.getBrowserState().then((state) => {
   if (state) urlInput.value = state.url
 })
