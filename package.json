@@ -5,10 +5,10 @@
   "description": "Maka — Chromium + local relay for game capture and multi-platform streaming",
   "author": "n0social",
   "license": "MIT",
-  "homepage": "https://github.com/n0social/tabcast-browser",
+  "homepage": "https://github.com/n0social/Maka",
   "repository": {
     "type": "git",
-    "url": "https://github.com/n0social/tabcast-browser.git"
+    "url": "https://github.com/n0social/Maka.git"
   },
   "main": "out/main/index.js",
   "type": "module",
@@ -95,7 +95,7 @@
       {
         "provider": "github",
         "owner": "n0social",
-        "repo": "tabcast-browser",
+        "repo": "Maka",
         "releaseType": "release"
       }
     ]
