@@ -622,6 +622,21 @@ body[data-mode='browse'] .program {
   background: #000;
 }
 
+.program-cam-offline {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0.35rem;
+  font-size: 0.72rem;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.75);
+  background: #111;
+  text-transform: lowercase;
+}
+
 .program-label {
   position: absolute;
   top: 0.75rem;

@@ -12,6 +12,7 @@ import { validateRelayStreamKeys, KICK_RTMP_URL } from '../shared/stream-keys'
 import {
   authHeaders,
   defaultSceneLayout,
+  liveRecoveryReasonLabel,
   liveRetryBackoffMs,
   MAX_LIVE_RETRY_ATTEMPTS,
   postRelayConfig,
@@ -59,6 +60,7 @@ const programVideo = document.getElementById('program-video') as HTMLVideoElemen
 const programEmpty = document.getElementById('program-empty')!
 const programCam = document.getElementById('program-cam')!
 const programCamVideo = document.getElementById('program-cam-video') as HTMLVideoElement
+const programCamOffline = document.getElementById('program-cam-offline')!
 const pip = document.getElementById('pip')!
 const pipVideo = document.getElementById('pip-video') as HTMLVideoElement
 const pipEmpty = document.getElementById('pip-empty')!
@@ -100,6 +102,7 @@ let captureKind: 'desktop' | 'browse' | null = null
 let liveRecoveryAttempts = 0
 let liveReconnecting = false
 let liveRecoveryExhausted = false
+let liveRecoveryReason: string | null = null
 let sessionLiveIntent = false
 let liveReconnectTimer: ReturnType<typeof setTimeout> | null = null
 let liveReconnectRunId = 0
@@ -272,12 +275,54 @@ function updateProgramBrowserOverlay(): void {
   }
 }
 
+function cameraHasLiveVideoTrack(): boolean {
+  return Boolean(cameraStream?.getVideoTracks().some((t) => t.readyState === 'live'))
+}
+
+function shouldShowCameraVideoOffline(): boolean {
+  if (!layerEnabled.cam) return false
+  if (cameraHasLiveVideoTrack()) return false
+  return cameraSelect.value === ''
+}
+
+function showCameraVideoOffline(): void {
+  cameraStream = null
+  pipVideo.srcObject = null
+  pipVideo.hidden = true
+  pip.dataset.on = '1'
+  pipEmpty.hidden = false
+  pipEmpty.textContent = 'video is offline'
+  layerCam.dataset.active = '1'
+  layerEnabled.cam = true
+  layerCam.textContent = 'Webcam — offline'
+  programCamOffline.hidden = false
+  programCamVideo.hidden = true
+  programCamVideo.srcObject = null
+  updateProgramCamOverlay()
+}
+
+function hideCameraVideoOffline(): void {
+  programCamOffline.hidden = true
+  programCamVideo.hidden = false
+}
+
 function updateProgramCamOverlay(): void {
-  const show = Boolean(cameraStream) && layerEnabled.cam
   const scale = Math.max(12, Math.min(40, Number(camScale.value) || 22))
   programCam.style.width = `${scale}%`
+
+  if (shouldShowCameraVideoOffline()) {
+    programCam.hidden = false
+    programCamOffline.hidden = false
+    programCamVideo.hidden = true
+    programCamVideo.srcObject = null
+    return
+  }
+
+  const show = Boolean(cameraStream) && layerEnabled.cam && cameraHasLiveVideoTrack()
   programCam.hidden = !show
+  programCamOffline.hidden = true
   if (show) {
+    programCamVideo.hidden = false
     if (programCamVideo.srcObject !== cameraStream) {
       programCamVideo.srcObject = cameraStream
     }
@@ -292,12 +337,23 @@ function setCameraPreview(on: boolean, label?: string): void {
   pipVideo.hidden = !on
   pipEmpty.hidden = on
   if (!on) {
+    if (shouldShowCameraVideoOffline()) {
+      pipEmpty.textContent = 'video is offline'
+      pipEmpty.hidden = false
+      updateProgramCamOverlay()
+      return
+    }
     pipEmpty.textContent = 'Camera off'
     pipVideo.srcObject = null
     programCam.hidden = true
     programCamVideo.srcObject = null
-  } else if (label) {
-    layerCam.textContent = label
+    programCamOffline.hidden = true
+  } else {
+    hideCameraVideoOffline()
+    if (label) {
+      layerCam.textContent = label
+    }
+    updateProgramCamOverlay()
   }
 }
 
@@ -342,6 +398,13 @@ function cancelLiveRecovery(): void {
   clearLiveReconnectTimer()
   liveReconnectRunId += 1
   liveReconnecting = false
+  liveRecoveryReason = null
+}
+
+function liveReconnectStatusLine(): string {
+  const reason = liveRecoveryReason ?? 'relay:recover'
+  const label = liveRecoveryReasonLabel(reason)
+  return `${label} — reconnecting (${liveRecoveryAttempts}/${MAX_LIVE_RETRY_ATTEMPTS})`
 }
 
 function renderRelay(snapshot: RelaySnapshot): void {
@@ -355,9 +418,10 @@ function renderRelay(snapshot: RelaySnapshot): void {
 
   relayChip.dataset.state = relayUiState
   if (live && liveReconnecting) {
-    relayLabel.textContent = `Reconnecting (${liveRecoveryAttempts}/${MAX_LIVE_RETRY_ATTEMPTS})`
+    relayLabel.textContent = liveReconnectStatusLine()
   } else if (live && liveRecoveryExhausted) {
-    relayLabel.textContent = 'Reconnect failed'
+    const label = liveRecoveryReasonLabel(liveRecoveryReason ?? 'relay:recover')
+    relayLabel.textContent = `${label} — reconnect failed`
   } else {
     relayLabel.textContent = lifecycleCopy[snapshot.lifecycle]
   }
@@ -366,7 +430,11 @@ function renderRelay(snapshot: RelaySnapshot): void {
   relayVersion.textContent = snapshot.health ? `v${snapshot.health.version}` : '—'
   renderPlatformStatus(snapshot)
 
-  if (snapshot.error && !(live && liveReconnecting)) {
+  if (live && liveRecoveryExhausted) {
+    relayError.hidden = false
+    const label = liveRecoveryReasonLabel(liveRecoveryReason ?? 'relay:recover')
+    relayError.textContent = `${label} — could not restore the stream after ${MAX_LIVE_RETRY_ATTEMPTS} attempts.`
+  } else if (snapshot.error && !(live && liveReconnecting)) {
     relayError.hidden = false
     relayError.textContent = snapshot.error
   } else if (!liveRecoveryExhausted) {
@@ -447,12 +515,21 @@ function whipPeerNeedsRecovery(): boolean {
 
 function relaySnapshotNeedsRecovery(snapshot: RelaySnapshot): boolean {
   if (!sessionLiveIntent || goingLive || liveRecoveryExhausted) return false
+  if (liveReconnecting || liveReconnectTimer) return false
+
+  const whipBad = whipPeerNeedsRecovery()
+
+  if (snapshot.lifecycle === 'starting') {
+    return whipBad
+  }
+
   if (snapshot.status?.status === 'error') return true
-  if (!snapshot.health && snapshot.lifecycle !== 'stopped') return true
+  if (!snapshot.health && snapshot.lifecycle !== 'stopped') return whipBad || snapshot.lifecycle === 'error'
   if (snapshot.lifecycle === 'error' && !snapshot.error?.includes('auto-restart exhausted')) {
     return true
   }
-  return whipPeerNeedsRecovery()
+  if (relayNeedsLiveBootstrap(snapshot)) return true
+  return whipBad
 }
 
 function onWhipConnectionState(state: RTCPeerConnectionState): void {
@@ -461,6 +538,7 @@ function onWhipConnectionState(state: RTCPeerConnectionState): void {
     liveRecoveryAttempts = 0
     liveRecoveryExhausted = false
     liveReconnecting = false
+    liveRecoveryReason = null
     setDestError(null)
     void window.tabcast.getRelay().then(renderRelay)
     return
@@ -479,6 +557,7 @@ function queueLiveRecovery(reason: string): void {
     return
   }
 
+  liveRecoveryReason = reason
   const delay = liveRetryBackoffMs(liveRecoveryAttempts)
   liveReconnectTimer = setTimeout(() => {
     liveReconnectTimer = null
@@ -511,8 +590,9 @@ async function runLiveRecovery(reason: string): Promise<void> {
   const runId = ++liveReconnectRunId
   liveRecoveryAttempts += 1
   liveReconnecting = true
+  liveRecoveryReason = reason
   setDestError(null)
-  destHint.textContent = `Reconnecting (${liveRecoveryAttempts}/${MAX_LIVE_RETRY_ATTEMPTS}) — ${reason}`
+  destHint.textContent = liveReconnectStatusLine()
   void window.tabcast.getRelay().then(renderRelay)
 
   try {
@@ -564,6 +644,7 @@ async function runLiveRecovery(reason: string): Promise<void> {
 
     liveRecoveryAttempts = 0
     liveRecoveryExhausted = false
+    liveRecoveryReason = null
     destHint.textContent = 'Live — stream recovered. Keys stay in relay RAM.'
     setDestError(null)
   } catch (err) {
@@ -586,27 +667,43 @@ async function runLiveRecovery(reason: string): Promise<void> {
 function markLiveRecoveryExhausted(reason: string, detail?: string): void {
   liveRecoveryExhausted = true
   liveReconnecting = false
+  liveRecoveryReason = reason
   clearLiveReconnectTimer()
+  const label = liveRecoveryReasonLabel(reason)
   const extra = detail ? ` ${detail}` : ''
   setDestError(
-    `Live stream dropped (${reason}).${extra} Use Retry connection or End Live.`,
+    `Live stream dropped (${label}).${extra} Use Retry connection or End Live.`,
   )
   mountRetryConnectionHint()
   void window.tabcast.getRelay().then(renderRelay)
 }
 
+function recoveryReasonFromSnapshot(snapshot: RelaySnapshot): string {
+  if (snapshot.status?.status === 'error') {
+    return `rtmp:${snapshot.status.error ?? 'error'}`
+  }
+  if (relayNeedsLiveBootstrap(snapshot)) {
+    return 'relay:restart'
+  }
+  if (snapshot.lifecycle === 'error') {
+    const err = snapshot.error?.toLowerCase() ?? ''
+    if (err.includes('exit') || err.includes('health') || err.includes('recovering')) {
+      return 'relay:restart'
+    }
+    return 'relay:error'
+  }
+  if (!snapshot.health) return 'relay:health'
+  if (whipPeerNeedsRecovery()) {
+    const state = whipPublisher?.pc.connectionState ?? 'failed'
+    return `whip:${state}`
+  }
+  return 'relay:recover'
+}
+
 function handleRelayLiveRecovery(snapshot: RelaySnapshot): void {
   renderRelay(snapshot)
   if (!relaySnapshotNeedsRecovery(snapshot)) return
-  const reason =
-    snapshot.status?.status === 'error'
-      ? `rtmp:${snapshot.status.error ?? 'error'}`
-      : snapshot.lifecycle === 'error'
-        ? 'relay:error'
-        : !snapshot.health
-          ? 'relay:health'
-          : 'relay:recover'
-  queueLiveRecovery(reason)
+  queueLiveRecovery(recoveryReasonFromSnapshot(snapshot))
 }
 
 async function attachWhipPublisher(health: RelayHealth): Promise<WhipPublisher> {
@@ -1013,8 +1110,13 @@ async function handlePhoneVideoLost(): Promise<void> {
   cameraSelect.value =
     restore && [...cameraSelect.options].some((o) => o.value === restore) ? restore : ''
   lastCameraSelectValue = cameraSelect.value
-  await applyCamera()
+  if (cameraSelect.value) {
+    await applyCamera()
+  } else {
+    showCameraVideoOffline()
+  }
   syncWhipAvTracks()
+  if (isSessionLive()) void pushSceneLayout()
 }
 
 async function handlePhoneAudioLost(): Promise<void> {
@@ -1030,6 +1132,73 @@ async function handlePhoneAudioLost(): Promise<void> {
   lastMicSelectValue = micSelect.value
   await applyMic()
   syncWhipAvTracks()
+  if (isSessionLive()) void pushSceneLayout()
+}
+
+function bindCameraStream(stream: MediaStream): void {
+  for (const track of stream.getVideoTracks()) {
+    track.onended = () => {
+      if (cameraStream !== stream) return
+      void handleCameraTrackLost()
+    }
+  }
+}
+
+function bindMicStream(stream: MediaStream): void {
+  for (const track of stream.getAudioTracks()) {
+    track.onended = () => {
+      if (micStream !== stream) return
+      void handleMicTrackLost()
+    }
+  }
+}
+
+async function handleCameraTrackLost(): Promise<void> {
+  const onPhoneCam = cameraSelect.value === PHONE_CAMERA_DEVICE_VALUE
+  releaseCameraStream()
+  await refreshAvDevices().catch(() => undefined)
+
+  if (onPhoneCam) {
+    await handlePhoneVideoLost()
+    return
+  }
+
+  const restore = pcCameraBeforePhone
+  if (restore && [...cameraSelect.options].some((o) => o.value === restore)) {
+    cameraSelect.value = restore
+    lastCameraSelectValue = restore
+    await applyCamera()
+  } else {
+    cameraSelect.value = ''
+    lastCameraSelectValue = ''
+    showCameraVideoOffline()
+  }
+  syncWhipAvTracks()
+  if (isSessionLive()) void pushSceneLayout()
+}
+
+async function handleMicTrackLost(): Promise<void> {
+  const onPhoneMic = micSelect.value === PHONE_MIC_DEVICE_VALUE
+  releaseMicStream()
+  await refreshAvDevices().catch(() => undefined)
+
+  if (onPhoneMic) {
+    await handlePhoneAudioLost()
+    return
+  }
+
+  const restore = pcMicBeforePhone
+  micSelect.value =
+    restore && [...micSelect.options].some((o) => o.value === restore) ? restore : ''
+  lastMicSelectValue = micSelect.value
+  if (micSelect.value) {
+    await applyMic()
+  } else {
+    layerMic.dataset.active = '0'
+    layerMic.textContent = 'Mic — off'
+    syncLayerTracks()
+    syncWhipAvTracks()
+  }
 }
 
 async function applyCamera(): Promise<void> {
@@ -1049,6 +1218,7 @@ async function applyCamera(): Promise<void> {
         throw new Error('Phone camera not available')
       }
       cameraStream = new MediaStream([phoneVideo])
+      bindCameraStream(cameraStream)
       pipVideo.srcObject = cameraStream
       setCameraPreview(true, 'Webcam — Phone')
       layerCam.dataset.active = '1'
@@ -1065,6 +1235,7 @@ async function applyCamera(): Promise<void> {
       video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } },
     })
     cameraStream = stream
+    bindCameraStream(stream)
     pipVideo.srcObject = stream
     setCameraPreview(true, `Webcam — ${cameraSelect.selectedOptions[0]?.textContent ?? 'on'}`)
     layerCam.dataset.active = '1'
@@ -1098,6 +1269,7 @@ async function applyMic(): Promise<void> {
         throw new Error('Phone microphone not available')
       }
       micStream = new MediaStream([phoneAudio])
+      bindMicStream(micStream)
       layerMic.dataset.active = '1'
       layerMic.textContent = 'Mic — Phone'
       startMicMeter(micStream)
@@ -1111,6 +1283,7 @@ async function applyMic(): Promise<void> {
       video: false,
     })
     micStream = stream
+    bindMicStream(stream)
     layerMic.dataset.active = '1'
     layerMic.textContent = `Mic — ${micSelect.selectedOptions[0]?.textContent ?? 'on'}`
     startMicMeter(stream)
@@ -1168,6 +1341,7 @@ function mountRetryConnectionHint(): void {
     if (!sessionLiveIntent) return
     liveRecoveryExhausted = false
     liveRecoveryAttempts = 0
+    liveRecoveryReason = 'manual-retry'
     setDestError(null)
     void runLiveRecovery('manual-retry')
   })
@@ -1184,6 +1358,7 @@ async function endLive(): Promise<void> {
   cancelLiveRecovery()
   liveRecoveryAttempts = 0
   liveRecoveryExhausted = false
+  liveRecoveryReason = null
 
   try {
     if (whipPublisher) {
@@ -1266,6 +1441,7 @@ async function goLive(): Promise<void> {
     destHint.textContent = 'Publishing WHIP to local relay…'
     liveRecoveryAttempts = 0
     liveRecoveryExhausted = false
+    liveRecoveryReason = null
     sessionLiveIntent = true
 
     whipPublisher = await attachWhipPublisher(snapshot.health)
