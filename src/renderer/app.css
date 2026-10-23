@@ -389,6 +389,18 @@ body[data-mode='browse'] .app {
   margin-top: 0.55rem;
 }
 
+#dest-hint .hint-action {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--gold-light);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
 .btn-block {
   width: 100%;
   margin-bottom: 0.65rem;
