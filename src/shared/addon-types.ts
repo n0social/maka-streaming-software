@@ -113,4 +113,7 @@ export type AddonSettingsSnapshot = {
   discordWebhookUrl?: string
   customRtmpUrl?: string
   customRtmpKeyConfigured?: boolean
+  turnUrl?: string
+  turnUsername?: string
+  turnCredentialConfigured?: boolean
 }
