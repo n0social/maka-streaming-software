@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { randomBytes } from 'node:crypto'
 import { networkInterfaces } from 'node:os'
 import {
+  PHONE_PAIR_OFFLINE_PATH,
   PHONE_PAIR_PAIR_PATH,
   PHONE_PAIR_PORT,
   PHONE_PAIR_TOKEN_TTL_MS,
@@ -62,18 +63,65 @@ function mobilePageHtml(): string {
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 24px;
+      padding: 16px;
     }
     main {
-      max-width: 22rem;
+      width: 100%;
+      max-width: 24rem;
       text-align: center;
     }
-    h1 { font-size: 1.35rem; margin: 0 0 0.5rem; font-weight: 700; }
-    p { margin: 0.5rem 0; line-height: 1.45; color: #a8b0c0; }
-    .state { margin-top: 1.25rem; font-size: 1.05rem; }
+    h1 { font-size: 1.35rem; margin: 0 0 0.35rem; font-weight: 700; }
+    p { margin: 0.4rem 0; line-height: 1.45; color: #a8b0c0; font-size: 0.95rem; }
+    .state { margin-top: 0.75rem; font-size: 1rem; }
     .ok { color: #6ee7a8; }
     .err { color: #f87171; }
     .spin { opacity: 0.85; }
+    #preview-wrap {
+      margin-top: 1rem;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #141a24;
+      aspect-ratio: 9 / 16;
+      max-height: 55dvh;
+      display: none;
+    }
+    #preview {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      background: #000;
+    }
+    .controls {
+      display: none;
+      margin-top: 0.75rem;
+      gap: 0.5rem;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .controls.visible { display: flex; }
+    button.flip {
+      font: inherit;
+      font-size: 0.9rem;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      border: 1px solid #2a3344;
+      background: #1a2230;
+      color: #e8ecf4;
+      cursor: pointer;
+    }
+    button.flip:active { background: #243044; }
+    .mic {
+      font-size: 0.85rem;
+      padding: 0.45rem 0.75rem;
+      border-radius: 8px;
+      background: #1a2230;
+      border: 1px solid #2a3344;
+      color: #a8b0c0;
+    }
+    .mic.on { color: #6ee7a8; border-color: #2d5a40; }
+    .mic.off { color: #f87171; border-color: #5a2d2d; }
   </style>
 </head>
 <body>
@@ -81,17 +129,128 @@ function mobilePageHtml(): string {
     <h1>Maka</h1>
     <p>Pair this phone with your studio on the same Wi‑Fi.</p>
     <p class="state spin" id="status">Connecting to Maka…</p>
+    <div id="preview-wrap"><video id="preview" playsinline muted autoplay></video></div>
+    <div class="controls" id="controls">
+      <button type="button" class="flip" id="btn-flip" hidden>Flip camera</button>
+      <span class="mic on" id="mic-indicator" aria-live="polite">Mic on</span>
+    </div>
   </main>
   <script>
     (function () {
       var status = document.getElementById('status');
+      var previewWrap = document.getElementById('preview-wrap');
+      var preview = document.getElementById('preview');
+      var controls = document.getElementById('controls');
+      var btnFlip = document.getElementById('btn-flip');
+      var micIndicator = document.getElementById('mic-indicator');
       var params = new URLSearchParams(location.search);
       var token = params.get('t');
+      var sessionId = null;
+      var offlineSent = false;
+      var currentStream = null;
+      var facingMode = 'environment';
+
+      function signalOffline() {
+        if (!sessionId || offlineSent) return;
+        offlineSent = true;
+        var payload = JSON.stringify({ session: sessionId });
+        var blob = new Blob([payload], { type: 'application/json' });
+        if (navigator.sendBeacon && navigator.sendBeacon('${PHONE_PAIR_OFFLINE_PATH}', blob)) return;
+        fetch('${PHONE_PAIR_OFFLINE_PATH}', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload,
+          keepalive: true,
+        }).catch(function () {});
+      }
+
+      function bindLifecycle() {
+        document.addEventListener('visibilitychange', function () {
+          if (document.visibilityState === 'hidden') signalOffline();
+        });
+        window.addEventListener('pagehide', signalOffline);
+        window.addEventListener('beforeunload', signalOffline);
+      }
+
+      function updateMicIndicator(stream) {
+        var audio = stream.getAudioTracks()[0];
+        if (!audio) {
+          micIndicator.textContent = 'Mic off';
+          micIndicator.className = 'mic off';
+          return;
+        }
+        function refresh() {
+          var live = audio.enabled && audio.readyState === 'live' && !audio.muted;
+          micIndicator.textContent = live ? 'Mic on' : 'Mic off';
+          micIndicator.className = live ? 'mic on' : 'mic off';
+        }
+        audio.addEventListener('mute', refresh);
+        audio.addEventListener('unmute', refresh);
+        audio.addEventListener('ended', refresh);
+        refresh();
+      }
+
+      function stopStream() {
+        if (!currentStream) return;
+        currentStream.getTracks().forEach(function (t) { t.stop(); });
+        currentStream = null;
+        preview.srcObject = null;
+      }
+
+      function bindTrackEnded(stream) {
+        stream.getVideoTracks().forEach(function (track) {
+          track.addEventListener('ended', signalOffline);
+        });
+      }
+
+      function startPreview() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          status.textContent = 'Camera not supported in this browser.';
+          status.className = 'state err';
+          return Promise.resolve();
+        }
+        var constraints = {
+          video: { facingMode: facingMode },
+          audio: true,
+        };
+        return navigator.mediaDevices.getUserMedia(constraints).then(function (stream) {
+          stopStream();
+          currentStream = stream;
+          preview.srcObject = stream;
+          previewWrap.style.display = 'block';
+          controls.classList.add('visible');
+          status.textContent = 'Connected to Maka';
+          status.className = 'state ok';
+          updateMicIndicator(stream);
+          bindTrackEnded(stream);
+          return navigator.mediaDevices.enumerateDevices();
+        }).then(function (devices) {
+          if (!devices) return;
+          var cams = devices.filter(function (d) { return d.kind === 'videoinput'; });
+          btnFlip.hidden = cams.length < 2;
+        }).catch(function (err) {
+          if (err && err.name === 'NotAllowedError') {
+            status.textContent = 'Camera or mic permission denied. Refresh the code in the studio to try again.';
+          } else {
+            status.textContent = 'Could not open camera. Refresh the code in the studio to try again.';
+          }
+          status.className = 'state err';
+        });
+      }
+
+      btnFlip.addEventListener('click', function () {
+        facingMode = facingMode === 'user' ? 'environment' : 'user';
+        startPreview();
+      });
+
       if (!token) {
         status.textContent = 'Missing pairing code. Scan the QR in the studio again.';
         status.className = 'state err';
         return;
       }
+
+      bindLifecycle();
+
       fetch('${PHONE_PAIR_PAIR_PATH}', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -99,10 +258,9 @@ function mobilePageHtml(): string {
       })
         .then(function (res) { return res.json().then(function (body) { return { res: res, body: body }; }); })
         .then(function (out) {
-          if (out.res.ok && out.body && out.body.ok) {
-            status.textContent = 'Connected to Maka. You can return to the studio.';
-            status.className = 'state ok';
-            return;
+          if (out.res.ok && out.body && out.body.ok && out.body.session) {
+            sessionId = out.body.session;
+            return startPreview();
           }
           var msg = (out.body && out.body.message) || 'Pairing failed. Scan a fresh code in the studio.';
           status.textContent = msg;
@@ -124,6 +282,7 @@ export class PhonePairServer {
   private status: PhonePairStatus = 'waiting'
   private activeToken: ActiveToken | null = null
   private usedTokens = new Set<string>()
+  private sessionToken: string | null = null
 
   subscribe(listener: Listener): () => void {
     this.listeners.add(listener)
@@ -164,6 +323,7 @@ export class PhonePairServer {
   /** Invalidate pairing and return to waiting with a fresh code. */
   resetPairing(): PhonePairSnapshot {
     this.status = 'waiting'
+    this.sessionToken = null
     this.mintToken()
     this.emit()
     return this.getSnapshot()
@@ -235,12 +395,40 @@ export class PhonePairServer {
       return
     }
 
+    this.sessionToken = randomBytes(16).toString('hex')
     this.status = 'connected'
     this.emit()
     recordDiagnostic('info', 'phone-pair', 'Phone paired over LAN')
 
     res.writeHead(200, { 'Content-Type': 'application/json' })
-    res.end(JSON.stringify({ ok: true, message: 'connected' }))
+    res.end(JSON.stringify({ ok: true, message: 'connected', session: this.sessionToken }))
+  }
+
+  private async handleOffline(req: IncomingMessage, res: ServerResponse, body: string): Promise<void> {
+    let parsed: { session?: string }
+    try {
+      parsed = JSON.parse(body) as { session?: string }
+    } catch {
+      res.writeHead(400, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: false, message: 'Invalid request.' }))
+      return
+    }
+
+    const session = typeof parsed.session === 'string' ? parsed.session.trim() : ''
+    if (!session || !this.sessionToken || session !== this.sessionToken) {
+      res.writeHead(403, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: false, message: 'Invalid session.' }))
+      return
+    }
+
+    if (this.status === 'connected') {
+      this.status = 'offline'
+      this.emit()
+      recordDiagnostic('info', 'phone-pair', 'Phone went offline')
+    }
+
+    res.writeHead(200, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({ ok: true, status: this.status }))
   }
 
   private onRequest(req: IncomingMessage, res: ServerResponse): void {
@@ -254,6 +442,16 @@ export class PhonePairServer {
     if (req.method === 'POST' && url.pathname === PHONE_PAIR_PAIR_PATH) {
       void readBody(req)
         .then((body) => this.handlePair(req, res, body))
+        .catch(() => {
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ ok: false, message: 'Server error.' }))
+        })
+      return
+    }
+
+    if (req.method === 'POST' && url.pathname === PHONE_PAIR_OFFLINE_PATH) {
+      void readBody(req)
+        .then((body) => this.handleOffline(req, res, body))
         .catch(() => {
           res.writeHead(500, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ ok: false, message: 'Server error.' }))

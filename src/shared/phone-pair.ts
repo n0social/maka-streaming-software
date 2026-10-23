@@ -3,8 +3,9 @@
 export const PHONE_PAIR_PORT = 38_474
 export const PHONE_PAIR_TOKEN_TTL_MS = 5 * 60 * 1000
 export const PHONE_PAIR_PAIR_PATH = '/pair'
+export const PHONE_PAIR_OFFLINE_PATH = '/offline'
 
-export type PhonePairStatus = 'waiting' | 'connected'
+export type PhonePairStatus = 'waiting' | 'connected' | 'offline'
 
 export type PhonePairSnapshot = {
   status: PhonePairStatus
