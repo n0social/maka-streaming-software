@@ -22,6 +22,7 @@ import { publishWhip, type WhipPublisher } from './whip'
 import { OnboardingTour } from './onboarding'
 import { SetupWizard } from './onboarding-wizard'
 import { initMarketplace } from './marketplace'
+import { initPhonePairUi } from './phone-pair-ui'
 import './onboarding.css'
 
 declare global {
@@ -1601,6 +1602,8 @@ updateBannerDismiss.addEventListener('click', () => {
 })
 
 window.tabcast.onUpdateStatus(renderUpdateBanner)
+
+initPhonePairUi()
 
 void window.tabcast.getSettings().then((s) => {
   if (!s.setupWizardComplete) {
