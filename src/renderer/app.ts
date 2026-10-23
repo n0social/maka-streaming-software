@@ -530,7 +530,7 @@ function whipExpectsOutboundVideo(): boolean {
   const browser =
     layerEnabled.browser &&
     Boolean(browserStream?.getVideoTracks().some((t) => t.readyState === 'live'))
-  const webcam = layerEnabled.cam && cameraHasLiveVideoTrack()
+  const webcam = layerEnabled.cam && hasLiveWebcamVideo()
   return gameplay || browser || webcam
 }
 
@@ -1262,7 +1262,7 @@ async function handlePhoneVideoLost(): Promise<void> {
   if (cameraSelect.value) {
     await applyCamera()
   } else {
-    showCameraVideoOffline()
+    showWebcamOfflineIdle()
   }
   syncWhipAvTracks()
   if (isSessionLive()) void pushSceneLayout()
@@ -1320,7 +1320,7 @@ async function handleCameraTrackLost(): Promise<void> {
   } else {
     cameraSelect.value = ''
     lastCameraSelectValue = ''
-    showCameraVideoOffline()
+    showWebcamOfflineIdle()
   }
   syncWhipAvTracks()
   if (isSessionLive()) void pushSceneLayout()
