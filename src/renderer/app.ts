@@ -74,9 +74,6 @@ const programEmpty = document.getElementById('program-empty')!
 const programCam = document.getElementById('program-cam')!
 const programCamVideo = document.getElementById('program-cam-video') as HTMLVideoElement
 const programCamOffline = document.getElementById('program-cam-offline')!
-const pip = document.getElementById('pip')!
-const pipVideo = document.getElementById('pip-video') as HTMLVideoElement
-const pipEmpty = document.getElementById('pip-empty')!
 const cameraSelect = document.getElementById('camera-select') as HTMLSelectElement
 const micSelect = document.getElementById('mic-select') as HTMLSelectElement
 const profileSelect = document.getElementById('profile-select') as HTMLSelectElement
@@ -96,6 +93,16 @@ const layerGame = document.getElementById('layer-game')!
 const layerCam = document.getElementById('layer-cam')!
 const layerMic = document.getElementById('layer-mic')!
 const layerBrowser = document.getElementById('layer-browser')!
+const toggleWebcam = document.getElementById('toggle-webcam') as HTMLButtonElement
+const toggleMic = document.getElementById('toggle-mic') as HTMLButtonElement
+const toggleWebcamState = document.getElementById('toggle-webcam-state')!
+const toggleMicState = document.getElementById('toggle-mic-state')!
+const studioSourceGame = document.getElementById('studio-source-game')!
+const studioSourceWebcam = document.getElementById('studio-source-webcam')!
+const studioSourceMic = document.getElementById('studio-source-mic')!
+const studioSourceBrowser = document.getElementById('studio-source-browser')!
+const studioStatusDot = document.getElementById('studio-status-dot')!
+const studioStatusText = document.getElementById('studio-status-text')!
 const addonPanels = document.getElementById('addon-panels')!
 const platTwitch = document.getElementById('plat-twitch')!
 const platYoutube = document.getElementById('plat-youtube')!
@@ -254,6 +261,59 @@ function stopMicMeter(): void {
   micMeter.style.width = '0%'
 }
 
+function syncProgramVideoSurface(): void {
+  const show = Boolean(programStream)
+  programVideo.hidden = !show
+  programEmpty.hidden = show
+}
+
+function updateStudioMixControls(): void {
+  const camOn = layerEnabled.cam
+  toggleWebcam.dataset.on = camOn ? '1' : '0'
+  toggleWebcam.setAttribute('aria-pressed', camOn ? 'true' : 'false')
+  toggleWebcamState.textContent = camOn ? 'On' : 'Off'
+
+  const micOn = layerEnabled.mic && Boolean(micStream)
+  toggleMic.dataset.on = micOn && !micMuted ? '1' : '0'
+  toggleMic.setAttribute('aria-pressed', micOn && !micMuted ? 'true' : 'false')
+  if (!micStream) {
+    toggleMicState.textContent = 'Off'
+  } else if (micMuted) {
+    toggleMicState.textContent = 'Muted'
+  } else {
+    toggleMicState.textContent = layerEnabled.mic ? 'On' : 'Off'
+  }
+
+  studioSourceGame.dataset.active = programStream ? '1' : '0'
+  studioSourceGame.dataset.enabled = layerEnabled.game ? '1' : '0'
+  studioSourceWebcam.dataset.active = hasLiveWebcamVideo() ? '1' : '0'
+  studioSourceWebcam.dataset.enabled = layerEnabled.cam ? '1' : '0'
+  studioSourceMic.dataset.active = micStream ? '1' : '0'
+  studioSourceMic.dataset.enabled = layerEnabled.mic ? '1' : '0'
+  studioSourceBrowser.dataset.active = browserStream ? '1' : '0'
+  studioSourceBrowser.dataset.enabled = layerEnabled.browser ? '1' : '0'
+}
+
+function updateStudioStatusFooter(snapshot: RelaySnapshot): void {
+  if (snapshot.lifecycle === 'error' || liveRecoveryExhausted) {
+    studioStatusDot.dataset.state = 'bad'
+    studioStatusText.textContent = 'Relay needs attention'
+    return
+  }
+  if (snapshot.lifecycle === 'starting' || liveReconnecting) {
+    studioStatusDot.dataset.state = 'warn'
+    studioStatusText.textContent = 'Relay starting…'
+    return
+  }
+  if (snapshot.lifecycle === 'stopped') {
+    studioStatusDot.dataset.state = 'warn'
+    studioStatusText.textContent = 'Relay offline — start when ready'
+    return
+  }
+  studioStatusDot.dataset.state = 'ok'
+  studioStatusText.textContent = 'All systems nominal'
+}
+
 function syncLayerTracks(): void {
   if (programStream) {
     for (const track of programStream.getVideoTracks()) {
@@ -281,6 +341,7 @@ function syncLayerTracks(): void {
   layerBrowser.dataset.enabled = layerEnabled.browser ? '1' : '0'
   updateProgramCamOverlay()
   updateProgramBrowserOverlay()
+  updateStudioMixControls()
 }
 
 function updateProgramBrowserOverlay(): void {
@@ -314,11 +375,7 @@ function syncWebcamPresentation(camLabel?: string): void {
     programCamVideo.hidden = true
     programCamOffline.hidden = true
     programCamVideo.srcObject = null
-    pip.dataset.on = '0'
-    pipVideo.hidden = true
-    pipEmpty.hidden = false
-    pipEmpty.textContent = 'Camera off'
-    pipVideo.srcObject = null
+    updateStudioMixControls()
     return
   }
 
@@ -330,25 +387,11 @@ function syncWebcamPresentation(camLabel?: string): void {
       programCamVideo.srcObject = cameraStream
     }
     void programCamVideo.play().catch(() => undefined)
-
-    pip.dataset.on = '1'
-    pipVideo.hidden = false
-    pipEmpty.hidden = true
-    if (pipVideo.srcObject !== cameraStream) {
-      pipVideo.srcObject = cameraStream
-    }
-    void pipVideo.play().catch(() => undefined)
   } else {
     programCamVideo.hidden = true
     programCamOffline.hidden = false
     programCamOffline.textContent = WEBCAM_OFFLINE_TEXT
     programCamVideo.srcObject = null
-
-    pip.dataset.on = '0'
-    pipVideo.hidden = true
-    pipEmpty.hidden = false
-    pipEmpty.textContent = WEBCAM_OFFLINE_TEXT
-    pipVideo.srcObject = null
   }
 
   if (camLabel) {
@@ -451,6 +494,8 @@ function renderRelay(snapshot: RelaySnapshot): void {
     relayError.hidden = true
     relayError.textContent = ''
   }
+
+  updateStudioStatusFooter(snapshot)
 
   if (
     snapshot.restarts &&
@@ -960,7 +1005,7 @@ async function selectDesktopSource(source: CaptureSource): Promise<void> {
     programStream = stream
     bindGameplayStream(stream)
     programVideo.srcObject = stream
-    programEmpty.hidden = true
+    syncProgramVideoSurface()
     layerGame.dataset.active = '1'
     layerGame.textContent = `Gameplay — ${source.name}`
     syncLayerTracks()
@@ -969,7 +1014,7 @@ async function selectDesktopSource(source: CaptureSource): Promise<void> {
     }
   } catch (err) {
     programVideo.srcObject = null
-    programEmpty.hidden = false
+    syncProgramVideoSurface()
     programEmpty.textContent =
       err instanceof Error ? err.message : 'Could not capture this source'
     layerGame.dataset.active = '0'
@@ -1013,7 +1058,7 @@ function bindGameplayStream(stream: MediaStream): void {
     track.onended = () => {
       if (programStream !== stream) return
       programVideo.srcObject = null
-      programEmpty.hidden = false
+      syncProgramVideoSurface()
       programEmpty.textContent = 'Capture source ended. Select a source again.'
       layerGame.dataset.active = '0'
       layerGame.textContent = 'Gameplay — none'
@@ -1458,6 +1503,7 @@ function toggleMicMute(): void {
   }
   const label = micSelect.selectedOptions[0]?.textContent ?? 'on'
   layerMic.textContent = micMuted ? `Mic — muted (${label})` : `Mic — ${label}`
+  updateStudioMixControls()
 }
 
 async function dispatchAddonLiveEvents(
@@ -1777,29 +1823,55 @@ camScale.addEventListener('change', () => {
   updateProgramCamOverlay()
   void pushSceneLayout()
 })
-for (const [el, key] of [
-  [layerGame, 'game'],
-  [layerCam, 'cam'],
-  [layerMic, 'mic'],
-  [layerBrowser, 'browser'],
-] as const) {
-  el.addEventListener('click', () => {
-    if (key === 'browser') {
-      layerEnabled.browser = !layerEnabled.browser
-      if (layerEnabled.browser && !browserStream) {
-        void startBrowserCapture()
-        return
-      }
-      if (!layerEnabled.browser) {
-        void stopBrowserCapture()
-      }
-    } else {
-      layerEnabled[key] = !layerEnabled[key]
-    }
-    syncLayerTracks()
-    void pushSceneLayout()
-  })
+function toggleBrowserLayer(): void {
+  layerEnabled.browser = !layerEnabled.browser
+  if (layerEnabled.browser && !browserStream) {
+    void startBrowserCapture()
+    return
+  }
+  if (!layerEnabled.browser) {
+    void stopBrowserCapture()
+  }
+  syncLayerTracks()
+  void pushSceneLayout()
 }
+
+function toggleWebcamLayer(): void {
+  layerEnabled.cam = !layerEnabled.cam
+  syncLayerTracks()
+  void pushSceneLayout()
+}
+
+function toggleMicLayer(): void {
+  layerEnabled.mic = !layerEnabled.mic
+  if (!layerEnabled.mic) {
+    micMuted = false
+  }
+  syncLayerTracks()
+  void pushSceneLayout()
+}
+
+toggleWebcam.addEventListener('click', () => {
+  toggleWebcamLayer()
+})
+toggleMic.addEventListener('click', () => {
+  toggleMicLayer()
+})
+
+studioSourceGame.addEventListener('click', () => {
+  void refreshSources()
+})
+studioSourceWebcam.addEventListener('click', () => {
+  toggleWebcamLayer()
+  cameraSelect.focus()
+})
+studioSourceMic.addEventListener('click', () => {
+  toggleMicLayer()
+  micSelect.focus()
+})
+studioSourceBrowser.addEventListener('click', () => {
+  toggleBrowserLayer()
+})
 
 async function renderAddonPanels(): Promise<void> {
   const panels = await window.tabcast.listAddonPanels()
@@ -2138,6 +2210,8 @@ window.tabcast.onTitle((title) => {
 })
 
 syncDestinationInputs()
+syncProgramVideoSurface()
+updateStudioMixControls()
 void window.tabcast.getMode().then(applyMode)
 void window.tabcast.getRelay().then(renderRelay)
 window.tabcast.onRelayUpdate(handleRelayLiveRecovery)

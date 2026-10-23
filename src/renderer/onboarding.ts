@@ -32,7 +32,7 @@ export const ONBOARDING_STEPS: TourStep[] = [
   {
     id: 'program',
     title: 'Program monitor',
-    body: 'This is what goes live — your gameplay or browser tab, with webcam overlay when enabled. Layers on the right toggle what the relay receives.',
+    body: 'This is what goes live — your gameplay or browser tab, with webcam overlay when enabled. Webcam and mic toggles in the left sidebar control what the relay receives.',
     target: '[data-tour="program"]',
     placement: 'left',
   },
@@ -53,7 +53,7 @@ export const ONBOARDING_STEPS: TourStep[] = [
   {
     id: 'addons',
     title: 'Addons',
-    body: 'Extensions slot into the layout without replacing the core. Scene templates ship built-in; the marketplace will host community addons (alerts, new platforms, tools).',
+    body: 'Extensions slot into the layout without replacing the core. The marketplace hosts community addons (alerts, new platforms, tools).',
     target: '[data-tour="addons"]',
     placement: 'left',
   },
