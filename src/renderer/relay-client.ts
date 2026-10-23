@@ -170,6 +170,8 @@ export function whipUrlFromHealth(_health: RelayHealth): string {
 }
 
 export {
+  isFatalLiveRecoveryReason,
+  liveRecoveryAttemptCap,
   liveRecoveryReasonLabel,
   liveRetryBackoffMs,
   MAX_LIVE_RETRY_ATTEMPTS,

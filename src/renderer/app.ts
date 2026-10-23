@@ -12,6 +12,8 @@ import { validateRelayStreamKeys, KICK_RTMP_URL } from '../shared/stream-keys'
 import {
   authHeaders,
   defaultSceneLayout,
+  isFatalLiveRecoveryReason,
+  liveRecoveryAttemptCap,
   liveRecoveryReasonLabel,
   liveRetryBackoffMs,
   MAX_LIVE_RETRY_ATTEMPTS,
@@ -103,6 +105,7 @@ let liveRecoveryAttempts = 0
 let liveReconnecting = false
 let liveRecoveryExhausted = false
 let liveRecoveryReason: string | null = null
+let liveRecoveryFatal = false
 let sessionLiveIntent = false
 let liveReconnectTimer: ReturnType<typeof setTimeout> | null = null
 let liveReconnectRunId = 0
@@ -399,6 +402,7 @@ function cancelLiveRecovery(): void {
   liveReconnectRunId += 1
   liveReconnecting = false
   liveRecoveryReason = null
+  liveRecoveryFatal = false
 }
 
 function liveReconnectStatusLine(): string {
@@ -421,7 +425,9 @@ function renderRelay(snapshot: RelaySnapshot): void {
     relayLabel.textContent = liveReconnectStatusLine()
   } else if (live && liveRecoveryExhausted) {
     const label = liveRecoveryReasonLabel(liveRecoveryReason ?? 'relay:recover')
-    relayLabel.textContent = `${label} — reconnect failed`
+    relayLabel.textContent = liveRecoveryFatal
+      ? `${label} — ingest rejected`
+      : `${label} — reconnect failed`
   } else {
     relayLabel.textContent = lifecycleCopy[snapshot.lifecycle]
   }
@@ -433,7 +439,9 @@ function renderRelay(snapshot: RelaySnapshot): void {
   if (live && liveRecoveryExhausted) {
     relayError.hidden = false
     const label = liveRecoveryReasonLabel(liveRecoveryReason ?? 'relay:recover')
-    relayError.textContent = `${label} — could not restore the stream after ${MAX_LIVE_RETRY_ATTEMPTS} attempts.`
+    relayError.textContent = liveRecoveryFatal
+      ? `${label} — stream key or ingest rejected (auto-retry stopped).`
+      : `${label} — could not restore the stream after ${MAX_LIVE_RETRY_ATTEMPTS} attempts.`
   } else if (snapshot.error && !(live && liveReconnecting)) {
     relayError.hidden = false
     relayError.textContent = snapshot.error
@@ -537,6 +545,7 @@ function onWhipConnectionState(state: RTCPeerConnectionState): void {
   if (state === 'connected') {
     liveRecoveryAttempts = 0
     liveRecoveryExhausted = false
+    liveRecoveryFatal = false
     liveReconnecting = false
     liveRecoveryReason = null
     setDestError(null)
@@ -549,11 +558,27 @@ function onWhipConnectionState(state: RTCPeerConnectionState): void {
   }
 }
 
-function queueLiveRecovery(reason: string): void {
+function enabledDestinationKeysEmpty(): boolean {
+  if (destTwitch.checked && !twitchKey.value.trim()) return true
+  if (destYoutube.checked && !youtubeKey.value.trim()) return true
+  if (destCustom.checked && (!customRtmpUrl.value.trim() || !customRtmpKey.value.trim())) {
+    return true
+  }
+  return false
+}
+
+function queueLiveRecovery(reason: string, detail?: string): void {
   if (!sessionLiveIntent || goingLive || liveRecoveryExhausted) return
   if (liveReconnecting || liveReconnectTimer) return
-  if (liveRecoveryAttempts >= MAX_LIVE_RETRY_ATTEMPTS) {
-    markLiveRecoveryExhausted(reason)
+
+  if (isFatalLiveRecoveryReason(reason, detail)) {
+    markLiveRecoveryFatal(reason, detail)
+    return
+  }
+
+  const cap = liveRecoveryAttemptCap(reason, detail)
+  if (liveRecoveryAttempts >= cap) {
+    markLiveRecoveryExhausted(reason, detail)
     return
   }
 
@@ -644,17 +669,20 @@ async function runLiveRecovery(reason: string): Promise<void> {
 
     liveRecoveryAttempts = 0
     liveRecoveryExhausted = false
+    liveRecoveryFatal = false
     liveRecoveryReason = null
     destHint.textContent = 'Live — stream recovered. Keys stay in relay RAM.'
     setDestError(null)
   } catch (err) {
     if (runId !== liveReconnectRunId) return
     const message = err instanceof Error ? err.message : String(err)
-    if (liveRecoveryAttempts >= MAX_LIVE_RETRY_ATTEMPTS) {
+    if (isFatalLiveRecoveryReason(reason, message)) {
+      markLiveRecoveryFatal(reason, message)
+    } else if (liveRecoveryAttempts >= liveRecoveryAttemptCap(reason, message)) {
       markLiveRecoveryExhausted(reason, message)
     } else {
       setDestError(message)
-      queueLiveRecovery(reason)
+      queueLiveRecovery(reason, message)
     }
   } finally {
     if (runId === liveReconnectRunId) {
@@ -666,6 +694,7 @@ async function runLiveRecovery(reason: string): Promise<void> {
 
 function markLiveRecoveryExhausted(reason: string, detail?: string): void {
   liveRecoveryExhausted = true
+  liveRecoveryFatal = false
   liveReconnecting = false
   liveRecoveryReason = reason
   clearLiveReconnectTimer()
@@ -674,7 +703,24 @@ function markLiveRecoveryExhausted(reason: string, detail?: string): void {
   setDestError(
     `Live stream dropped (${label}).${extra} Use Retry connection or End Live.`,
   )
-  mountRetryConnectionHint()
+  mountRetryConnectionHint(false)
+  void window.tabcast.getRelay().then(renderRelay)
+}
+
+function markLiveRecoveryFatal(reason: string, detail?: string): void {
+  liveRecoveryExhausted = true
+  liveRecoveryFatal = true
+  liveReconnecting = false
+  liveRecoveryReason = reason
+  if (liveRecoveryAttempts < 1) liveRecoveryAttempts = 1
+  clearLiveReconnectTimer()
+  const label = liveRecoveryReasonLabel(reason)
+  const extra = (detail ?? reason.replace(/^rtmp:/, '')).trim()
+  const keyHint = enabledDestinationKeysEmpty()
+    ? ' Enter stream keys in Destinations, then Retry connection or End Live.'
+    : ' Use Retry connection or End Live.'
+  setDestError(`Live stream stopped (${label}).${extra ? ` ${extra}` : ''}${keyHint}`)
+  mountRetryConnectionHint(true)
   void window.tabcast.getRelay().then(renderRelay)
 }
 
@@ -703,7 +749,13 @@ function recoveryReasonFromSnapshot(snapshot: RelaySnapshot): string {
 function handleRelayLiveRecovery(snapshot: RelaySnapshot): void {
   renderRelay(snapshot)
   if (!relaySnapshotNeedsRecovery(snapshot)) return
-  queueLiveRecovery(recoveryReasonFromSnapshot(snapshot))
+  const reason = recoveryReasonFromSnapshot(snapshot)
+  const detail = snapshot.status?.error ?? snapshot.error ?? undefined
+  if (isFatalLiveRecoveryReason(reason, detail)) {
+    markLiveRecoveryFatal(reason, detail)
+    return
+  }
+  queueLiveRecovery(reason, detail)
 }
 
 async function attachWhipPublisher(health: RelayHealth): Promise<WhipPublisher> {
@@ -1330,9 +1382,13 @@ async function dispatchAddonLiveEvents(
   }
 }
 
-function mountRetryConnectionHint(): void {
+function mountRetryConnectionHint(fatal: boolean): void {
   destHint.replaceChildren()
-  destHint.append(`Reconnect failed after ${MAX_LIVE_RETRY_ATTEMPTS} attempts. `)
+  if (fatal) {
+    destHint.append('Ingest rejected — auto-retry stopped. ')
+  } else {
+    destHint.append(`Reconnect failed after ${MAX_LIVE_RETRY_ATTEMPTS} attempts. `)
+  }
   const retry = document.createElement('button')
   retry.type = 'button'
   retry.className = 'hint-action'
@@ -1340,6 +1396,7 @@ function mountRetryConnectionHint(): void {
   retry.addEventListener('click', () => {
     if (!sessionLiveIntent) return
     liveRecoveryExhausted = false
+    liveRecoveryFatal = false
     liveRecoveryAttempts = 0
     liveRecoveryReason = 'manual-retry'
     setDestError(null)
@@ -1358,6 +1415,7 @@ async function endLive(): Promise<void> {
   cancelLiveRecovery()
   liveRecoveryAttempts = 0
   liveRecoveryExhausted = false
+  liveRecoveryFatal = false
   liveRecoveryReason = null
 
   try {
