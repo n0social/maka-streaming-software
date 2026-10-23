@@ -169,7 +169,11 @@ export function whipUrlFromHealth(_health: RelayHealth): string {
   return `${RELAY_BASE_URL}/whip`
 }
 
-export { liveRetryBackoffMs, MAX_LIVE_RETRY_ATTEMPTS } from '../shared/live-retry'
+export {
+  liveRecoveryReasonLabel,
+  liveRetryBackoffMs,
+  MAX_LIVE_RETRY_ATTEMPTS,
+} from '../shared/live-retry'
 
 export async function fetchRelayStatus(health: RelayHealth): Promise<RelayStatusResponse | null> {
   try {

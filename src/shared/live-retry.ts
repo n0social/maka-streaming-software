@@ -10,3 +10,14 @@ export function liveRetryBackoffMs(attemptIndex: number): number {
   const capped = Math.min(Math.max(0, attemptIndex), 4)
   return Math.min(LIVE_RETRY_MAX_MS, LIVE_RETRY_BASE_MS * 2 ** capped)
 }
+
+/** Short user-facing label for a live-recovery trigger (internal `reason` strings). */
+export function liveRecoveryReasonLabel(reason: string): string {
+  if (reason.startsWith('rtmp:')) return 'Stream error'
+  if (reason === 'relay:restart' || reason === 'relay:error') return 'Relay restarted'
+  if (reason.startsWith('whip:')) return 'Connection lost'
+  if (reason === 'relay:health' || reason === 'relay:recover' || reason === 'manual-retry') {
+    return 'Connection lost'
+  }
+  return 'Connection lost'
+}
