@@ -92,6 +92,8 @@ export type AddonSettingsSnapshot = {
   discordWebhookUrl?: string
   customRtmpUrl?: string
   customRtmpKeyConfigured?: boolean
+  backupRtmpUrl?: string
+  backupRtmpKeyConfigured?: boolean
 }
 
 export type AddonLiveEventResult = {
@@ -142,6 +144,8 @@ export type TabcastBridge = {
       discordWebhookUrl?: string
       customRtmpUrl?: string
       customRtmpKey?: string
+      backupRtmpUrl?: string
+      backupRtmpKey?: string
     },
   ) => Promise<AddonInstallResult>
   dispatchAddonLiveEvent: (
