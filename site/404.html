@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex" />
+    <meta name="theme-color" content="#faf8f4" />
     <title>Maka — Working on fixes</title>
     <link rel="icon" type="image/png" href="/logo.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -14,7 +15,7 @@
     />
     <style>
       :root {
-        color-scheme: dark;
+        color-scheme: light;
       }
       * {
         box-sizing: border-box;
@@ -27,9 +28,9 @@
         justify-content: center;
         padding: 2rem;
         background:
-          radial-gradient(ellipse 80% 50% at 50% -20%, rgba(255, 184, 0, 0.12), transparent),
-          #050506;
-        color: #f4f4f5;
+          radial-gradient(ellipse 80% 50% at 50% -20%, rgba(201, 162, 39, 0.14), transparent),
+          #faf8f4;
+        color: #1a1408;
         font-family: "IBM Plex Sans", system-ui, sans-serif;
       }
       main {
@@ -48,7 +49,7 @@
         font-size: 0.75rem;
         letter-spacing: 0.3em;
         text-transform: uppercase;
-        color: #a3a3a3;
+        color: #6b6256;
       }
       h1 {
         margin: 0 0 0.75rem;
@@ -60,7 +61,7 @@
         margin: 0 0 1.5rem;
         font-size: 0.95rem;
         line-height: 1.55;
-        color: #a3a3a3;
+        color: #6b6256;
       }
       .actions {
         display: flex;
@@ -71,9 +72,9 @@
       a,
       button {
         appearance: none;
-        border: 1px solid #3f3f46;
-        background: #18181b;
-        color: #f4f4f5;
+        border: 1px solid #e6dfd0;
+        background: #ffffff;
+        color: #1a1408;
         border-radius: 0.4rem;
         padding: 0.65rem 1.1rem;
         font: inherit;
@@ -84,20 +85,25 @@
       }
       a.primary,
       button.primary {
-        border-color: #ffb800;
-        background: #ffb800;
-        color: #000;
+        border-color: #c9a227;
+        background: #c9a227;
+        color: #1a1408;
       }
       a:hover,
       button:hover {
-        filter: brightness(1.08);
+        border-color: #c9a227;
+      }
+      a.primary:hover,
+      button.primary:hover {
+        background: #e0b33a;
+        border-color: #e0b33a;
       }
       .code {
         margin-top: 1.75rem;
         font-size: 0.75rem;
         letter-spacing: 0.12em;
         text-transform: uppercase;
-        color: #52525b;
+        color: #6b6256;
       }
     </style>
   </head>
