@@ -12,10 +12,14 @@ import { validateRelayStreamKeys, KICK_RTMP_URL } from '../shared/stream-keys'
 import {
   authHeaders,
   defaultSceneLayout,
+  liveRetryBackoffMs,
+  MAX_LIVE_RETRY_ATTEMPTS,
   postRelayConfig,
   postSceneLayout,
+  relayNeedsLiveBootstrap,
   stopRelayStream,
   verifyRelayConfig,
+  waitForRelayReady,
   whipUrlFromHealth,
 } from './relay-client'
 import { publishWhip, type WhipPublisher } from './whip'
@@ -55,6 +59,7 @@ const programVideo = document.getElementById('program-video') as HTMLVideoElemen
 const programEmpty = document.getElementById('program-empty')!
 const programCam = document.getElementById('program-cam')!
 const programCamVideo = document.getElementById('program-cam-video') as HTMLVideoElement
+const programCamOffline = document.getElementById('program-cam-offline')!
 const pip = document.getElementById('pip')!
 const pipVideo = document.getElementById('pip-video') as HTMLVideoElement
 const pipEmpty = document.getElementById('pip-empty')!
@@ -93,9 +98,12 @@ const CUSTOM_RTM_ADDON_ID = 'com.tabcast.custom-rtmp'
 
 let selectedSourceId: string | null = null
 let captureKind: 'desktop' | 'browse' | null = null
-let whipReconnectAttempts = 0
-let whipReconnecting = false
-const MAX_WHIP_RECONNECT = 2
+let liveRecoveryAttempts = 0
+let liveReconnecting = false
+let liveRecoveryExhausted = false
+let sessionLiveIntent = false
+let liveReconnectTimer: ReturnType<typeof setTimeout> | null = null
+let liveReconnectRunId = 0
 let programStream: MediaStream | null = null
 let browserStream: MediaStream | null = null
 let cameraStream: MediaStream | null = null
@@ -107,6 +115,7 @@ let micMuted = false
 let labMode = false
 let pcCameraBeforePhone = ''
 let pcMicBeforePhone = ''
+let preferPhoneCamera = false
 let phoneVideoWasLive = false
 let phoneAudioWasLive = false
 let audioCtx: AudioContext | null = null
@@ -118,6 +127,8 @@ const layerEnabled = {
   mic: true,
   browser: false,
 }
+
+const WEBCAM_OFFLINE_TEXT = 'video is offline'
 
 const lifecycleCopy: Record<RelaySnapshot['lifecycle'], string> = {
   stopped: 'Relay offline',
@@ -265,33 +276,70 @@ function updateProgramBrowserOverlay(): void {
   }
 }
 
-function updateProgramCamOverlay(): void {
-  const show = Boolean(cameraStream) && layerEnabled.cam
+function hasLiveWebcamVideo(): boolean {
+  return Boolean(
+    cameraStream?.getVideoTracks().some((track) => track.readyState === 'live'),
+  )
+}
+
+function syncWebcamPresentation(camLabel?: string): void {
   const scale = Math.max(12, Math.min(40, Number(camScale.value) || 22))
   programCam.style.width = `${scale}%`
-  programCam.hidden = !show
-  if (show) {
+
+  const layerOn = layerEnabled.cam
+  const hasVideo = hasLiveWebcamVideo()
+
+  if (!layerOn) {
+    programCam.hidden = true
+    programCamVideo.hidden = true
+    programCamOffline.hidden = true
+    programCamVideo.srcObject = null
+    pip.dataset.on = '0'
+    pipVideo.hidden = true
+    pipEmpty.hidden = false
+    pipEmpty.textContent = 'Camera off'
+    pipVideo.srcObject = null
+    return
+  }
+
+  programCam.hidden = false
+  if (hasVideo) {
+    programCamVideo.hidden = false
+    programCamOffline.hidden = true
     if (programCamVideo.srcObject !== cameraStream) {
       programCamVideo.srcObject = cameraStream
     }
     void programCamVideo.play().catch(() => undefined)
-  } else if (!cameraStream) {
+
+    pip.dataset.on = '1'
+    pipVideo.hidden = false
+    pipEmpty.hidden = true
+    if (pipVideo.srcObject !== cameraStream) {
+      pipVideo.srcObject = cameraStream
+    }
+    void pipVideo.play().catch(() => undefined)
+  } else {
+    programCamVideo.hidden = true
+    programCamOffline.hidden = false
+    programCamOffline.textContent = WEBCAM_OFFLINE_TEXT
     programCamVideo.srcObject = null
+
+    pip.dataset.on = '0'
+    pipVideo.hidden = true
+    pipEmpty.hidden = false
+    pipEmpty.textContent = WEBCAM_OFFLINE_TEXT
+    pipVideo.srcObject = null
+  }
+
+  if (camLabel) {
+    layerCam.textContent = camLabel
+  } else if (!hasVideo) {
+    layerCam.textContent = 'Webcam — offline'
   }
 }
 
-function setCameraPreview(on: boolean, label?: string): void {
-  pip.dataset.on = on ? '1' : '0'
-  pipVideo.hidden = !on
-  pipEmpty.hidden = on
-  if (!on) {
-    pipEmpty.textContent = 'Camera off'
-    pipVideo.srcObject = null
-    programCam.hidden = true
-    programCamVideo.srcObject = null
-  } else if (label) {
-    layerCam.textContent = label
-  }
+function updateProgramCamOverlay(): void {
+  syncWebcamPresentation()
 }
 
 async function pushSceneLayout(): Promise<void> {
@@ -300,7 +348,7 @@ async function pushSceneLayout(): Promise<void> {
   const profile = selectedProfile()
   const layout = defaultSceneLayout({
     profile,
-    hasWebcam: Boolean(cameraStream) && layerEnabled.cam,
+    hasWebcam: hasLiveWebcamVideo() && layerEnabled.cam,
     hasBrowser: Boolean(browserStream) && layerEnabled.browser,
   })
   const scale = Number(camScale.value) / 100
@@ -826,7 +874,13 @@ async function handlePhoneVideoAvailable(): Promise<void> {
 
   await refreshAvDevices()
 
-  if (!camBefore) {
+  const shouldUsePhone =
+    preferPhoneCamera ||
+    camBefore === PHONE_CAMERA_DEVICE_VALUE ||
+    !camBefore
+
+  if (shouldUsePhone) {
+    preferPhoneCamera = true
     cameraSelect.value = PHONE_CAMERA_DEVICE_VALUE
     lastCameraSelectValue = PHONE_CAMERA_DEVICE_VALUE
     await applyCamera()
@@ -847,11 +901,29 @@ async function handlePhoneVideoLost(): Promise<void> {
 
   await refreshAvDevices()
 
-  if (!onPhoneCam) return
+  if (!onPhoneCam) {
+    if (preferPhoneCamera) {
+      await applyCamera()
+      syncWhipAvTracks()
+    }
+    return
+  }
 
   const restore = pcCameraBeforePhone
-  cameraSelect.value =
-    restore && [...cameraSelect.options].some((o) => o.value === restore) ? restore : ''
+  const canRestore =
+    Boolean(restore) && [...cameraSelect.options].some((o) => o.value === restore)
+
+  if (canRestore) {
+    preferPhoneCamera = false
+    cameraSelect.value = restore
+  } else {
+    preferPhoneCamera = true
+    const phoneInList = [...cameraSelect.options].some(
+      (o) => o.value === PHONE_CAMERA_DEVICE_VALUE,
+    )
+    cameraSelect.value = phoneInList ? PHONE_CAMERA_DEVICE_VALUE : ''
+  }
+
   lastCameraSelectValue = cameraSelect.value
   await applyCamera()
   syncWhipAvTracks()
@@ -872,52 +944,59 @@ async function handlePhoneAudioLost(): Promise<void> {
   syncWhipAvTracks()
 }
 
+function finishCameraApply(label: string): void {
+  layerCam.dataset.active = '1'
+  layerEnabled.cam = true
+  syncLayerTracks()
+  syncWebcamPresentation(label)
+  void pushSceneLayout()
+  syncWhipAvTracks()
+}
+
+function showWebcamOfflineIdle(): void {
+  layerCam.dataset.active = layerEnabled.cam ? '1' : '0'
+  layerCam.textContent = layerEnabled.cam ? 'Webcam — offline' : 'Webcam — off'
+  syncLayerTracks()
+  syncWebcamPresentation()
+  void pushSceneLayout()
+  syncWhipAvTracks()
+}
+
 async function applyCamera(): Promise<void> {
   releaseCameraStream()
-  setCameraPreview(false)
-  layerCam.dataset.active = '0'
-  layerCam.textContent = 'Webcam — off'
-  syncLayerTracks()
+  cameraStream = null
 
   const deviceId = cameraSelect.value
-  if (!deviceId) return
+  if (!deviceId) {
+    preferPhoneCamera = false
+    showWebcamOfflineIdle()
+    return
+  }
 
-  try {
-    if (deviceId === PHONE_CAMERA_DEVICE_VALUE) {
-      const phoneVideo = getPhoneTracksSnapshot().videoTrack
-      if (!phoneVideo || phoneVideo.readyState !== 'live') {
-        throw new Error('Phone camera not available')
-      }
-      cameraStream = new MediaStream([phoneVideo])
-      pipVideo.srcObject = cameraStream
-      setCameraPreview(true, 'Webcam — Phone')
-      layerCam.dataset.active = '1'
-      layerEnabled.cam = true
-      syncLayerTracks()
-      void pipVideo.play().catch(() => undefined)
-      void pushSceneLayout()
-      syncWhipAvTracks()
+  if (deviceId === PHONE_CAMERA_DEVICE_VALUE) {
+    preferPhoneCamera = true
+    const phoneVideo = getPhoneTracksSnapshot().videoTrack
+    if (!phoneVideo || phoneVideo.readyState !== 'live') {
+      showWebcamOfflineIdle()
       return
     }
+    cameraStream = new MediaStream([phoneVideo])
+    finishCameraApply('Webcam — Phone')
+    return
+  }
 
+  preferPhoneCamera = false
+  try {
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: false,
       video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } },
     })
     cameraStream = stream
-    pipVideo.srcObject = stream
-    setCameraPreview(true, `Webcam — ${cameraSelect.selectedOptions[0]?.textContent ?? 'on'}`)
-    layerCam.dataset.active = '1'
-    layerEnabled.cam = true
-    syncLayerTracks()
-    void pipVideo.play().catch(() => undefined)
-    void pushSceneLayout()
-    syncWhipAvTracks()
-  } catch (err) {
-    setCameraPreview(false)
-    pipEmpty.hidden = false
-    pipEmpty.textContent = err instanceof Error ? err.message : 'Camera failed'
-    layerCam.dataset.active = '0'
+    finishCameraApply(
+      `Webcam — ${cameraSelect.selectedOptions[0]?.textContent ?? 'on'}`,
+    )
+  } catch {
+    showWebcamOfflineIdle()
   }
 }
 
@@ -1077,7 +1156,7 @@ async function goLive(): Promise<void> {
       snapshot.health,
       defaultSceneLayout({
         profile,
-        hasWebcam: Boolean(cameraStream) && layerEnabled.cam,
+        hasWebcam: hasLiveWebcamVideo() && layerEnabled.cam,
         hasBrowser: Boolean(browserStream) && layerEnabled.browser,
       }),
     )
@@ -1402,7 +1481,7 @@ async function runAddonAction(addonId: string, actionId: string): Promise<void> 
   const snapshot = await window.tabcast.getRelay()
   const result = await window.tabcast.runAddonAction(addonId, actionId, {
     profile: selectedProfile(),
-    hasWebcam: Boolean(cameraStream) && layerEnabled.cam,
+    hasWebcam: hasLiveWebcamVideo() && layerEnabled.cam,
   })
   if (!result.ok) {
     setDestError(result.message ?? 'Addon action failed')
@@ -1551,6 +1630,11 @@ cameraSelect.addEventListener('change', () => {
   ) {
     pcCameraBeforePhone = prev
   }
+  if (cameraSelect.value === PHONE_CAMERA_DEVICE_VALUE) {
+    preferPhoneCamera = true
+  } else if (cameraSelect.value) {
+    preferPhoneCamera = false
+  }
   void applyCamera()
 })
 micSelect.addEventListener('change', () => {
@@ -1628,7 +1712,9 @@ void window.tabcast.getBrowserState().then((state) => {
   if (state) urlInput.value = state.url
 })
 void refreshSources()
-void refreshAvDevices()
+void refreshAvDevices().then(() => {
+  showWebcamOfflineIdle()
+})
 void renderAddonPanels()
 
 initPhoneTracks(window.tabcast)
