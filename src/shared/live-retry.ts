@@ -90,6 +90,7 @@ export function liveRecoveryAttemptCap(reason: string, detail?: string): number 
 export function liveRecoveryReasonLabel(reason: string): string {
   if (reason.startsWith('rtmp:')) return 'Stream error'
   if (reason === 'relay:restart' || reason === 'relay:error') return 'Relay restarted'
+  if (reason === 'whip:no-video') return 'No video'
   if (reason.startsWith('whip:')) return 'Connection lost'
   if (reason === 'relay:health' || reason === 'relay:recover' || reason === 'manual-retry') {
     return 'Connection lost'

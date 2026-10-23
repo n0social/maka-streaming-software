@@ -86,6 +86,7 @@ function liveRecoveryAttemptCap(reason, detail) {
 function liveRecoveryReasonLabel(reason) {
   if (reason.startsWith('rtmp:')) return 'Stream error'
   if (reason === 'relay:restart' || reason === 'relay:error') return 'Relay restarted'
+  if (reason === 'whip:no-video') return 'No video'
   if (reason.startsWith('whip:')) return 'Connection lost'
   if (reason === 'relay:health' || reason === 'relay:recover' || reason === 'manual-retry') {
     return 'Connection lost'
@@ -100,6 +101,8 @@ assert.equal(liveRetryBackoffMs(4), 15_000)
 assert.equal(MAX_LIVE_RETRY_ATTEMPTS, 30)
 
 assert.equal(liveRecoveryReasonLabel('whip:failed'), 'Connection lost')
+assert.equal(liveRecoveryReasonLabel('whip:no-video'), 'No video')
+assert.equal(liveRecoveryReasonLabel('relay:restart'), 'Relay restarted')
 assert.equal(liveRecoveryReasonLabel('rtmp:broken pipe'), 'Stream error')
 
 const fatalReason = 'rtmp:Twitch ingest rejected stream (HTTP 403 Forbidden)'
