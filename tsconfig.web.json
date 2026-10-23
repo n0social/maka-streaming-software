@@ -9,5 +9,5 @@
     "jsx": "preserve",
     "types": []
   },
-  "include": ["src/renderer/**/*", "src/shared/phone-pair.ts"]
+  "include": ["src/renderer/**/*", "src/shared/phone-pair.ts", "src/shared/phone-ice-servers.ts"]
 }

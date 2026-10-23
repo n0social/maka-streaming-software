@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { randomBytes } from 'node:crypto'
 import { networkInterfaces } from 'node:os'
 import {
+  PHONE_CAM_ADDON_ID,
   PHONE_PAIR_OFFLINE_PATH,
   PHONE_PAIR_PAIR_PATH,
   PHONE_PAIR_PORT,
@@ -12,7 +13,14 @@ import {
   type PhonePairStatus,
   type PhoneWebRtcSessionDescription,
 } from '../shared/phone-pair'
+import { buildPhoneIceServers, phoneTurnSettingsFromRecord } from '../shared/phone-ice-servers'
+import { loadAddonSettings } from './addon-settings'
 import { recordDiagnostic } from './diagnostics'
+
+export function phoneWebRtcIceServersForSession(): ReturnType<typeof buildPhoneIceServers> {
+  const settings = loadAddonSettings(PHONE_CAM_ADDON_ID)
+  return buildPhoneIceServers(phoneTurnSettingsFromRecord(settings))
+}
 
 type Listener = (snapshot: PhonePairSnapshot) => void
 type OfferListener = (offer: PhoneWebRtcSessionDescription) => void
@@ -49,7 +57,7 @@ function readBody(req: IncomingMessage): Promise<string> {
   })
 }
 
-function mobilePageHtml(): string {
+function mobilePageHtml(iceServersJson: string): string {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -157,6 +165,7 @@ function mobilePageHtml(): string {
       var currentStream = null;
       var facingMode = 'environment';
       var peer = null;
+      var PHONE_ICE_SERVERS = ${iceServersJson};
       var PHONE_CAM_STREAM_ID = 'phone-cam';
       var PHONE_MIC_STREAM_ID = 'phone-mic';
 
@@ -281,7 +290,7 @@ function mobilePageHtml(): string {
 
       function startWebRtc(stream) {
         if (sessionEnded) return Promise.reject(new Error('session ended'));
-        peer = new RTCPeerConnection({ iceServers: [] });
+        peer = new RTCPeerConnection({ iceServers: PHONE_ICE_SERVERS });
         bindPeerLifecycle(peer);
         var video = stream.getVideoTracks()[0];
         var audio = stream.getAudioTracks()[0];
@@ -673,7 +682,7 @@ export class PhonePairServer {
     const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`)
     if (req.method === 'GET' && url.pathname === '/') {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
-      res.end(mobilePageHtml())
+      res.end(mobilePageHtml(JSON.stringify(phoneWebRtcIceServersForSession())))
       return
     }
 
