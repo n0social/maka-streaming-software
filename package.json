@@ -2,7 +2,7 @@
   "name": "tabcast-browser",
   "version": "0.2.0",
   "private": false,
-  "description": "Tabcast Browser — Chromium + local relay for game capture and multi-platform streaming",
+  "description": "Maka gaming streaming service — the ultimate resource-light streaming software for gamers and creators (Electron studio + local WHIP/RTMP relay).",
   "author": "n0social",
   "license": "MIT",
   "homepage": "https://github.com/n0social/tabcast-browser",
