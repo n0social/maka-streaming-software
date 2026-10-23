@@ -4,7 +4,7 @@
 
 ![Maka studio with a live game stream in the program monitor](docs/readme-hero.png)
 
-Maka is a Windows desktop **Electron studio** for capture, scenes, and **Go Live** without wiring up OBS first. A local **TabcastRelay** on `127.0.0.1:38473` takes WHIP from the app, encodes with FFmpeg, and pushes **RTMP** to Twitch, YouTube, or a custom RTMP endpoint. Stream keys stay in relay RAM — not written to disk by the UI.
+Maka is **free streaming software** for Windows—a **free streaming software obs alternative** built as a desktop **Electron studio** for capture, scenes, and **Go Live** without wiring up OBS first. A local **TabcastRelay** on `127.0.0.1:38473` takes WHIP from the app, encodes with FFmpeg, and pushes **RTMP** to Twitch, YouTube, or a custom RTMP endpoint. Stream keys stay in relay RAM — not written to disk by the UI.
 
 **Website:** [tabcast.live.skydav.work](https://tabcast.live.skydav.work)
 
