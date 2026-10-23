@@ -3,6 +3,94 @@ import {
   type RelayTrackStreamId,
 } from '../shared/tabcast'
 
+export const WHIP_VIDEO_WATCHDOG_POLL_MS = 2_000
+export const WHIP_VIDEO_WATCHDOG_STALL_MS = 8_000
+
+export type WhipVideoStallState = {
+  lastBytes: number | null
+  stallSinceMs: number | null
+}
+
+export function sumOutboundVideoBytesSent(stats: RTCStatsReport): number {
+  let total = 0
+  for (const report of stats.values()) {
+    if (report.type !== 'outbound-rtp') continue
+    if (report.kind !== 'video') continue
+    const bytes = (report as RTCOutboundRtpStreamStats).bytesSent
+    if (typeof bytes === 'number' && Number.isFinite(bytes)) total += bytes
+  }
+  return total
+}
+
+export function evaluateWhipVideoStall(
+  state: WhipVideoStallState,
+  bytesSent: number,
+  nowMs: number,
+  stallWindowMs: number,
+): { next: WhipVideoStallState; stalled: boolean } {
+  if (state.lastBytes === null) {
+    return { next: { lastBytes: bytesSent, stallSinceMs: nowMs }, stalled: false }
+  }
+  if (bytesSent > state.lastBytes) {
+    return { next: { lastBytes: bytesSent, stallSinceMs: null }, stalled: false }
+  }
+  const stallSince = state.stallSinceMs ?? nowMs
+  const next: WhipVideoStallState = { lastBytes: bytesSent, stallSinceMs: stallSince }
+  return { next, stalled: nowMs - stallSince >= stallWindowMs }
+}
+
+export type WhipVideoWatchdogOptions = {
+  pc: RTCPeerConnection
+  pollIntervalMs?: number
+  stallWindowMs?: number
+  shouldExpectVideo: () => boolean
+  isLive: () => boolean
+  onVideoStall: (reason: string) => void
+  now?: () => number
+  getStats?: (pc: RTCPeerConnection) => Promise<RTCStatsReport>
+}
+
+export type WhipVideoWatchdog = { stop: () => void }
+
+export function startWhipVideoWatchdog(options: WhipVideoWatchdogOptions): WhipVideoWatchdog {
+  const pollIntervalMs = options.pollIntervalMs ?? WHIP_VIDEO_WATCHDOG_POLL_MS
+  const stallWindowMs = options.stallWindowMs ?? WHIP_VIDEO_WATCHDOG_STALL_MS
+  const now = options.now ?? (() => Date.now())
+  const getStats = options.getStats ?? ((pc) => pc.getStats())
+  let state: WhipVideoStallState = { lastBytes: null, stallSinceMs: null }
+  let stopped = false
+  const reset = () => {
+    state = { lastBytes: null, stallSinceMs: null }
+  }
+  const tick = async () => {
+    if (stopped || !options.isLive()) return
+    if (options.pc.connectionState !== 'connected' || !options.shouldExpectVideo()) {
+      reset()
+      return
+    }
+    try {
+      const bytes = sumOutboundVideoBytesSent(await getStats(options.pc))
+      const result = evaluateWhipVideoStall(state, bytes, now(), stallWindowMs)
+      state = result.next
+      if (result.stalled) {
+        stopped = true
+        clearInterval(timer)
+        options.onVideoStall('whip:no-video')
+      }
+    } catch {
+      // ignore getStats errors
+    }
+  }
+  const timer = setInterval(() => void tick(), pollIntervalMs)
+  return {
+    stop() {
+      if (stopped) return
+      stopped = true
+      clearInterval(timer)
+    },
+  }
+}
+
 export type WhipPublisher = {
   pc: RTCPeerConnection
   resourceUrl: string | null
