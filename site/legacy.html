@@ -7,7 +7,7 @@
       name="description"
       content="Legacy relay workflow — download the relay executable and use the browser-based web studio with extension capture."
     />
-    <meta name="theme-color" content="#0A0E14" />
+    <meta name="theme-color" content="#faf8f4" />
     <title>Maka — Legacy Web Studio Workflow</title>
     <link rel="icon" type="image/png" href="/marketing/favicon-32.png" sizes="32x32" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -18,18 +18,18 @@
     />
     <style>
       :root {
-        color-scheme: dark;
-        --white: #fafafa;
-        --silver: #c8c8d0;
-        --gold: #d4af37;
-        --gold-light: #f0d78c;
-        --gold-dark: #a8892a;
-        --champagne: #e8dcc8;
-        --bg: #111114;
-        --panel: #1a1a1f;
-        --ink: var(--white);
-        --muted: #8e8e9a;
-        --line: rgba(200, 200, 208, 0.16);
+        color-scheme: light;
+        --white: #ffffff;
+        --silver: #e6dfd0;
+        --gold: #c9a227;
+        --gold-light: #e0b33a;
+        --gold-dark: #a8861c;
+        --champagne: #f6f3ec;
+        --bg: #faf8f4;
+        --panel: #ffffff;
+        --ink: #1a1408;
+        --muted: #6b6256;
+        --line: #e6dfd0;
         --headline: "League Spartan", system-ui, sans-serif;
         --body: "Inter", system-ui, sans-serif;
         --radius: 1.25rem;
@@ -41,12 +41,9 @@
         margin: 0;
         min-height: 100vh;
         font-family: var(--body);
-        color: var(--ink);
-        background-color: var(--bg);
-        background-image:
-          radial-gradient(ellipse 80% 50% at 100% 0%, rgba(200, 200, 208, 0.1), transparent 50%),
-          radial-gradient(ellipse 70% 45% at 0% 20%, rgba(212, 175, 55, 0.1), transparent 55%),
-          linear-gradient(180deg, #141418, #0e0e11);
+        color: #1a1408;
+        background-color: #faf8f4;
+        background-image: radial-gradient(ellipse 70% 45% at 0% 20%, rgba(201, 162, 39, 0.12), transparent 55%);
       }
       .wrap {
         max-width: 42rem;
@@ -61,14 +58,14 @@
         font-size: 0.82rem;
       }
       .back:hover {
-        color: var(--gold-light);
+        color: #c9a227;
       }
       .pill {
         display: inline-block;
         margin-bottom: 1rem;
         padding: 0.28rem 0.65rem;
         border-radius: 999px;
-        background: rgba(255, 255, 255, 0.08);
+        background: #f6f3ec;
         border: 1px solid var(--line);
         font-family: var(--headline);
         font-size: 0.62rem;
@@ -85,10 +82,7 @@
         line-height: 1;
         letter-spacing: -0.02em;
         margin: 0 0 0.85rem;
-        background: linear-gradient(100deg, var(--white), var(--silver) 40%, var(--gold-light) 80%, var(--gold));
-        -webkit-background-clip: text;
-        background-clip: text;
-        color: transparent;
+        color: #1a1408;
       }
       .lead {
         margin: 0 0 1.75rem;
@@ -106,7 +100,7 @@
         padding: 1rem 1.05rem;
         border: 1px solid var(--line);
         border-radius: var(--radius);
-        background: rgba(16, 21, 29, 0.88);
+        background: #ffffff;
       }
       .steps strong {
         display: block;
@@ -143,25 +137,25 @@
         padding: 0.85rem 1.15rem;
       }
       .btn-primary {
-        background: linear-gradient(100deg, var(--gold-light), var(--gold));
-        color: #1a1a1f;
+        background: #c9a227;
+        color: #1a1408;
       }
       .btn-ghost {
-        border: 1px solid rgba(255, 255, 255, 0.16);
-        color: var(--ink);
-        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid #e6dfd0;
+        color: #1a1408;
+        background: #ffffff;
       }
       .note {
         padding: 1rem 1.05rem;
         border-radius: var(--radius);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid #e6dfd0;
+        background: #f6f3ec;
         color: var(--muted);
         font-size: 0.84rem;
         line-height: 1.55;
       }
       .note a {
-        color: var(--gold-light);
+        color: #c9a227;
       }
     </style>
   </head>
