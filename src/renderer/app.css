@@ -610,6 +610,29 @@ body[data-mode='browse'] .program {
   background: #000;
 }
 
+#program-cam-video[hidden] {
+  display: none !important;
+}
+
+.program-cam-offline {
+  margin: 0;
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-align: center;
+  padding: 0.35rem;
+  line-height: 1.35;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.program-cam-offline[hidden] {
+  display: none !important;
+}
+
 .program-label {
   position: absolute;
   top: 0.75rem;
