@@ -389,6 +389,24 @@ body[data-mode='browse'] .app {
   margin-top: 0.55rem;
 }
 
+.phone-pair {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.phone-pair canvas {
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #141a24;
+}
+
+.phone-pair-actions {
+  width: 100%;
+  margin-top: 0.25rem;
+}
+
 .btn-block {
   width: 100%;
   margin-bottom: 0.65rem;

@@ -37,6 +37,7 @@ import {
   initAutoUpdate,
   installUpdate,
 } from './auto-update'
+import { PhonePairServer } from './phone-pair'
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -52,6 +53,7 @@ protocol.registerSchemesAsPrivileged([
 
 const isDev = !app.isPackaged
 const relay = new RelayManager()
+const phonePair = new PhonePairServer()
 const browse = new BrowseTabsManager()
 const addonRuntime = new AddonRuntime()
 const addonHost = new AddonHost(addonRuntime)
@@ -379,6 +381,13 @@ function broadcastRelay(): void {
   rebuildTrayMenu()
 }
 
+function broadcastPhonePair(): void {
+  const snapshot = phonePair.getSnapshot()
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) win.webContents.send('phone-pair:update', snapshot)
+  }
+}
+
 function isStudioSender(sender: Electron.WebContents): boolean {
   return Boolean(mainWindow && !mainWindow.isDestroyed() && sender === mainWindow.webContents)
 }
@@ -397,6 +406,19 @@ function addonRuntimeContext(event: Electron.IpcMainInvokeEvent) {
 }
 
 function registerIpc(): void {
+  ipcMain.handle('phone-pair:get', (event) => {
+    if (!studioOk(event)) return phonePair.getSnapshot()
+    return phonePair.getSnapshot()
+  })
+  ipcMain.handle('phone-pair:refresh', (event) => {
+    if (!studioOk(event)) return phonePair.getSnapshot()
+    return phonePair.refresh()
+  })
+  ipcMain.handle('phone-pair:unpair', (event) => {
+    if (!studioOk(event)) return phonePair.getSnapshot()
+    return phonePair.unpair()
+  })
+
   ipcMain.handle('relay:get', () => relay.getSnapshot())
   ipcMain.handle('relay:start', async (event) => {
     if (!studioOk(event)) return relay.getSnapshot()
@@ -923,6 +945,7 @@ async function shutdownApp(): Promise<void> {
   browse.detach()
   browse.setCapturePinned(false)
   destroyAppTray()
+  await phonePair.stop()
   await relay.stop()
 }
 
@@ -948,6 +971,10 @@ app.whenReady().then(() => {
   })
   initAutoUpdate(() => mainWindow)
   relay.subscribe(() => broadcastRelay())
+  phonePair.subscribe(() => broadcastPhonePair())
+  void phonePair.start().catch((err) => {
+    recordDiagnostic('error', 'phone-pair', 'Phone pair server failed to start', err)
+  })
   onDiagnostic((event) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('diagnostics:event', event)
