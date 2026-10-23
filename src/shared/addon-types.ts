@@ -116,4 +116,6 @@ export type AddonSettingsSnapshot = {
   turnUrl?: string
   turnUsername?: string
   turnCredentialConfigured?: boolean
+  backupRtmpUrl?: string
+  backupRtmpKeyConfigured?: boolean
 }

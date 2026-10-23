@@ -116,6 +116,8 @@ export class AddonHost {
       turnUrl: settings.turnUrl,
       turnUsername: settings.turnUsername,
       turnCredentialConfigured: Boolean(settings.turnCredential),
+      backupRtmpUrl: settings.backupRtmpUrl,
+      backupRtmpKeyConfigured: Boolean(settings.backupRtmpKey),
     }
   }
 

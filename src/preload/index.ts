@@ -96,6 +96,8 @@ export type AddonSettingsSnapshot = {
   turnUrl?: string
   turnUsername?: string
   turnCredentialConfigured?: boolean
+  backupRtmpUrl?: string
+  backupRtmpKeyConfigured?: boolean
 }
 
 export type AddonLiveEventResult = {
@@ -149,6 +151,8 @@ export type TabcastBridge = {
       turnUrl?: string
       turnUsername?: string
       turnCredential?: string
+      backupRtmpUrl?: string
+      backupRtmpKey?: string
     },
   ) => Promise<AddonInstallResult>
   dispatchAddonLiveEvent: (

@@ -8,6 +8,12 @@ import type {
 import type { RelaySnapshot } from '../shared/relay-snapshot'
 import type { StreamProfile, SceneLayout, RelayHealth } from '../shared/tabcast'
 import { BROWSE_CAPTURE_SOURCE_ID } from '../shared/capture'
+import {
+  BACKUP_INGEST_STATUS,
+  nextIngestTargetAfterFailedRecovery,
+  resolveCustomRtmpForPost,
+  type IngestTarget,
+} from '../shared/ingest-failover'
 import { validateRelayStreamKeys, KICK_RTMP_URL } from '../shared/stream-keys'
 import {
   authHeaders,
@@ -98,6 +104,8 @@ const destCustomBlock = document.getElementById('dest-custom-block')!
 const destCustom = document.getElementById('dest-custom') as HTMLInputElement
 const customRtmpUrl = document.getElementById('custom-rtmp-url') as HTMLInputElement
 const customRtmpKey = document.getElementById('custom-rtmp-key') as HTMLInputElement
+const backupRtmpUrl = document.getElementById('backup-rtmp-url') as HTMLInputElement
+const backupRtmpKey = document.getElementById('backup-rtmp-key') as HTMLInputElement
 const programBrowser = document.getElementById('program-browser')!
 const programBrowserVideo = document.getElementById('program-browser-video') as HTMLVideoElement
 const brandTag = document.getElementById('brand-tag')
@@ -129,6 +137,7 @@ let pcMicBeforePhone = ''
 let preferPhoneCamera = false
 let phoneVideoWasLive = false
 let phoneAudioWasLive = false
+let sessionIngestTarget: IngestTarget = 'primary'
 let audioCtx: AudioContext | null = null
 let analyser: AnalyserNode | null = null
 let meterRaf = 0
@@ -617,21 +626,12 @@ function queueLiveRecovery(reason: string, detail?: string): void {
 }
 
 async function repostRelayConfigIfNeeded(snapshot: RelaySnapshot): Promise<RelaySnapshot> {
-  if (!snapshot.health || !relayNeedsLiveBootstrap(snapshot)) {
+  if (!snapshot.health) return snapshot
+  if (sessionIngestTarget !== 'backup' && !relayNeedsLiveBootstrap(snapshot)) {
     return snapshot
   }
 
-  const twitch = destTwitch.checked ? twitchKey.value : ''
-  const youtube = destYoutube.checked ? youtubeKey.value : ''
-  const customUrl = destCustom.checked ? customRtmpUrl.value.trim() : ''
-  const customKey = destCustom.checked ? customRtmpKey.value.trim() : ''
-  await postRelayConfig(snapshot.health, {
-    twitchKey: twitch,
-    youtubeKey: youtube,
-    customRtmpUrl: destCustom.checked ? customUrl : undefined,
-    customRtmpKey: destCustom.checked ? customKey : undefined,
-    profile: selectedProfile(),
-  })
+  await postRelayConfig(snapshot.health, relayConfigForIngest(sessionIngestTarget))
   return snapshot
 }
 
@@ -645,6 +645,12 @@ async function runLiveRecovery(reason: string): Promise<void> {
   setDestError(null)
   destHint.textContent = liveReconnectStatusLine()
   void window.tabcast.getRelay().then(renderRelay)
+
+  sessionIngestTarget = nextIngestTargetAfterFailedRecovery(
+    sessionIngestTarget,
+    reason,
+    backupIngestFromUi(),
+  )
 
   try {
     if (!programStream) {
@@ -698,11 +704,16 @@ async function runLiveRecovery(reason: string): Promise<void> {
     liveRecoveryExhausted = false
     liveRecoveryFatal = false
     liveRecoveryReason = null
-    destHint.textContent = 'Live — stream recovered. Keys stay in relay RAM.'
+    destHint.textContent = liveDestHintAfterRecovery()
     setDestError(null)
   } catch (err) {
     if (runId !== liveReconnectRunId) return
     const message = err instanceof Error ? err.message : String(err)
+    sessionIngestTarget = nextIngestTargetAfterFailedRecovery(
+      sessionIngestTarget,
+      reason,
+      backupIngestFromUi(),
+    )
     if (isFatalLiveRecoveryReason(reason, message)) {
       markLiveRecoveryFatal(reason, message)
     } else if (liveRecoveryAttempts >= liveRecoveryAttemptCap(reason, message)) {
@@ -837,11 +848,40 @@ function selectedProfile(): StreamProfile {
   return profileSelect.value === '1080p' ? '1080p' : '720p'
 }
 
+function backupIngestFromUi() {
+  return { url: backupRtmpUrl.value, key: backupRtmpKey.value }
+}
+
+function primaryCustomFromUi() {
+  return { enabled: destCustom.checked, url: customRtmpUrl.value, key: customRtmpKey.value }
+}
+
+function relayConfigForIngest(ingestTarget: IngestTarget) {
+  const custom = resolveCustomRtmpForPost(ingestTarget, primaryCustomFromUi(), backupIngestFromUi())
+  return {
+    twitchKey: destTwitch.checked ? twitchKey.value : '',
+    youtubeKey: destYoutube.checked ? youtubeKey.value : '',
+    customRtmpUrl: custom.url,
+    customRtmpKey: custom.key,
+    profile: selectedProfile(),
+  }
+}
+
+function liveDestHintAfterRecovery(): string {
+  if (sessionIngestTarget === 'backup') {
+    return `Live — ${BACKUP_INGEST_STATUS}. Keys stay in relay RAM.`
+  }
+  return 'Live — stream recovered. Keys stay in relay RAM.'
+}
+
 function syncDestinationInputs(): void {
   twitchKey.disabled = !destTwitch.checked
   youtubeKey.disabled = !destYoutube.checked
-  customRtmpUrl.disabled = !destCustom.checked
-  customRtmpKey.disabled = !destCustom.checked
+  const customEnabled = destCustom.checked
+  customRtmpUrl.disabled = !customEnabled
+  customRtmpKey.disabled = !customEnabled
+  backupRtmpUrl.disabled = !customEnabled
+  backupRtmpKey.disabled = !customEnabled
 }
 
 function syncCustomRtmpBlock(show: boolean): void {
@@ -855,6 +895,10 @@ async function loadCustomRtmpSettings(): Promise<void> {
   if (settings.customRtmpKeyConfigured) {
     customRtmpKey.placeholder = 'Stream key saved'
   }
+  if (settings.backupRtmpUrl) backupRtmpUrl.value = settings.backupRtmpUrl
+  if (settings.backupRtmpKeyConfigured) {
+    backupRtmpKey.placeholder = 'Backup stream key saved'
+  }
 }
 
 async function persistCustomRtmpSettings(): Promise<void> {
@@ -862,6 +906,8 @@ async function persistCustomRtmpSettings(): Promise<void> {
   await window.tabcast.setAddonSettings(CUSTOM_RTM_ADDON_ID, {
     customRtmpUrl: customRtmpUrl.value.trim(),
     customRtmpKey: customRtmpKey.value.trim() || undefined,
+    backupRtmpUrl: backupRtmpUrl.value.trim() || undefined,
+    backupRtmpKey: backupRtmpKey.value.trim() || undefined,
   })
 }
 
@@ -1474,6 +1520,7 @@ async function endLive(): Promise<void> {
   liveRecoveryExhausted = false
   liveRecoveryFatal = false
   liveRecoveryReason = null
+  sessionIngestTarget = 'primary'
 
   try {
     if (whipPublisher) {
@@ -1535,13 +1582,8 @@ async function goLive(): Promise<void> {
     }
 
     const profile = selectedProfile()
-    await postRelayConfig(snapshot.health, {
-      twitchKey: twitch,
-      youtubeKey: youtube,
-      customRtmpUrl: destCustom.checked ? customUrl : undefined,
-      customRtmpKey: destCustom.checked ? customKey : undefined,
-      profile,
-    })
+    sessionIngestTarget = 'primary'
+    await postRelayConfig(snapshot.health, relayConfigForIngest('primary'))
 
     await postSceneLayout(
       snapshot.health,
@@ -1615,13 +1657,7 @@ async function onVerifyKeys(): Promise<void> {
       throw new Error(snapshot.error ?? 'Relay is not ready.')
     }
 
-    await postRelayConfig(snapshot.health, {
-      twitchKey: twitch,
-      youtubeKey: youtube,
-      customRtmpUrl: destCustom.checked ? customUrl : undefined,
-      customRtmpKey: destCustom.checked ? customKey : undefined,
-      profile: selectedProfile(),
-    })
+    await postRelayConfig(snapshot.health, relayConfigForIngest('primary'))
 
     const result = await verifyRelayConfig(snapshot.health)
     if (!result.ok) {
