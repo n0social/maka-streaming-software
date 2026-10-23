@@ -13,7 +13,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=League+Spartan:ital,wght@0,700;0,800;0,900;1,800;1,900&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,600;1,700;1,800;1,900&display=swap"
       rel="stylesheet"
     />
     <style>
@@ -31,8 +31,8 @@
         --ink: #1a1408;
         --muted: #6b6256;
         --line: #e6dfd0;
-        --headline: "League Spartan", system-ui, sans-serif;
-        --body: "Inter", system-ui, sans-serif;
+        --headline: "Barlow Condensed", system-ui, sans-serif;
+        --body: "Barlow Condensed", system-ui, sans-serif;
       }
 
       * {
@@ -43,7 +43,7 @@
       body {
         margin: 0;
         min-height: 100%;
-        font-family: var(--body);
+        font-family: var(--headline);
         color: #1a1408;
         background: #faf8f4;
         background-image: radial-gradient(ellipse 80% 50% at 20% -15%, rgba(201, 162, 39, 0.12), transparent 55%);
@@ -406,7 +406,7 @@
         <nav class="header-links">
           <a href="#download">Download</a>
           <a href="https://github.com/n0social/tabcast-browser">GitHub</a>
-          <a href="/legacy.html">Relay workflow</a>
+          <a href="/legacy.html">Legacy relay</a>
         </nav>
       </header>
 
@@ -414,18 +414,17 @@
         <p class="eyebrow">Windows · v0.2.0</p>
         <h1>Maka</h1>
         <p class="subtitle">
-          One app for capture, layout, and go-live. Studio mode for your display and webcam, Browse
-          mode for chat and dashboards, and a local relay bundled in the installer — no OBS stack
-          required.
+          Capture, layout, and go-live in one app. Studio for display and webcam, Browse for chat and
+          dashboards — local relay in the installer, no OBS stack.
         </p>
         <div class="download-block" id="download">
-          <a class="btn-download" href="/downloads/TabcastBrowser-Setup-0.2.0.exe">Download for Windows</a>
+          <a class="btn-download" href="/downloads/TabcastBrowser-Setup-0.2.0.exe">Download Windows</a>
           <a class="btn-secondary" href="https://github.com/n0social/tabcast-browser/releases/tag/v0.2.0"
             >Release notes</a
           >
         </div>
         <p class="fine-print">
-          <code>TabcastBrowser-Setup-0.2.0.exe</code> · x64 · ~181 MB · includes relay · unsigned
+          <code>TabcastBrowser-Setup-0.2.0.exe</code> · x64 · ~181 MB · relay included · unsigned
           (SmartScreen may warn)
         </p>
       </section>
@@ -464,28 +463,28 @@
           <span class="step-num">1</span>
           <div>
             <strong>Install</strong>
-            <p>Run the Windows installer. The local relay is included — you don’t fetch it separately.</p>
+            <p>Run the installer. Relay is bundled — no separate download.</p>
           </div>
         </li>
         <li>
           <span class="step-num">2</span>
           <div>
             <strong>Studio</strong>
-            <p>Pick a display or window, turn on camera and mic, and arrange layers in the scene panel.</p>
+            <p>Pick display or window, enable camera and mic, arrange layers.</p>
           </div>
         </li>
         <li>
           <span class="step-num">3</span>
           <div>
             <strong>Go live</strong>
-            <p>Add Twitch or YouTube keys (kept local), verify the relay, and publish through WHIP on localhost.</p>
+            <p>Add Twitch or YouTube keys (local), verify relay, publish via WHIP on localhost.</p>
           </div>
         </li>
       </ol>
 
       <p class="legacy-note">
-        Still on the old <strong>Relay + browser extension</strong> setup?
-        <a href="/legacy.html">Use the legacy relay and web studio instead</a>.
+        Still on <strong>Relay + extension</strong>?
+        <a href="/legacy.html">Use legacy relay + web studio</a>.
       </p>
 
       <footer>Maka · MIT · Harbor Works Digital</footer>

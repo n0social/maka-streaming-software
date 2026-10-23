@@ -12,13 +12,13 @@ export const ONBOARDING_STEPS: TourStep[] = [
   {
     id: 'welcome',
     title: 'Welcome to Maka',
-    body: 'A streaming browser with a fixed core — capture, scene, and go live — plus room for addons like VS Code extensions. This quick tour points at the essentials.',
+    body: 'Capture, scene, and go live — with room for addons. This tour hits the essentials.',
     placement: 'center',
   },
   {
     id: 'modes',
     title: 'Studio & Browse',
-    body: 'Studio is your control room: sources, program monitor, layers, and destinations. Browse is built-in Chromium for Twitch, YouTube Studio, and chat.',
+    body: 'Studio: sources, program, layers, destinations. Browse: Chromium for Twitch, YouTube, and chat.',
     target: '[data-tour="modes"]',
     placement: 'bottom',
   },
@@ -53,7 +53,7 @@ export const ONBOARDING_STEPS: TourStep[] = [
   {
     id: 'addons',
     title: 'Addons',
-    body: 'Extensions slot into the layout without replacing the core. Scene templates ship built-in; the marketplace will host community addons (alerts, new platforms, tools).',
+    body: 'Addons slot in without replacing the core. Templates ship built-in; the marketplace will host community packs.',
     target: '[data-tour="addons"]',
     placement: 'left',
   },

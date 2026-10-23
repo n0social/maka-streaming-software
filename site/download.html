@@ -13,7 +13,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Instrument+Sans:wght@500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,600;1,700;1,800;1,900&display=swap"
       rel="stylesheet"
     />
     <style>
@@ -33,7 +33,7 @@
       body {
         margin: 0;
         min-height: 100vh;
-        font-family: "IBM Plex Sans", system-ui, sans-serif;
+        font-family: "Barlow Condensed", system-ui, sans-serif;
         color: var(--ink);
         background:
           radial-gradient(900px 480px at 12% -10%, rgba(201, 162, 39, 0.14), transparent 55%),
@@ -57,13 +57,13 @@
         object-fit: contain;
       }
       .brand span {
-        font-family: "Instrument Sans", "IBM Plex Sans", sans-serif;
-        font-weight: 700;
+        font-family: "Barlow Condensed", system-ui, sans-serif;
+        font-weight: 800;
         letter-spacing: -0.02em;
         font-size: 1.35rem;
       }
       h1 {
-        font-family: "Instrument Sans", "IBM Plex Sans", sans-serif;
+        font-family: "Barlow Condensed", system-ui, sans-serif;
         font-size: clamp(2rem, 5vw, 2.75rem);
         line-height: 1.1;
         letter-spacing: -0.03em;
@@ -141,19 +141,19 @@
       </div>
       <h1>Maka</h1>
       <p class="lead">
-        Windows studio app with Chromium browse + local WHIP relay. Capture, lay out camera, and go
-        live without juggling a separate relay install.
+        Windows studio + Chromium browse + local WHIP relay. Capture, camera layout, go live — no
+        separate relay install.
       </p>
       <div class="actions">
         <a class="btn btn-primary" href="/downloads/TabcastBrowser-Setup-0.2.0.exe"
-          >Download for Windows</a
+          >Download Windows</a
         >
         <a class="btn btn-ghost" href="/downloads/TabcastRelay.exe">Relay only (.exe)</a>
         <a class="btn btn-ghost" href="https://github.com/n0social/tabcast-browser">GitHub</a>
       </div>
       <div class="meta">
         <div>Version <code>0.2.0</code> · Windows x64 installer (NSIS)</div>
-        <div>Includes the bundled local relay · unsigned build (SmartScreen may warn)</div>
+        <div>Bundled relay · unsigned (SmartScreen may warn)</div>
       </div>
       <p class="note">
         After install, launch <strong>Maka</strong>, open Studio, verify the relay, then

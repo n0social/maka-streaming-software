@@ -10,12 +10,12 @@ export const SETUP_WIZARD_STEPS: WizardStep[] = [
   {
     id: 'welcome',
     title: 'Set up Maka',
-    body: 'This quick setup checks your relay, capture sources, and optional stream keys. It takes about a minute — skip anytime if you already know the studio.',
+    body: 'Checks relay, capture, and optional keys. About a minute — skip if you know the studio.',
   },
   {
     id: 'relay',
     title: 'Relay health',
-    body: 'Maka runs a local encoder on port 38473. We will verify the relay binary and health endpoint before you go live.',
+    body: 'Local encoder on port 38473. We verify the relay binary and health before you go live.',
   },
   {
     id: 'capture',

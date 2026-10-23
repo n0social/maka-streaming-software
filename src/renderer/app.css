@@ -27,9 +27,10 @@
   --left: 280px;
   --right: 300px;
   --radius: 1.25rem;
-  --font-headline: "League Spartan", system-ui, sans-serif;
-  --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
-  --font: var(--font-body);
+  --font-hero: "Barlow Condensed", system-ui, sans-serif;
+  --font-headline: var(--font-hero);
+  --font-body: var(--font-hero);
+  --font: var(--font-hero);
 }
 
 * {
