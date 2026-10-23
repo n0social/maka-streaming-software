@@ -11,6 +11,9 @@ function renderStatus(snap: PhonePairSnapshot): void {
   if (snap.status === 'connected') {
     statusEl.textContent = 'Phone connected'
     btnUnpair.hidden = false
+  } else if (snap.status === 'offline') {
+    statusEl.textContent = 'Phone offline'
+    btnUnpair.hidden = false
   } else {
     statusEl.textContent = 'Waiting for phone'
     btnUnpair.hidden = true

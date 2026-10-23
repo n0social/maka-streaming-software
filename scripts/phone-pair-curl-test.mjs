@@ -8,6 +8,7 @@ import { networkInterfaces } from 'node:os'
 
 const PORT = 38_474
 const PAIR_PATH = '/pair'
+const OFFLINE_PATH = '/offline'
 
 function detectLanIPv4() {
   for (const addrs of Object.values(networkInterfaces())) {
@@ -21,6 +22,8 @@ function detectLanIPv4() {
 
 const token = randomBytes(24).toString('hex')
 let tokenUsed = false
+let studioStatus = 'waiting'
+let sessionToken = null
 
 const server = createServer(async (req, res) => {
   if (req.method === 'POST' && req.url === PAIR_PATH) {
@@ -34,10 +37,28 @@ const server = createServer(async (req, res) => {
       return
     }
     tokenUsed = true
+    sessionToken = randomBytes(16).toString('hex')
+    studioStatus = 'connected'
     res.writeHead(200, { 'Content-Type': 'application/json' })
-    res.end(JSON.stringify({ ok: true, message: 'connected' }))
+    res.end(JSON.stringify({ ok: true, message: 'connected', session: sessionToken }))
     return
   }
+
+  if (req.method === 'POST' && req.url === OFFLINE_PATH) {
+    const chunks = []
+    for await (const chunk of req) chunks.push(chunk)
+    const body = JSON.parse(Buffer.concat(chunks).toString('utf8'))
+    if (!sessionToken || body.session !== sessionToken) {
+      res.writeHead(403, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: false, message: 'Invalid session.' }))
+      return
+    }
+    if (studioStatus === 'connected') studioStatus = 'offline'
+    res.writeHead(200, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({ ok: true, status: studioStatus }))
+    return
+  }
+
   res.writeHead(404)
   res.end()
 })
@@ -62,11 +83,20 @@ const bad = await fetch(`${base}${PAIR_PATH}`, {
 })
 const badBody = await bad.json()
 
+const offline = await fetch(`${base}${OFFLINE_PATH}`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ session: goodBody.session }),
+})
+const offlineBody = await offline.json()
+
 console.log('pairUrl:', pairUrl)
 console.log('good:', good.status, JSON.stringify(goodBody))
 console.log('bad:', bad.status, JSON.stringify(badBody))
+console.log('offline:', offline.status, JSON.stringify(offlineBody), 'studioStatus:', studioStatus)
 
 await new Promise((resolve) => server.close(resolve))
 
-if (good.status !== 200 || !goodBody.ok) process.exit(2)
+if (good.status !== 200 || !goodBody.ok || !goodBody.session) process.exit(2)
 if (bad.status === 200 && badBody.ok) process.exit(3)
+if (offline.status !== 200 || !offlineBody.ok || studioStatus !== 'offline') process.exit(4)
