@@ -19,6 +19,7 @@ Manifest: `tabcast-addon.json` in `%APPDATA%/Tabcast Browser/addons/<folder>/`
 | `relay.config.write` | Write relay config — user confirm required (future) |
 | `network.fetch` | HTTPS fetch from main process (sandboxed runtime + live hooks) |
 | `live.events` | Subscribe to go-live / end-live / app.ready |
+| `device.phone-pair` | LAN phone QR pairing (`com.tabcast.phone-cam` only): get/refresh/unpair + status updates |
 
 ## Declarative actions (v1)
 
@@ -48,7 +49,13 @@ window.tabcast.addons.getSettings()
 window.tabcast.addons.setSettings(partial)
 window.tabcast.addons.openExternal(url) // requires ui.external
 window.tabcast.addons.onLiveEvent(handler) // requires live.events hook
+window.tabcast.addons.getPhonePair()       // requires device.phone-pair
+window.tabcast.addons.refreshPhonePair()   // requires device.phone-pair
+window.tabcast.addons.unpairPhone()        // requires device.phone-pair
+window.tabcast.addons.onPhonePairUpdate(handler) // requires device.phone-pair
 ```
+
+Pair URLs come from the main process; addons must not bind port `38474` themselves.
 
 ### Live hooks
 
@@ -63,6 +70,8 @@ Declarative addons with `live.events` + `network.fetch` can also use main-proces
 Settings path: `%APPDATA%/Tabcast Browser/addons/<folder>/settings.json`
 
 ## Marketplace
+
+The marketplace is **developer-curated** (not user submissions). See [community-implementations.md](../community-implementations.md).
 
 Bundled catalog: `src/shared/marketplace-catalog.ts`
 
