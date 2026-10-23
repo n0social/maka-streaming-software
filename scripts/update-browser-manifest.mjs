@@ -13,6 +13,12 @@ import { statSync } from 'node:fs'
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const manifestPath = join(root, 'site', 'browser-manifest.json')
 
+function readJsonUtf8(path) {
+  const raw = readFileSync(path, 'utf8')
+  const text = raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw
+  return JSON.parse(text)
+}
+
 function findLatestSetup() {
   const distDir = join(root, 'dist-installer')
   if (!existsSync(distDir)) return null
@@ -42,7 +48,7 @@ async function main() {
     process.exit(1)
   }
 
-  const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
+  const pkg = readJsonUtf8(join(root, 'package.json'))
   const version = pkg.version
   const artifact = basename(setupPath)
   const size = statSync(setupPath).size
@@ -59,9 +65,7 @@ async function main() {
     signed = verify.status === 0
   }
 
-  const prev = existsSync(manifestPath)
-    ? JSON.parse(readFileSync(manifestPath, 'utf8'))
-    : {}
+  const prev = existsSync(manifestPath) ? readJsonUtf8(manifestPath) : {}
 
   const manifest = {
     ...prev,

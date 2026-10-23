@@ -1,6 +1,6 @@
 {
   "name": "tabcast-browser",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": false,
   "description": "Maka gaming streaming service — the ultimate resource-light streaming software for gamers and creators (Electron studio + local WHIP/RTMP relay).",
   "author": "n0social",
@@ -97,7 +97,7 @@
       {
         "provider": "github",
         "owner": "n0social",
-        "repo": "tabcast-browser",
+        "repo": "maka-streaming-software",
         "releaseType": "release"
       }
     ]
