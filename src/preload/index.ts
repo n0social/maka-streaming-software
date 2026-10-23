@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { RelaySnapshot } from '../shared/relay-snapshot'
+import type { PhoneIceServer } from '../shared/phone-ice-servers'
 import type { PhonePairSnapshot, PhoneWebRtcSessionDescription } from '../shared/phone-pair'
 
 export type AppMode = 'studio' | 'browse'
@@ -92,6 +93,9 @@ export type AddonSettingsSnapshot = {
   discordWebhookUrl?: string
   customRtmpUrl?: string
   customRtmpKeyConfigured?: boolean
+  turnUrl?: string
+  turnUsername?: string
+  turnCredentialConfigured?: boolean
 }
 
 export type AddonLiveEventResult = {
@@ -142,6 +146,9 @@ export type TabcastBridge = {
       discordWebhookUrl?: string
       customRtmpUrl?: string
       customRtmpKey?: string
+      turnUrl?: string
+      turnUsername?: string
+      turnCredential?: string
     },
   ) => Promise<AddonInstallResult>
   dispatchAddonLiveEvent: (
@@ -188,6 +195,7 @@ export type TabcastBridge = {
   onPhoneWebrtcOffer: (cb: (offer: PhoneWebRtcSessionDescription) => void) => () => void
   onPhoneWebrtcReset: (cb: () => void) => () => void
   submitPhoneWebrtcAnswer: (answer: PhoneWebRtcSessionDescription) => Promise<{ ok: boolean }>
+  getPhoneWebRtcIceServers: () => Promise<PhoneIceServer[]>
 }
 
 const api: TabcastBridge = {
@@ -306,6 +314,7 @@ const api: TabcastBridge = {
     return () => ipcRenderer.removeListener('phone-pair:webrtc-reset', handler)
   },
   submitPhoneWebrtcAnswer: (answer) => ipcRenderer.invoke('phone-pair:webrtc-answer', answer),
+  getPhoneWebRtcIceServers: () => ipcRenderer.invoke('phone-pair:ice-servers'),
 }
 
 contextBridge.exposeInMainWorld('tabcast', api)
