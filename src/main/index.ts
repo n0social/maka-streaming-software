@@ -383,7 +383,11 @@ function broadcastRelay(): void {
 }
 
 function broadcastPhonePair(): void {
-  addonRuntime.broadcastPhonePair(addonHost, phonePair.getSnapshot())
+  const snapshot = phonePair.getSnapshot()
+  addonRuntime.broadcastPhonePair(addonHost, snapshot)
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('phone-pair:update', snapshot)
+  }
 }
 
 function isPhonePairAddonActive(): boolean {
@@ -441,6 +445,20 @@ function registerIpc(): void {
   ipcMain.handle('addon-runtime:phone-pair:unpair', (event) => {
     if (!phonePairAddonContext(event)) throw new Error('Unauthorized')
     return phonePair.unpair()
+  })
+
+  ipcMain.handle('phone-pair:get', (event) => {
+    if (!studioOk(event)) throw new Error('Unauthorized')
+    return phonePair.getSnapshot()
+  })
+
+  ipcMain.handle('phone-pair:webrtc-answer', (event, answer: { type?: string; sdp?: string }) => {
+    if (!studioOk(event)) throw new Error('Unauthorized')
+    if (answer?.type !== 'answer' || typeof answer.sdp !== 'string') {
+      return { ok: false }
+    }
+    phonePair.setWebRtcAnswer({ type: 'answer', sdp: answer.sdp })
+    return { ok: true }
   })
 
   ipcMain.handle('relay:get', () => relay.getSnapshot())
@@ -1004,6 +1022,16 @@ app.whenReady().then(() => {
   initAutoUpdate(() => mainWindow)
   relay.subscribe(() => broadcastRelay())
   phonePair.subscribe(() => broadcastPhonePair())
+  phonePair.onWebRtcOffer((offer) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('phone-pair:webrtc-offer', offer)
+    }
+  })
+  phonePair.onWebRtcReset(() => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('phone-pair:webrtc-reset')
+    }
+  })
   void syncPhonePairServer()
   onDiagnostic((event) => {
     if (mainWindow && !mainWindow.isDestroyed()) {

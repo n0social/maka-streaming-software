@@ -7,8 +7,25 @@ export const PHONE_PAIR_PORT = 38_474
 export const PHONE_PAIR_TOKEN_TTL_MS = 5 * 60 * 1000
 export const PHONE_PAIR_PAIR_PATH = '/pair'
 export const PHONE_PAIR_OFFLINE_PATH = '/offline'
+export const PHONE_PAIR_WEBRTC_OFFER_PATH = '/webrtc/offer'
+export const PHONE_PAIR_WEBRTC_ANSWER_PATH = '/webrtc/answer'
+
+/** MSID / MediaStream id for the phone facecam track (video only). */
+export const PHONE_CAM_STREAM_ID = 'phone-cam'
+/** MSID / MediaStream id for the phone microphone track (audio only). */
+export const PHONE_MIC_STREAM_ID = 'phone-mic'
+
+/** `<select id="camera-select">` value when using the paired phone camera. */
+export const PHONE_CAMERA_DEVICE_VALUE = 'phone-cam'
+/** `<select id="mic-select">` value when using the paired phone microphone. */
+export const PHONE_MIC_DEVICE_VALUE = 'phone-mic'
 
 export type PhonePairStatus = 'waiting' | 'connected' | 'offline'
+
+export type PhoneWebRtcSessionDescription = {
+  type: 'offer' | 'answer'
+  sdp: string
+}
 
 export type PhonePairSnapshot = {
   status: PhonePairStatus
