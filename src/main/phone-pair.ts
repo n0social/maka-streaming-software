@@ -189,18 +189,18 @@ function mobilePageHtml(): string {
           if (state === 'failed' || state === 'closed') {
             signalOffline();
             showSessionEnded();
-          } else if (state === 'disconnected') {
-            signalOffline();
           }
         });
       }
 
       function bindLifecycle() {
-        document.addEventListener('visibilitychange', function () {
-          if (document.visibilityState === 'hidden') signalOffline();
+        window.addEventListener('pagehide', function () {
+          signalOffline();
+          showSessionEnded();
         });
-        window.addEventListener('pagehide', signalOffline);
-        window.addEventListener('beforeunload', signalOffline);
+        window.addEventListener('beforeunload', function () {
+          signalOffline();
+        });
       }
 
       function updateMicIndicator(stream) {
@@ -454,10 +454,25 @@ export class PhonePairServer {
 
   setWebRtcAnswer(answer: PhoneWebRtcSessionDescription): void {
     if (answer.type !== 'answer' || !answer.sdp.trim()) return
+    if (!this.sessionToken || this.status !== 'connected') return
     this.pendingAnswer = answer
   }
 
+  private ensureFreshPairingToken(): void {
+    if (this.status === 'connected') return
+    if (!this.activeToken) {
+      if (this.status === 'waiting') this.mintToken()
+      return
+    }
+    if (Date.now() > this.activeToken.expiresAt) {
+      this.usedTokens.add(this.activeToken.value)
+      this.mintToken()
+      this.emit()
+    }
+  }
+
   getSnapshot(): PhonePairSnapshot {
+    this.ensureFreshPairingToken()
     const lan = detectLanIPv4()
     const token = this.activeToken?.value ?? null
     const pairUrl =
@@ -491,11 +506,15 @@ export class PhonePairServer {
   /** Invalidate pairing and return to waiting with a fresh code. */
   resetPairing(): PhonePairSnapshot {
     this.status = 'waiting'
-    this.sessionToken = null
-    this.clearWebRtc()
+    this.endSession()
     this.mintToken()
     this.emit()
     return this.getSnapshot()
+  }
+
+  private endSession(): void {
+    this.sessionToken = null
+    this.clearWebRtc()
   }
 
   unpair(): PhonePairSnapshot {
@@ -592,8 +611,7 @@ export class PhonePairServer {
 
     if (this.status === 'connected') {
       this.status = 'offline'
-      this.sessionToken = null
-      this.clearWebRtc()
+      this.endSession()
       this.emit()
       recordDiagnostic('info', 'phone-pair', 'Phone went offline')
     }
@@ -736,6 +754,9 @@ export class PhonePairServer {
     const server = this.server
     this.server = null
     if (!server) return
+    this.endSession()
+    this.status = 'waiting'
+    this.clearToken()
     await new Promise<void>((resolve) => {
       server.close(() => resolve())
     })
