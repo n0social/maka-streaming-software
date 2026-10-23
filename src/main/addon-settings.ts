@@ -10,6 +10,8 @@ export type AddonSettings = {
   /** Custom RTMP ingest URL (Kick, Facebook, etc.) */
   customRtmpUrl?: string
   customRtmpKey?: string
+  backupRtmpUrl?: string
+  backupRtmpKey?: string
 }
 
 const DISCORD_WEBHOOK_RE =
@@ -42,6 +44,18 @@ export function coerceAddonSettings(raw: unknown): AddonSettings {
     const key = p.customRtmpKey.trim().slice(0, 256)
     if (key.length >= 8) {
       out.customRtmpKey = key
+    }
+  }
+  if (typeof p.backupRtmpUrl === 'string') {
+    const url = p.backupRtmpUrl.trim().slice(0, 512)
+    if (CUSTOM_RTMP_URL_RE.test(url)) {
+      out.backupRtmpUrl = url
+    }
+  }
+  if (typeof p.backupRtmpKey === 'string') {
+    const key = p.backupRtmpKey.trim().slice(0, 256)
+    if (key.length >= 8) {
+      out.backupRtmpKey = key
     }
   }
   return out

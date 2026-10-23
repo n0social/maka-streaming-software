@@ -113,6 +113,8 @@ export class AddonHost {
       discordWebhookUrl: settings.discordWebhookUrl ? '••••••••' : undefined,
       customRtmpUrl: settings.customRtmpUrl,
       customRtmpKeyConfigured: Boolean(settings.customRtmpKey),
+      backupRtmpUrl: settings.backupRtmpUrl,
+      backupRtmpKeyConfigured: Boolean(settings.backupRtmpKey),
     }
   }
 
