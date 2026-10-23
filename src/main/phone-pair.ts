@@ -153,14 +153,24 @@ function mobilePageHtml(): string {
       var token = params.get('t');
       var sessionId = null;
       var offlineSent = false;
+      var sessionEnded = false;
       var currentStream = null;
       var facingMode = 'environment';
       var peer = null;
       var PHONE_CAM_STREAM_ID = 'phone-cam';
       var PHONE_MIC_STREAM_ID = 'phone-mic';
 
+      function showSessionEnded() {
+        sessionEnded = true;
+        stopStream();
+        previewWrap.style.display = 'none';
+        controls.classList.remove('visible');
+        status.textContent = 'This link ended. Scan a new QR code in the studio.';
+        status.className = 'state err';
+      }
+
       function signalOffline() {
-        if (!sessionId || offlineSent) return;
+        if (!sessionId || offlineSent || sessionEnded) return;
         offlineSent = true;
         var payload = JSON.stringify({ session: sessionId });
         var blob = new Blob([payload], { type: 'application/json' });
@@ -171,6 +181,18 @@ function mobilePageHtml(): string {
           body: payload,
           keepalive: true,
         }).catch(function () {});
+      }
+
+      function bindPeerLifecycle(pc) {
+        pc.addEventListener('connectionstatechange', function () {
+          var state = pc.connectionState;
+          if (state === 'failed' || state === 'closed') {
+            signalOffline();
+            showSessionEnded();
+          } else if (state === 'disconnected') {
+            signalOffline();
+          }
+        });
       }
 
       function bindLifecycle() {
@@ -233,9 +255,15 @@ function mobilePageHtml(): string {
 
       function pollAnswer() {
         return fetch('${PHONE_PAIR_WEBRTC_ANSWER_PATH}?session=' + encodeURIComponent(sessionId))
-          .then(function (res) { return res.json(); })
-          .then(function (body) {
-            if (body && body.ok && body.answer) return body.answer;
+          .then(function (res) {
+            return res.json().then(function (body) { return { res: res, body: body }; });
+          })
+          .then(function (out) {
+            if (out.res.status === 403) {
+              showSessionEnded();
+              throw new Error('session ended');
+            }
+            if (out.body && out.body.ok && out.body.answer) return out.body.answer;
             return null;
           });
       }
@@ -252,7 +280,9 @@ function mobilePageHtml(): string {
       }
 
       function startWebRtc(stream) {
+        if (sessionEnded) return Promise.reject(new Error('session ended'));
         peer = new RTCPeerConnection({ iceServers: [] });
+        bindPeerLifecycle(peer);
         var video = stream.getVideoTracks()[0];
         var audio = stream.getAudioTracks()[0];
         if (video) peer.addTrack(video, namedStream(PHONE_CAM_STREAM_ID, video));
@@ -282,11 +312,18 @@ function mobilePageHtml(): string {
               type: local.type,
               sdp: local.sdp,
             }),
-          }).then(function (res) { return res.json(); });
-        }).then(function (body) {
-          if (!body || !body.ok) throw new Error('offer failed');
+          }).then(function (res) {
+            return res.json().then(function (body) { return { res: res, body: body }; });
+          });
+        }).then(function (out) {
+          if (out.res.status === 403) {
+            showSessionEnded();
+            throw new Error('session ended');
+          }
+          if (!out.body || !out.body.ok) throw new Error('offer failed');
           return waitForAnswer();
         }).then(function (answer) {
+          if (sessionEnded || !peer) throw new Error('session ended');
           return peer.setRemoteDescription(answer);
         });
       }
@@ -555,13 +592,20 @@ export class PhonePairServer {
 
     if (this.status === 'connected') {
       this.status = 'offline'
+      this.sessionToken = null
       this.clearWebRtc()
       this.emit()
       recordDiagnostic('info', 'phone-pair', 'Phone went offline')
     }
 
     res.writeHead(200, { 'Content-Type': 'application/json' })
-    res.end(JSON.stringify({ ok: true, status: this.status }))
+    res.end(
+      JSON.stringify({
+        ok: true,
+        status: this.status,
+        sessionEnded: true,
+      }),
+    )
   }
 
   private sessionOk(session: string): boolean {
@@ -581,7 +625,12 @@ export class PhonePairServer {
     const session = typeof parsed.session === 'string' ? parsed.session.trim() : ''
     if (!this.sessionOk(session)) {
       res.writeHead(403, { 'Content-Type': 'application/json' })
-      res.end(JSON.stringify({ ok: false, message: 'Invalid session.' }))
+      res.end(JSON.stringify({ ok: false, message: 'Session ended. Scan a new QR code.' }))
+      return
+    }
+    if (this.status !== 'connected') {
+      res.writeHead(403, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: false, message: 'Session ended. Scan a new QR code.' }))
       return
     }
 

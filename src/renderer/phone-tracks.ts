@@ -49,6 +49,12 @@ function resetWebrtc(): void {
   emit()
 }
 
+function peerConnectionLost(): void {
+  closePeer()
+  clearTracks()
+  emit()
+}
+
 function waitForIceGathering(peer: RTCPeerConnection, timeoutMs = 4000): Promise<void> {
   if (peer.iceGatheringState === 'complete') return Promise.resolve()
   return new Promise((resolve) => {
@@ -101,7 +107,7 @@ async function handleOffer(
 
   peer.onconnectionstatechange = () => {
     if (peer.connectionState === 'failed' || peer.connectionState === 'closed') {
-      resetWebrtc()
+      peerConnectionLost()
     }
   }
 
@@ -120,8 +126,21 @@ export function getPhoneTracksSnapshot(): PhoneTracksSnapshot {
   return { videoTrack, audioTrack, pairStatus }
 }
 
+function trackLive(track: MediaStreamTrack | null): boolean {
+  return Boolean(track && track.readyState === 'live')
+}
+
+export function phoneHasVideoTrack(snap: PhoneTracksSnapshot): boolean {
+  return snap.pairStatus === 'connected' && trackLive(snap.videoTrack)
+}
+
+export function phoneHasAudioTrack(snap: PhoneTracksSnapshot): boolean {
+  return snap.pairStatus === 'connected' && trackLive(snap.audioTrack)
+}
+
+/** @deprecated Use phoneHasVideoTrack / phoneHasAudioTrack independently. */
 export function phoneTracksReady(snap: PhoneTracksSnapshot): boolean {
-  return snap.pairStatus === 'connected' && Boolean(snap.videoTrack) && Boolean(snap.audioTrack)
+  return phoneHasVideoTrack(snap) && phoneHasAudioTrack(snap)
 }
 
 export function subscribePhoneTracks(listener: Listener): () => void {
