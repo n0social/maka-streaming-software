@@ -166,11 +166,16 @@ export function initPhoneTracks(tabcast: TabcastBridge): void {
 
   tabcast.onPhonePairUpdate((snap) => {
     pairStatus = snap.status
-    if (snap.status !== 'connected') {
-      resetWebrtc()
+    if (snap.status === 'connected') {
+      emit()
       return
     }
-    emit()
+    if (snap.status === 'reconnecting') {
+      clearTracks()
+      emit()
+      return
+    }
+    resetWebrtc()
   })
 
   void tabcast.getPhonePair().then((snap) => {
