@@ -23,7 +23,12 @@ import {
   waitForRelayReady,
   whipUrlFromHealth,
 } from './relay-client'
-import { publishWhip, type WhipPublisher } from './whip'
+import {
+  publishWhip,
+  startWhipVideoWatchdog,
+  type WhipPublisher,
+  type WhipVideoWatchdog,
+} from './whip'
 import { OnboardingTour } from './onboarding'
 import { SetupWizard } from './onboarding-wizard'
 import { initMarketplace } from './marketplace'
@@ -112,6 +117,7 @@ let cameraStream: MediaStream | null = null
 let micStream: MediaStream | null = null
 let currentMode: AppMode = 'studio'
 let whipPublisher: WhipPublisher | null = null
+let whipVideoWatchdog: WhipVideoWatchdog | null = null
 let goingLive = false
 let micMuted = false
 let labMode = false
@@ -507,6 +513,37 @@ function bindProgramStream(stream: MediaStream): void {
   bindGameplayStream(stream)
 }
 
+
+function stopWhipVideoWatchdog(): void {
+  whipVideoWatchdog?.stop()
+  whipVideoWatchdog = null
+}
+
+function whipExpectsOutboundVideo(): boolean {
+  const gameplay =
+    layerEnabled.game &&
+    Boolean(programStream?.getVideoTracks().some((t) => t.readyState === 'live'))
+  const browser =
+    layerEnabled.browser &&
+    Boolean(browserStream?.getVideoTracks().some((t) => t.readyState === 'live'))
+  const webcam = layerEnabled.cam && cameraHasLiveVideoTrack()
+  return gameplay || browser || webcam
+}
+
+function startWhipVideoWatchdogForPublisher(): void {
+  stopWhipVideoWatchdog()
+  if (!whipPublisher || !sessionLiveIntent) return
+  whipVideoWatchdog = startWhipVideoWatchdog({
+    pc: whipPublisher.pc,
+    shouldExpectVideo: whipExpectsOutboundVideo,
+    isLive: () => sessionLiveIntent && !goingLive && !liveReconnecting,
+    onVideoStall: (reason) => {
+      stopWhipVideoWatchdog()
+      queueLiveRecovery(reason)
+    },
+  })
+}
+
 function whipPeerNeedsRecovery(): boolean {
   if (!whipPublisher) return sessionLiveIntent
   const state = whipPublisher.pc.connectionState
@@ -540,10 +577,12 @@ function onWhipConnectionState(state: RTCPeerConnectionState): void {
     liveReconnecting = false
     liveRecoveryReason = null
     setDestError(null)
+    startWhipVideoWatchdogForPublisher()
     void window.tabcast.getRelay().then(renderRelay)
     return
   }
   if (state === 'failed' || state === 'disconnected' || state === 'closed') {
+    stopWhipVideoWatchdog()
     if (goingLive || liveReconnecting) return
     queueLiveRecovery(`whip:${state}`)
   }
@@ -600,6 +639,7 @@ async function runLiveRecovery(reason: string): Promise<void> {
       throw new Error('Program source missing — cannot reconnect live session.')
     }
 
+    stopWhipVideoWatchdog()
     if (whipPublisher) {
       await whipPublisher.close().catch(() => undefined)
       whipPublisher = null
@@ -1355,6 +1395,7 @@ async function endLive(): Promise<void> {
   btnGoLive.textContent = 'Ending…'
   setDestError(null)
   sessionLiveIntent = false
+  stopWhipVideoWatchdog()
   cancelLiveRecovery()
   liveRecoveryAttempts = 0
   liveRecoveryExhausted = false
@@ -1453,6 +1494,7 @@ async function goLive(): Promise<void> {
   } catch (err) {
     sessionLiveIntent = false
     setDestError(err instanceof Error ? err.message : String(err))
+    stopWhipVideoWatchdog()
     if (whipPublisher) {
       await whipPublisher.close().catch(() => undefined)
       whipPublisher = null
@@ -1792,6 +1834,7 @@ profileSelect.addEventListener('change', () => {
 
 async function teardownLiveSession(): Promise<void> {
   try {
+    stopWhipVideoWatchdog()
     if (whipPublisher) {
       await whipPublisher.close().catch(() => undefined)
       whipPublisher = null
