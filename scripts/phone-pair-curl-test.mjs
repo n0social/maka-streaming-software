@@ -12,6 +12,7 @@ const PAIR_PATH = '/pair'
 const OFFLINE_PATH = '/offline'
 const WEBRTC_OFFER_PATH = '/webrtc/offer'
 const WEBRTC_ANSWER_PATH = '/webrtc/answer'
+const TOKEN_TTL_MS = 5 * 60 * 1000
 
 function detectLanIPv4() {
   for (const addrs of Object.values(networkInterfaces())) {
@@ -24,10 +25,18 @@ function detectLanIPv4() {
 }
 
 const token = randomBytes(24).toString('hex')
+const tokenExpiresAt = Date.now() + TOKEN_TTL_MS
 const usedTokens = new Set()
 let studioStatus = 'waiting'
 let sessionToken = null
 let pendingAnswer = null
+
+function tokenValid(t) {
+  if (usedTokens.has(t)) return 'used'
+  if (t !== token) return 'missing'
+  if (Date.now() > tokenExpiresAt) return 'expired'
+  return 'ok'
+}
 
 const server = createServer(async (req, res) => {
   if (req.method === 'POST' && req.url === PAIR_PATH) {
@@ -35,12 +44,18 @@ const server = createServer(async (req, res) => {
     for await (const chunk of req) chunks.push(chunk)
     const body = JSON.parse(Buffer.concat(chunks).toString('utf8'))
     const t = body.token
-    if (usedTokens.has(t)) {
+    const check = tokenValid(t)
+    if (check === 'used') {
       res.writeHead(400, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ ok: false, message: 'This code was already used. Refresh in the studio.' }))
       return
     }
-    if (t !== token) {
+    if (check === 'expired') {
+      res.writeHead(400, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: false, message: 'This code expired. Refresh in the studio.' }))
+      return
+    }
+    if (check === 'missing') {
       res.writeHead(400, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ ok: false, message: 'Invalid pairing code.' }))
       return
@@ -124,6 +139,7 @@ const good = await fetch(`${base}${PAIR_PATH}`, {
   body: JSON.stringify({ token }),
 })
 const goodBody = await good.json()
+const pairedSession = goodBody.session
 
 const bad = await fetch(`${base}${PAIR_PATH}`, {
   method: 'POST',
@@ -132,15 +148,23 @@ const bad = await fetch(`${base}${PAIR_PATH}`, {
 })
 const badBody = await bad.json()
 
+const bogusPair = await fetch(`${base}${PAIR_PATH}`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ token: 'not-a-real-token' }),
+})
+const bogusPairBody = await bogusPair.json()
+const statusAfterBogusPair = studioStatus
+
 const offer = await fetch(`${base}${WEBRTC_OFFER_PATH}`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ session: goodBody.session, type: 'offer', sdp: 'v=0\r\n' }),
+  body: JSON.stringify({ session: pairedSession, type: 'offer', sdp: 'v=0\r\n' }),
 })
 const offerBody = await offer.json()
 
 const answerPoll = await fetch(
-  `${base}${WEBRTC_ANSWER_PATH}?session=${encodeURIComponent(goodBody.session)}`,
+  `${base}${WEBRTC_ANSWER_PATH}?session=${encodeURIComponent(pairedSession)}`,
 )
 const answerBody = await answerPoll.json()
 
@@ -151,37 +175,69 @@ const badOffer = await fetch(`${base}${WEBRTC_OFFER_PATH}`, {
 })
 const badOfferBody = await badOffer.json()
 
+// Studio refresh invalidates session (mirrors PhonePairServer.resetPairing)
+sessionToken = null
+pendingAnswer = null
+studioStatus = 'waiting'
+
+const offerAfterRefresh = await fetch(`${base}${WEBRTC_OFFER_PATH}`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ session: pairedSession, type: 'offer', sdp: 'v=0\r\n' }),
+})
+const offerAfterRefreshBody = await offerAfterRefresh.json()
+
+// New pair for offline flow
+const token2 = randomBytes(24).toString('hex')
+usedTokens.add(token2)
+sessionToken = randomBytes(16).toString('hex')
+studioStatus = 'connected'
+
 const offline = await fetch(`${base}${OFFLINE_PATH}`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ session: goodBody.session }),
+  body: JSON.stringify({ session: sessionToken }),
 })
 const offlineBody = await offline.json()
 
 const postOfflineOffer = await fetch(`${base}${WEBRTC_OFFER_PATH}`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ session: goodBody.session, type: 'offer', sdp: 'v=0\r\n' }),
+  body: JSON.stringify({ session: sessionToken, type: 'offer', sdp: 'v=0\r\n' }),
 })
 const postOfflineOfferBody = await postOfflineOffer.json()
+
+const expiredPair = await fetch(`${base}${PAIR_PATH}`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ token }),
+})
+const expiredPairBody = await expiredPair.json()
 
 console.log('pairUrl:', pairUrl)
 console.log('good:', good.status, JSON.stringify(goodBody))
 console.log('bad:', bad.status, JSON.stringify(badBody))
+console.log('bogus:', bogusPair.status, JSON.stringify(bogusPairBody), 'studioStatus:', statusAfterBogusPair)
+console.log('offer-after-refresh:', offerAfterRefresh.status, JSON.stringify(offerAfterRefreshBody))
 console.log('offline:', offline.status, JSON.stringify(offlineBody), 'studioStatus:', studioStatus)
 console.log('webrtc-offer:', offer.status, JSON.stringify(offerBody))
 console.log('webrtc-answer:', answerPoll.status, JSON.stringify(answerBody))
 console.log('webrtc-bad-offer:', badOffer.status, JSON.stringify(badOfferBody))
 console.log('webrtc-after-offline:', postOfflineOffer.status, JSON.stringify(postOfflineOfferBody))
+console.log('re-pair-used-token:', expiredPair.status, JSON.stringify(expiredPairBody))
 
 await new Promise((resolve) => server.close(resolve))
 
 if (good.status !== 200 || !goodBody.ok || !goodBody.session) process.exit(2)
 if (bad.status === 200 && badBody.ok) process.exit(3)
 if (!badBody.message || !String(badBody.message).includes('already used')) process.exit(3)
+if (bogusPair.status === 200 && bogusPairBody.ok) process.exit(9)
+if (statusAfterBogusPair !== 'connected') process.exit(9)
+if (offerAfterRefresh.status === 200 && offerAfterRefreshBody.ok) process.exit(10)
 if (offline.status !== 200 || !offlineBody.ok || studioStatus !== 'offline') process.exit(4)
 if (!offlineBody.sessionEnded) process.exit(4)
 if (offer.status !== 200 || !offerBody.ok) process.exit(5)
 if (answerPoll.status !== 200 || !answerBody.ok || !answerBody.answer) process.exit(6)
 if (badOffer.status === 200 && badOfferBody.ok) process.exit(7)
 if (postOfflineOffer.status === 200 && postOfflineOfferBody.ok) process.exit(8)
+if (expiredPair.status === 200 && expiredPairBody.ok) process.exit(11)

@@ -106,8 +106,12 @@ async function handleOffer(
   }
 
   peer.onconnectionstatechange = () => {
-    if (peer.connectionState === 'failed' || peer.connectionState === 'closed') {
+    const state = peer.connectionState
+    if (state === 'failed' || state === 'closed') {
       peerConnectionLost()
+    } else if (state === 'disconnected') {
+      clearTracks()
+      emit()
     }
   }
 
