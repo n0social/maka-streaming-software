@@ -66,8 +66,8 @@ export const PHONE_CAM_FILES: Record<string, string> = {
     if (snap.status === 'connected') {
       statusEl.textContent = 'Phone connected'
       btnUnpair.hidden = false
-    } else if (snap.status === 'offline') {
-      statusEl.textContent = 'Phone offline'
+    } else if (snap.status === 'reconnecting') {
+      statusEl.textContent = 'Phone reconnecting'
       btnUnpair.hidden = false
     } else {
       statusEl.textContent = 'Waiting for phone'
