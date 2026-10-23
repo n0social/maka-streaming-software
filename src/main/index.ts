@@ -38,7 +38,7 @@ import {
   initAutoUpdate,
   installUpdate,
 } from './auto-update'
-import { PhonePairServer } from './phone-pair'
+import { PhonePairServer, phoneWebRtcIceServersForSession } from './phone-pair'
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -459,6 +459,11 @@ function registerIpc(): void {
     }
     phonePair.setWebRtcAnswer({ type: 'answer', sdp: answer.sdp })
     return { ok: true }
+  })
+
+  ipcMain.handle('phone-pair:ice-servers', (event) => {
+    if (!studioOk(event)) throw new Error('Unauthorized')
+    return phoneWebRtcIceServersForSession()
   })
 
   ipcMain.handle('relay:get', () => relay.getSnapshot())
