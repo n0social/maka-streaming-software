@@ -113,6 +113,9 @@ export class AddonHost {
       discordWebhookUrl: settings.discordWebhookUrl ? '••••••••' : undefined,
       customRtmpUrl: settings.customRtmpUrl,
       customRtmpKeyConfigured: Boolean(settings.customRtmpKey),
+      turnUrl: settings.turnUrl,
+      turnUsername: settings.turnUsername,
+      turnCredentialConfigured: Boolean(settings.turnCredential),
     }
   }
 
