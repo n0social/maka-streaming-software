@@ -5,6 +5,8 @@ import {
   PHONE_PAIR_OFFLINE_PATH,
   PHONE_PAIR_PAIR_PATH,
   PHONE_PAIR_PORT,
+  PHONE_PAIR_REJOIN_GRACE_MS,
+  PHONE_PAIR_REJOIN_PATH,
   PHONE_PAIR_TOKEN_TTL_MS,
   PHONE_PAIR_WEBRTC_ANSWER_PATH,
   PHONE_PAIR_WEBRTC_OFFER_PATH,
@@ -154,19 +156,43 @@ function mobilePageHtml(): string {
       var sessionId = null;
       var offlineSent = false;
       var sessionEnded = false;
+      var reconnecting = false;
+      var SESSION_KEY = 'maka.phone.session';
       var currentStream = null;
       var facingMode = 'environment';
       var peer = null;
       var PHONE_CAM_STREAM_ID = 'phone-cam';
       var PHONE_MIC_STREAM_ID = 'phone-mic';
 
+      function persistSession(id) {
+        try { sessionStorage.setItem(SESSION_KEY, id); } catch (e) { /* ignore */ }
+      }
+
+      function loadPersistedSession() {
+        try { return sessionStorage.getItem(SESSION_KEY); } catch (e) { return null; }
+      }
+
+      function clearPersistedSession() {
+        try { sessionStorage.removeItem(SESSION_KEY); } catch (e) { /* ignore */ }
+      }
+
       function showSessionEnded() {
         sessionEnded = true;
+        reconnecting = false;
+        clearPersistedSession();
         stopStream();
         previewWrap.style.display = 'none';
         controls.classList.remove('visible');
         status.textContent = 'This link ended. Scan a new QR code in the studio.';
         status.className = 'state err';
+      }
+
+      function showReconnecting() {
+        if (sessionEnded) return;
+        reconnecting = true;
+        offlineSent = false;
+        status.textContent = 'Reconnecting to Maka…';
+        status.className = 'state spin';
       }
 
       function signalOffline() {
@@ -188,9 +214,15 @@ function mobilePageHtml(): string {
           var state = pc.connectionState;
           if (state === 'failed' || state === 'closed') {
             signalOffline();
-            showSessionEnded();
+            stopStream();
+            void attemptRejoin();
           } else if (state === 'disconnected') {
             signalOffline();
+            showReconnecting();
+          } else if (state === 'connected' && reconnecting) {
+            reconnecting = false;
+            status.textContent = 'Connected to Maka';
+            status.className = 'state ok';
           }
         });
       }
@@ -275,6 +307,37 @@ function mobilePageHtml(): string {
           if (attempts <= 1) throw new Error('timeout');
           return new Promise(function (r) { setTimeout(r, 250); }).then(function () {
             return waitForAnswer(attempts - 1);
+          });
+        });
+      }
+
+      function postRejoin() {
+        return fetch('${PHONE_PAIR_REJOIN_PATH}', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session: sessionId }),
+        }).then(function (res) {
+          return res.json().then(function (body) { return { res: res, body: body }; });
+        });
+      }
+
+      function attemptRejoin() {
+        if (sessionEnded || !sessionId) return Promise.resolve();
+        showReconnecting();
+        return postRejoin().then(function (out) {
+          if (out.res.status === 403) {
+            showSessionEnded();
+            throw new Error('session ended');
+          }
+          if (!out.body || !out.body.ok) throw new Error('rejoin failed');
+          reconnecting = false;
+          offlineSent = false;
+          return startPreview();
+        }).catch(function (err) {
+          if (sessionEnded) return;
+          if (err && err.message === 'session ended') return;
+          return new Promise(function (r) { setTimeout(r, 1500); }).then(function () {
+            return attemptRejoin();
           });
         });
       }
@@ -388,33 +451,54 @@ function mobilePageHtml(): string {
         startPreview();
       });
 
+      function beginWithSession(id) {
+        sessionId = id;
+        persistSession(id);
+        return startPreview();
+      }
+
+      function tryPairWithToken() {
+        return fetch('${PHONE_PAIR_PAIR_PATH}', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: token }),
+        })
+          .then(function (res) { return res.json().then(function (body) { return { res: res, body: body }; }); })
+          .then(function (out) {
+            if (out.res.ok && out.body && out.body.ok && out.body.session) {
+              return beginWithSession(out.body.session);
+            }
+            var msg = (out.body && out.body.message) || '';
+            if (msg.indexOf('already used') !== -1) {
+              var saved = loadPersistedSession();
+              if (saved) {
+                sessionId = saved;
+                return attemptRejoin();
+              }
+            }
+            status.textContent = msg || 'Pairing failed. Scan a fresh code in the studio.';
+            status.className = 'state err';
+          });
+      }
+
+      bindLifecycle();
+
       if (!token) {
+        var savedOnly = loadPersistedSession();
+        if (savedOnly) {
+          sessionId = savedOnly;
+          void attemptRejoin();
+          return;
+        }
         status.textContent = 'Missing pairing code. Scan the QR in the studio again.';
         status.className = 'state err';
         return;
       }
 
-      bindLifecycle();
-
-      fetch('${PHONE_PAIR_PAIR_PATH}', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: token }),
-      })
-        .then(function (res) { return res.json().then(function (body) { return { res: res, body: body }; }); })
-        .then(function (out) {
-          if (out.res.ok && out.body && out.body.ok && out.body.session) {
-            sessionId = out.body.session;
-            return startPreview();
-          }
-          var msg = (out.body && out.body.message) || 'Pairing failed. Scan a fresh code in the studio.';
-          status.textContent = msg;
-          status.className = 'state err';
-        })
-        .catch(function () {
-          status.textContent = 'Could not reach Maka on this network.';
-          status.className = 'state err';
-        });
+      tryPairWithToken().catch(function () {
+        status.textContent = 'Could not reach Maka on this network.';
+        status.className = 'state err';
+      });
     })();
   </script>
 </body>
@@ -431,6 +515,7 @@ export class PhonePairServer {
   private usedTokens = new Set<string>()
   private sessionToken: string | null = null
   private pendingAnswer: PhoneWebRtcSessionDescription | null = null
+  private graceTimer: ReturnType<typeof setTimeout> | null = null
 
   subscribe(listener: Listener): () => void {
     this.listeners.add(listener)
@@ -482,6 +567,28 @@ export class PhonePairServer {
     }
   }
 
+  private cancelGrace(): void {
+    if (this.graceTimer) {
+      clearTimeout(this.graceTimer)
+      this.graceTimer = null
+    }
+  }
+
+  private expireGraceSession(): void {
+    this.cancelGrace()
+    this.sessionToken = null
+    this.status = 'waiting'
+    this.mintToken()
+    this.clearWebRtc()
+    this.emit()
+    recordDiagnostic('info', 'phone-pair', 'Phone rejoin grace expired')
+  }
+
+  private startGraceTimer(): void {
+    this.cancelGrace()
+    this.graceTimer = setTimeout(() => this.expireGraceSession(), PHONE_PAIR_REJOIN_GRACE_MS)
+  }
+
   private mintToken(): void {
     this.clearToken()
     const value = randomBytes(24).toString('hex')
@@ -490,6 +597,7 @@ export class PhonePairServer {
 
   /** Invalidate pairing and return to waiting with a fresh code. */
   resetPairing(): PhonePairSnapshot {
+    this.cancelGrace()
     this.status = 'waiting'
     this.sessionToken = null
     this.clearWebRtc()
@@ -591,11 +699,11 @@ export class PhonePairServer {
     }
 
     if (this.status === 'connected') {
-      this.status = 'offline'
-      this.sessionToken = null
+      this.status = 'reconnecting'
       this.clearWebRtc()
+      this.startGraceTimer()
       this.emit()
-      recordDiagnostic('info', 'phone-pair', 'Phone went offline')
+      recordDiagnostic('info', 'phone-pair', 'Phone went offline — rejoin grace started')
     }
 
     res.writeHead(200, { 'Content-Type': 'application/json' })
@@ -603,9 +711,41 @@ export class PhonePairServer {
       JSON.stringify({
         ok: true,
         status: this.status,
-        sessionEnded: true,
+        sessionEnded: false,
+        graceMs: PHONE_PAIR_REJOIN_GRACE_MS,
       }),
     )
+  }
+
+  private async handleRejoin(req: IncomingMessage, res: ServerResponse, body: string): Promise<void> {
+    let parsed: { session?: string }
+    try {
+      parsed = JSON.parse(body) as { session?: string }
+    } catch {
+      res.writeHead(400, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: false, message: 'Invalid request.' }))
+      return
+    }
+
+    const session = typeof parsed.session === 'string' ? parsed.session.trim() : ''
+    if (!this.sessionOk(session)) {
+      res.writeHead(403, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: false, message: 'Session ended. Scan a new QR code.' }))
+      return
+    }
+    if (this.status !== 'reconnecting' && this.status !== 'connected') {
+      res.writeHead(403, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: false, message: 'Session ended. Scan a new QR code.' }))
+      return
+    }
+
+    this.cancelGrace()
+    this.status = 'connected'
+    this.emit()
+    recordDiagnostic('info', 'phone-pair', 'Phone rejoined after offline grace')
+
+    res.writeHead(200, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({ ok: true, message: 'reconnected', session: this.sessionToken }))
   }
 
   private sessionOk(session: string): boolean {
@@ -628,7 +768,7 @@ export class PhonePairServer {
       res.end(JSON.stringify({ ok: false, message: 'Session ended. Scan a new QR code.' }))
       return
     }
-    if (this.status !== 'connected') {
+    if (this.status !== 'connected' && this.status !== 'reconnecting') {
       res.writeHead(403, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ ok: false, message: 'Session ended. Scan a new QR code.' }))
       return
@@ -639,6 +779,12 @@ export class PhonePairServer {
     if (!type || !sdp.trim()) {
       res.writeHead(400, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ ok: false, message: 'Invalid offer.' }))
+      return
+    }
+
+    if (this.status === 'reconnecting') {
+      res.writeHead(403, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: false, message: 'Call rejoin before sending media.' }))
       return
     }
 
@@ -690,6 +836,16 @@ export class PhonePairServer {
     if (req.method === 'POST' && url.pathname === PHONE_PAIR_OFFLINE_PATH) {
       void readBody(req)
         .then((body) => this.handleOffline(req, res, body))
+        .catch(() => {
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ ok: false, message: 'Server error.' }))
+        })
+      return
+    }
+
+    if (req.method === 'POST' && url.pathname === PHONE_PAIR_REJOIN_PATH) {
+      void readBody(req)
+        .then((body) => this.handleRejoin(req, res, body))
         .catch(() => {
           res.writeHead(500, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ ok: false, message: 'Server error.' }))
