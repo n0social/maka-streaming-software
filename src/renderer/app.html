@@ -7,7 +7,7 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:38473 ws://127.0.0.1:*; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'"
     />
-    <title>Maka</title>
+    <title>Maka — Streaming</title>
     <meta name="theme-color" content="#0A0E14" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -31,16 +31,31 @@
           <span class="mark" aria-hidden="true"></span>
           <div class="brand-lockup">
             <strong class="wordmark">Maka</strong>
-            <span class="brand-tag">Live · Studio · Capture</span>
+            <span class="brand-tag" id="brand-tag">Streaming studio</span>
           </div>
           <span class="version">0.2</span>
         </div>
-        <div class="tabs" role="tablist" data-tour="modes">
-          <button type="button" class="tab active" data-tab="studio" role="tab" aria-selected="true">
-            Studio
+        <div class="tabs" role="tablist" data-tour="modes" aria-label="Streaming studio and optional search">
+          <button
+            type="button"
+            class="tab tab-primary active"
+            data-tab="studio"
+            id="tab-stream"
+            role="tab"
+            aria-selected="true"
+          >
+            Stream
           </button>
-          <button type="button" class="tab" data-tab="browse" role="tab" aria-selected="false">
-            Browse
+          <button
+            type="button"
+            class="tab tab-optional"
+            data-tab="browse"
+            id="tab-search"
+            role="tab"
+            aria-selected="false"
+            title="Optional browser. Open Search when you want Twitch, YouTube, or chat."
+          >
+            Search
           </button>
         </div>
         <div class="relay-chip" id="relay-chip" data-state="stopped" data-tour="relay">
@@ -87,10 +102,10 @@
 
       <aside class="sidebar left" aria-label="Sources" data-tour="sources">
         <h2>Sources</h2>
-        <p class="hint">Pick a display or window for gameplay. Enable the Browser layer to overlay your active Browse tab.</p>
+        <p class="hint">Streaming is the main job. Pick a display or window for the program. Search is a separate optional tab — capture it only when you want that page on the stream.</p>
 
         <button type="button" class="btn-block" id="btn-refresh-sources">Scan displays & windows</button>
-        <button type="button" class="btn-block" id="btn-capture-browse">Capture active Browse tab</button>
+        <button type="button" class="btn-block" id="btn-capture-browse">Capture the Search tab</button>
         <div class="source-list" id="source-list"></div>
 
         <h2 class="spaced">Camera</h2>
@@ -135,7 +150,7 @@
             <video id="program-browser-video" autoplay muted playsinline></video>
             <span class="program-browser-tag">Browser</span>
           </div>
-          <p class="program-empty" id="program-empty">Select a display or window to start the studio</p>
+          <p class="program-empty" id="program-empty">Select a display or window to start streaming</p>
         </section>
         <div class="stage-frame" id="stage-frame" aria-hidden="true"></div>
       </main>
@@ -150,7 +165,7 @@
           <li id="layer-game" data-active="0" data-enabled="1" tabindex="0">Gameplay — none</li>
           <li id="layer-cam" data-active="0" data-enabled="1" tabindex="0">Webcam — off</li>
           <li id="layer-mic" data-active="0" data-enabled="1" tabindex="0">Mic — off</li>
-          <li id="layer-browser" data-active="0" data-enabled="0" tabindex="0">Browser — off</li>
+          <li id="layer-browser" data-active="0" data-enabled="0" tabindex="0">Search tab — off</li>
         </ul>
         <p class="hint tight">Click a layer to show/hide it in the program mix.</p>
 
@@ -203,13 +218,14 @@
       <form method="dialog" id="settings-form" class="settings-form">
         <h2>Settings</h2>
         <label class="check"><input type="checkbox" id="set-tray-live" /> Minimize to tray while live</label>
-        <label class="check"><input type="checkbox" id="set-open-chat" /> Open chat pop-out when entering Browse</label>
+        <label class="check"><input type="checkbox" id="set-open-chat" /> Open chat pop-out when entering Search</label>
         <label class="check"><input type="checkbox" id="set-lab-mode" /> Demo mode (skip key validation)</label>
         <label class="field-label" for="set-startup">Startup mode</label>
         <select id="set-startup" class="select">
-          <option value="studio">Studio</option>
-          <option value="browse">Browse</option>
+          <option value="studio">Streaming studio</option>
+          <option value="browse">Search (browser)</option>
         </select>
+        <p class="hint tight">Streaming studio is the default. Search opens the browser only when you choose that tab, or when this setting says so.</p>
         <button type="button" class="btn-block spaced-btn" id="btn-replay-setup">Replay setup wizard</button>
         <button type="button" class="btn-block spaced-btn" id="btn-check-updates">Check for updates</button>
         <button type="button" class="btn-block spaced-btn" id="btn-replay-tour">Replay onboarding tour</button>

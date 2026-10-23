@@ -1046,3 +1046,25 @@ button:hover,
 #btn-settings-save:hover {
   filter: brightness(1.06);
 }
+
+/* Streaming-first layout only. Stream is the home surface; Search is optional. */
+.tabs {
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.tab-primary {
+  order: 0;
+  flex: 0 0 auto;
+}
+
+.tab-optional {
+  order: 1;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+body:not([data-mode='browse']) #navrow,
+body:not([data-mode='browse']) #browsetabs {
+  display: none !important;
+}
