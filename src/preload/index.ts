@@ -1,6 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { RelaySnapshot } from '../shared/relay-snapshot'
-import type { PhonePairSnapshot } from '../shared/phone-pair'
 
 export type AppMode = 'studio' | 'browse'
 
@@ -183,10 +182,6 @@ export type TabcastBridge = {
   downloadUpdate: () => Promise<UpdateStatus>
   installUpdate: () => Promise<void>
   onUpdateStatus: (cb: (status: UpdateStatus) => void) => () => void
-  getPhonePair: () => Promise<PhonePairSnapshot>
-  refreshPhonePair: () => Promise<PhonePairSnapshot>
-  unpairPhone: () => Promise<PhonePairSnapshot>
-  onPhonePairUpdate: (cb: (snapshot: PhonePairSnapshot) => void) => () => void
 }
 
 const api: TabcastBridge = {
@@ -287,14 +282,6 @@ const api: TabcastBridge = {
     const handler = (_event: Electron.IpcRendererEvent, status: UpdateStatus) => cb(status)
     ipcRenderer.on('app:update-status', handler)
     return () => ipcRenderer.removeListener('app:update-status', handler)
-  },
-  getPhonePair: () => ipcRenderer.invoke('phone-pair:get'),
-  refreshPhonePair: () => ipcRenderer.invoke('phone-pair:refresh'),
-  unpairPhone: () => ipcRenderer.invoke('phone-pair:unpair'),
-  onPhonePairUpdate: (cb) => {
-    const handler = (_event: Electron.IpcRendererEvent, snapshot: PhonePairSnapshot) => cb(snapshot)
-    ipcRenderer.on('phone-pair:update', handler)
-    return () => ipcRenderer.removeListener('phone-pair:update', handler)
   },
 }
 

@@ -11,6 +11,7 @@ import {
   type AddonRuntimeInfo,
 } from '../shared/addon-runtime'
 import type { AddonManifest } from '../shared/addon-types'
+import type { PhonePairSnapshot } from '../shared/phone-pair'
 import { loadAddonSettings, saveAddonSettings } from './addon-settings'
 import { addonsInstallDir } from './addon-state'
 import { recordDiagnostic } from './diagnostics'
@@ -94,6 +95,21 @@ export class AddonRuntime {
     sender.once('destroyed', () => {
       this.liveSubscribers.delete(sender)
     })
+  }
+
+  broadcastPhonePair(host: AddonHost, snapshot: PhonePairSnapshot): void {
+    for (const wc of [...this.liveSubscribers]) {
+      if (wc.isDestroyed()) {
+        this.liveSubscribers.delete(wc)
+        continue
+      }
+      const addonId = this.addonIdFromSender(wc, host)
+      if (!addonId) continue
+      const manifest = host.getManifest(addonId)
+      if (!manifest || !host.isAddonActive(addonId)) continue
+      if (!addonHasPermission(manifest, 'device.phone-pair')) continue
+      wc.send('addon-runtime:phone-pair-update', snapshot)
+    }
   }
 
   broadcastLiveEvent(host: AddonHost, payload: AddonLiveEventPayload): void {
