@@ -1,4 +1,5 @@
 import type { TabcastBridge } from '../preload/index'
+import type { PhoneIceServer } from '../shared/phone-ice-servers'
 import {
   PHONE_CAM_STREAM_ID,
   PHONE_CAMERA_DEVICE_VALUE,
@@ -85,11 +86,12 @@ function bindTrack(track: MediaStreamTrack, kind: 'video' | 'audio'): void {
 async function handleOffer(
   tabcast: TabcastBridge,
   offer: PhoneWebRtcSessionDescription,
+  iceServers: PhoneIceServer[],
 ): Promise<void> {
   closePeer()
   clearTracks()
 
-  const peer = new RTCPeerConnection({ iceServers: [] })
+  const peer = new RTCPeerConnection({ iceServers })
   pc = peer
 
   peer.ontrack = (event) => {
@@ -106,12 +108,8 @@ async function handleOffer(
   }
 
   peer.onconnectionstatechange = () => {
-    const state = peer.connectionState
-    if (state === 'failed' || state === 'closed') {
+    if (peer.connectionState === 'failed' || peer.connectionState === 'closed') {
       peerConnectionLost()
-    } else if (state === 'disconnected') {
-      clearTracks()
-      emit()
     }
   }
 
@@ -155,9 +153,12 @@ export function subscribePhoneTracks(listener: Listener): () => void {
 
 export function initPhoneTracks(tabcast: TabcastBridge): void {
   tabcast.onPhoneWebrtcOffer((offer) => {
-    void handleOffer(tabcast, offer).catch(() => {
-      resetWebrtc()
-    })
+    void tabcast
+      .getPhoneWebRtcIceServers()
+      .then((iceServers) => handleOffer(tabcast, offer, iceServers))
+      .catch(() => {
+        resetWebrtc()
+      })
   })
 
   tabcast.onPhoneWebrtcReset(() => {

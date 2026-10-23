@@ -10,11 +10,16 @@ export type AddonSettings = {
   /** Custom RTMP ingest URL (Kick, Facebook, etc.) */
   customRtmpUrl?: string
   customRtmpKey?: string
+  /** Optional TURN server for phone WebRTC when LAN ICE is insufficient. */
+  turnUrl?: string
+  turnUsername?: string
+  turnCredential?: string
 }
 
 const DISCORD_WEBHOOK_RE =
   /^https:\/\/(?:discord\.com|discordapp\.com)\/api\/webhooks\/\d+\/[\w-]+$/i
 const CUSTOM_RTMP_URL_RE = /^rtmps?:\/\/[a-zA-Z0-9.-]+(?::\d+)?(?:\/[\w./-]*)?$/i
+const TURN_URL_RE = /^turns?:[^\s]+$/i
 
 function settingsPath(addonId: string): string {
   const dir = join(app.getPath('userData'), 'addons', addonFolderName(addonId))
@@ -42,6 +47,24 @@ export function coerceAddonSettings(raw: unknown): AddonSettings {
     const key = p.customRtmpKey.trim().slice(0, 256)
     if (key.length >= 8) {
       out.customRtmpKey = key
+    }
+  }
+  if (typeof p.turnUrl === 'string') {
+    const url = p.turnUrl.trim().slice(0, 512)
+    if (TURN_URL_RE.test(url)) {
+      out.turnUrl = url
+    }
+  }
+  if (typeof p.turnUsername === 'string') {
+    const username = p.turnUsername.trim().slice(0, 256)
+    if (username.length > 0) {
+      out.turnUsername = username
+    }
+  }
+  if (typeof p.turnCredential === 'string') {
+    const credential = p.turnCredential.trim().slice(0, 256)
+    if (credential.length > 0) {
+      out.turnCredential = credential
     }
   }
   return out

@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { randomBytes } from 'node:crypto'
 import { networkInterfaces } from 'node:os'
 import {
+  PHONE_CAM_ADDON_ID,
   PHONE_PAIR_OFFLINE_PATH,
   PHONE_PAIR_PAIR_PATH,
   PHONE_PAIR_PORT,
@@ -14,7 +15,18 @@ import {
   type PhonePairStatus,
   type PhoneWebRtcSessionDescription,
 } from '../shared/phone-pair'
+import {
+  buildPhoneIceServers,
+  phoneTurnSettingsFromRecord,
+  phoneUnauthenticatedIceServersJson,
+} from '../shared/phone-ice-servers'
+import { loadAddonSettings } from './addon-settings'
 import { recordDiagnostic } from './diagnostics'
+
+export function phoneWebRtcIceServersForSession(): ReturnType<typeof buildPhoneIceServers> {
+  const settings = loadAddonSettings(PHONE_CAM_ADDON_ID)
+  return buildPhoneIceServers(phoneTurnSettingsFromRecord(settings))
+}
 
 type Listener = (snapshot: PhonePairSnapshot) => void
 type OfferListener = (offer: PhoneWebRtcSessionDescription) => void
@@ -51,7 +63,7 @@ function readBody(req: IncomingMessage): Promise<string> {
   })
 }
 
-function mobilePageHtml(): string {
+function mobilePageHtml(stunOnlyIceJson: string): string {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -161,6 +173,8 @@ function mobilePageHtml(): string {
       var currentStream = null;
       var facingMode = 'environment';
       var peer = null;
+      var PHONE_STUN_FALLBACK = ${stunOnlyIceJson};
+      var phoneIceServers = null;
       var PHONE_CAM_STREAM_ID = 'phone-cam';
       var PHONE_MIC_STREAM_ID = 'phone-mic';
 
@@ -329,6 +343,9 @@ function mobilePageHtml(): string {
             throw new Error('session ended');
           }
           if (!out.body || !out.body.ok) throw new Error('rejoin failed');
+          if (out.body.iceServers && Array.isArray(out.body.iceServers)) {
+            phoneIceServers = out.body.iceServers;
+          }
           reconnecting = false;
           offlineSent = false;
           return startPreview();
@@ -343,7 +360,8 @@ function mobilePageHtml(): string {
 
       function startWebRtc(stream) {
         if (sessionEnded) return Promise.reject(new Error('session ended'));
-        peer = new RTCPeerConnection({ iceServers: [] });
+        var iceServers = phoneIceServers || PHONE_STUN_FALLBACK;
+        peer = new RTCPeerConnection({ iceServers: iceServers });
         bindPeerLifecycle(peer);
         var video = stream.getVideoTracks()[0];
         var audio = stream.getAudioTracks()[0];
@@ -465,6 +483,9 @@ function mobilePageHtml(): string {
           .then(function (res) { return res.json().then(function (body) { return { res: res, body: body }; }); })
           .then(function (out) {
             if (out.res.ok && out.body && out.body.ok && out.body.session) {
+              if (out.body.iceServers && Array.isArray(out.body.iceServers)) {
+                phoneIceServers = out.body.iceServers;
+              }
               return beginWithSession(out.body.session);
             }
             var msg = (out.body && out.body.message) || '';
@@ -695,8 +716,16 @@ export class PhonePairServer {
     this.emit()
     recordDiagnostic('info', 'phone-pair', 'Phone paired over LAN')
 
+    const iceServers = phoneWebRtcIceServersForSession()
     res.writeHead(200, { 'Content-Type': 'application/json' })
-    res.end(JSON.stringify({ ok: true, message: 'connected', session: this.sessionToken }))
+    res.end(
+      JSON.stringify({
+        ok: true,
+        message: 'connected',
+        session: this.sessionToken,
+        iceServers,
+      }),
+    )
   }
 
   private async handleOffline(req: IncomingMessage, res: ServerResponse, body: string): Promise<void> {
@@ -762,8 +791,16 @@ export class PhonePairServer {
     this.emit()
     recordDiagnostic('info', 'phone-pair', 'Phone rejoined after offline grace')
 
+    const iceServers = phoneWebRtcIceServersForSession()
     res.writeHead(200, { 'Content-Type': 'application/json' })
-    res.end(JSON.stringify({ ok: true, message: 'reconnected', session: this.sessionToken }))
+    res.end(
+      JSON.stringify({
+        ok: true,
+        message: 'reconnected',
+        session: this.sessionToken,
+        iceServers,
+      }),
+    )
   }
 
   private sessionOk(session: string): boolean {
@@ -837,7 +874,7 @@ export class PhonePairServer {
     const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`)
     if (req.method === 'GET' && url.pathname === '/') {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
-      res.end(mobilePageHtml())
+      res.end(mobilePageHtml(phoneUnauthenticatedIceServersJson()))
       return
     }
 
