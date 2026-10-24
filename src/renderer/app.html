@@ -186,30 +186,40 @@
       </aside>
 
       <main class="stage" aria-label="Program">
-        <section class="program" id="program" data-tour="program">
-          <div class="program-label">
-            Program
-            <span class="program-mode">• Live Output</span>
+        <div class="program-column">
+          <section class="program" id="program" data-tour="program">
+            <div class="program-label">
+              Program
+              <span class="program-mode">• Live Output</span>
+            </div>
+            <video id="program-video" autoplay muted playsinline hidden></video>
+            <div class="program-cam" id="program-cam" hidden>
+              <video id="program-cam-video" autoplay muted playsinline hidden></video>
+              <p class="program-cam-offline" id="program-cam-offline" hidden>video is offline</p>
+              <span class="program-cam-tag">Webcam</span>
+            </div>
+            <div class="program-browser" id="program-browser" hidden>
+              <video id="program-browser-video" autoplay muted playsinline></video>
+              <span class="program-browser-tag">Browser</span>
+            </div>
+            <p class="program-empty" id="program-empty">Select a display or window to start streaming</p>
+          </section>
+          <div class="program-stats" id="program-stats" aria-label="Program stream stats">
+            <label class="program-stats-field">
+              <span class="sr-only">Output mode</span>
+              <select id="program-output-mode" class="program-stats-select" disabled title="Program is the live output feed">
+                <option value="program" selected>Program</option>
+              </select>
+            </label>
+            <label class="program-stats-field">
+              <span class="sr-only">Stream quality</span>
+              <select id="program-quality-select" class="program-stats-select" aria-label="Stream quality"></select>
+            </label>
+            <span class="program-stat" id="stat-dropped">Dropped: 0</span>
+            <span class="program-stat" id="stat-fps">FPS: 30</span>
+            <span class="program-stat" id="stat-resolution">1280×720</span>
           </div>
-          <video id="program-video" autoplay muted playsinline hidden></video>
-          <div class="program-cam" id="program-cam" hidden>
-            <video id="program-cam-video" autoplay muted playsinline hidden></video>
-            <p class="program-cam-offline" id="program-cam-offline" hidden>video is offline</p>
-            <span class="program-cam-tag">Webcam</span>
-          </div>
-          <div class="program-browser" id="program-browser" hidden>
-            <video id="program-browser-video" autoplay muted playsinline></video>
-            <span class="program-browser-tag">Browser</span>
-          </div>
-          <p class="program-empty" id="program-empty">Select a display or window to start streaming</p>
-          <div class="program-stats" id="program-stats">
-            <span class="program-stat">Studio Mode ▼</span>
-            <span class="program-stat" id="stat-dropped">Dropped Frames: 0 (0.0%) ▼</span>
-            <span class="program-stat" id="stat-fps">FPS: 60</span>
-            <span class="program-stat" id="stat-latency">17 ms</span>
-            <span class="program-stat" id="stat-resolution">🔄 Auto (1920x1080)</span>
-          </div>
-        </section>
+        </div>
         <div class="stage-frame" id="stage-frame" aria-hidden="true"></div>
       </main>
 
@@ -316,10 +326,7 @@
             </div>
             <div class="stream-encode">
               <label class="field-label" for="profile-select">Encode profile</label>
-              <select id="profile-select" class="select">
-                <option value="720p" selected>720p30 · 3 Mbps</option>
-                <option value="1080p">1080p60 · 6 Mbps</option>
-              </select>
+              <select id="profile-select" class="select" aria-label="Encode profile"></select>
             </div>
           </div>
         </div>

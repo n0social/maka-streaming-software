@@ -1,10 +1,11 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { app } from 'electron'
+import type { EncodeProfileId } from '../shared/stream-encode-profiles'
 import { coerceSettings, isValidTabId, sanitizeSavedTabs } from './security'
 
 export type AppSettings = {
-  bitrateProfile: '720p' | '1080p'
+  bitrateProfile: EncodeProfileId
   startupMode: 'studio' | 'browse'
   minimizeToTrayWhileLive: boolean
   openChatOnBrowse: boolean
@@ -26,7 +27,7 @@ export type SessionState = {
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
-  bitrateProfile: '720p',
+  bitrateProfile: '720p30',
   startupMode: 'studio',
   minimizeToTrayWhileLive: true,
   openChatOnBrowse: false,

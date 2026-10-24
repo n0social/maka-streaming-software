@@ -1,4 +1,5 @@
 import type { RelaySnapshot } from '../shared/relay-snapshot'
+import { encodeProfileSpec, normalizeEncodeProfileId } from '../shared/stream-encode-profiles'
 import {
   DEFAULT_STREAM_PROFILE,
   RELAY_BASE_URL,
@@ -41,8 +42,11 @@ export async function postRelayConfig(
     profile: StreamProfile
   },
 ): Promise<void> {
+  const profile = normalizeEncodeProfileId(input.profile || DEFAULT_STREAM_PROFILE)
+  const spec = encodeProfileSpec(profile)
   const body: RelayConfigRequest = {
-    profile: input.profile || DEFAULT_STREAM_PROFILE,
+    profile,
+    bitrateMbps: spec.bitrateMbps,
   }
   const twitch = normalizeStreamKey(input.twitchKey ?? '')
   const youtube = normalizeStreamKey(input.youtubeKey ?? '')
@@ -113,10 +117,9 @@ export function defaultSceneLayout(opts: {
   hasWebcam: boolean
   hasBrowser?: boolean
 }): SceneLayout {
-  const canvas =
-    opts.profile === '1080p'
-      ? { width: 1920, height: 1080 }
-      : { width: 1280, height: 720 }
+  const profile = normalizeEncodeProfileId(opts.profile)
+  const spec = encodeProfileSpec(profile)
+  const canvas = { width: spec.width, height: spec.height }
 
   const sources = [
     {

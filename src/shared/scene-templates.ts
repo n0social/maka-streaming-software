@@ -1,4 +1,5 @@
 import type { SceneLayout, StreamProfile } from './tabcast'
+import { canvasForEncodeProfile } from './stream-encode-profiles'
 
 export type SceneTemplate = {
   id: string
@@ -8,7 +9,7 @@ export type SceneTemplate = {
 }
 
 function canvasFor(profile: StreamProfile) {
-  return profile === '1080p' ? { width: 1920, height: 1080 } : { width: 1280, height: 720 }
+  return canvasForEncodeProfile(profile)
 }
 
 export const SCENE_TEMPLATES: SceneTemplate[] = [
