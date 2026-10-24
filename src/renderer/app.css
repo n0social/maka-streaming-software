@@ -1461,55 +1461,42 @@ body:not([data-mode='browse']) #browsetabs {
   display: none;
 }
 
-/* Audio Mixer — horizontal rows */
+/* Audio Mixer — one horizontal level bar inside each channel row */
 .audio-mixer {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
-  padding: 0.15rem 0 0;
+  gap: 0.55rem;
+  padding: 0.2rem 0 0.1rem;
 }
 
-.audio-channel-row {
+.audio-channel {
   display: flex;
-  align-items: flex-start;
-  gap: 0.35rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
   min-width: 0;
 }
 
-.audio-channel-row[title] {
+.audio-channel[title] {
   opacity: 0.55;
 }
 
 .audio-channel-icon {
-  font-size: 0.9rem;
-  line-height: 1.2;
-  flex-shrink: 0;
-  margin-top: 0.05rem;
-}
-
-.audio-channel-main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.audio-channel-head {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.7rem;
+  font-size: 0.85rem;
+  line-height: 1;
+  flex: 0 0 1.1rem;
+  text-align: center;
 }
 
 .audio-channel-name {
-  flex: 1;
+  flex: 0 1 6.4rem;
+  min-width: 0;
+  font-size: 0.68rem;
   font-weight: 600;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  min-width: 0;
 }
 
 .audio-channel-settings {
@@ -1519,7 +1506,7 @@ body:not([data-mode='browse']) #browsetabs {
   padding: 0;
   opacity: 0.45;
   font-size: 0.75rem;
-  flex-shrink: 0;
+  flex: 0 0 auto;
   color: var(--muted);
 }
 
@@ -1533,59 +1520,34 @@ body:not([data-mode='browse']) #browsetabs {
   opacity: 0.25;
 }
 
-.audio-meter-wrap {
-  width: 24px;
-  height: 140px;
-  background: repeating-linear-gradient(
-    180deg,
-    #e6dfd0 0,
-    #e6dfd0 2px,
-    #f0ebe3 2px,
-    #f0ebe3 4px
-  );
+.audio-meter-track {
+  flex: 1 1 auto;
+  min-width: 4.5rem;
+  height: 14px;
   border-radius: 3px;
+  background: #e4dccb;
+  border: 1px solid #d9d0c0;
   overflow: hidden;
-  display: flex;
-  flex-direction: column-reverse;
+  container-type: inline-size;
 }
 
 .audio-meter {
-  width: 100%;
-  height: 0%;
-  border-radius: 3px;
-  background: linear-gradient(
-    180deg,
-    #c94a27 0%,
-    #c94a27 15%,
-    #c9a227 15%,
-    #c9a227 40%,
-    #3d9a5f 40%,
-    #3d9a5f 100%
+  height: 100%;
+  width: 0%;
+  border-radius: 2px;
+  background-image: linear-gradient(
+    90deg,
+    #3d9a5f 0%,
+    #3d9a5f 60%,
+    #c9a227 60%,
+    #c9a227 85%,
+    #c94a27 85%,
+    #c94a27 100%
   );
-  transition: height 0.05s ease-out;
-}
-
-.audio-fader {
-  width: 100%;
-  height: 0.35rem;
-  margin: 0.05rem 0 0;
-  accent-color: var(--gold);
-  cursor: pointer;
-}
-
-.audio-fader:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.audio-fader-scale {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.5rem;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-  padding: 0 0.05rem;
+  background-repeat: no-repeat;
+  /* Gradient spans the track, so color zones stay put as the fill widens. */
+  background-size: 100cqi 100%;
+  transition: width 0.05s linear;
 }
 
 /* Stream Controls */
