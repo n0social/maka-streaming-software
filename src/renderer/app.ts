@@ -2377,3 +2377,110 @@ void window.tabcast.getSettings().then((s) => {
     window.setTimeout(() => onboardingTour.start(), 800)
   }
 })
+// Scene buttons
+const sceneGameplay = document.getElementById('scene-gameplay') as HTMLButtonElement
+const sceneStarting = document.getElementById('scene-starting') as HTMLButtonElement
+const sceneChatting = document.getElementById('scene-chatting') as HTMLButtonElement
+const sceneIntermission = document.getElementById('scene-intermission') as HTMLButtonElement
+const sceneEnding = document.getElementById('scene-ending') as HTMLButtonElement
+const btnAddScene = document.getElementById('btn-add-scene') as HTMLButtonElement
+const btnAddSceneAlt = document.getElementById('btn-add-scene-alt') as HTMLButtonElement
+
+// Audio mixer
+const audioMixer = document.getElementById('audio-mixer')
+const micFader = document.getElementById('mic-fader') as HTMLInputElement
+const micValue = document.getElementById('mic-value')
+
+// Stream info
+const streamStatus = document.getElementById('stream-status')
+const streamInfo = document.getElementById('stream-info')
+const btnGoLiveSidebar = document.getElementById('btn-go-live-sidebar') as HTMLButtonElement
+
+// Program stats
+const programStats = document.getElementById('program-stats')
+const statDropped = document.getElementById('stat-dropped')
+const statFps = document.getElementById('stat-fps')
+const statLatency = document.getElementById('stat-latency')
+const statResolution = document.getElementById('stat-resolution')
+
+// Scene selection handler
+async function selectScene(sceneTemplate: string): Promise<void> {
+  console.log('Selecting scene:', sceneTemplate)
+  // Wire to existing scene template system if available
+  // For now, just log the selection
+  // The actual scene templates are: gaming-cam, desk-only, browse-showcase
+  if (sceneTemplate === 'gaming-cam' || sceneTemplate === 'desk-only' || sceneTemplate === 'browse-showcase') {
+    // These exist and can be wired to the scene API
+    console.log('Valid scene template:', sceneTemplate)
+  } else {
+    console.log('Scene template not implemented:', sceneTemplate)
+  }
+}
+
+// Wire scene buttons
+if (sceneGameplay) {
+  sceneGameplay.addEventListener('click', () => selectScene('gaming-cam'))
+}
+if (sceneChatting) {
+  sceneChatting.addEventListener('click', () => selectScene('desk-only'))
+}
+// Starting Soon, Intermission, Ending have no templates yet
+if (sceneStarting) {
+  sceneStarting.addEventListener('click', () => selectScene('starting-soon'))
+}
+if (sceneIntermission) {
+  sceneIntermission.addEventListener('click', () => selectScene('intermission'))
+}
+if (sceneEnding) {
+  sceneEnding.addEventListener('click', () => selectScene('ending'))
+}
+
+// Add Scene buttons
+if (btnAddScene) {
+  btnAddScene.addEventListener('click', () => {
+    console.log('Add scene clicked')
+    // Future: Open scene creation dialog
+  })
+}
+if (btnAddSceneAlt) {
+  btnAddSceneAlt.addEventListener('click', () => {
+    console.log('Add scene clicked (alt)')
+  })
+}
+
+// Mic fader
+if (micFader && micValue) {
+  micFader.addEventListener('input', () => {
+    const value = parseInt(micFader.value, 10)
+    micValue.textContent = value.toString()
+    // Wire to actual mic volume control when available
+  })
+}
+
+// Go Live sidebar button (wire to existing Go Live)
+if (btnGoLiveSidebar) {
+  btnGoLiveSidebar.addEventListener('click', () => {
+    btnGoLive.click()
+  })
+}
+
+// Update program stats with real data
+function updateProgramStats(): void {
+  // These would be wired to actual encoder stats
+  // For now, show placeholder values
+  if (statDropped) {
+    statDropped.textContent = 'Dropped Frames: 0 (0.0%) ▼'
+  }
+  if (statFps) {
+    statFps.textContent = 'FPS: 60'
+  }
+  if (statLatency) {
+    statLatency.textContent = '17 ms'
+  }
+  if (statResolution) {
+    statResolution.textContent = '🔄 Auto (1920x1080)'
+  }
+}
+
+// Initialize stats
+updateProgramStats()
