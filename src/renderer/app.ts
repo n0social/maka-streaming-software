@@ -2484,3 +2484,70 @@ function updateProgramStats(): void {
 
 // Initialize stats
 updateProgramStats()
+
+// Additional audio channels
+const desktopFader = document.getElementById('desktop-fader') as HTMLInputElement | null
+const gameFader = document.getElementById('game-fader') as HTMLInputElement | null
+const desktopMeter = document.getElementById('desktop-meter') as HTMLElement | null
+const gameMeter = document.getElementById('game-meter') as HTMLElement | null
+
+// Stream control buttons
+const btnStartRecording = document.getElementById('btn-start-recording') as HTMLButtonElement | null
+const btnStartVcam = document.getElementById('btn-start-vcam') as HTMLButtonElement | null
+const btnGoLiveLabel = document.getElementById('btn-go-live-label') as HTMLElement | null
+
+// Stream info elements
+const streamThumb = document.getElementById('stream-thumb') as HTMLElement | null
+const streamTitle = document.getElementById('stream-title') as HTMLElement | null
+const streamCategory = document.getElementById('stream-category') as HTMLElement | null
+const streamLivePill = document.getElementById('stream-live-pill') as HTMLElement | null
+const streamViewers = document.getElementById('stream-viewers') as HTMLElement | null
+const streamDuration = document.getElementById('stream-duration') as HTMLElement | null
+
+// Update Go Live button label based on streaming state
+function updateGoLiveLabel(isLive: boolean): void {
+  if (btnGoLiveLabel) {
+    btnGoLiveLabel.textContent = isLive ? 'End Streaming' : 'Start Streaming'
+  }
+}
+
+// Update stream info display
+function updateStreamInfo(isLive: boolean): void {
+  if (streamLivePill) {
+    streamLivePill.dataset.live = isLive ? 'true' : 'false'
+    streamLivePill.textContent = isLive ? 'Live' : 'Offline'
+  }
+  
+  // Don't fake viewer count or duration - show placeholder when not live
+  if (streamViewers) {
+    streamViewers.textContent = isLive ? '—' : '—'
+  }
+  if (streamDuration) {
+    streamDuration.textContent = isLive ? '—' : '—'
+  }
+}
+
+// Wire existing Go Live button to update labels
+const originalGoLiveHandler = btnGoLive.onclick
+btnGoLive.addEventListener('click', () => {
+  // Update UI after state change
+  setTimeout(() => {
+    const isLive = btnGoLive.textContent?.includes('End') || false
+    updateGoLiveLabel(isLive)
+    updateStreamInfo(isLive)
+  }, 100)
+})
+
+// Wire sidebar Go Live button to main Go Live
+if (btnGoLiveSidebar) {
+  btnGoLiveSidebar.addEventListener('click', () => {
+    btnGoLive.click()
+  })
+}
+
+// Desktop and Game audio faders (disabled, no-op)
+// These are shown but don't do anything since the features aren't implemented
+
+// Initialize stream info
+updateGoLiveLabel(false)
+updateStreamInfo(false)
