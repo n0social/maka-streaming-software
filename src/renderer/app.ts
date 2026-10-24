@@ -7,6 +7,14 @@ import type {
 } from '../preload/index'
 import type { RelaySnapshot } from '../shared/relay-snapshot'
 import type { StreamProfile, SceneLayout, RelayHealth } from '../shared/tabcast'
+import {
+  ENCODE_PROFILE_ORDER,
+  ENCODE_PROFILES,
+  encodeProfileSpec,
+  formatResolutionLabel,
+  normalizeEncodeProfileId,
+  type EncodeProfileId,
+} from '../shared/stream-encode-profiles'
 import { BROWSE_CAPTURE_SOURCE_ID } from '../shared/capture'
 import {
   BACKUP_INGEST_STATUS,
@@ -77,6 +85,7 @@ const programCamOffline = document.getElementById('program-cam-offline')!
 const cameraSelect = document.getElementById('camera-select') as HTMLSelectElement
 const micSelect = document.getElementById('mic-select') as HTMLSelectElement
 const profileSelect = document.getElementById('profile-select') as HTMLSelectElement
+const programQualitySelect = document.getElementById('program-quality-select') as HTMLSelectElement
 const camScale = document.getElementById('cam-scale') as HTMLInputElement
 const micMeter = document.getElementById('mic-meter')!
 const destTwitch = document.getElementById('dest-twitch') as HTMLInputElement
@@ -517,6 +526,8 @@ function renderRelay(snapshot: RelaySnapshot): void {
   if (lines?.length) {
     ffmpegLog.textContent = lines.join('\n')
   }
+
+  updateProgramStats(snapshot)
 }
 
 type PlatformChipState = 'off' | 'idle' | 'armed' | 'live' | 'error'
@@ -890,7 +901,40 @@ function releaseMicStream(): void {
 }
 
 function selectedProfile(): StreamProfile {
-  return profileSelect.value === '1080p' ? '1080p' : '720p'
+  return normalizeEncodeProfileId(profileSelect.value)
+}
+
+function populateEncodeProfileSelect(select: HTMLSelectElement, labelKind: 'menu' | 'sidebar'): void {
+  select.innerHTML = ''
+  for (const id of ENCODE_PROFILE_ORDER) {
+    const spec = ENCODE_PROFILES[id]
+    const option = document.createElement('option')
+    option.value = id
+    option.textContent = labelKind === 'menu' ? spec.menuLabel : spec.sidebarLabel
+    select.appendChild(option)
+  }
+}
+
+function syncEncodeProfileSelects(id: EncodeProfileId): void {
+  if (profileSelect.value !== id) profileSelect.value = id
+  if (programQualitySelect && programQualitySelect.value !== id) {
+    programQualitySelect.value = id
+  }
+}
+
+function onEncodeProfileChanged(id: EncodeProfileId): void {
+  syncEncodeProfileSelects(id)
+  updateProgramStats()
+  void window.tabcast.setSettings({ bitrateProfile: id })
+  void pushSceneLayout().catch(() => undefined)
+}
+
+function initEncodeProfileControls(): void {
+  populateEncodeProfileSelect(profileSelect, 'sidebar')
+  populateEncodeProfileSelect(programQualitySelect, 'menu')
+  const initial = normalizeEncodeProfileId(profileSelect.value)
+  syncEncodeProfileSelects(initial)
+  updateProgramStats()
 }
 
 function backupIngestFromUi() {
@@ -1987,7 +2031,11 @@ document.getElementById('btn-verify-keys')!.addEventListener('click', () => {
 })
 
 profileSelect.addEventListener('change', () => {
-  void window.tabcast.setSettings({ bitrateProfile: selectedProfile() })
+  onEncodeProfileChanged(selectedProfile())
+})
+
+programQualitySelect.addEventListener('change', () => {
+  onEncodeProfileChanged(normalizeEncodeProfileId(programQualitySelect.value))
 })
 
 async function teardownLiveSession(): Promise<void> {
@@ -2031,7 +2079,9 @@ window.tabcast.onTabs((tabs) => {
 
 void window.tabcast.getSettings().then((s) => {
   labMode = s.labMode
-  profileSelect.value = s.bitrateProfile
+  const profile = normalizeEncodeProfileId(s.bitrateProfile)
+  syncEncodeProfileSelects(profile)
+  updateProgramStats()
 })
 
 function formatDiag(events: DiagEvent[]): string {
@@ -2400,7 +2450,6 @@ const btnGoLiveSidebar = document.getElementById('btn-go-live-sidebar') as HTMLB
 const programStats = document.getElementById('program-stats')
 const statDropped = document.getElementById('stat-dropped')
 const statFps = document.getElementById('stat-fps')
-const statLatency = document.getElementById('stat-latency')
 const statResolution = document.getElementById('stat-resolution')
 
 // Scene selection handler
@@ -2464,26 +2513,29 @@ if (btnGoLiveSidebar) {
   })
 }
 
-// Update program stats with real data
-function updateProgramStats(): void {
-  // These would be wired to actual encoder stats
-  // For now, show placeholder values
+function droppedFramesFromRelay(snapshot?: RelaySnapshot | null): number {
+  const status = snapshot?.status
+  if (!status || typeof status !== 'object') return 0
+  const raw = (status as { droppedFrames?: unknown }).droppedFrames
+  return typeof raw === 'number' && Number.isFinite(raw) && raw >= 0 ? Math.floor(raw) : 0
+}
+
+function updateProgramStats(snapshot?: RelaySnapshot | null): void {
+  const profile = selectedProfile()
+  const spec = encodeProfileSpec(profile)
+  const dropped = droppedFramesFromRelay(snapshot)
   if (statDropped) {
-    statDropped.textContent = 'Dropped Frames: 0 (0.0%) ▼'
+    statDropped.textContent = `Dropped: ${dropped}`
   }
   if (statFps) {
-    statFps.textContent = 'FPS: 60'
-  }
-  if (statLatency) {
-    statLatency.textContent = '17 ms'
+    statFps.textContent = `FPS: ${spec.fps}`
   }
   if (statResolution) {
-    statResolution.textContent = '🔄 Auto (1920x1080)'
+    statResolution.textContent = formatResolutionLabel(profile)
   }
 }
 
-// Initialize stats
-updateProgramStats()
+initEncodeProfileControls()
 
 // Additional audio channels
 const desktopFader = document.getElementById('desktop-fader') as HTMLInputElement | null

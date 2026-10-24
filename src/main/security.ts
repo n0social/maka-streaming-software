@@ -1,5 +1,6 @@
 import type { AppSettings, SavedBrowseTab } from './settings-store'
 import { normalizeBrowseUrl } from '../shared/browse-url'
+import { isEncodeProfileId } from '../shared/stream-encode-profiles'
 
 const TAB_ID_RE = /^[a-zA-Z0-9_-]{1,64}$/
 const PRESET_IDS = new Set(['pin-twitch', 'pin-yt-studio', 'pin-yt-chat', 'pin-chat'])
@@ -21,8 +22,12 @@ export function coerceSettings(partial: unknown): Partial<AppSettings> {
   const p = partial as Record<string, unknown>
   const out: Partial<AppSettings> = {}
 
-  if (p.bitrateProfile === '720p' || p.bitrateProfile === '1080p') {
+  if (typeof p.bitrateProfile === 'string' && isEncodeProfileId(p.bitrateProfile)) {
     out.bitrateProfile = p.bitrateProfile
+  } else if (p.bitrateProfile === '720p') {
+    out.bitrateProfile = '720p30'
+  } else if (p.bitrateProfile === '1080p') {
+    out.bitrateProfile = '1080p60'
   }
   if (p.startupMode === 'studio' || p.startupMode === 'browse') {
     out.startupMode = p.startupMode
