@@ -164,22 +164,6 @@ export class AddonHost {
   listPanels(): AddonPanel[] {
     const panels: AddonPanel[] = []
 
-    if (
-      this.manifests.has('tabcast.scene-templates') &&
-      isAddonEnabled(this.state, 'tabcast.scene-templates', true)
-    ) {
-      panels.push({
-        addonId: 'tabcast.scene-templates',
-        title: 'Scene templates',
-        description: 'One-click layouts for the relay encoder.',
-        actions: SCENE_TEMPLATES.map((t) => ({
-          id: t.id,
-          label: t.name,
-          description: t.description,
-        })),
-      })
-    }
-
     for (const manifest of this.manifests.values()) {
       if (manifest.builtin) continue
       if (!isAddonEnabled(this.state, manifest.id, false)) continue

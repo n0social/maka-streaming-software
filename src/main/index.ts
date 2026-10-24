@@ -8,7 +8,7 @@ import {
   shell,
 } from 'electron'
 import { existsSync, writeFileSync, mkdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { RelayManager, detectOrphanRelayProcesses } from './relay'
 import { BrowseTabsManager, PINNED_PRESETS, normalizeBrowseUrl } from './browse-tabs'
 import { AddonHost } from './addon-host'
@@ -312,6 +312,23 @@ function createMainWindow(): BrowserWindow {
   win.once('ready-to-show', () => {
     win.show()
     setAppMode(appMode)
+    const capturePath = process.env.MAKA_CAPTURE_PATH
+    if (capturePath) {
+      setTimeout(() => {
+        void win.webContents
+          .capturePage()
+          .then((image) => {
+            mkdirSync(dirname(capturePath), { recursive: true })
+            writeFileSync(capturePath, image.toPNG())
+            recordDiagnostic('info', 'app.capture', `Wrote UI capture to ${capturePath}`)
+            app.exit(0)
+          })
+          .catch((err) => {
+            recordDiagnostic('error', 'app.capture', 'UI capture failed', err)
+            app.exit(1)
+          })
+      }, 1200)
+    }
   })
 
   win.on('resize', () => layoutBrowserPane(win))
