@@ -12,7 +12,7 @@ export type EncodeProfileSpec = {
   id: EncodeProfileId
   /** Center stats bar dropdown */
   menuLabel: string
-  /** Sidebar encode profile select */
+  /** Compact label (legacy sidebar; stats bar uses menuLabel) */
   sidebarLabel: string
   width: number
   height: number

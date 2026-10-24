@@ -93,16 +93,14 @@ const programCamVideo = document.getElementById('program-cam-video') as HTMLVide
 const programCamOffline = document.getElementById('program-cam-offline')!
 const cameraSelect = document.getElementById('camera-select') as HTMLSelectElement
 const micSelect = document.getElementById('mic-select') as HTMLSelectElement
-const profileSelect = document.getElementById('profile-select') as HTMLSelectElement
 const programQualitySelect = document.getElementById(
   'program-quality-select',
-) as HTMLSelectElement | null
+) as HTMLSelectElement
 const platformKeyDialog = document.getElementById('platform-key-dialog') as HTMLDialogElement
 const platformKeyForm = document.getElementById('platform-key-form') as HTMLFormElement
 const platformKeyPanelTwitch = document.getElementById('platform-key-panel-twitch')!
 const platformKeyPanelYoutube = document.getElementById('platform-key-panel-youtube')!
 const platformKeyDialogTitle = document.getElementById('platform-key-dialog-title')!
-const streamDestSummary = document.getElementById('stream-dest-summary')
 const camScale = document.getElementById('cam-scale') as HTMLInputElement
 const micMeter = document.getElementById('mic-meter')!
 const destTwitch = document.getElementById('dest-twitch') as HTMLInputElement
@@ -1101,7 +1099,7 @@ function releaseMicStream(): void {
 }
 
 function selectedProfile(): StreamProfile {
-  return normalizeEncodeProfileId(profileSelect.value)
+  return normalizeEncodeProfileId(programQualitySelect.value)
 }
 
 function populateEncodeProfileSelect(select: HTMLSelectElement, labelKind: 'menu' | 'sidebar'): void {
@@ -1117,10 +1115,7 @@ function populateEncodeProfileSelect(select: HTMLSelectElement, labelKind: 'menu
 }
 
 function syncEncodeProfileSelects(id: EncodeProfileId): void {
-  if (profileSelect.value !== id) profileSelect.value = id
-  if (programQualitySelect && programQualitySelect.value !== id) {
-    programQualitySelect.value = id
-  }
+  if (programQualitySelect.value !== id) programQualitySelect.value = id
 }
 
 function onEncodeProfileChanged(id: EncodeProfileId): void {
@@ -1131,11 +1126,8 @@ function onEncodeProfileChanged(id: EncodeProfileId): void {
 }
 
 function initEncodeProfileControls(): void {
-  populateEncodeProfileSelect(profileSelect, 'sidebar')
-  if (programQualitySelect) {
-    populateEncodeProfileSelect(programQualitySelect, 'menu')
-  }
-  const initial = normalizeEncodeProfileId(profileSelect.value)
+  populateEncodeProfileSelect(programQualitySelect, 'menu')
+  const initial = normalizeEncodeProfileId(programQualitySelect.value)
   syncEncodeProfileSelects(initial)
   updateProgramStats()
 }
@@ -1174,22 +1166,6 @@ function syncDestinationInputs(): void {
   customRtmpKey.disabled = !customEnabled
   backupRtmpUrl.disabled = !customEnabled
   backupRtmpKey.disabled = !customEnabled
-  updateStreamDestSummary()
-}
-
-function updateStreamDestSummary(): void {
-  if (!streamDestSummary) return
-  const parts: string[] = []
-  if (destTwitch.checked) {
-    parts.push(twitchKey.value.trim() ? 'Twitch · key set' : 'Twitch · no key')
-  }
-  if (destYoutube.checked) {
-    parts.push(youtubeKey.value.trim() ? 'YouTube · key set' : 'YouTube · no key')
-  }
-  streamDestSummary.textContent =
-    parts.length > 0
-      ? parts.join(' · ')
-      : 'No destinations enabled — use Twitch or YouTube in the program stats bar.'
 }
 
 type PlatformKeyTarget = 'twitch' | 'youtube'
@@ -2525,12 +2501,8 @@ document.getElementById('btn-verify-keys')!.addEventListener('click', () => {
   void onVerifyKeys()
 })
 
-profileSelect.addEventListener('change', () => {
-  onEncodeProfileChanged(selectedProfile())
-})
-
-programQualitySelect?.addEventListener('change', () => {
-  onEncodeProfileChanged(normalizeEncodeProfileId(programQualitySelect!.value))
+programQualitySelect.addEventListener('change', () => {
+  onEncodeProfileChanged(normalizeEncodeProfileId(programQualitySelect.value))
 })
 
 platTwitch.addEventListener('click', () => {
@@ -2541,7 +2513,6 @@ platYoutube.addEventListener('click', () => {
 })
 
 platformKeyForm.addEventListener('submit', () => {
-  updateStreamDestSummary()
   void window.tabcast.getRelay().then(renderPlatformStatus)
 })
 
@@ -2700,11 +2671,9 @@ destCustom.addEventListener('change', () => {
   void window.tabcast.getRelay().then(renderPlatformStatus)
 })
 twitchKey.addEventListener('input', () => {
-  updateStreamDestSummary()
   void window.tabcast.getRelay().then(renderPlatformStatus)
 })
 youtubeKey.addEventListener('input', () => {
-  updateStreamDestSummary()
   void window.tabcast.getRelay().then(renderPlatformStatus)
 })
 customRtmpKey.addEventListener('input', () => {
@@ -2961,7 +2930,6 @@ const statLatency = document.getElementById('stat-latency')
 const statStreamHealth = document.getElementById('stat-stream-health')
 const statHealthLabel = document.getElementById('stat-health-label')
 const statBitrate = document.getElementById('stat-bitrate')
-const statEncodeSummary = document.getElementById('stat-encode-summary')
 
 function highlightSceneSelection(sceneTemplate: string): void {
   const buttons = document.querySelectorAll<HTMLButtonElement>('.studio-list-item[data-scene]')
@@ -3098,10 +3066,10 @@ function updateProgramStats(snapshot?: RelaySnapshot | null): void {
   if (statBitrate) {
     statBitrate.textContent = formatMbpsLabel(displayMbps)
   }
-  if (statEncodeSummary) {
-    statEncodeSummary.textContent = sessionLive
+  if (programQualitySelect) {
+    programQualitySelect.title = sessionLive
       ? `${spec.menuLabel} · transmitting at ${formatMbpsLabel(displayMbps)}`
-      : `${profile} · ${formatMbpsLabel(targetMbps)} target`
+      : `${spec.menuLabel} · ${formatMbpsLabel(targetMbps)} target`
   }
   if (statStreamHealth && statHealthLabel) {
     const health = streamHealthUi(snapshot)

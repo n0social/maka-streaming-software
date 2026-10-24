@@ -1849,6 +1849,10 @@ body:not([data-mode='browse']) #browsetabs {
   cursor: default;
 }
 
+.program-stats-select-encode {
+  max-width: 9.5rem;
+}
+
 .program-stat {
   white-space: nowrap;
   color: #6b6256;

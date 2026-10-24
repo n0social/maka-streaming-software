@@ -289,7 +289,15 @@
                 <span id="stat-health-label">Offline</span>
               </span>
               <span class="program-stat program-stat-bitrate" id="stat-bitrate">—</span>
-              <span class="program-stat program-stat-encode" id="stat-encode-summary">720p30 · 3 Mbps target</span>
+              <label class="program-stats-field program-stats-field-encode">
+                <span class="sr-only">Encode profile</span>
+                <select
+                  id="program-quality-select"
+                  class="program-stats-select program-stats-select-encode"
+                  aria-label="Encode profile"
+                  title="Stream resolution, frame rate, and target bitrate"
+                ></select>
+              </label>
             </div>
           </div>
         </div>
@@ -377,23 +385,14 @@
                 </div>
               </div>
             </div>
-            <div class="stream-destinations" id="stream-destinations">
-              <p class="stream-dest-summary hint tight" id="stream-dest-summary">
-                Set Twitch or YouTube keys from the program stats bar.
-              </p>
-              <div id="dest-custom-block" class="dest-custom-block" hidden>
-                <label class="check"><input type="checkbox" id="dest-custom" /> Custom RTMP</label>
-                <input id="custom-rtmp-url" class="key-input" type="text" autocomplete="off" spellcheck="false" placeholder="rtmps://…/app" disabled />
-                <input id="custom-rtmp-key" class="key-input" type="password" autocomplete="off" spellcheck="false" placeholder="Stream key" disabled />
-              </div>
-            </div>
-            <div class="stream-encode">
-              <label class="field-label" for="profile-select">Encode profile</label>
-              <select id="profile-select" class="select" aria-label="Encode profile"></select>
-            </div>
           </div>
         </div>
       </aside>
+      <div id="dest-custom-block" class="dest-custom-block" hidden aria-hidden="true">
+        <label class="check"><input type="checkbox" id="dest-custom" /> Custom RTMP</label>
+        <input id="custom-rtmp-url" class="key-input" type="text" autocomplete="off" spellcheck="false" placeholder="rtmps://…/app" disabled />
+        <input id="custom-rtmp-key" class="key-input" type="password" autocomplete="off" spellcheck="false" placeholder="Stream key" disabled />
+      </div>
     </div>
 
     <dialog id="platform-key-dialog" class="platform-key-dialog">
