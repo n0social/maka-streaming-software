@@ -250,12 +250,12 @@ function startMicMeter(stream: MediaStream): void {
       let sum = 0
       for (const v of data) sum += v
       const avg = sum / data.length / 255
-      micMeter.style.height = `${Math.min(100, Math.round(avg * 140))}%`
+      setMicMeterLevel(Math.min(100, Math.round(avg * 140)))
       meterRaf = requestAnimationFrame(tick)
     }
     tick()
   } catch {
-    micMeter.style.height = '0%'
+    setMicMeterLevel(0)
   }
 }
 
@@ -267,7 +267,13 @@ function stopMicMeter(): void {
     void audioCtx.close()
     audioCtx = null
   }
-  micMeter.style.height = '0%'
+  setMicMeterLevel(0)
+}
+
+function setMicMeterLevel(percent: number): void {
+  const level = Math.max(0, Math.min(100, percent))
+  micMeter.style.width = `${level}%`
+  micMeter.style.removeProperty('height')
 }
 
 function syncProgramVideoSurface(): void {
@@ -2438,8 +2444,6 @@ const btnAddSceneAlt = document.getElementById('btn-add-scene-alt') as HTMLButto
 
 // Audio mixer
 const audioMixer = document.getElementById('audio-mixer')
-const micFader = document.getElementById('mic-fader') as HTMLInputElement
-const micValue = document.getElementById('mic-value')
 
 // Stream info
 const streamStatus = document.getElementById('stream-status')
@@ -2497,15 +2501,6 @@ if (btnAddSceneAlt) {
   })
 }
 
-// Mic fader
-if (micFader && micValue) {
-  micFader.addEventListener('input', () => {
-    const value = parseInt(micFader.value, 10)
-    micValue.textContent = value.toString()
-    // Wire to actual mic volume control when available
-  })
-}
-
 // Go Live sidebar button (wire to existing Go Live)
 if (btnGoLiveSidebar) {
   btnGoLiveSidebar.addEventListener('click', () => {
@@ -2536,12 +2531,6 @@ function updateProgramStats(snapshot?: RelaySnapshot | null): void {
 }
 
 initEncodeProfileControls()
-
-// Additional audio channels
-const desktopFader = document.getElementById('desktop-fader') as HTMLInputElement | null
-const gameFader = document.getElementById('game-fader') as HTMLInputElement | null
-const desktopMeter = document.getElementById('desktop-meter') as HTMLElement | null
-const gameMeter = document.getElementById('game-meter') as HTMLElement | null
 
 // Stream control buttons
 const btnStartRecording = document.getElementById('btn-start-recording') as HTMLButtonElement | null
