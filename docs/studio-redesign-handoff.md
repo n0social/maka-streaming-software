@@ -70,6 +70,53 @@ Compared with `docs/readme-hero.png`:
 - **Stream controls.** Sidebar primary button reads "Go Live" / "End Live" (matches the top bar).
 - **Stream info.** The image shows a thumbnail, a title ("Epic Fantasy Raids & Chill"), a category ("Fantasy Games"), a red Live pill, a viewer count, and a duration. The app shows "No preview", title and category "—", an Offline/Live pill, and viewers and duration stuck at "—". Under that, the app has Twitch, YouTube, and custom RTMP key fields plus a second encode-profile select. Those controls are not in the image.
 
+## Screenshot comparison ritual
+
+**Policy:** After every UI edit, agents must refresh the studio capture and post a **hero vs current studio** pair in the chat reply so reviewers can see drift at a glance.
+
+### When to run
+
+- Any change to `src/renderer/app.html`, `app.css`, `app.ts`, or other studio-visible UI.
+- Before opening or updating a UI pull request (even doc-only PRs that touch layout copy in the renderer).
+
+### Steps
+
+1. **Build and preview** from the repo root:
+   ```bash
+   npm run build
+   npm run preview
+   ```
+   Leave the Electron window on the default **Studio** view (cream/gold chrome, empty program message is fine).
+
+2. **Capture the live studio** into the tracked reference file:
+   ```bash
+   # Preferred when the main process receives the env var (see src/main/index.ts):
+   MAKA_CAPTURE_PATH=docs/redesign-references/studio-current.png npm run preview
+   ```
+   If that exits without writing the file (common in headless/cloud VMs), capture the visible window instead (example: `ffmpeg` + `xdotool` on Linux) and save the result as `docs/redesign-references/studio-current.png`.
+
+3. **Copy embeds for chat** (paths the coordinator uses to attach images in the agent response):
+   ```bash
+   mkdir -p /opt/cursor/artifacts/redesign-references
+   cp docs/readme-hero.png /opt/cursor/artifacts/redesign-references/readme-hero-target.png
+   cp docs/redesign-references/studio-current.png /opt/cursor/artifacts/redesign-references/studio-current.png
+   ```
+   `readme-hero-target.png` in `docs/redesign-references/` is the same hero as `docs/readme-hero.png`; refresh the artifact copy when the hero changes.
+
+4. **Post in the agent message:** embed **both** `/opt/cursor/artifacts/redesign-references/readme-hero-target.png` and `studio-current.png` (hero left / target, studio right / current).
+
+5. **Commit** `docs/redesign-references/studio-current.png` with the UI change (do not commit `/opt/cursor/artifacts/` — chat-only).
+
+### Reference paths
+
+| Role | Repo path | Chat artifact |
+| --- | --- | --- |
+| Target (README hero) | `docs/readme-hero.png` | `/opt/cursor/artifacts/redesign-references/readme-hero-target.png` |
+| Current studio | `docs/redesign-references/studio-current.png` | `/opt/cursor/artifacts/redesign-references/studio-current.png` |
+| Baseline at tag | `docs/redesign-references/studio-at-0.2.3.1-redesign.png` | (historical; no need to refresh each edit) |
+
+More detail: `docs/redesign-references/README.md`.
+
 ## Next session
 
 Continue section by section against `docs/readme-hero.png`. Do not flip the mixer back to vertical bars or tall towers. Do not repaint the studio chrome black to match an empty program monitor.
