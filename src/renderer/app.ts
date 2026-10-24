@@ -9,12 +9,17 @@ import type { RelaySnapshot } from '../shared/relay-snapshot'
 import type { StreamProfile, SceneLayout, RelayHealth } from '../shared/tabcast'
 import {
   ENCODE_PROFILE_ORDER,
-  ENCODE_PROFILES,
   encodeProfileSpec,
-  formatResolutionLabel,
+  formatAutoEncodeLabel,
   normalizeEncodeProfileId,
   type EncodeProfileId,
 } from '../shared/stream-encode-profiles'
+import { isSceneStubId, SCENE_TEMPLATES, sceneStubPreset } from '../shared/scene-templates'
+import {
+  DEFAULT_OVERLAY_PRESET_ID,
+  OVERLAY_LAYOUT_PRESETS,
+  overlayPresetById,
+} from '../shared/overlay-layout-presets'
 import { BROWSE_CAPTURE_SOURCE_ID } from '../shared/capture'
 import {
   BACKUP_INGEST_STATUS,
@@ -79,13 +84,22 @@ const relayError = document.getElementById('relay-error')!
 const sourceList = document.getElementById('source-list')!
 const programVideo = document.getElementById('program-video') as HTMLVideoElement
 const programEmpty = document.getElementById('program-empty')!
+const programSceneCard = document.getElementById('program-scene-card')!
+const programSceneCardTitle = document.getElementById('program-scene-card-title')!
+const programSceneCardSubtitle = document.getElementById('program-scene-card-subtitle')!
 const programCam = document.getElementById('program-cam')!
 const programCamVideo = document.getElementById('program-cam-video') as HTMLVideoElement
 const programCamOffline = document.getElementById('program-cam-offline')!
 const cameraSelect = document.getElementById('camera-select') as HTMLSelectElement
 const micSelect = document.getElementById('mic-select') as HTMLSelectElement
-const profileSelect = document.getElementById('profile-select') as HTMLSelectElement
-const programQualitySelect = document.getElementById('program-quality-select') as HTMLSelectElement
+const programQualitySelect = document.getElementById(
+  'program-quality-select',
+) as HTMLSelectElement
+const platformKeyDialog = document.getElementById('platform-key-dialog') as HTMLDialogElement
+const platformKeyForm = document.getElementById('platform-key-form') as HTMLFormElement
+const platformKeyPanelTwitch = document.getElementById('platform-key-panel-twitch')!
+const platformKeyPanelYoutube = document.getElementById('platform-key-panel-youtube')!
+const platformKeyDialogTitle = document.getElementById('platform-key-dialog-title')!
 const camScale = document.getElementById('cam-scale') as HTMLInputElement
 const micMeter = document.getElementById('mic-meter')!
 const destTwitch = document.getElementById('dest-twitch') as HTMLInputElement
@@ -124,6 +138,8 @@ const backupRtmpUrl = document.getElementById('backup-rtmp-url') as HTMLInputEle
 const backupRtmpKey = document.getElementById('backup-rtmp-key') as HTMLInputElement
 const programBrowser = document.getElementById('program-browser')!
 const programBrowserVideo = document.getElementById('program-browser-video') as HTMLVideoElement
+const programChatSlot = document.getElementById('program-chat-slot')!
+const programNotificationsSlot = document.getElementById('program-notifications-slot')!
 const brandTag = document.getElementById('brand-tag')
 
 const CUSTOM_RTM_ADDON_ID = 'com.tabcast.custom-rtmp'
@@ -163,6 +179,9 @@ const layerEnabled = {
   mic: true,
   browser: false,
 }
+
+let activeSceneTemplateId = 'gaming-cam'
+let activeOverlayPresetId = DEFAULT_OVERLAY_PRESET_ID
 
 const WEBCAM_OFFLINE_TEXT = 'video is offline'
 
@@ -276,10 +295,33 @@ function setMicMeterLevel(percent: number): void {
   micMeter.style.removeProperty('height')
 }
 
+function syncSceneProgramPresentation(): void {
+  const stub = isSceneStubId(activeSceneTemplateId)
+  const preset = sceneStubPreset(activeSceneTemplateId)
+
+  if (stub && preset) {
+    programSceneCard.hidden = false
+    programSceneCard.dataset.scene = activeSceneTemplateId
+    programSceneCardTitle.textContent = preset.title
+    programSceneCardSubtitle.textContent = preset.subtitle
+    programVideo.hidden = true
+    programCam.hidden = true
+    programBrowser.hidden = true
+    programEmpty.hidden = true
+    return
+  }
+
+  programSceneCard.hidden = true
+  programSceneCard.dataset.scene = ''
+  const showGameplay = Boolean(programStream)
+  programVideo.hidden = !showGameplay
+  programEmpty.hidden = showGameplay
+  updateProgramCamOverlay()
+  updateProgramBrowserOverlay()
+}
+
 function syncProgramVideoSurface(): void {
-  const show = Boolean(programStream)
-  programVideo.hidden = !show
-  programEmpty.hidden = show
+  syncSceneProgramPresentation()
 }
 
 function updateStudioMixControls(): void {
@@ -305,8 +347,9 @@ function updateStudioMixControls(): void {
   studioSourceWebcam.dataset.enabled = layerEnabled.cam ? '1' : '0'
   studioSourceMic.dataset.active = micStream ? '1' : '0'
   studioSourceMic.dataset.enabled = layerEnabled.mic ? '1' : '0'
-  studioSourceBrowser.dataset.active = browserStream ? '1' : '0'
-  studioSourceBrowser.dataset.enabled = layerEnabled.browser ? '1' : '0'
+  studioSourceBrowser.dataset.active =
+    browserStream || Boolean(overlayPresetById(activeOverlayPresetId)) ? '1' : '0'
+  studioSourceBrowser.dataset.enabled = '1'
 }
 
 function updateStudioStatusFooter(snapshot: RelaySnapshot): void {
@@ -354,8 +397,8 @@ function syncLayerTracks(): void {
   layerCam.dataset.enabled = layerEnabled.cam ? '1' : '0'
   layerMic.dataset.enabled = layerEnabled.mic ? '1' : '0'
   layerBrowser.dataset.enabled = layerEnabled.browser ? '1' : '0'
-  updateProgramCamOverlay()
-  updateProgramBrowserOverlay()
+  syncSceneProgramPresentation()
+  refreshProgramPreviewLayout()
   updateStudioMixControls()
 }
 
@@ -378,9 +421,15 @@ function hasLiveWebcamVideo(): boolean {
   )
 }
 
+function usesOverlayPresetLayout(): boolean {
+  return Boolean(overlayPresetById(activeOverlayPresetId))
+}
+
 function syncWebcamPresentation(camLabel?: string): void {
-  const scale = Math.max(12, Math.min(40, Number(camScale.value) || 22))
-  programCam.style.width = `${scale}%`
+  if (!usesOverlayPresetLayout()) {
+    const scale = Math.max(12, Math.min(40, Number(camScale.value) || 22))
+    programCam.style.width = `${scale}%`
+  }
 
   const layerOn = layerEnabled.cam
   const hasVideo = hasLiveWebcamVideo()
@@ -420,29 +469,169 @@ function updateProgramCamOverlay(): void {
   syncWebcamPresentation()
 }
 
-async function pushSceneLayout(): Promise<void> {
-  const snapshot = await window.tabcast.getRelay()
-  if (!snapshot.health) return
-  const profile = selectedProfile()
-  const layout = defaultSceneLayout({
-    profile,
-    hasWebcam: hasLiveWebcamVideo() && layerEnabled.cam,
-    hasBrowser: Boolean(browserStream) && layerEnabled.browser,
-  })
-  const scale = Number(camScale.value) / 100
-  const cam = layout.sources.find((s) => s.id === 'webcam')
-  if (cam) {
-    cam.width = Math.round(layout.canvas.width * scale)
-    cam.height = Math.round(cam.width * (9 / 16))
-    cam.x = layout.canvas.width - cam.width - 24
-    cam.y = layout.canvas.height - cam.height - 24
+function applySourceBox(
+  el: HTMLElement,
+  source: SceneLayout['sources'][number],
+  canvas: { width: number; height: number },
+): void {
+  el.style.inset = 'auto'
+  el.style.right = 'auto'
+  el.style.bottom = 'auto'
+  el.style.left = `${(source.x / canvas.width) * 100}%`
+  el.style.top = `${(source.y / canvas.height) * 100}%`
+  el.style.width = `${(source.width / canvas.width) * 100}%`
+  el.style.height = `${(source.height / canvas.height) * 100}%`
+  el.style.aspectRatio = 'auto'
+}
+
+function resetProgramGameplayBox(): void {
+  programVideo.style.inset = '0'
+  programVideo.style.left = ''
+  programVideo.style.top = ''
+  programVideo.style.width = '100%'
+  programVideo.style.height = '100%'
+}
+
+function applyProgramPreviewLayout(layout: SceneLayout): void {
+  const { canvas, sources } = layout
+  const sourceById = (id: string) => sources.find((s) => s.id === id)
+
+  const gameplay = sourceById('gameplay')
+  if (gameplay && layerEnabled.game && programStream) {
+    applySourceBox(programVideo, gameplay, canvas)
+  } else if (programStream) {
+    resetProgramGameplayBox()
   }
+
+  const webcam = sourceById('webcam')
+  if (usesOverlayPresetLayout() && webcam && layerEnabled.cam) {
+    applySourceBox(programCam, webcam, canvas)
+  } else if (usesOverlayPresetLayout()) {
+    programCam.style.left = ''
+    programCam.style.top = ''
+    programCam.style.height = ''
+  }
+
+  const chat = sourceById('chat')
+  const showChatPlaceholder =
+    Boolean(chat) && !(browserStream && layerEnabled.browser)
+  programChatSlot.hidden = !showChatPlaceholder
+  if (showChatPlaceholder && chat) {
+    applySourceBox(programChatSlot, chat, canvas)
+  }
+
+  const notifications = sourceById('notifications')
+  programNotificationsSlot.hidden = !notifications
+  if (notifications) {
+    applySourceBox(programNotificationsSlot, notifications, canvas)
+  }
+
+  if (browserStream && layerEnabled.browser) {
+    const browserRect = sourceById('browser') ?? chat
+    if (browserRect) {
+      applySourceBox(programBrowser, browserRect, canvas)
+    }
+  }
+}
+
+function buildOutgoingSceneLayout(): SceneLayout {
+  const profile = selectedProfile()
+  const hasWebcam = hasLiveWebcamVideo() && layerEnabled.cam
+  const hasBrowser = Boolean(browserStream) && layerEnabled.browser
+
+  const preset = overlayPresetById(activeOverlayPresetId)
+  let layout: SceneLayout
+  if (preset) {
+    layout = preset.build({ profile, hasWebcam })
+  } else {
+    const template = SCENE_TEMPLATES.find((t) => t.id === activeSceneTemplateId)
+    layout = template
+      ? template.build({ profile, hasWebcam })
+      : defaultSceneLayout({
+          profile,
+          hasWebcam,
+          hasBrowser,
+        })
+    const scale = Number(camScale.value) / 100
+    const cam = layout.sources.find((s) => s.id === 'webcam')
+    if (cam) {
+      cam.width = Math.round(layout.canvas.width * scale)
+      cam.height = Math.round(cam.width * (9 / 16))
+      cam.x = layout.canvas.width - cam.width - 24
+      cam.y = layout.canvas.height - cam.height - 24
+    }
+  }
+
   if (!layerEnabled.game) {
     layout.sources = layout.sources.filter((s) => s.id !== 'gameplay')
   }
+  if (!hasWebcam) {
+    layout.sources = layout.sources.filter((s) => s.id !== 'webcam')
+  }
   if (!layerEnabled.browser) {
     layout.sources = layout.sources.filter((s) => s.id !== 'browser')
+  } else if (hasBrowser && !layout.sources.some((s) => s.id === 'browser')) {
+    const chat = layout.sources.find((s) => s.id === 'chat')
+    if (chat) {
+      layout.sources.push({
+        id: 'browser',
+        type: 'video',
+        label: 'Search tab',
+        x: chat.x,
+        y: chat.y,
+        width: chat.width,
+        height: chat.height,
+        zIndex: chat.zIndex + 1,
+      })
+    } else {
+      const w = Math.round(layout.canvas.width * 0.35)
+      const h = Math.round(w * (9 / 16))
+      layout.sources.push({
+        id: 'browser',
+        type: 'video',
+        label: 'Search tab',
+        x: 24,
+        y: 24,
+        width: w,
+        height: h,
+        zIndex: 1,
+      })
+    }
   }
+  return layout
+}
+
+function refreshProgramPreviewLayout(): void {
+  applyProgramPreviewLayout(buildOutgoingSceneLayout())
+}
+
+function syncOverlaySourceRow(): void {
+  const preset = overlayPresetById(activeOverlayPresetId)
+  const presetLabel = preset?.name ?? 'Custom'
+  if (browserStream && layerEnabled.browser) {
+    layerBrowser.dataset.active = '1'
+    layerBrowser.textContent = `Overlay — ${presetLabel} · Search tab on`
+  } else {
+    layerBrowser.dataset.active = preset ? '1' : '0'
+    layerBrowser.textContent = `Overlay — ${presetLabel}`
+  }
+}
+
+async function selectOverlayPreset(id: string): Promise<void> {
+  activeOverlayPresetId = id
+  syncOverlaySourceRow()
+  refreshProgramPreviewLayout()
+  if (expandedSourceKinds.has('browser')) {
+    void refreshSourcePicker('browser')
+  }
+  void pushSceneLayout()
+}
+
+async function pushSceneLayout(): Promise<void> {
+  const layout = buildOutgoingSceneLayout()
+  applyProgramPreviewLayout(layout)
+  const snapshot = await window.tabcast.getRelay()
+  if (!snapshot.health) return
   await postSceneLayout(snapshot.health, layout)
 }
 
@@ -534,6 +723,8 @@ function renderRelay(snapshot: RelaySnapshot): void {
   }
 
   updateProgramStats(snapshot)
+  updateGoLiveLabel(live)
+  updateStreamInfo(live)
 }
 
 type PlatformChipState = 'off' | 'idle' | 'armed' | 'live' | 'error'
@@ -907,25 +1098,21 @@ function releaseMicStream(): void {
 }
 
 function selectedProfile(): StreamProfile {
-  return normalizeEncodeProfileId(profileSelect.value)
+  return normalizeEncodeProfileId(programQualitySelect.value)
 }
 
-function populateEncodeProfileSelect(select: HTMLSelectElement, labelKind: 'menu' | 'sidebar'): void {
+function populateEncodeProfileSelect(select: HTMLSelectElement): void {
   select.innerHTML = ''
   for (const id of ENCODE_PROFILE_ORDER) {
-    const spec = ENCODE_PROFILES[id]
     const option = document.createElement('option')
     option.value = id
-    option.textContent = labelKind === 'menu' ? spec.menuLabel : spec.sidebarLabel
+    option.textContent = formatAutoEncodeLabel(id)
     select.appendChild(option)
   }
 }
 
 function syncEncodeProfileSelects(id: EncodeProfileId): void {
-  if (profileSelect.value !== id) profileSelect.value = id
-  if (programQualitySelect && programQualitySelect.value !== id) {
-    programQualitySelect.value = id
-  }
+  if (programQualitySelect.value !== id) programQualitySelect.value = id
 }
 
 function onEncodeProfileChanged(id: EncodeProfileId): void {
@@ -936,9 +1123,8 @@ function onEncodeProfileChanged(id: EncodeProfileId): void {
 }
 
 function initEncodeProfileControls(): void {
-  populateEncodeProfileSelect(profileSelect, 'sidebar')
-  populateEncodeProfileSelect(programQualitySelect, 'menu')
-  const initial = normalizeEncodeProfileId(profileSelect.value)
+  populateEncodeProfileSelect(programQualitySelect)
+  const initial = normalizeEncodeProfileId(programQualitySelect.value)
   syncEncodeProfileSelects(initial)
   updateProgramStats()
 }
@@ -979,6 +1165,21 @@ function syncDestinationInputs(): void {
   backupRtmpKey.disabled = !customEnabled
 }
 
+type PlatformKeyTarget = 'twitch' | 'youtube'
+
+function openPlatformKeyDialog(platform: PlatformKeyTarget): void {
+  platformKeyPanelTwitch.hidden = platform !== 'twitch'
+  platformKeyPanelYoutube.hidden = platform !== 'youtube'
+  platformKeyDialogTitle.textContent =
+    platform === 'twitch' ? 'Twitch stream key' : 'YouTube stream key'
+  syncDestinationInputs()
+  platformKeyDialog.showModal()
+  const input = platform === 'twitch' ? twitchKey : youtubeKey
+  requestAnimationFrame(() => {
+    if (!input.disabled) input.focus()
+  })
+}
+
 function syncCustomRtmpBlock(show: boolean): void {
   destCustomBlock.hidden = !show
   platCustom.hidden = !show
@@ -1006,10 +1207,272 @@ async function persistCustomRtmpSettings(): Promise<void> {
   })
 }
 
+type SourceKind = 'game' | 'webcam' | 'mic' | 'browser'
+
+const SOURCE_KINDS: SourceKind[] = ['game', 'webcam', 'mic', 'browser']
+
+const sourcePickerEls: Record<SourceKind, HTMLUListElement> = {
+  game: document.getElementById('source-picker-game') as HTMLUListElement,
+  webcam: document.getElementById('source-picker-webcam') as HTMLUListElement,
+  mic: document.getElementById('source-picker-mic') as HTMLUListElement,
+  browser: document.getElementById('source-picker-browser') as HTMLUListElement,
+}
+
+const expandedSourceKinds = new Set<SourceKind>()
+let activeBrowseTabId: string | null = null
+
+function syncSourcePickerVisibility(): void {
+  for (const kind of SOURCE_KINDS) {
+    const picker = sourcePickerEls[kind]
+    const toggle = sourceToggleEls[kind]
+    const open = expandedSourceKinds.has(kind)
+    picker.hidden = !open
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false')
+    toggle.dataset.expanded = open ? '1' : '0'
+  }
+}
+
+function appendPickerSectionHeader(picker: HTMLUListElement, title: string): void {
+  const li = document.createElement('li')
+  li.className = 'studio-source-picker-section'
+  const p = document.createElement('p')
+  p.className = 'studio-source-picker-section-title'
+  p.textContent = title
+  li.appendChild(p)
+  picker.appendChild(li)
+}
+
+function setPickerStatus(picker: HTMLUListElement, message: string): void {
+  picker.innerHTML = ''
+  const li = document.createElement('li')
+  const p = document.createElement('p')
+  p.className = 'studio-source-picker-status'
+  p.textContent = message
+  li.appendChild(p)
+  picker.appendChild(li)
+}
+
+function appendPickerButton(
+  picker: HTMLUListElement,
+  opts: {
+    label: string
+    kindLabel?: string
+    thumbnailDataUrl?: string
+    active?: boolean
+    onPick: () => void | Promise<void>
+  },
+): void {
+  const li = document.createElement('li')
+  const btn = document.createElement('button')
+  btn.type = 'button'
+  btn.className = 'studio-source-picker-item'
+  btn.dataset.active = opts.active ? '1' : '0'
+
+  if (opts.thumbnailDataUrl) {
+    const img = document.createElement('img')
+    img.className = 'studio-source-picker-thumb'
+    img.alt = ''
+    img.src = opts.thumbnailDataUrl
+    btn.appendChild(img)
+  }
+
+  const label = document.createElement('span')
+  label.className = 'studio-source-picker-label'
+  label.textContent = opts.label
+  btn.appendChild(label)
+
+  if (opts.kindLabel) {
+    const kind = document.createElement('span')
+    kind.className = 'studio-source-picker-kind'
+    kind.textContent = opts.kindLabel
+    btn.appendChild(kind)
+  }
+
+  btn.addEventListener('click', (event) => {
+    event.stopPropagation()
+    void opts.onPick()
+  })
+  li.appendChild(btn)
+  picker.appendChild(li)
+}
+
+const sourceToggleEls: Record<SourceKind, HTMLButtonElement> = {
+  game: studioSourceGame as HTMLButtonElement,
+  webcam: studioSourceWebcam as HTMLButtonElement,
+  mic: studioSourceMic as HTMLButtonElement,
+  browser: studioSourceBrowser as HTMLButtonElement,
+}
+
+async function refreshSourcePicker(kind: SourceKind): Promise<void> {
+  const picker = sourcePickerEls[kind]
+  picker.innerHTML = ''
+  setPickerStatus(picker, 'Detecting…')
+
+  try {
+    if (kind === 'game') {
+      const sources = await window.tabcast.listCaptureSources()
+      const desktop = sources.filter((s) => s.type !== 'browser')
+      picker.innerHTML = ''
+      if (!desktop.length) {
+        setPickerStatus(picker, 'No displays or windows found.')
+        return
+      }
+      for (const source of desktop) {
+        appendPickerButton(picker, {
+          label: source.name,
+          kindLabel: source.type === 'screen' ? 'Display' : 'Window',
+          thumbnailDataUrl: source.thumbnailDataUrl || undefined,
+          active: selectedSourceId === source.id,
+          onPick: () => selectDesktopSource(source),
+        })
+      }
+      return
+    }
+
+    if (kind === 'webcam') {
+      await refreshAvDevices()
+      picker.innerHTML = ''
+      appendPickerButton(picker, {
+        label: 'No camera',
+        active: !cameraSelect.value,
+        onPick: async () => {
+          layerEnabled.cam = false
+          cameraSelect.value = ''
+          lastCameraSelectValue = ''
+          await applyCamera()
+          syncLayerTracks()
+          void refreshSourcePicker('webcam')
+        },
+      })
+      for (const opt of [...cameraSelect.options]) {
+        if (!opt.value) continue
+        appendPickerButton(picker, {
+          label: opt.textContent ?? 'Camera',
+          active: cameraSelect.value === opt.value,
+          onPick: async () => {
+            layerEnabled.cam = true
+            cameraSelect.value = opt.value
+            lastCameraSelectValue = opt.value
+            if (opt.value === PHONE_CAMERA_DEVICE_VALUE) {
+              preferPhoneCamera = true
+            } else if (opt.value) {
+              preferPhoneCamera = false
+            }
+            await applyCamera()
+            syncLayerTracks()
+            void refreshSourcePicker('webcam')
+          },
+        })
+      }
+      return
+    }
+
+    if (kind === 'mic') {
+      await refreshAvDevices()
+      picker.innerHTML = ''
+      appendPickerButton(picker, {
+        label: 'No microphone',
+        active: !micSelect.value,
+        onPick: async () => {
+          layerEnabled.mic = false
+          micSelect.value = ''
+          lastMicSelectValue = ''
+          await applyMic()
+          syncLayerTracks()
+          void refreshSourcePicker('mic')
+        },
+      })
+      for (const opt of [...micSelect.options]) {
+        if (!opt.value) continue
+        appendPickerButton(picker, {
+          label: opt.textContent ?? 'Microphone',
+          active: micSelect.value === opt.value,
+          onPick: async () => {
+            layerEnabled.mic = true
+            micSelect.value = opt.value
+            lastMicSelectValue = opt.value
+            await applyMic()
+            syncLayerTracks()
+            void refreshSourcePicker('mic')
+          },
+        })
+      }
+      return
+    }
+
+    picker.innerHTML = ''
+    appendPickerSectionHeader(picker, 'Layout presets')
+    for (const preset of OVERLAY_LAYOUT_PRESETS) {
+      appendPickerButton(picker, {
+        label: preset.name,
+        kindLabel: 'Composition',
+        active: activeOverlayPresetId === preset.id,
+        onPick: () => selectOverlayPreset(preset.id),
+      })
+    }
+
+    appendPickerSectionHeader(picker, 'Search tab overlay')
+    appendPickerButton(picker, {
+      label: 'Search tab off',
+      kindLabel: 'Capture',
+      active: !layerEnabled.browser,
+      onPick: async () => {
+        layerEnabled.browser = false
+        await stopBrowserCapture()
+        syncLayerTracks()
+        void refreshSourcePicker('browser')
+      },
+    })
+
+    const tabs = await window.tabcast.listTabs()
+    if (!tabs.length) {
+      const li = document.createElement('li')
+      const p = document.createElement('p')
+      p.className = 'studio-source-picker-status'
+      p.textContent = 'Open a page in Search, then pick a tab below.'
+      li.appendChild(p)
+      picker.appendChild(li)
+      return
+    }
+    for (const tab of tabs) {
+      appendPickerButton(picker, {
+        label: tab.title || tab.url || 'Untitled tab',
+        kindLabel: tab.pinned ? 'Pinned' : 'Tab',
+        active: activeBrowseTabId === tab.id && layerEnabled.browser,
+        onPick: async () => {
+          await window.tabcast.activateTab(tab.id)
+          activeBrowseTabId = tab.id
+          layerEnabled.browser = true
+          await startBrowserCapture()
+          syncLayerTracks()
+          void refreshSourcePicker('browser')
+        },
+      })
+    }
+  } catch (err) {
+    picker.innerHTML = ''
+    setPickerStatus(
+      picker,
+      err instanceof Error ? err.message : 'Could not list sources for this type.',
+    )
+  }
+}
+
+function toggleSourcePicker(kind: SourceKind): void {
+  if (expandedSourceKinds.has(kind)) {
+    expandedSourceKinds.delete(kind)
+  } else {
+    expandedSourceKinds.add(kind)
+    void refreshSourcePicker(kind)
+  }
+  syncSourcePickerVisibility()
+}
+
 function renderSources(sources: CaptureSource[]): void {
-  // Hide individual screen/window list to declutter UI
   sourceList.innerHTML = ''
-  return
+  if (expandedSourceKinds.has('game')) {
+    void refreshSourcePicker('game')
+  }
 }
 
 async function selectDesktopSource(source: CaptureSource): Promise<void> {
@@ -1034,6 +1497,9 @@ async function selectDesktopSource(source: CaptureSource): Promise<void> {
     syncLayerTracks()
     if (currentMode !== 'studio') {
       await window.tabcast.setMode('studio')
+    }
+    if (expandedSourceKinds.has('game')) {
+      void refreshSourcePicker('game')
     }
   } catch (err) {
     programVideo.srcObject = null
@@ -1105,10 +1571,9 @@ async function stopBrowserCapture(): Promise<void> {
   stopStream(browserStream)
   browserStream = null
   programBrowserVideo.srcObject = null
-  layerBrowser.dataset.active = '0'
-  layerBrowser.textContent = 'Search tab — off'
   await window.tabcast.setBrowseCaptureActive(false)
   updateProgramBrowserOverlay()
+  syncOverlaySourceRow()
   syncLayerTracks()
 }
 
@@ -1119,8 +1584,7 @@ async function startBrowserCapture(): Promise<void> {
 
   const target = await window.tabcast.getBrowseCaptureTarget()
   if (!target) {
-    layerBrowser.dataset.active = '0'
-    layerBrowser.textContent = 'Search tab — no tab'
+    syncOverlaySourceRow()
     setDestError('Open a page in the Search tab, then enable the Search tab layer.')
     layerEnabled.browser = false
     return
@@ -1141,8 +1605,7 @@ async function startBrowserCapture(): Promise<void> {
     })
     browserStream = stream
     bindBrowserStream(stream)
-    layerBrowser.dataset.active = '1'
-    layerBrowser.textContent = `Search tab — ${target.title}`
+    syncOverlaySourceRow()
     syncLayerTracks()
     setDestError(null)
   } catch (err) {
@@ -1163,7 +1626,7 @@ async function selectBrowseTabSource(): Promise<void> {
     )
   }
 
-  if (!programStream) {
+  if (!programStream && !isSceneStubId(activeSceneTemplateId)) {
     programEmpty.hidden = false
     programEmpty.textContent = 'Select gameplay (display/window) first, or use the Search tab layer for overlay only.'
   }
@@ -1180,8 +1643,16 @@ async function refreshSources(): Promise<void> {
   try {
     const sources = await window.tabcast.listCaptureSources()
     renderSources(sources)
+    for (const kind of expandedSourceKinds) {
+      await refreshSourcePicker(kind)
+    }
   } catch (err) {
-    sourceList.innerHTML = `<p class="hint">${escapeHtml(err instanceof Error ? err.message : 'Could not list sources')}</p>`
+    for (const kind of expandedSourceKinds) {
+      setPickerStatus(
+        sourcePickerEls[kind],
+        err instanceof Error ? err.message : 'Could not list sources',
+      )
+    }
   }
 }
 
@@ -1881,20 +2352,11 @@ toggleMic.addEventListener('click', () => {
   toggleMicLayer()
 })
 
-studioSourceGame.addEventListener('click', () => {
-  void refreshSources()
-})
-studioSourceWebcam.addEventListener('click', () => {
-  toggleWebcamLayer()
-  cameraSelect.focus()
-})
-studioSourceMic.addEventListener('click', () => {
-  toggleMicLayer()
-  micSelect.focus()
-})
-studioSourceBrowser.addEventListener('click', () => {
-  toggleBrowserLayer()
-})
+for (const kind of SOURCE_KINDS) {
+  sourceToggleEls[kind].addEventListener('click', () => {
+    toggleSourcePicker(kind)
+  })
+}
 
 async function renderAddonPanels(): Promise<void> {
   const panels = await window.tabcast.listAddonPanels()
@@ -2036,12 +2498,19 @@ document.getElementById('btn-verify-keys')!.addEventListener('click', () => {
   void onVerifyKeys()
 })
 
-profileSelect.addEventListener('change', () => {
-  onEncodeProfileChanged(selectedProfile())
-})
-
 programQualitySelect.addEventListener('change', () => {
   onEncodeProfileChanged(normalizeEncodeProfileId(programQualitySelect.value))
+})
+
+platTwitch.addEventListener('click', () => {
+  openPlatformKeyDialog('twitch')
+})
+platYoutube.addEventListener('click', () => {
+  openPlatformKeyDialog('youtube')
+})
+
+platformKeyForm.addEventListener('submit', () => {
+  void window.tabcast.getRelay().then(renderPlatformStatus)
 })
 
 async function teardownLiveSession(): Promise<void> {
@@ -2454,19 +2923,37 @@ const btnGoLiveSidebar = document.getElementById('btn-go-live-sidebar') as HTMLB
 const programStats = document.getElementById('program-stats')
 const statDropped = document.getElementById('stat-dropped')
 const statFps = document.getElementById('stat-fps')
-const statResolution = document.getElementById('stat-resolution')
+const statLatency = document.getElementById('stat-latency')
+const statStreamHealth = document.getElementById('stat-stream-health')
+const statHealthLabel = document.getElementById('stat-health-label')
+const statBitrate = document.getElementById('stat-bitrate')
+
+function highlightSceneSelection(sceneTemplate: string): void {
+  const buttons = document.querySelectorAll<HTMLButtonElement>('.studio-list-item[data-scene]')
+  for (const btn of buttons) {
+    btn.dataset.active = btn.dataset.scene === sceneTemplate ? '1' : '0'
+  }
+}
 
 // Scene selection handler
 async function selectScene(sceneTemplate: string): Promise<void> {
-  console.log('Selecting scene:', sceneTemplate)
-  // Wire to existing scene template system if available
-  // For now, just log the selection
-  // The actual scene templates are: gaming-cam, desk-only, browse-showcase
-  if (sceneTemplate === 'gaming-cam' || sceneTemplate === 'desk-only' || sceneTemplate === 'browse-showcase') {
-    // These exist and can be wired to the scene API
-    console.log('Valid scene template:', sceneTemplate)
-  } else {
-    console.log('Scene template not implemented:', sceneTemplate)
+  activeSceneTemplateId = sceneTemplate
+  highlightSceneSelection(sceneTemplate)
+
+  if (sceneTemplate === 'gaming-cam') {
+    layerEnabled.game = true
+    layerEnabled.cam = true
+  } else if (sceneTemplate === 'desk-only') {
+    layerEnabled.game = false
+    layerEnabled.cam = true
+  } else if (isSceneStubId(sceneTemplate)) {
+    layerEnabled.game = false
+    layerEnabled.cam = false
+  }
+
+  syncLayerTracks()
+  if (isSessionLive()) {
+    await pushSceneLayout().catch(() => undefined)
   }
 }
 
@@ -2515,18 +3002,76 @@ function droppedFramesFromRelay(snapshot?: RelaySnapshot | null): number {
   return typeof raw === 'number' && Number.isFinite(raw) && raw >= 0 ? Math.floor(raw) : 0
 }
 
+function formatMbpsLabel(mbps: number): string {
+  const text = Number.isInteger(mbps) ? String(mbps) : mbps.toFixed(1)
+  return `${text} Mbps`
+}
+
+function relayObservedBitrateMbps(snapshot?: RelaySnapshot | null): number | undefined {
+  const status = snapshot?.status
+  if (!status || typeof status !== 'object') return undefined
+  const raw = (status as { bitrateMbps?: unknown }).bitrateMbps
+  return typeof raw === 'number' && Number.isFinite(raw) && raw > 0 ? raw : undefined
+}
+
+type StreamHealthUiState = 'ok' | 'starting' | 'error' | 'offline'
+
+function streamHealthUi(snapshot?: RelaySnapshot | null): { state: StreamHealthUiState; label: string } {
+  const live = isSessionLive()
+  if (live && liveReconnecting) {
+    return { state: 'starting', label: 'Starting' }
+  }
+  if (live && liveRecoveryExhausted) {
+    return { state: 'error', label: 'Error' }
+  }
+  const lifecycle = snapshot?.lifecycle
+  const relayStatus = snapshot?.status?.status
+  if (live || lifecycle === 'live' || relayStatus === 'live') {
+    return { state: 'ok', label: 'OK' }
+  }
+  if (lifecycle === 'starting' || relayStatus === 'starting') {
+    return { state: 'starting', label: 'Starting' }
+  }
+  if (lifecycle === 'error' || relayStatus === 'error' || snapshot?.error) {
+    return { state: 'error', label: 'Error' }
+  }
+  if (lifecycle === 'ready') {
+    return { state: 'ok', label: 'OK' }
+  }
+  return { state: 'offline', label: 'Offline' }
+}
+
 function updateProgramStats(snapshot?: RelaySnapshot | null): void {
   const profile = selectedProfile()
   const spec = encodeProfileSpec(profile)
   const dropped = droppedFramesFromRelay(snapshot)
+  const dropPct = dropped === 0 ? '0.0' : '—'
+  const sessionLive = snapshot?.lifecycle === 'live' || isSessionLive()
+  const targetMbps = spec.bitrateMbps
+  const observedMbps = relayObservedBitrateMbps(snapshot)
+  const displayMbps = sessionLive && observedMbps != null ? observedMbps : targetMbps
+
   if (statDropped) {
-    statDropped.textContent = `Dropped: ${dropped}`
+    statDropped.textContent = `Dropped Frames: ${dropped} (${dropPct}%)`
   }
   if (statFps) {
     statFps.textContent = `FPS: ${spec.fps}`
   }
-  if (statResolution) {
-    statResolution.textContent = formatResolutionLabel(profile)
+  if (statLatency) {
+    statLatency.textContent = '—'
+  }
+  if (statBitrate) {
+    statBitrate.textContent = formatMbpsLabel(displayMbps)
+  }
+  if (programQualitySelect) {
+    programQualitySelect.title = sessionLive
+      ? `${spec.menuLabel} · transmitting at ${formatMbpsLabel(displayMbps)}`
+      : `${spec.menuLabel} · ${formatMbpsLabel(targetMbps)} target`
+  }
+  if (statStreamHealth && statHealthLabel) {
+    const health = streamHealthUi(snapshot)
+    statStreamHealth.dataset.state = health.state
+    statHealthLabel.textContent = health.label
   }
 }
 
@@ -2548,7 +3093,7 @@ const streamDuration = document.getElementById('stream-duration') as HTMLElement
 // Update Go Live button label based on streaming state
 function updateGoLiveLabel(isLive: boolean): void {
   if (btnGoLiveLabel) {
-    btnGoLiveLabel.textContent = isLive ? 'End Streaming' : 'Start Streaming'
+    btnGoLiveLabel.textContent = isLive ? 'End Live' : 'Go Live'
   }
 }
 
@@ -2590,5 +3135,9 @@ if (btnGoLiveSidebar) {
 // These are shown but don't do anything since the features aren't implemented
 
 // Initialize stream info
+highlightSceneSelection(activeSceneTemplateId)
+syncSceneProgramPresentation()
+syncOverlaySourceRow()
+refreshProgramPreviewLayout()
 updateGoLiveLabel(false)
 updateStreamInfo(false)

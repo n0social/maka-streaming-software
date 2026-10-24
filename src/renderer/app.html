@@ -30,8 +30,8 @@
         <div class="brand drag">
           <span class="mark" aria-hidden="true"></span>
           <div class="brand-lockup">
-            <strong class="wordmark">Maka</strong>
-            <span class="brand-tag" id="brand-tag">Streaming studio</span>
+            <strong class="wordmark">Maka Studio</strong>
+            <span class="brand-tag" id="brand-tag" hidden>Streaming studio</span>
           </div>
           <span class="version">0.2</span>
         </div>
@@ -106,41 +106,46 @@
             <h2>Scenes</h2>
             <button type="button" class="studio-icon-btn" id="btn-add-scene" title="Add scene" aria-label="Add scene">+</button>
           </header>
-          <ul class="studio-list" aria-label="Scenes">
+          <ul class="studio-list studio-list--scenes" aria-label="Scenes">
             <li>
-              <button type="button" class="studio-list-item" id="scene-gameplay" data-scene="gaming-cam">
-                <span class="scene-icon">🎮</span>
-                Gameplay
+              <button type="button" class="studio-list-item" id="scene-gameplay" data-scene="gaming-cam" data-active="1">
+                <span class="studio-list-leading scene-icon" aria-hidden="true">🎮</span>
+                <span class="studio-list-text">Gameplay</span>
+                <span class="studio-list-menu" aria-hidden="true">⋯</span>
               </button>
             </li>
             <li>
               <button type="button" class="studio-list-item" id="scene-starting" data-scene="starting-soon">
-                <span class="scene-icon">📄</span>
-                Starting Soon
+                <span class="studio-list-leading scene-icon" aria-hidden="true">📄</span>
+                <span class="studio-list-text">Starting Soon</span>
+                <span class="studio-list-menu" aria-hidden="true">⋯</span>
               </button>
             </li>
             <li>
               <button type="button" class="studio-list-item" id="scene-chatting" data-scene="desk-only">
-                <span class="scene-icon">▶️</span>
-                Just Chatting
+                <span class="studio-list-leading scene-icon" aria-hidden="true">▶️</span>
+                <span class="studio-list-text">Just Chatting</span>
+                <span class="studio-list-menu" aria-hidden="true">⋯</span>
               </button>
             </li>
             <li>
               <button type="button" class="studio-list-item" id="scene-intermission" data-scene="intermission">
-                <span class="scene-icon">⏸️</span>
-                Intermission
+                <span class="studio-list-leading scene-icon" aria-hidden="true">⏸️</span>
+                <span class="studio-list-text">Intermission</span>
+                <span class="studio-list-menu" aria-hidden="true">⋯</span>
               </button>
             </li>
             <li>
               <button type="button" class="studio-list-item" id="scene-ending" data-scene="ending">
-                <span class="scene-icon">🏠</span>
-                Ending Scene
+                <span class="studio-list-leading scene-icon" aria-hidden="true">🏠</span>
+                <span class="studio-list-text">Ending Scene</span>
+                <span class="studio-list-menu" aria-hidden="true">⋯</span>
               </button>
             </li>
             <li>
               <button type="button" class="studio-list-item studio-list-add" id="btn-add-scene-alt">
-                <span class="scene-icon">+</span>
-                Add Scene
+                <span class="studio-list-leading scene-icon" aria-hidden="true">+</span>
+                <span class="studio-list-text">Add Scene</span>
               </button>
             </li>
           </ul>
@@ -151,30 +156,66 @@
             <h2>Sources</h2>
             <button type="button" class="studio-icon-btn" id="btn-refresh-sources" title="Add source" aria-label="Add source">+</button>
           </header>
-          <ul class="studio-list" aria-label="Source types">
-            <li>
-              <button type="button" class="studio-list-item" id="studio-source-game" data-source-action="game">
-                <span class="source-icon">🎮</span>
-                Game Capture
+          <ul class="studio-list studio-source-list" aria-label="Source types">
+            <li class="studio-source-group">
+              <button
+                type="button"
+                class="studio-list-item studio-source-toggle"
+                id="studio-source-game"
+                data-source-kind="game"
+                aria-expanded="false"
+                aria-controls="source-picker-game"
+              >
+                <span class="studio-list-leading source-icon" aria-hidden="true">🎮</span>
+                <span class="studio-list-text">Game Capture</span>
+                <span class="studio-source-chevron" aria-hidden="true">▾</span>
               </button>
+              <ul class="studio-source-picker" id="source-picker-game" hidden role="list" aria-label="Displays and windows"></ul>
             </li>
-            <li>
-              <button type="button" class="studio-list-item" id="studio-source-webcam" data-source-action="webcam">
-                <span class="source-icon">📹</span>
-                Webcam
+            <li class="studio-source-group">
+              <button
+                type="button"
+                class="studio-list-item studio-source-toggle"
+                id="studio-source-webcam"
+                data-source-kind="webcam"
+                aria-expanded="false"
+                aria-controls="source-picker-webcam"
+              >
+                <span class="studio-list-leading source-icon" aria-hidden="true">📹</span>
+                <span class="studio-list-text">Webcam</span>
+                <span class="studio-source-chevron" aria-hidden="true">▾</span>
               </button>
+              <ul class="studio-source-picker" id="source-picker-webcam" hidden role="list" aria-label="Cameras"></ul>
             </li>
-            <li>
-              <button type="button" class="studio-list-item" id="studio-source-mic" data-source-action="mic">
-                <span class="source-icon">🎙</span>
-                Microphone
+            <li class="studio-source-group">
+              <button
+                type="button"
+                class="studio-list-item studio-source-toggle"
+                id="studio-source-mic"
+                data-source-kind="mic"
+                aria-expanded="false"
+                aria-controls="source-picker-mic"
+              >
+                <span class="studio-list-leading source-icon" aria-hidden="true">🎙</span>
+                <span class="studio-list-text">Microphone</span>
+                <span class="studio-source-chevron" aria-hidden="true">▾</span>
               </button>
+              <ul class="studio-source-picker" id="source-picker-mic" hidden role="list" aria-label="Microphones"></ul>
             </li>
-            <li>
-              <button type="button" class="studio-list-item" id="studio-source-browser" data-source-action="browser">
-                <span class="source-icon">🌐</span>
-                Overlay
+            <li class="studio-source-group">
+              <button
+                type="button"
+                class="studio-list-item studio-source-toggle"
+                id="studio-source-browser"
+                data-source-kind="browser"
+                aria-expanded="false"
+                aria-controls="source-picker-browser"
+              >
+                <span class="studio-list-leading source-icon" aria-hidden="true">🌐</span>
+                <span class="studio-list-text">Overlay</span>
+                <span class="studio-source-chevron" aria-hidden="true">▾</span>
               </button>
+              <ul class="studio-source-picker" id="source-picker-browser" hidden role="list" aria-label="Overlay layout presets"></ul>
             </li>
           </ul>
         </div>
@@ -200,24 +241,64 @@
             </div>
             <div class="program-browser" id="program-browser" hidden>
               <video id="program-browser-video" autoplay muted playsinline></video>
-              <span class="program-browser-tag">Browser</span>
+              <span class="program-browser-tag">Search tab</span>
+            </div>
+            <div class="program-overlay-slot program-chat-slot" id="program-chat-slot" hidden>
+              <span class="program-overlay-slot-label">Chat</span>
+              <span class="program-overlay-slot-hint">Placeholder until chat feed is wired</span>
+            </div>
+            <div class="program-overlay-slot program-notifications-slot" id="program-notifications-slot" hidden>
+              <span class="program-overlay-slot-label">Notifications</span>
+              <span class="program-overlay-slot-hint">Reserved — not wired yet</span>
+            </div>
+            <div class="program-scene-card" id="program-scene-card" hidden>
+              <div class="program-scene-card-inner">
+                <span class="program-scene-card-mark" aria-hidden="true">M</span>
+                <p class="program-scene-card-title" id="program-scene-card-title">Starting Soon</p>
+                <p class="program-scene-card-subtitle" id="program-scene-card-subtitle">
+                  Hang tight — we’ll be live in a moment
+                </p>
+              </div>
             </div>
             <p class="program-empty" id="program-empty">Select a display or window to start streaming</p>
           </section>
           <div class="program-stats" id="program-stats" aria-label="Program stream stats">
-            <label class="program-stats-field">
-              <span class="sr-only">Output mode</span>
-              <select id="program-output-mode" class="program-stats-select" disabled title="Program is the live output feed">
-                <option value="program" selected>Program</option>
-              </select>
-            </label>
-            <label class="program-stats-field">
-              <span class="sr-only">Stream quality</span>
-              <select id="program-quality-select" class="program-stats-select" aria-label="Stream quality"></select>
-            </label>
-            <span class="program-stat" id="stat-dropped">Dropped: 0</span>
-            <span class="program-stat" id="stat-fps">FPS: 30</span>
-            <span class="program-stat" id="stat-resolution">1280×720</span>
+            <div class="program-stats-left">
+              <label class="program-stats-field">
+                <span class="sr-only">Output mode</span>
+                <select id="program-output-mode" class="program-stats-select" disabled title="Studio Mode is the live program output">
+                  <option value="studio" selected>Studio Mode</option>
+                </select>
+              </label>
+            </div>
+            <div class="program-stats-right">
+              <span class="program-stat" id="stat-dropped">Dropped Frames: 0 (0.0%)</span>
+              <span class="program-stat" id="stat-fps">FPS: 30</span>
+              <span class="program-stat program-stat-latency" id="stat-latency" title="Stream latency">—</span>
+              <div class="program-stats-platforms" role="group" aria-label="Stream destinations">
+                <button type="button" class="platform-chip platform-chip-btn" id="plat-twitch" data-state="off" aria-haspopup="dialog">
+                  Twitch
+                </button>
+                <span class="program-stats-platform-sep" aria-hidden="true">|</span>
+                <button type="button" class="platform-chip platform-chip-btn" id="plat-youtube" data-state="off" aria-haspopup="dialog">
+                  YouTube
+                </button>
+              </div>
+              <span class="program-stats-health" id="stat-stream-health" data-state="offline" title="Stream health">
+                <span class="dot" aria-hidden="true"></span>
+                <span id="stat-health-label">Offline</span>
+              </span>
+              <span class="program-stat program-stat-bitrate" id="stat-bitrate">—</span>
+              <label class="program-stats-field program-stats-field-encode">
+                <span class="sr-only">Encode profile</span>
+                <select
+                  id="program-quality-select"
+                  class="program-stats-select program-stats-select-encode"
+                  aria-label="Encode profile"
+                  title="Stream resolution, frame rate, and target bitrate"
+                ></select>
+              </label>
+            </div>
           </div>
         </div>
         <div class="stage-frame" id="stage-frame" aria-hidden="true"></div>
@@ -227,29 +308,44 @@
         <div class="studio-block studio-block-compact">
           <h2>Audio Mixer</h2>
           <div class="audio-mixer" id="audio-mixer">
-            <div class="audio-channel" id="audio-desktop" title="Desktop audio capture not yet implemented">
-              <span class="audio-channel-icon" aria-hidden="true">🔊</span>
-              <span class="audio-channel-name">Desktop Audio</span>
-              <div class="audio-meter-track" aria-hidden="true">
-                <div class="audio-meter" id="desktop-meter" style="width: 12%;"></div>
+            <div class="audio-channel-wrap">
+              <div class="audio-channel" id="audio-desktop" title="Desktop audio capture not yet implemented">
+                <span class="audio-channel-icon" aria-hidden="true">🔊</span>
+                <span class="audio-channel-name">Desktop Audio</span>
+                <div class="audio-meter-track" aria-hidden="true">
+                  <div class="audio-meter" id="desktop-meter" style="width: 12%;"></div>
+                </div>
+                <button type="button" class="audio-channel-settings" disabled title="Desktop audio settings (not implemented)" aria-label="Desktop audio settings">⚙</button>
               </div>
-              <button type="button" class="audio-channel-settings" disabled title="Desktop audio settings (not implemented)" aria-label="Desktop audio settings">⚙</button>
+              <div class="audio-db-scale" aria-hidden="true">
+                <span>-30</span><span>-24</span><span>-18</span><span>-12</span><span>-6</span><span>0</span>
+              </div>
             </div>
-            <div class="audio-channel" id="audio-mic">
-              <span class="audio-channel-icon" aria-hidden="true">🎙</span>
-              <span class="audio-channel-name">Microphone</span>
-              <div class="audio-meter-track" aria-hidden="true">
-                <div class="audio-meter" id="mic-meter"></div>
+            <div class="audio-channel-wrap">
+              <div class="audio-channel" id="audio-mic">
+                <span class="audio-channel-icon" aria-hidden="true">🎙</span>
+                <span class="audio-channel-name">Microphone</span>
+                <div class="audio-meter-track" aria-hidden="true">
+                  <div class="audio-meter" id="mic-meter"></div>
+                </div>
+                <button type="button" class="audio-channel-settings" title="Microphone settings" aria-label="Microphone settings">⚙</button>
               </div>
-              <button type="button" class="audio-channel-settings" title="Microphone settings" aria-label="Microphone settings">⚙</button>
+              <div class="audio-db-scale" aria-hidden="true">
+                <span>-30</span><span>-24</span><span>-18</span><span>-12</span><span>-6</span><span>0</span>
+              </div>
             </div>
-            <div class="audio-channel" id="audio-game" title="Game audio capture not yet implemented">
-              <span class="audio-channel-icon" aria-hidden="true">🎮</span>
-              <span class="audio-channel-name">Game Audio</span>
-              <div class="audio-meter-track" aria-hidden="true">
-                <div class="audio-meter" id="game-meter" style="width: 12%;"></div>
+            <div class="audio-channel-wrap">
+              <div class="audio-channel" id="audio-game" title="Game audio capture not yet implemented">
+                <span class="audio-channel-icon" aria-hidden="true">🎮</span>
+                <span class="audio-channel-name">Game Audio</span>
+                <div class="audio-meter-track" aria-hidden="true">
+                  <div class="audio-meter" id="game-meter" style="width: 12%;"></div>
+                </div>
+                <button type="button" class="audio-channel-settings" disabled title="Game audio settings (not implemented)" aria-label="Game audio settings">⚙</button>
               </div>
-              <button type="button" class="audio-channel-settings" disabled title="Game audio settings (not implemented)" aria-label="Game audio settings">⚙</button>
+              <div class="audio-db-scale" aria-hidden="true">
+                <span>-30</span><span>-24</span><span>-18</span><span>-12</span><span>-6</span><span>0</span>
+              </div>
             </div>
           </div>
         </div>
@@ -259,7 +355,7 @@
           <div class="stream-controls-stack">
             <button type="button" class="btn-block btn-primary btn-go-live" id="btn-go-live-sidebar">
               <span class="btn-icon btn-icon-live" aria-hidden="true">((•))</span>
-              <span id="btn-go-live-label">Start Streaming</span>
+              <span id="btn-go-live-label">Go Live</span>
             </button>
             <button type="button" class="btn-block btn-secondary" id="btn-start-recording" disabled title="Recording is not available in this build yet">
               <span class="btn-icon" aria-hidden="true">●</span>
@@ -289,25 +385,52 @@
                 </div>
               </div>
             </div>
-            <div class="stream-destinations" id="stream-destinations">
-              <label class="check"><input type="checkbox" id="dest-twitch" checked /> Twitch</label>
-              <input id="twitch-key" class="key-input" type="password" autocomplete="off" spellcheck="false" placeholder="live_… Twitch stream key" />
-              <label class="check"><input type="checkbox" id="dest-youtube" /> YouTube</label>
-              <input id="youtube-key" class="key-input" type="password" autocomplete="off" spellcheck="false" placeholder="YouTube stream key" disabled />
-              <div id="dest-custom-block" class="dest-custom-block" hidden>
-                <label class="check"><input type="checkbox" id="dest-custom" /> Custom RTMP</label>
-                <input id="custom-rtmp-url" class="key-input" type="text" autocomplete="off" spellcheck="false" placeholder="rtmps://…/app" disabled />
-                <input id="custom-rtmp-key" class="key-input" type="password" autocomplete="off" spellcheck="false" placeholder="Stream key" disabled />
-              </div>
-            </div>
-            <div class="stream-encode">
-              <label class="field-label" for="profile-select">Encode profile</label>
-              <select id="profile-select" class="select" aria-label="Encode profile"></select>
-            </div>
           </div>
         </div>
       </aside>
     </div>
+
+    <dialog id="platform-key-dialog" class="platform-key-dialog">
+      <form method="dialog" id="platform-key-form" class="platform-key-form">
+        <h2 id="platform-key-dialog-title">Stream key</h2>
+        <p class="hint tight">Keys stay in relay RAM only — never written to disk.</p>
+        <div class="platform-key-panel" id="platform-key-panel-twitch" data-platform="twitch">
+          <label class="check">
+            <input type="checkbox" id="dest-twitch" checked />
+            Stream to Twitch
+          </label>
+          <label class="field-label" for="twitch-key">Twitch stream key</label>
+          <input
+            id="twitch-key"
+            class="key-input"
+            type="password"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="live_… Twitch stream key"
+          />
+        </div>
+        <div class="platform-key-panel" id="platform-key-panel-youtube" data-platform="youtube" hidden>
+          <label class="check">
+            <input type="checkbox" id="dest-youtube" />
+            Stream to YouTube
+          </label>
+          <label class="field-label" for="youtube-key">YouTube stream key</label>
+          <input
+            id="youtube-key"
+            class="key-input"
+            type="password"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="YouTube stream key"
+            disabled
+          />
+        </div>
+        <div class="row platform-key-dialog-actions">
+          <button type="submit" value="save" class="primary" id="platform-key-save">Save</button>
+          <button type="submit" value="cancel">Cancel</button>
+        </div>
+      </form>
+    </dialog>
 
     <dialog id="settings-dialog">
       <form method="dialog" id="settings-form" class="settings-form">
@@ -382,6 +505,44 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <div class="studio-legacy-host" hidden aria-hidden="true">
+      <div id="dest-custom-block" class="dest-custom-block" hidden aria-hidden="true">
+        <label class="check"><input type="checkbox" id="dest-custom" /> Custom RTMP</label>
+        <input id="custom-rtmp-url" class="key-input" type="text" autocomplete="off" spellcheck="false" placeholder="rtmps://…/app" disabled />
+        <input id="custom-rtmp-key" class="key-input" type="password" autocomplete="off" spellcheck="false" placeholder="Stream key" disabled />
+      </div>
+      <div class="source-list" id="source-list"></div>
+      <select id="camera-select" class="select" tabindex="-1"><option value="">No camera</option></select>
+      <select id="mic-select" class="select" tabindex="-1"><option value="">No microphone</option></select>
+      <input id="cam-scale" type="range" min="12" max="40" value="22" />
+      <button type="button" id="toggle-webcam" data-on="0"><span id="toggle-webcam-state">Off</span></button>
+      <button type="button" id="toggle-mic" data-on="0"><span id="toggle-mic-state">Off</span></button>
+      <ul id="layers">
+        <li id="layer-game" data-active="0" data-enabled="1">Gameplay — none</li>
+        <li id="layer-cam" data-active="0" data-enabled="1">Webcam — off</li>
+        <li id="layer-mic" data-active="0" data-enabled="1">Mic — off</li>
+        <li id="layer-browser" data-active="0" data-enabled="0">Search tab — off</li>
+      </ul>
+      <p id="relay-status">—</p>
+      <p id="relay-version">—</p>
+      <p id="relay-error" hidden></p>
+      <p id="dest-hint"></p>
+      <pre id="ffmpeg-log" hidden></pre>
+      <div id="addon-panels"></div>
+      <span id="plat-custom" data-state="off" hidden></span>
+      <input id="backup-rtmp-url" type="text" />
+      <input id="backup-rtmp-key" type="password" />
+      <button type="button" id="btn-capture-browse"></button>
+      <button type="button" id="btn-start-relay"></button>
+      <button type="button" id="btn-stop-relay"></button>
+      <button type="button" id="btn-reveal-relay"></button>
+      <button type="button" id="btn-verify"></button>
+      <button type="button" id="btn-verify-keys"></button>
+      <button type="button" id="btn-toggle-diag"></button>
+      <button type="button" id="btn-toggle-log"></button>
+      <pre id="diag-drawer" hidden></pre>
     </div>
 
     <script type="module" src="./app.ts"></script>
