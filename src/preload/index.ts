@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import type { RelaySnapshot } from '../shared/relay-snapshot'
 import type { PhoneIceServer } from '../shared/phone-ice-servers'
 import type { PhonePairSnapshot, PhoneWebRtcSessionDescription } from '../shared/phone-pair'
+import type { EncodeProfileId } from '../shared/stream-encode-profiles'
 
 export type AppMode = 'studio' | 'browse'
 
@@ -28,7 +29,7 @@ export type BrowseTabInfo = {
 }
 
 export type AppSettings = {
-  bitrateProfile: '720p' | '1080p'
+  bitrateProfile: EncodeProfileId
   startupMode: 'studio' | 'browse'
   minimizeToTrayWhileLive: boolean
   openChatOnBrowse: boolean
@@ -158,14 +159,14 @@ export type TabcastBridge = {
   dispatchAddonLiveEvent: (
     event: 'live.start' | 'live.end',
     ctx: {
-      profile: '720p' | '1080p'
+      profile: EncodeProfileId
       platforms?: { twitch?: boolean; youtube?: boolean; custom?: boolean }
     },
   ) => Promise<AddonLiveEventResult[]>
   runAddonAction: (
     addonId: string,
     actionId: string,
-    ctx: { profile: '720p' | '1080p'; hasWebcam: boolean },
+    ctx: { profile: EncodeProfileId; hasWebcam: boolean },
   ) => Promise<AddonActionResult>
   revealRelay: () => Promise<string>
   listDiagnostics: () => Promise<DiagEvent[]>

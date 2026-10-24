@@ -28,6 +28,14 @@ import { BROWSE_CAPTURE_SOURCE_ID } from '../shared/capture'
 import { coerceSettings, isStudioMediaPermission, isValidPresetId, isValidTabId } from './security'
 import { addonHasPermission, isValidAddonId, isValidCatalogId } from '../shared/addon-api'
 import { PHONE_CAM_ADDON_ID } from '../shared/phone-pair'
+import { addonProfileBucket, normalizeEncodeProfileId } from '../shared/stream-encode-profiles'
+
+function profileBucketForAddon(profileRaw: string | undefined): '720p' | '1080p' {
+  if (profileRaw === '1080p') return '1080p'
+  if (profileRaw === '720p') return '720p'
+  if (profileRaw) return addonProfileBucket(normalizeEncodeProfileId(profileRaw))
+  return '720p'
+}
 import { assertStudioSender, ipcTry, sanitizeChatUrlInput, sanitizeNavigateInput } from './ipc-guards'
 import type { AddonFetchInit } from '../shared/addon-runtime'
 import { ADDON_PROTOCOL } from '../shared/addon-runtime'
@@ -715,10 +723,9 @@ function registerIpc(): void {
   ipcMain.handle('addons:dispatch-live-event', async (event, liveEvent: unknown, ctx: unknown) => {
     if (!studioOk(event)) return []
     if (liveEvent !== 'live.start' && liveEvent !== 'live.end') return []
-    const profile =
-      ctx && typeof ctx === 'object' && (ctx as { profile?: string }).profile === '1080p'
-        ? '1080p'
-        : '720p'
+    const profileRaw =
+      ctx && typeof ctx === 'object' ? (ctx as { profile?: string }).profile : undefined
+    const profile = profileBucketForAddon(profileRaw)
     const platformsRaw =
       ctx && typeof ctx === 'object' ? (ctx as { platforms?: unknown }).platforms : undefined
     const platforms =
@@ -863,10 +870,9 @@ function registerIpc(): void {
       if (!isValidAddonId(addonId)) {
         return { ok: false, message: 'Invalid addon id' }
       }
-      const profile =
-        ctx && typeof ctx === 'object' && (ctx as { profile?: string }).profile === '1080p'
-          ? '1080p'
-          : '720p'
+      const profileRaw =
+        ctx && typeof ctx === 'object' ? (ctx as { profile?: string }).profile : undefined
+      const profile = normalizeEncodeProfileId(profileRaw)
       const hasWebcam = Boolean(
         ctx && typeof ctx === 'object' && (ctx as { hasWebcam?: boolean }).hasWebcam,
       )
