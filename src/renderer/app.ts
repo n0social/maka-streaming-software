@@ -11,10 +11,11 @@ import {
   ENCODE_PROFILE_ORDER,
   ENCODE_PROFILES,
   encodeProfileSpec,
-  formatResolutionLabel,
+  formatAutoEncodeLabel,
   normalizeEncodeProfileId,
   type EncodeProfileId,
 } from '../shared/stream-encode-profiles'
+import { SCENE_TEMPLATES } from '../shared/scene-templates'
 import { BROWSE_CAPTURE_SOURCE_ID } from '../shared/capture'
 import {
   BACKUP_INGEST_STATUS,
@@ -163,6 +164,8 @@ const layerEnabled = {
   mic: true,
   browser: false,
 }
+
+let activeSceneTemplateId = 'gaming-cam'
 
 const WEBCAM_OFFLINE_TEXT = 'video is offline'
 
@@ -424,11 +427,20 @@ async function pushSceneLayout(): Promise<void> {
   const snapshot = await window.tabcast.getRelay()
   if (!snapshot.health) return
   const profile = selectedProfile()
-  const layout = defaultSceneLayout({
-    profile,
-    hasWebcam: hasLiveWebcamVideo() && layerEnabled.cam,
-    hasBrowser: Boolean(browserStream) && layerEnabled.browser,
-  })
+  const hasWebcam = hasLiveWebcamVideo() && layerEnabled.cam
+  const hasBrowser = Boolean(browserStream) && layerEnabled.browser
+  const template = SCENE_TEMPLATES.find((t) => t.id === activeSceneTemplateId)
+  const layout =
+    template &&
+    (activeSceneTemplateId === 'gaming-cam' ||
+      activeSceneTemplateId === 'desk-only' ||
+      activeSceneTemplateId === 'browse-showcase')
+      ? template.build({ profile, hasWebcam })
+      : defaultSceneLayout({
+          profile,
+          hasWebcam,
+          hasBrowser,
+        })
   const scale = Number(camScale.value) / 100
   const cam = layout.sources.find((s) => s.id === 'webcam')
   if (cam) {
@@ -442,6 +454,19 @@ async function pushSceneLayout(): Promise<void> {
   }
   if (!layerEnabled.browser) {
     layout.sources = layout.sources.filter((s) => s.id !== 'browser')
+  } else if (hasBrowser && !layout.sources.some((s) => s.id === 'browser')) {
+    const w = Math.round(layout.canvas.width * 0.35)
+    const h = Math.round(w * (9 / 16))
+    layout.sources.push({
+      id: 'browser',
+      type: 'video',
+      label: 'Browser',
+      x: 24,
+      y: 24,
+      width: w,
+      height: h,
+      zIndex: 1,
+    })
   }
   await postSceneLayout(snapshot.health, layout)
 }
@@ -534,6 +559,8 @@ function renderRelay(snapshot: RelaySnapshot): void {
   }
 
   updateProgramStats(snapshot)
+  updateGoLiveLabel(live)
+  updateStreamInfo(live)
 }
 
 type PlatformChipState = 'off' | 'idle' | 'armed' | 'live' | 'error'
@@ -916,7 +943,8 @@ function populateEncodeProfileSelect(select: HTMLSelectElement, labelKind: 'menu
     const spec = ENCODE_PROFILES[id]
     const option = document.createElement('option')
     option.value = id
-    option.textContent = labelKind === 'menu' ? spec.menuLabel : spec.sidebarLabel
+    option.textContent =
+      labelKind === 'menu' ? formatAutoEncodeLabel(id) : spec.sidebarLabel
     select.appendChild(option)
   }
 }
@@ -2454,19 +2482,31 @@ const btnGoLiveSidebar = document.getElementById('btn-go-live-sidebar') as HTMLB
 const programStats = document.getElementById('program-stats')
 const statDropped = document.getElementById('stat-dropped')
 const statFps = document.getElementById('stat-fps')
-const statResolution = document.getElementById('stat-resolution')
+const statLatency = document.getElementById('stat-latency')
+
+function highlightSceneSelection(sceneTemplate: string): void {
+  const buttons = document.querySelectorAll<HTMLButtonElement>('.studio-list-item[data-scene]')
+  for (const btn of buttons) {
+    btn.dataset.active = btn.dataset.scene === sceneTemplate ? '1' : '0'
+  }
+}
 
 // Scene selection handler
 async function selectScene(sceneTemplate: string): Promise<void> {
-  console.log('Selecting scene:', sceneTemplate)
-  // Wire to existing scene template system if available
-  // For now, just log the selection
-  // The actual scene templates are: gaming-cam, desk-only, browse-showcase
-  if (sceneTemplate === 'gaming-cam' || sceneTemplate === 'desk-only' || sceneTemplate === 'browse-showcase') {
-    // These exist and can be wired to the scene API
-    console.log('Valid scene template:', sceneTemplate)
-  } else {
-    console.log('Scene template not implemented:', sceneTemplate)
+  activeSceneTemplateId = sceneTemplate
+  highlightSceneSelection(sceneTemplate)
+
+  if (sceneTemplate === 'gaming-cam') {
+    layerEnabled.game = true
+    layerEnabled.cam = true
+  } else if (sceneTemplate === 'desk-only') {
+    layerEnabled.game = false
+    layerEnabled.cam = true
+  }
+
+  syncLayerTracks()
+  if (isSessionLive()) {
+    await pushSceneLayout().catch(() => undefined)
   }
 }
 
@@ -2519,14 +2559,16 @@ function updateProgramStats(snapshot?: RelaySnapshot | null): void {
   const profile = selectedProfile()
   const spec = encodeProfileSpec(profile)
   const dropped = droppedFramesFromRelay(snapshot)
+  const dropPct = dropped === 0 ? '0.0' : '—'
   if (statDropped) {
-    statDropped.textContent = `Dropped: ${dropped}`
+    statDropped.textContent = `Dropped Frames: ${dropped} (${dropPct}%)`
   }
   if (statFps) {
     statFps.textContent = `FPS: ${spec.fps}`
   }
-  if (statResolution) {
-    statResolution.textContent = formatResolutionLabel(profile)
+  if (statLatency) {
+    const live = snapshot?.lifecycle === 'live' || isSessionLive()
+    statLatency.textContent = live ? '—' : '—'
   }
 }
 
@@ -2548,7 +2590,7 @@ const streamDuration = document.getElementById('stream-duration') as HTMLElement
 // Update Go Live button label based on streaming state
 function updateGoLiveLabel(isLive: boolean): void {
   if (btnGoLiveLabel) {
-    btnGoLiveLabel.textContent = isLive ? 'End Streaming' : 'Start Streaming'
+    btnGoLiveLabel.textContent = isLive ? 'End Live' : 'Go Live'
   }
 }
 
@@ -2590,5 +2632,6 @@ if (btnGoLiveSidebar) {
 // These are shown but don't do anything since the features aren't implemented
 
 // Initialize stream info
+highlightSceneSelection(activeSceneTemplateId)
 updateGoLiveLabel(false)
 updateStreamInfo(false)

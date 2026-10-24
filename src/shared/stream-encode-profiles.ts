@@ -121,3 +121,9 @@ export function formatResolutionLabel(id: EncodeProfileId): string {
   const { width, height } = ENCODE_PROFILES[id]
   return `${width}×${height}`
 }
+
+/** Program stats bar quality dropdown (readme hero style). */
+export function formatAutoEncodeLabel(id: EncodeProfileId): string {
+  const { width, height } = ENCODE_PROFILES[id]
+  return `Auto (${width}×${height})`
+}
