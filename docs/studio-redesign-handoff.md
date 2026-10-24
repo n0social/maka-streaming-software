@@ -25,7 +25,7 @@ Copy the generated README hero (`docs/readme-hero.png`) into the real studio, on
 | Scene template data the buttons do not apply yet | `src/shared/scene-templates.ts` |
 | Overlay layout presets (Game Capture vs Overlay picker) | `src/shared/overlay-layout-presets.ts` |
 
-Theme tokens in `app.css`: `--bg: #faf8f4`, `--gold: #c9a227`, text `#1a1408`. Sidebars are 252px (left) and 284px (right). Density tokens: `--studio-pad-x`, `--studio-pad-y`, `--studio-row-gap`. Top bar row is 34px tall.
+Theme tokens in `app.css`: `--bg: #faf8f4`, `--gold: #c9a227`, text `#1a1408`. Sidebars are 252px (left) and 296px (right). Density tokens: `--studio-pad-x`, `--studio-pad-y`, `--studio-row-gap`. Top bar row is 34px tall.
 
 ## What is already in the UI
 
@@ -68,7 +68,7 @@ Compared with `docs/readme-hero.png`:
 - **Stats bar.** Lower program column: **left** — disabled Studio Mode dropdown only (no second quality dropdown; the old empty `#program-quality-select` beside Studio Mode was removed). **Right** (flex end) — dropped frames, FPS, latency placeholder, **Twitch | YouTube** platform chips (open `#platform-key-dialog` for enable + stream key), stream health pill, **Mbps**, and **`#program-quality-select`** encode preset dropdown (`720p @ 30fps`, etc.; tooltip shows target/transmit bitrate when live). Keys and `dest-twitch` / `dest-youtube` live only in the dialog.
 - **Mixer vs the image.** dB ticks (-30 … 0) sit under each horizontal bar. Tracks stay 14px tall. Keep the red gradient end and width-based fill.
 - **Stream controls.** Sidebar primary button reads "Go Live" / "End Live" (matches the top bar).
-- **Stream info.** The image shows a thumbnail, title, category, Live pill, viewers, and duration. The app still shows placeholders for metadata. Sidebar Stream Info is **preview + meta only** (no Twitch/YouTube checkboxes, key fields, or encode profile — those moved to the stats bar / platform key dialog).
+- **Stream info.** The image shows a thumbnail, title, category, Live pill, viewers, and duration. The app still shows placeholders for metadata. Sidebar Stream Info is **preview + meta only** (no Twitch/YouTube checkboxes, key fields, or encode profile — those moved to the stats bar / platform key dialog). The old sidebar `#profile-select` / `.stream-encode` block is removed; custom RTMP fields live in `.studio-legacy-host` so they do not auto-place in the app grid. Stream info card uses a larger thumb (~84px), tighter horizontal padding, and bold title / category / status row.
 
 ## Screenshot comparison ritual
 

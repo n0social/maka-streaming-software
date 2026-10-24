@@ -388,11 +388,6 @@
           </div>
         </div>
       </aside>
-      <div id="dest-custom-block" class="dest-custom-block" hidden aria-hidden="true">
-        <label class="check"><input type="checkbox" id="dest-custom" /> Custom RTMP</label>
-        <input id="custom-rtmp-url" class="key-input" type="text" autocomplete="off" spellcheck="false" placeholder="rtmps://…/app" disabled />
-        <input id="custom-rtmp-key" class="key-input" type="password" autocomplete="off" spellcheck="false" placeholder="Stream key" disabled />
-      </div>
     </div>
 
     <dialog id="platform-key-dialog" class="platform-key-dialog">
@@ -513,6 +508,11 @@
     </div>
 
     <div class="studio-legacy-host" hidden aria-hidden="true">
+      <div id="dest-custom-block" class="dest-custom-block" hidden aria-hidden="true">
+        <label class="check"><input type="checkbox" id="dest-custom" /> Custom RTMP</label>
+        <input id="custom-rtmp-url" class="key-input" type="text" autocomplete="off" spellcheck="false" placeholder="rtmps://…/app" disabled />
+        <input id="custom-rtmp-key" class="key-input" type="password" autocomplete="off" spellcheck="false" placeholder="Stream key" disabled />
+      </div>
       <div class="source-list" id="source-list"></div>
       <select id="camera-select" class="select" tabindex="-1"><option value="">No camera</option></select>
       <select id="mic-select" class="select" tabindex="-1"><option value="">No microphone</option></select>

@@ -9,7 +9,6 @@ import type { RelaySnapshot } from '../shared/relay-snapshot'
 import type { StreamProfile, SceneLayout, RelayHealth } from '../shared/tabcast'
 import {
   ENCODE_PROFILE_ORDER,
-  ENCODE_PROFILES,
   encodeProfileSpec,
   formatAutoEncodeLabel,
   normalizeEncodeProfileId,
@@ -1102,14 +1101,12 @@ function selectedProfile(): StreamProfile {
   return normalizeEncodeProfileId(programQualitySelect.value)
 }
 
-function populateEncodeProfileSelect(select: HTMLSelectElement, labelKind: 'menu' | 'sidebar'): void {
+function populateEncodeProfileSelect(select: HTMLSelectElement): void {
   select.innerHTML = ''
   for (const id of ENCODE_PROFILE_ORDER) {
-    const spec = ENCODE_PROFILES[id]
     const option = document.createElement('option')
     option.value = id
-    option.textContent =
-      labelKind === 'menu' ? formatAutoEncodeLabel(id) : spec.sidebarLabel
+    option.textContent = formatAutoEncodeLabel(id)
     select.appendChild(option)
   }
 }
@@ -1126,7 +1123,7 @@ function onEncodeProfileChanged(id: EncodeProfileId): void {
 }
 
 function initEncodeProfileControls(): void {
-  populateEncodeProfileSelect(programQualitySelect, 'menu')
+  populateEncodeProfileSelect(programQualitySelect)
   const initial = normalizeEncodeProfileId(programQualitySelect.value)
   syncEncodeProfileSelects(initial)
   updateProgramStats()
