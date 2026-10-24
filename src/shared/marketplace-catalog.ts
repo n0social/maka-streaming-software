@@ -21,51 +21,6 @@ export const MARKETPLACE_CATALOG: CatalogEntry[] = [
     },
   },
   {
-    catalogId: 'com.tabcast.discord-now-live',
-    featured: true,
-    manifest: {
-      id: 'com.tabcast.discord-now-live',
-      name: 'Discord Now Live',
-      version: '0.1.0',
-      apiVersion: 1,
-      author: 'Tabcast',
-      category: 'utility',
-      description: 'Post a “now live” message to Discord via webhook when you go live (community pattern).',
-      permissions: ['network.fetch', 'live.events', 'ui.toast', 'ui.external'],
-      hooks: ['live.start', 'live.end'],
-      contributes: {
-        sidebarPanels: [
-          {
-            id: 'main',
-            title: 'Discord',
-            description: 'Webhook helper — posts on go-live when a webhook URL is saved.',
-            actions: [
-              {
-                id: 'configure-webhook',
-                label: 'Set webhook URL',
-                type: 'message',
-                message: 'Use “Set webhook URL” to paste your Discord channel webhook.',
-              },
-              {
-                id: 'setup',
-                label: 'Setup guide',
-                type: 'message',
-                message:
-                  'Create a Discord channel webhook, click “Set webhook URL”, then go live — Maka POSTs a “now live” embed from the main process (keys never touch the renderer).',
-              },
-              {
-                id: 'docs',
-                label: 'Discord webhooks docs',
-                type: 'open-url',
-                url: 'https://discord.com/developers/docs/resources/webhook',
-              },
-            ],
-          },
-        ],
-      },
-    },
-  },
-  {
     catalogId: 'com.tabcast.custom-rtmp',
     featured: true,
     manifest: {
