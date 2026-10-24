@@ -250,12 +250,12 @@ function startMicMeter(stream: MediaStream): void {
       let sum = 0
       for (const v of data) sum += v
       const avg = sum / data.length / 255
-      micMeter.style.width = `${Math.min(100, Math.round(avg * 140))}%`
+      micMeter.style.height = `${Math.min(100, Math.round(avg * 140))}%`
       meterRaf = requestAnimationFrame(tick)
     }
     tick()
   } catch {
-    micMeter.style.width = '0%'
+    micMeter.style.height = '0%'
   }
 }
 
@@ -267,7 +267,7 @@ function stopMicMeter(): void {
     void audioCtx.close()
     audioCtx = null
   }
-  micMeter.style.width = '0%'
+  micMeter.style.height = '0%'
 }
 
 function syncProgramVideoSurface(): void {
