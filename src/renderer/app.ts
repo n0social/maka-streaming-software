@@ -1034,10 +1034,234 @@ async function persistCustomRtmpSettings(): Promise<void> {
   })
 }
 
+type SourceKind = 'game' | 'webcam' | 'mic' | 'browser'
+
+const SOURCE_KINDS: SourceKind[] = ['game', 'webcam', 'mic', 'browser']
+
+const sourcePickerEls: Record<SourceKind, HTMLUListElement> = {
+  game: document.getElementById('source-picker-game') as HTMLUListElement,
+  webcam: document.getElementById('source-picker-webcam') as HTMLUListElement,
+  mic: document.getElementById('source-picker-mic') as HTMLUListElement,
+  browser: document.getElementById('source-picker-browser') as HTMLUListElement,
+}
+
+let expandedSourceKind: SourceKind | null = null
+let activeBrowseTabId: string | null = null
+
+function syncSourcePickerVisibility(): void {
+  for (const kind of SOURCE_KINDS) {
+    const picker = sourcePickerEls[kind]
+    const toggle = sourceToggleEls[kind]
+    const open = expandedSourceKind === kind
+    picker.hidden = !open
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false')
+    toggle.dataset.expanded = open ? '1' : '0'
+  }
+}
+
+function setPickerStatus(picker: HTMLUListElement, message: string): void {
+  picker.innerHTML = ''
+  const li = document.createElement('li')
+  const p = document.createElement('p')
+  p.className = 'studio-source-picker-status'
+  p.textContent = message
+  li.appendChild(p)
+  picker.appendChild(li)
+}
+
+function appendPickerButton(
+  picker: HTMLUListElement,
+  opts: {
+    label: string
+    kindLabel?: string
+    thumbnailDataUrl?: string
+    active?: boolean
+    onPick: () => void | Promise<void>
+  },
+): void {
+  const li = document.createElement('li')
+  const btn = document.createElement('button')
+  btn.type = 'button'
+  btn.className = 'studio-source-picker-item'
+  btn.dataset.active = opts.active ? '1' : '0'
+
+  if (opts.thumbnailDataUrl) {
+    const img = document.createElement('img')
+    img.className = 'studio-source-picker-thumb'
+    img.alt = ''
+    img.src = opts.thumbnailDataUrl
+    btn.appendChild(img)
+  }
+
+  const label = document.createElement('span')
+  label.className = 'studio-source-picker-label'
+  label.textContent = opts.label
+  btn.appendChild(label)
+
+  if (opts.kindLabel) {
+    const kind = document.createElement('span')
+    kind.className = 'studio-source-picker-kind'
+    kind.textContent = opts.kindLabel
+    btn.appendChild(kind)
+  }
+
+  btn.addEventListener('click', (event) => {
+    event.stopPropagation()
+    void opts.onPick()
+  })
+  li.appendChild(btn)
+  picker.appendChild(li)
+}
+
+const sourceToggleEls: Record<SourceKind, HTMLButtonElement> = {
+  game: studioSourceGame as HTMLButtonElement,
+  webcam: studioSourceWebcam as HTMLButtonElement,
+  mic: studioSourceMic as HTMLButtonElement,
+  browser: studioSourceBrowser as HTMLButtonElement,
+}
+
+async function refreshSourcePicker(kind: SourceKind): Promise<void> {
+  const picker = sourcePickerEls[kind]
+  picker.innerHTML = ''
+  setPickerStatus(picker, 'Detecting…')
+
+  try {
+    if (kind === 'game') {
+      const sources = await window.tabcast.listCaptureSources()
+      const desktop = sources.filter((s) => s.type !== 'browser')
+      picker.innerHTML = ''
+      if (!desktop.length) {
+        setPickerStatus(picker, 'No displays or windows found.')
+        return
+      }
+      for (const source of desktop) {
+        appendPickerButton(picker, {
+          label: source.name,
+          kindLabel: source.type === 'screen' ? 'Display' : 'Window',
+          thumbnailDataUrl: source.thumbnailDataUrl || undefined,
+          active: selectedSourceId === source.id,
+          onPick: () => selectDesktopSource(source),
+        })
+      }
+      return
+    }
+
+    if (kind === 'webcam') {
+      await refreshAvDevices()
+      picker.innerHTML = ''
+      appendPickerButton(picker, {
+        label: 'No camera',
+        active: !cameraSelect.value,
+        onPick: async () => {
+          layerEnabled.cam = false
+          cameraSelect.value = ''
+          lastCameraSelectValue = ''
+          await applyCamera()
+          syncLayerTracks()
+          void refreshSourcePicker('webcam')
+        },
+      })
+      for (const opt of [...cameraSelect.options]) {
+        if (!opt.value) continue
+        appendPickerButton(picker, {
+          label: opt.textContent ?? 'Camera',
+          active: cameraSelect.value === opt.value,
+          onPick: async () => {
+            layerEnabled.cam = true
+            cameraSelect.value = opt.value
+            lastCameraSelectValue = opt.value
+            if (opt.value === PHONE_CAMERA_DEVICE_VALUE) {
+              preferPhoneCamera = true
+            } else if (opt.value) {
+              preferPhoneCamera = false
+            }
+            await applyCamera()
+            syncLayerTracks()
+            void refreshSourcePicker('webcam')
+          },
+        })
+      }
+      return
+    }
+
+    if (kind === 'mic') {
+      await refreshAvDevices()
+      picker.innerHTML = ''
+      appendPickerButton(picker, {
+        label: 'No microphone',
+        active: !micSelect.value,
+        onPick: async () => {
+          layerEnabled.mic = false
+          micSelect.value = ''
+          lastMicSelectValue = ''
+          await applyMic()
+          syncLayerTracks()
+          void refreshSourcePicker('mic')
+        },
+      })
+      for (const opt of [...micSelect.options]) {
+        if (!opt.value) continue
+        appendPickerButton(picker, {
+          label: opt.textContent ?? 'Microphone',
+          active: micSelect.value === opt.value,
+          onPick: async () => {
+            layerEnabled.mic = true
+            micSelect.value = opt.value
+            lastMicSelectValue = opt.value
+            await applyMic()
+            syncLayerTracks()
+            void refreshSourcePicker('mic')
+          },
+        })
+      }
+      return
+    }
+
+    const tabs = await window.tabcast.listTabs()
+    picker.innerHTML = ''
+    if (!tabs.length) {
+      setPickerStatus(picker, 'Open a page in Search, then pick a tab here.')
+      return
+    }
+    for (const tab of tabs) {
+      appendPickerButton(picker, {
+        label: tab.title || tab.url || 'Untitled tab',
+        kindLabel: tab.pinned ? 'Pinned' : 'Tab',
+        active: activeBrowseTabId === tab.id && layerEnabled.browser,
+        onPick: async () => {
+          await window.tabcast.activateTab(tab.id)
+          activeBrowseTabId = tab.id
+          layerEnabled.browser = true
+          await startBrowserCapture()
+          syncLayerTracks()
+          void refreshSourcePicker('browser')
+        },
+      })
+    }
+  } catch (err) {
+    picker.innerHTML = ''
+    setPickerStatus(
+      picker,
+      err instanceof Error ? err.message : 'Could not list sources for this type.',
+    )
+  }
+}
+
+function toggleSourcePicker(kind: SourceKind): void {
+  if (expandedSourceKind === kind) {
+    expandedSourceKind = null
+  } else {
+    expandedSourceKind = kind
+    void refreshSourcePicker(kind)
+  }
+  syncSourcePickerVisibility()
+}
+
 function renderSources(sources: CaptureSource[]): void {
-  // Hide individual screen/window list to declutter UI
   sourceList.innerHTML = ''
-  return
+  if (expandedSourceKind === 'game') {
+    void refreshSourcePicker('game')
+  }
 }
 
 async function selectDesktopSource(source: CaptureSource): Promise<void> {
@@ -1062,6 +1286,9 @@ async function selectDesktopSource(source: CaptureSource): Promise<void> {
     syncLayerTracks()
     if (currentMode !== 'studio') {
       await window.tabcast.setMode('studio')
+    }
+    if (expandedSourceKind === 'game') {
+      void refreshSourcePicker('game')
     }
   } catch (err) {
     programVideo.srcObject = null
@@ -1208,8 +1435,16 @@ async function refreshSources(): Promise<void> {
   try {
     const sources = await window.tabcast.listCaptureSources()
     renderSources(sources)
+    if (expandedSourceKind && expandedSourceKind !== 'game') {
+      await refreshSourcePicker(expandedSourceKind)
+    }
   } catch (err) {
-    sourceList.innerHTML = `<p class="hint">${escapeHtml(err instanceof Error ? err.message : 'Could not list sources')}</p>`
+    if (expandedSourceKind) {
+      setPickerStatus(
+        sourcePickerEls[expandedSourceKind],
+        err instanceof Error ? err.message : 'Could not list sources',
+      )
+    }
   }
 }
 
@@ -1909,20 +2144,11 @@ toggleMic.addEventListener('click', () => {
   toggleMicLayer()
 })
 
-studioSourceGame.addEventListener('click', () => {
-  void refreshSources()
-})
-studioSourceWebcam.addEventListener('click', () => {
-  toggleWebcamLayer()
-  cameraSelect.focus()
-})
-studioSourceMic.addEventListener('click', () => {
-  toggleMicLayer()
-  micSelect.focus()
-})
-studioSourceBrowser.addEventListener('click', () => {
-  toggleBrowserLayer()
-})
+for (const kind of SOURCE_KINDS) {
+  sourceToggleEls[kind].addEventListener('click', () => {
+    toggleSourcePicker(kind)
+  })
+}
 
 async function renderAddonPanels(): Promise<void> {
   const panels = await window.tabcast.listAddonPanels()

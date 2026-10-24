@@ -156,34 +156,66 @@
             <h2>Sources</h2>
             <button type="button" class="studio-icon-btn" id="btn-refresh-sources" title="Add source" aria-label="Add source">+</button>
           </header>
-          <ul class="studio-list" aria-label="Source types">
-            <li>
-              <button type="button" class="studio-list-item" id="studio-source-game" data-source-action="game">
+          <ul class="studio-list studio-source-list" aria-label="Source types">
+            <li class="studio-source-group">
+              <button
+                type="button"
+                class="studio-list-item studio-source-toggle"
+                id="studio-source-game"
+                data-source-kind="game"
+                aria-expanded="false"
+                aria-controls="source-picker-game"
+              >
                 <span class="studio-list-leading source-icon" aria-hidden="true">🎮</span>
                 <span class="studio-list-text">Game Capture</span>
-                <span class="studio-list-menu" aria-hidden="true">⋯</span>
+                <span class="studio-source-chevron" aria-hidden="true">▾</span>
               </button>
+              <ul class="studio-source-picker" id="source-picker-game" hidden role="list" aria-label="Displays and windows"></ul>
             </li>
-            <li>
-              <button type="button" class="studio-list-item" id="studio-source-webcam" data-source-action="webcam">
+            <li class="studio-source-group">
+              <button
+                type="button"
+                class="studio-list-item studio-source-toggle"
+                id="studio-source-webcam"
+                data-source-kind="webcam"
+                aria-expanded="false"
+                aria-controls="source-picker-webcam"
+              >
                 <span class="studio-list-leading source-icon" aria-hidden="true">📹</span>
                 <span class="studio-list-text">Webcam</span>
-                <span class="studio-list-menu" aria-hidden="true">⋯</span>
+                <span class="studio-source-chevron" aria-hidden="true">▾</span>
               </button>
+              <ul class="studio-source-picker" id="source-picker-webcam" hidden role="list" aria-label="Cameras"></ul>
             </li>
-            <li>
-              <button type="button" class="studio-list-item" id="studio-source-mic" data-source-action="mic">
+            <li class="studio-source-group">
+              <button
+                type="button"
+                class="studio-list-item studio-source-toggle"
+                id="studio-source-mic"
+                data-source-kind="mic"
+                aria-expanded="false"
+                aria-controls="source-picker-mic"
+              >
                 <span class="studio-list-leading source-icon" aria-hidden="true">🎙</span>
                 <span class="studio-list-text">Microphone</span>
-                <span class="studio-list-menu" aria-hidden="true">⋯</span>
+                <span class="studio-source-chevron" aria-hidden="true">▾</span>
               </button>
+              <ul class="studio-source-picker" id="source-picker-mic" hidden role="list" aria-label="Microphones"></ul>
             </li>
-            <li>
-              <button type="button" class="studio-list-item" id="studio-source-browser" data-source-action="browser">
+            <li class="studio-source-group">
+              <button
+                type="button"
+                class="studio-list-item studio-source-toggle"
+                id="studio-source-browser"
+                data-source-kind="browser"
+                aria-expanded="false"
+                aria-controls="source-picker-browser"
+              >
                 <span class="studio-list-leading source-icon" aria-hidden="true">🌐</span>
                 <span class="studio-list-text">Overlay</span>
-                <span class="studio-list-menu" aria-hidden="true">⋯</span>
+                <span class="studio-source-chevron" aria-hidden="true">▾</span>
               </button>
+              <ul class="studio-source-picker" id="source-picker-browser" hidden role="list" aria-label="Search tabs for overlay"></ul>
             </li>
           </ul>
         </div>
@@ -406,6 +438,41 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <div class="studio-legacy-host" hidden aria-hidden="true">
+      <div class="source-list" id="source-list"></div>
+      <select id="camera-select" class="select" tabindex="-1"><option value="">No camera</option></select>
+      <select id="mic-select" class="select" tabindex="-1"><option value="">No microphone</option></select>
+      <input id="cam-scale" type="range" min="12" max="40" value="22" />
+      <button type="button" id="toggle-webcam" data-on="0"><span id="toggle-webcam-state">Off</span></button>
+      <button type="button" id="toggle-mic" data-on="0"><span id="toggle-mic-state">Off</span></button>
+      <ul id="layers">
+        <li id="layer-game" data-active="0" data-enabled="1">Gameplay — none</li>
+        <li id="layer-cam" data-active="0" data-enabled="1">Webcam — off</li>
+        <li id="layer-mic" data-active="0" data-enabled="1">Mic — off</li>
+        <li id="layer-browser" data-active="0" data-enabled="0">Search tab — off</li>
+      </ul>
+      <p id="relay-status">—</p>
+      <p id="relay-version">—</p>
+      <p id="relay-error" hidden></p>
+      <p id="dest-hint"></p>
+      <pre id="ffmpeg-log" hidden></pre>
+      <div id="addon-panels"></div>
+      <span id="plat-twitch" data-state="off"></span>
+      <span id="plat-youtube" data-state="off"></span>
+      <span id="plat-custom" data-state="off" hidden></span>
+      <input id="backup-rtmp-url" type="text" />
+      <input id="backup-rtmp-key" type="password" />
+      <button type="button" id="btn-capture-browse"></button>
+      <button type="button" id="btn-start-relay"></button>
+      <button type="button" id="btn-stop-relay"></button>
+      <button type="button" id="btn-reveal-relay"></button>
+      <button type="button" id="btn-verify"></button>
+      <button type="button" id="btn-verify-keys"></button>
+      <button type="button" id="btn-toggle-diag"></button>
+      <button type="button" id="btn-toggle-log"></button>
+      <pre id="diag-drawer" hidden></pre>
     </div>
 
     <script type="module" src="./app.ts"></script>

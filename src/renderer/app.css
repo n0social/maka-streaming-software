@@ -1336,6 +1336,108 @@ body:not([data-mode='browse']) #browsetabs {
   display: none;
 }
 
+.studio-source-list {
+  gap: 0.25rem;
+}
+
+.studio-source-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.studio-source-chevron {
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1;
+  transition: transform 120ms ease;
+}
+
+.studio-source-toggle[aria-expanded='true'] .studio-source-chevron {
+  transform: rotate(180deg);
+  color: var(--gold-dark);
+}
+
+.studio-source-picker {
+  list-style: none;
+  margin: 0 0 0.15rem;
+  padding: 0 0 0 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  border-left: 2px solid rgba(201, 162, 39, 0.35);
+  margin-left: 0.55rem;
+}
+
+.studio-source-picker[hidden] {
+  display: none !important;
+}
+
+.studio-source-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.38rem 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  background: var(--panel-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.72rem;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.studio-source-picker-item:hover {
+  border-color: var(--gold);
+  background: rgba(201, 162, 39, 0.08);
+}
+
+.studio-source-picker-item[data-active='1'] {
+  border-color: var(--gold);
+  background: rgba(201, 162, 39, 0.12);
+}
+
+.studio-source-picker-thumb {
+  width: 2.25rem;
+  height: 1.35rem;
+  border-radius: 0.25rem;
+  object-fit: cover;
+  background: var(--line);
+  flex-shrink: 0;
+}
+
+.studio-source-picker-label {
+  min-width: 0;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.studio-source-picker-kind {
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.studio-source-picker-empty,
+.studio-source-picker-status {
+  margin: 0;
+  padding: 0.35rem 0.45rem;
+  font-size: 0.68rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.studio-legacy-host {
+  display: none !important;
+}
+
 /* Stream Controls */
 .btn-icon {
   margin-right: 0.35rem;
