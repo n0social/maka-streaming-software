@@ -1471,8 +1471,8 @@ body:not([data-mode='browse']) #browsetabs {
 
 .audio-channel-row {
   display: flex;
-  align-items: flex-start;
-  gap: 0.35rem;
+  align-items: center;
+  gap: 0.5rem;
   min-width: 0;
 }
 
@@ -1535,7 +1535,7 @@ body:not([data-mode='browse']) #browsetabs {
 
 .audio-meter-wrap {
   width: 24px;
-  height: 140px;
+  height: 80px;
   background: repeating-linear-gradient(
     180deg,
     #e6dfd0 0,
@@ -1547,6 +1547,7 @@ body:not([data-mode='browse']) #browsetabs {
   overflow: hidden;
   display: flex;
   flex-direction: column-reverse;
+  flex-shrink: 0;
 }
 
 .audio-meter {
