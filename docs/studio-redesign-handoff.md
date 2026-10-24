@@ -25,7 +25,7 @@ Copy the generated README hero (`docs/readme-hero.png`) into the real studio, on
 | Scene template data the buttons do not apply yet | `src/shared/scene-templates.ts` |
 | Overlay layout presets (Game Capture vs Overlay picker) | `src/shared/overlay-layout-presets.ts` |
 
-Theme tokens in `app.css`: `--bg: #faf8f4`, `--gold: #c9a227`, text `#1a1408`. Sidebars are 268px (left) and 300px (right).
+Theme tokens in `app.css`: `--bg: #faf8f4`, `--gold: #c9a227`, text `#1a1408`. Sidebars are 252px (left) and 284px (right). Density tokens: `--studio-pad-x`, `--studio-pad-y`, `--studio-row-gap`. Top bar row is 34px tall.
 
 ## What is already in the UI
 

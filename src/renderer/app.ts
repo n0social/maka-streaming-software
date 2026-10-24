@@ -15,7 +15,7 @@ import {
   normalizeEncodeProfileId,
   type EncodeProfileId,
 } from '../shared/stream-encode-profiles'
-import { SCENE_TEMPLATES } from '../shared/scene-templates'
+import { isSceneStubId, SCENE_TEMPLATES, sceneStubPreset } from '../shared/scene-templates'
 import {
   DEFAULT_OVERLAY_PRESET_ID,
   OVERLAY_LAYOUT_PRESETS,
@@ -85,6 +85,9 @@ const relayError = document.getElementById('relay-error')!
 const sourceList = document.getElementById('source-list')!
 const programVideo = document.getElementById('program-video') as HTMLVideoElement
 const programEmpty = document.getElementById('program-empty')!
+const programSceneCard = document.getElementById('program-scene-card')!
+const programSceneCardTitle = document.getElementById('program-scene-card-title')!
+const programSceneCardSubtitle = document.getElementById('program-scene-card-subtitle')!
 const programCam = document.getElementById('program-cam')!
 const programCamVideo = document.getElementById('program-cam-video') as HTMLVideoElement
 const programCamOffline = document.getElementById('program-cam-offline')!
@@ -287,10 +290,33 @@ function setMicMeterLevel(percent: number): void {
   micMeter.style.removeProperty('height')
 }
 
+function syncSceneProgramPresentation(): void {
+  const stub = isSceneStubId(activeSceneTemplateId)
+  const preset = sceneStubPreset(activeSceneTemplateId)
+
+  if (stub && preset) {
+    programSceneCard.hidden = false
+    programSceneCard.dataset.scene = activeSceneTemplateId
+    programSceneCardTitle.textContent = preset.title
+    programSceneCardSubtitle.textContent = preset.subtitle
+    programVideo.hidden = true
+    programCam.hidden = true
+    programBrowser.hidden = true
+    programEmpty.hidden = true
+    return
+  }
+
+  programSceneCard.hidden = true
+  programSceneCard.dataset.scene = ''
+  const showGameplay = Boolean(programStream)
+  programVideo.hidden = !showGameplay
+  programEmpty.hidden = showGameplay
+  updateProgramCamOverlay()
+  updateProgramBrowserOverlay()
+}
+
 function syncProgramVideoSurface(): void {
-  const show = Boolean(programStream)
-  programVideo.hidden = !show
-  programEmpty.hidden = show
+  syncSceneProgramPresentation()
 }
 
 function updateStudioMixControls(): void {
@@ -366,8 +392,7 @@ function syncLayerTracks(): void {
   layerCam.dataset.enabled = layerEnabled.cam ? '1' : '0'
   layerMic.dataset.enabled = layerEnabled.mic ? '1' : '0'
   layerBrowser.dataset.enabled = layerEnabled.browser ? '1' : '0'
-  updateProgramCamOverlay()
-  updateProgramBrowserOverlay()
+  syncSceneProgramPresentation()
   refreshProgramPreviewLayout()
   updateStudioMixControls()
 }
@@ -515,17 +540,13 @@ function buildOutgoingSceneLayout(): SceneLayout {
     layout = preset.build({ profile, hasWebcam })
   } else {
     const template = SCENE_TEMPLATES.find((t) => t.id === activeSceneTemplateId)
-    layout =
-      template &&
-      (activeSceneTemplateId === 'gaming-cam' ||
-        activeSceneTemplateId === 'desk-only' ||
-        activeSceneTemplateId === 'browse-showcase')
-        ? template.build({ profile, hasWebcam })
-        : defaultSceneLayout({
-            profile,
-            hasWebcam,
-            hasBrowser,
-          })
+    layout = template
+      ? template.build({ profile, hasWebcam })
+      : defaultSceneLayout({
+          profile,
+          hasWebcam,
+          hasBrowser,
+        })
     const scale = Number(camScale.value) / 100
     const cam = layout.sources.find((s) => s.id === 'webcam')
     if (cam) {
@@ -1591,7 +1612,7 @@ async function selectBrowseTabSource(): Promise<void> {
     )
   }
 
-  if (!programStream) {
+  if (!programStream && !isSceneStubId(activeSceneTemplateId)) {
     programEmpty.hidden = false
     programEmpty.textContent = 'Select gameplay (display/window) first, or use the Search tab layer for overlay only.'
   }
@@ -2901,6 +2922,9 @@ async function selectScene(sceneTemplate: string): Promise<void> {
   } else if (sceneTemplate === 'desk-only') {
     layerEnabled.game = false
     layerEnabled.cam = true
+  } else if (isSceneStubId(sceneTemplate)) {
+    layerEnabled.game = false
+    layerEnabled.cam = false
   }
 
   syncLayerTracks()
@@ -3032,6 +3056,7 @@ if (btnGoLiveSidebar) {
 
 // Initialize stream info
 highlightSceneSelection(activeSceneTemplateId)
+syncSceneProgramPresentation()
 syncOverlaySourceRow()
 refreshProgramPreviewLayout()
 updateGoLiveLabel(false)

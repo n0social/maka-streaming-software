@@ -106,7 +106,7 @@
             <h2>Scenes</h2>
             <button type="button" class="studio-icon-btn" id="btn-add-scene" title="Add scene" aria-label="Add scene">+</button>
           </header>
-          <ul class="studio-list" aria-label="Scenes">
+          <ul class="studio-list studio-list--scenes" aria-label="Scenes">
             <li>
               <button type="button" class="studio-list-item" id="scene-gameplay" data-scene="gaming-cam" data-active="1">
                 <span class="studio-list-leading scene-icon" aria-hidden="true">🎮</span>
@@ -250,6 +250,15 @@
             <div class="program-overlay-slot program-notifications-slot" id="program-notifications-slot" hidden>
               <span class="program-overlay-slot-label">Notifications</span>
               <span class="program-overlay-slot-hint">Reserved — not wired yet</span>
+            </div>
+            <div class="program-scene-card" id="program-scene-card" hidden>
+              <div class="program-scene-card-inner">
+                <span class="program-scene-card-mark" aria-hidden="true">M</span>
+                <p class="program-scene-card-title" id="program-scene-card-title">Starting Soon</p>
+                <p class="program-scene-card-subtitle" id="program-scene-card-subtitle">
+                  Hang tight — we’ll be live in a moment
+                </p>
+              </div>
             </div>
             <p class="program-empty" id="program-empty">Select a display or window to start streaming</p>
           </section>
