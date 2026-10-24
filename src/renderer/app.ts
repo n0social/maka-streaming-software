@@ -16,6 +16,11 @@ import {
   type EncodeProfileId,
 } from '../shared/stream-encode-profiles'
 import { SCENE_TEMPLATES } from '../shared/scene-templates'
+import {
+  DEFAULT_OVERLAY_PRESET_ID,
+  OVERLAY_LAYOUT_PRESETS,
+  overlayPresetById,
+} from '../shared/overlay-layout-presets'
 import { BROWSE_CAPTURE_SOURCE_ID } from '../shared/capture'
 import {
   BACKUP_INGEST_STATUS,
@@ -125,6 +130,8 @@ const backupRtmpUrl = document.getElementById('backup-rtmp-url') as HTMLInputEle
 const backupRtmpKey = document.getElementById('backup-rtmp-key') as HTMLInputElement
 const programBrowser = document.getElementById('program-browser')!
 const programBrowserVideo = document.getElementById('program-browser-video') as HTMLVideoElement
+const programChatSlot = document.getElementById('program-chat-slot')!
+const programNotificationsSlot = document.getElementById('program-notifications-slot')!
 const brandTag = document.getElementById('brand-tag')
 
 const CUSTOM_RTM_ADDON_ID = 'com.tabcast.custom-rtmp'
@@ -166,6 +173,7 @@ const layerEnabled = {
 }
 
 let activeSceneTemplateId = 'gaming-cam'
+let activeOverlayPresetId = DEFAULT_OVERLAY_PRESET_ID
 
 const WEBCAM_OFFLINE_TEXT = 'video is offline'
 
@@ -308,8 +316,9 @@ function updateStudioMixControls(): void {
   studioSourceWebcam.dataset.enabled = layerEnabled.cam ? '1' : '0'
   studioSourceMic.dataset.active = micStream ? '1' : '0'
   studioSourceMic.dataset.enabled = layerEnabled.mic ? '1' : '0'
-  studioSourceBrowser.dataset.active = browserStream ? '1' : '0'
-  studioSourceBrowser.dataset.enabled = layerEnabled.browser ? '1' : '0'
+  studioSourceBrowser.dataset.active =
+    browserStream || Boolean(overlayPresetById(activeOverlayPresetId)) ? '1' : '0'
+  studioSourceBrowser.dataset.enabled = '1'
 }
 
 function updateStudioStatusFooter(snapshot: RelaySnapshot): void {
@@ -359,6 +368,7 @@ function syncLayerTracks(): void {
   layerBrowser.dataset.enabled = layerEnabled.browser ? '1' : '0'
   updateProgramCamOverlay()
   updateProgramBrowserOverlay()
+  refreshProgramPreviewLayout()
   updateStudioMixControls()
 }
 
@@ -381,9 +391,15 @@ function hasLiveWebcamVideo(): boolean {
   )
 }
 
+function usesOverlayPresetLayout(): boolean {
+  return Boolean(overlayPresetById(activeOverlayPresetId))
+}
+
 function syncWebcamPresentation(camLabel?: string): void {
-  const scale = Math.max(12, Math.min(40, Number(camScale.value) || 22))
-  programCam.style.width = `${scale}%`
+  if (!usesOverlayPresetLayout()) {
+    const scale = Math.max(12, Math.min(40, Number(camScale.value) || 22))
+    programCam.style.width = `${scale}%`
+  }
 
   const layerOn = layerEnabled.cam
   const hasVideo = hasLiveWebcamVideo()
@@ -423,51 +439,173 @@ function updateProgramCamOverlay(): void {
   syncWebcamPresentation()
 }
 
-async function pushSceneLayout(): Promise<void> {
-  const snapshot = await window.tabcast.getRelay()
-  if (!snapshot.health) return
+function applySourceBox(
+  el: HTMLElement,
+  source: SceneLayout['sources'][number],
+  canvas: { width: number; height: number },
+): void {
+  el.style.inset = 'auto'
+  el.style.right = 'auto'
+  el.style.bottom = 'auto'
+  el.style.left = `${(source.x / canvas.width) * 100}%`
+  el.style.top = `${(source.y / canvas.height) * 100}%`
+  el.style.width = `${(source.width / canvas.width) * 100}%`
+  el.style.height = `${(source.height / canvas.height) * 100}%`
+  el.style.aspectRatio = 'auto'
+}
+
+function resetProgramGameplayBox(): void {
+  programVideo.style.inset = '0'
+  programVideo.style.left = ''
+  programVideo.style.top = ''
+  programVideo.style.width = '100%'
+  programVideo.style.height = '100%'
+}
+
+function applyProgramPreviewLayout(layout: SceneLayout): void {
+  const { canvas, sources } = layout
+  const sourceById = (id: string) => sources.find((s) => s.id === id)
+
+  const gameplay = sourceById('gameplay')
+  if (gameplay && layerEnabled.game && programStream) {
+    applySourceBox(programVideo, gameplay, canvas)
+  } else if (programStream) {
+    resetProgramGameplayBox()
+  }
+
+  const webcam = sourceById('webcam')
+  if (usesOverlayPresetLayout() && webcam && layerEnabled.cam) {
+    applySourceBox(programCam, webcam, canvas)
+  } else if (usesOverlayPresetLayout()) {
+    programCam.style.left = ''
+    programCam.style.top = ''
+    programCam.style.height = ''
+  }
+
+  const chat = sourceById('chat')
+  const showChatPlaceholder =
+    Boolean(chat) && !(browserStream && layerEnabled.browser)
+  programChatSlot.hidden = !showChatPlaceholder
+  if (showChatPlaceholder && chat) {
+    applySourceBox(programChatSlot, chat, canvas)
+  }
+
+  const notifications = sourceById('notifications')
+  programNotificationsSlot.hidden = !notifications
+  if (notifications) {
+    applySourceBox(programNotificationsSlot, notifications, canvas)
+  }
+
+  if (browserStream && layerEnabled.browser) {
+    const browserRect = sourceById('browser') ?? chat
+    if (browserRect) {
+      applySourceBox(programBrowser, browserRect, canvas)
+    }
+  }
+}
+
+function buildOutgoingSceneLayout(): SceneLayout {
   const profile = selectedProfile()
   const hasWebcam = hasLiveWebcamVideo() && layerEnabled.cam
   const hasBrowser = Boolean(browserStream) && layerEnabled.browser
-  const template = SCENE_TEMPLATES.find((t) => t.id === activeSceneTemplateId)
-  const layout =
-    template &&
-    (activeSceneTemplateId === 'gaming-cam' ||
-      activeSceneTemplateId === 'desk-only' ||
-      activeSceneTemplateId === 'browse-showcase')
-      ? template.build({ profile, hasWebcam })
-      : defaultSceneLayout({
-          profile,
-          hasWebcam,
-          hasBrowser,
-        })
-  const scale = Number(camScale.value) / 100
-  const cam = layout.sources.find((s) => s.id === 'webcam')
-  if (cam) {
-    cam.width = Math.round(layout.canvas.width * scale)
-    cam.height = Math.round(cam.width * (9 / 16))
-    cam.x = layout.canvas.width - cam.width - 24
-    cam.y = layout.canvas.height - cam.height - 24
+
+  const preset = overlayPresetById(activeOverlayPresetId)
+  let layout: SceneLayout
+  if (preset) {
+    layout = preset.build({ profile, hasWebcam })
+  } else {
+    const template = SCENE_TEMPLATES.find((t) => t.id === activeSceneTemplateId)
+    layout =
+      template &&
+      (activeSceneTemplateId === 'gaming-cam' ||
+        activeSceneTemplateId === 'desk-only' ||
+        activeSceneTemplateId === 'browse-showcase')
+        ? template.build({ profile, hasWebcam })
+        : defaultSceneLayout({
+            profile,
+            hasWebcam,
+            hasBrowser,
+          })
+    const scale = Number(camScale.value) / 100
+    const cam = layout.sources.find((s) => s.id === 'webcam')
+    if (cam) {
+      cam.width = Math.round(layout.canvas.width * scale)
+      cam.height = Math.round(cam.width * (9 / 16))
+      cam.x = layout.canvas.width - cam.width - 24
+      cam.y = layout.canvas.height - cam.height - 24
+    }
   }
+
   if (!layerEnabled.game) {
     layout.sources = layout.sources.filter((s) => s.id !== 'gameplay')
+  }
+  if (!hasWebcam) {
+    layout.sources = layout.sources.filter((s) => s.id !== 'webcam')
   }
   if (!layerEnabled.browser) {
     layout.sources = layout.sources.filter((s) => s.id !== 'browser')
   } else if (hasBrowser && !layout.sources.some((s) => s.id === 'browser')) {
-    const w = Math.round(layout.canvas.width * 0.35)
-    const h = Math.round(w * (9 / 16))
-    layout.sources.push({
-      id: 'browser',
-      type: 'video',
-      label: 'Browser',
-      x: 24,
-      y: 24,
-      width: w,
-      height: h,
-      zIndex: 1,
-    })
+    const chat = layout.sources.find((s) => s.id === 'chat')
+    if (chat) {
+      layout.sources.push({
+        id: 'browser',
+        type: 'video',
+        label: 'Search tab',
+        x: chat.x,
+        y: chat.y,
+        width: chat.width,
+        height: chat.height,
+        zIndex: chat.zIndex + 1,
+      })
+    } else {
+      const w = Math.round(layout.canvas.width * 0.35)
+      const h = Math.round(w * (9 / 16))
+      layout.sources.push({
+        id: 'browser',
+        type: 'video',
+        label: 'Search tab',
+        x: 24,
+        y: 24,
+        width: w,
+        height: h,
+        zIndex: 1,
+      })
+    }
   }
+  return layout
+}
+
+function refreshProgramPreviewLayout(): void {
+  applyProgramPreviewLayout(buildOutgoingSceneLayout())
+}
+
+function syncOverlaySourceRow(): void {
+  const preset = overlayPresetById(activeOverlayPresetId)
+  const presetLabel = preset?.name ?? 'Custom'
+  if (browserStream && layerEnabled.browser) {
+    layerBrowser.dataset.active = '1'
+    layerBrowser.textContent = `Overlay — ${presetLabel} · Search tab on`
+  } else {
+    layerBrowser.dataset.active = preset ? '1' : '0'
+    layerBrowser.textContent = `Overlay — ${presetLabel}`
+  }
+}
+
+async function selectOverlayPreset(id: string): Promise<void> {
+  activeOverlayPresetId = id
+  syncOverlaySourceRow()
+  refreshProgramPreviewLayout()
+  if (expandedSourceKinds.has('browser')) {
+    void refreshSourcePicker('browser')
+  }
+  void pushSceneLayout()
+}
+
+async function pushSceneLayout(): Promise<void> {
+  const layout = buildOutgoingSceneLayout()
+  applyProgramPreviewLayout(layout)
+  const snapshot = await window.tabcast.getRelay()
+  if (!snapshot.health) return
   await postSceneLayout(snapshot.health, layout)
 }
 
@@ -1045,18 +1183,28 @@ const sourcePickerEls: Record<SourceKind, HTMLUListElement> = {
   browser: document.getElementById('source-picker-browser') as HTMLUListElement,
 }
 
-let expandedSourceKind: SourceKind | null = null
+const expandedSourceKinds = new Set<SourceKind>()
 let activeBrowseTabId: string | null = null
 
 function syncSourcePickerVisibility(): void {
   for (const kind of SOURCE_KINDS) {
     const picker = sourcePickerEls[kind]
     const toggle = sourceToggleEls[kind]
-    const open = expandedSourceKind === kind
+    const open = expandedSourceKinds.has(kind)
     picker.hidden = !open
     toggle.setAttribute('aria-expanded', open ? 'true' : 'false')
     toggle.dataset.expanded = open ? '1' : '0'
   }
+}
+
+function appendPickerSectionHeader(picker: HTMLUListElement, title: string): void {
+  const li = document.createElement('li')
+  li.className = 'studio-source-picker-section'
+  const p = document.createElement('p')
+  p.className = 'studio-source-picker-section-title'
+  p.textContent = title
+  li.appendChild(p)
+  picker.appendChild(li)
 }
 
 function setPickerStatus(picker: HTMLUListElement, message: string): void {
@@ -1217,10 +1365,38 @@ async function refreshSourcePicker(kind: SourceKind): Promise<void> {
       return
     }
 
-    const tabs = await window.tabcast.listTabs()
     picker.innerHTML = ''
+    appendPickerSectionHeader(picker, 'Layout presets')
+    for (const preset of OVERLAY_LAYOUT_PRESETS) {
+      appendPickerButton(picker, {
+        label: preset.name,
+        kindLabel: 'Composition',
+        active: activeOverlayPresetId === preset.id,
+        onPick: () => selectOverlayPreset(preset.id),
+      })
+    }
+
+    appendPickerSectionHeader(picker, 'Search tab overlay')
+    appendPickerButton(picker, {
+      label: 'Search tab off',
+      kindLabel: 'Capture',
+      active: !layerEnabled.browser,
+      onPick: async () => {
+        layerEnabled.browser = false
+        await stopBrowserCapture()
+        syncLayerTracks()
+        void refreshSourcePicker('browser')
+      },
+    })
+
+    const tabs = await window.tabcast.listTabs()
     if (!tabs.length) {
-      setPickerStatus(picker, 'Open a page in Search, then pick a tab here.')
+      const li = document.createElement('li')
+      const p = document.createElement('p')
+      p.className = 'studio-source-picker-status'
+      p.textContent = 'Open a page in Search, then pick a tab below.'
+      li.appendChild(p)
+      picker.appendChild(li)
       return
     }
     for (const tab of tabs) {
@@ -1248,10 +1424,10 @@ async function refreshSourcePicker(kind: SourceKind): Promise<void> {
 }
 
 function toggleSourcePicker(kind: SourceKind): void {
-  if (expandedSourceKind === kind) {
-    expandedSourceKind = null
+  if (expandedSourceKinds.has(kind)) {
+    expandedSourceKinds.delete(kind)
   } else {
-    expandedSourceKind = kind
+    expandedSourceKinds.add(kind)
     void refreshSourcePicker(kind)
   }
   syncSourcePickerVisibility()
@@ -1259,7 +1435,7 @@ function toggleSourcePicker(kind: SourceKind): void {
 
 function renderSources(sources: CaptureSource[]): void {
   sourceList.innerHTML = ''
-  if (expandedSourceKind === 'game') {
+  if (expandedSourceKinds.has('game')) {
     void refreshSourcePicker('game')
   }
 }
@@ -1287,7 +1463,7 @@ async function selectDesktopSource(source: CaptureSource): Promise<void> {
     if (currentMode !== 'studio') {
       await window.tabcast.setMode('studio')
     }
-    if (expandedSourceKind === 'game') {
+    if (expandedSourceKinds.has('game')) {
       void refreshSourcePicker('game')
     }
   } catch (err) {
@@ -1360,10 +1536,9 @@ async function stopBrowserCapture(): Promise<void> {
   stopStream(browserStream)
   browserStream = null
   programBrowserVideo.srcObject = null
-  layerBrowser.dataset.active = '0'
-  layerBrowser.textContent = 'Search tab — off'
   await window.tabcast.setBrowseCaptureActive(false)
   updateProgramBrowserOverlay()
+  syncOverlaySourceRow()
   syncLayerTracks()
 }
 
@@ -1374,8 +1549,7 @@ async function startBrowserCapture(): Promise<void> {
 
   const target = await window.tabcast.getBrowseCaptureTarget()
   if (!target) {
-    layerBrowser.dataset.active = '0'
-    layerBrowser.textContent = 'Search tab — no tab'
+    syncOverlaySourceRow()
     setDestError('Open a page in the Search tab, then enable the Search tab layer.')
     layerEnabled.browser = false
     return
@@ -1396,8 +1570,7 @@ async function startBrowserCapture(): Promise<void> {
     })
     browserStream = stream
     bindBrowserStream(stream)
-    layerBrowser.dataset.active = '1'
-    layerBrowser.textContent = `Search tab — ${target.title}`
+    syncOverlaySourceRow()
     syncLayerTracks()
     setDestError(null)
   } catch (err) {
@@ -1435,13 +1608,13 @@ async function refreshSources(): Promise<void> {
   try {
     const sources = await window.tabcast.listCaptureSources()
     renderSources(sources)
-    if (expandedSourceKind && expandedSourceKind !== 'game') {
-      await refreshSourcePicker(expandedSourceKind)
+    for (const kind of expandedSourceKinds) {
+      await refreshSourcePicker(kind)
     }
   } catch (err) {
-    if (expandedSourceKind) {
+    for (const kind of expandedSourceKinds) {
       setPickerStatus(
-        sourcePickerEls[expandedSourceKind],
+        sourcePickerEls[kind],
         err instanceof Error ? err.message : 'Could not list sources',
       )
     }
@@ -2859,5 +3032,7 @@ if (btnGoLiveSidebar) {
 
 // Initialize stream info
 highlightSceneSelection(activeSceneTemplateId)
+syncOverlaySourceRow()
+refreshProgramPreviewLayout()
 updateGoLiveLabel(false)
 updateStreamInfo(false)

@@ -215,7 +215,7 @@
                 <span class="studio-list-text">Overlay</span>
                 <span class="studio-source-chevron" aria-hidden="true">▾</span>
               </button>
-              <ul class="studio-source-picker" id="source-picker-browser" hidden role="list" aria-label="Search tabs for overlay"></ul>
+              <ul class="studio-source-picker" id="source-picker-browser" hidden role="list" aria-label="Overlay layout presets"></ul>
             </li>
           </ul>
         </div>
@@ -241,7 +241,15 @@
             </div>
             <div class="program-browser" id="program-browser" hidden>
               <video id="program-browser-video" autoplay muted playsinline></video>
-              <span class="program-browser-tag">Browser</span>
+              <span class="program-browser-tag">Search tab</span>
+            </div>
+            <div class="program-overlay-slot program-chat-slot" id="program-chat-slot" hidden>
+              <span class="program-overlay-slot-label">Chat</span>
+              <span class="program-overlay-slot-hint">Placeholder until chat feed is wired</span>
+            </div>
+            <div class="program-overlay-slot program-notifications-slot" id="program-notifications-slot" hidden>
+              <span class="program-overlay-slot-label">Notifications</span>
+              <span class="program-overlay-slot-hint">Reserved — not wired yet</span>
             </div>
             <p class="program-empty" id="program-empty">Select a display or window to start streaming</p>
           </section>

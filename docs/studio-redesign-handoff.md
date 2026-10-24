@@ -23,6 +23,7 @@ Copy the generated README hero (`docs/readme-hero.png`) into the real studio, on
 | Mic level, scene clicks, stats text, encode menu wiring | `src/renderer/app.ts` (`startMicMeter`, `setMicMeterLevel`, `selectScene`, `updateProgramStats`) |
 | Quality presets 720p30 through 4K60 | `src/shared/stream-encode-profiles.ts` |
 | Scene template data the buttons do not apply yet | `src/shared/scene-templates.ts` |
+| Overlay layout presets (Game Capture vs Overlay picker) | `src/shared/overlay-layout-presets.ts` |
 
 Theme tokens in `app.css`: `--bg: #faf8f4`, `--gold: #c9a227`, text `#1a1408`. Sidebars are 268px (left) and 300px (right).
 
@@ -30,7 +31,7 @@ Theme tokens in `app.css`: `--bg: #faf8f4`, `--gold: #c9a227`, text `#1a1408`. S
 
 Verified against `app.html`, `app.css`, and `app.ts` on `cursor/maka-mixer-layout-9bd4`.
 
-**Left.** Scenes lists five built-in rows (Gameplay, Starting Soon, Just Chatting, Intermission, Ending Scene) plus Add Scene. Sources lists Game Capture, Webcam, Microphone, and Overlay. The footer reads "All systems nominal".
+**Left.** Scenes lists five built-in rows (Gameplay, Starting Soon, Just Chatting, Intermission, Ending Scene) plus Add Scene. Sources lists Game Capture, Webcam, Microphone, and Overlay. Multiple source cascade pickers can stay open at once. **Game Capture** expands to displays/windows (`listCaptureSources` desktop paths) and marks the active capture. **Overlay** expands to named layout presets (webcam/chat/notification slots + gameplay full or PiP) that push `SceneLayout` via `pushSceneLayout`; chat and notifications are placeholder regions until wired. Search-tab browser capture lives under Overlay presets as "Search tab overlay", not as the only Overlay list. The footer reads "All systems nominal".
 
 **Center.** Program preview with a "Program • Live Output" label. Under it, a stats bar: a disabled Program select, a quality dropdown, dropped frames, FPS, and resolution. The quality menu is filled from `ENCODE_PROFILE_ORDER`: 720p @ 30fps, 720p @ 60fps, 1080p @ 30fps, 1080p @ 60fps, 2K @ 60fps, 4K @ 60fps. Default is `720p30` (1280×720, 30 fps). FPS and resolution labels follow that preset, not a measured capture clock.
 
