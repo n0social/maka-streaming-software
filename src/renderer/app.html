@@ -263,19 +263,34 @@
             <p class="program-empty" id="program-empty">Select a display or window to start streaming</p>
           </section>
           <div class="program-stats" id="program-stats" aria-label="Program stream stats">
-            <label class="program-stats-field">
-              <span class="sr-only">Output mode</span>
-              <select id="program-output-mode" class="program-stats-select" disabled title="Studio Mode is the live program output">
-                <option value="studio" selected>Studio Mode</option>
-              </select>
-            </label>
-            <label class="program-stats-field">
-              <span class="sr-only">Stream quality</span>
-              <select id="program-quality-select" class="program-stats-select" aria-label="Stream quality"></select>
-            </label>
-            <span class="program-stat" id="stat-dropped">Dropped Frames: 0 (0.0%)</span>
-            <span class="program-stat" id="stat-fps">FPS: 30</span>
-            <span class="program-stat program-stat-latency" id="stat-latency">—</span>
+            <div class="program-stats-left">
+              <label class="program-stats-field">
+                <span class="sr-only">Output mode</span>
+                <select id="program-output-mode" class="program-stats-select" disabled title="Studio Mode is the live program output">
+                  <option value="studio" selected>Studio Mode</option>
+                </select>
+              </label>
+            </div>
+            <div class="program-stats-right">
+              <span class="program-stat" id="stat-dropped">Dropped Frames: 0 (0.0%)</span>
+              <span class="program-stat" id="stat-fps">FPS: 30</span>
+              <span class="program-stat program-stat-latency" id="stat-latency" title="Stream latency">—</span>
+              <div class="program-stats-platforms" role="group" aria-label="Stream destinations">
+                <button type="button" class="platform-chip platform-chip-btn" id="plat-twitch" data-state="off" aria-haspopup="dialog">
+                  Twitch
+                </button>
+                <span class="program-stats-platform-sep" aria-hidden="true">|</span>
+                <button type="button" class="platform-chip platform-chip-btn" id="plat-youtube" data-state="off" aria-haspopup="dialog">
+                  YouTube
+                </button>
+              </div>
+              <span class="program-stats-health" id="stat-stream-health" data-state="offline" title="Stream health">
+                <span class="dot" aria-hidden="true"></span>
+                <span id="stat-health-label">Offline</span>
+              </span>
+              <span class="program-stat program-stat-bitrate" id="stat-bitrate">—</span>
+              <span class="program-stat program-stat-encode" id="stat-encode-summary">720p30 · 3 Mbps target</span>
+            </div>
           </div>
         </div>
         <div class="stage-frame" id="stage-frame" aria-hidden="true"></div>
@@ -363,10 +378,9 @@
               </div>
             </div>
             <div class="stream-destinations" id="stream-destinations">
-              <label class="check"><input type="checkbox" id="dest-twitch" checked /> Twitch</label>
-              <input id="twitch-key" class="key-input" type="password" autocomplete="off" spellcheck="false" placeholder="live_… Twitch stream key" />
-              <label class="check"><input type="checkbox" id="dest-youtube" /> YouTube</label>
-              <input id="youtube-key" class="key-input" type="password" autocomplete="off" spellcheck="false" placeholder="YouTube stream key" disabled />
+              <p class="stream-dest-summary hint tight" id="stream-dest-summary">
+                Set Twitch or YouTube keys from the program stats bar.
+              </p>
               <div id="dest-custom-block" class="dest-custom-block" hidden>
                 <label class="check"><input type="checkbox" id="dest-custom" /> Custom RTMP</label>
                 <input id="custom-rtmp-url" class="key-input" type="text" autocomplete="off" spellcheck="false" placeholder="rtmps://…/app" disabled />
@@ -381,6 +395,48 @@
         </div>
       </aside>
     </div>
+
+    <dialog id="platform-key-dialog" class="platform-key-dialog">
+      <form method="dialog" id="platform-key-form" class="platform-key-form">
+        <h2 id="platform-key-dialog-title">Stream key</h2>
+        <p class="hint tight">Keys stay in relay RAM only — never written to disk.</p>
+        <div class="platform-key-panel" id="platform-key-panel-twitch" data-platform="twitch">
+          <label class="check">
+            <input type="checkbox" id="dest-twitch" checked />
+            Stream to Twitch
+          </label>
+          <label class="field-label" for="twitch-key">Twitch stream key</label>
+          <input
+            id="twitch-key"
+            class="key-input"
+            type="password"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="live_… Twitch stream key"
+          />
+        </div>
+        <div class="platform-key-panel" id="platform-key-panel-youtube" data-platform="youtube" hidden>
+          <label class="check">
+            <input type="checkbox" id="dest-youtube" />
+            Stream to YouTube
+          </label>
+          <label class="field-label" for="youtube-key">YouTube stream key</label>
+          <input
+            id="youtube-key"
+            class="key-input"
+            type="password"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="YouTube stream key"
+            disabled
+          />
+        </div>
+        <div class="row platform-key-dialog-actions">
+          <button type="submit" value="save" class="primary" id="platform-key-save">Save</button>
+          <button type="submit" value="cancel">Cancel</button>
+        </div>
+      </form>
+    </dialog>
 
     <dialog id="settings-dialog">
       <form method="dialog" id="settings-form" class="settings-form">
@@ -476,8 +532,6 @@
       <p id="dest-hint"></p>
       <pre id="ffmpeg-log" hidden></pre>
       <div id="addon-panels"></div>
-      <span id="plat-twitch" data-state="off"></span>
-      <span id="plat-youtube" data-state="off"></span>
       <span id="plat-custom" data-state="off" hidden></span>
       <input id="backup-rtmp-url" type="text" />
       <input id="backup-rtmp-key" type="password" />
