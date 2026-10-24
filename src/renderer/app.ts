@@ -957,36 +957,9 @@ async function persistCustomRtmpSettings(): Promise<void> {
 }
 
 function renderSources(sources: CaptureSource[]): void {
+  // Hide individual screen/window list to declutter UI
   sourceList.innerHTML = ''
-  if (!sources.length) {
-    sourceList.innerHTML = '<p class="hint">No sources found.</p>'
-    return
-  }
-
-  for (const source of sources) {
-    const btn = document.createElement('button')
-    btn.type = 'button'
-    btn.className = 'source-card' + (source.id === selectedSourceId ? ' active' : '')
-    btn.dataset.id = source.id
-    const thumbHtml = source.type === 'browser'
-      ? '<span class="source-thumb browser-thumb" aria-hidden="true">🌐</span>'
-      : `<img src="${source.thumbnailDataUrl}" alt="" />`
-    btn.innerHTML = `
-      ${thumbHtml}
-      <span>
-        <strong>${escapeHtml(source.name)}</strong>
-        <span>${source.type === 'browser' ? 'search tab' : source.type}</span>
-      </span>
-    `
-    btn.addEventListener('click', () => {
-      if (source.type === 'browser' || source.id === BROWSE_CAPTURE_SOURCE_ID) {
-        void selectBrowseTabSource()
-      } else {
-        void selectDesktopSource(source)
-      }
-    })
-    sourceList.appendChild(btn)
-  }
+  return
 }
 
 async function selectDesktopSource(source: CaptureSource): Promise<void> {
@@ -1890,6 +1863,9 @@ async function renderAddonPanels(): Promise<void> {
   }
 
   for (const panel of panels) {
+    // Filter out Discord addon from UI
+    console.log('Checking panel:', panel.addonId); if (panel.addonId === 'com.tabcast.discord-now-live') { console.log('Filtering out Discord'); continue; }
+
     const section = document.createElement('section')
     section.className = 'addon-panel'
     section.innerHTML = `<h3>${escapeHtml(panel.title)}</h3>`
