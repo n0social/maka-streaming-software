@@ -1,9 +1,15 @@
 /** Shared constants matching the local Tabcast relay contract (localhost only). */
 
-export type StreamProfile = '720p' | '1080p'
+import {
+  DEFAULT_ENCODE_PROFILE,
+  ENCODE_PROFILE_ORDER,
+  type EncodeProfileId,
+} from './stream-encode-profiles'
 
-export const STREAM_PROFILES: StreamProfile[] = ['720p', '1080p']
-export const DEFAULT_STREAM_PROFILE: StreamProfile = '720p'
+export type StreamProfile = EncodeProfileId
+
+export const STREAM_PROFILES: StreamProfile[] = ENCODE_PROFILE_ORDER
+export const DEFAULT_STREAM_PROFILE: StreamProfile = DEFAULT_ENCODE_PROFILE
 
 export const RELAY_DEFAULT_PORT = 38_473
 export const RELAY_BASE_URL = `http://127.0.0.1:${RELAY_DEFAULT_PORT}`
@@ -34,6 +40,7 @@ export type RelayConfigRequest = {
   customRtmpUrl?: string
   customRtmpKey?: string
   profile: StreamProfile
+  bitrateMbps?: number
 }
 
 export type RelayVerifyResponse = {

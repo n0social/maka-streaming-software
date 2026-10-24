@@ -186,114 +186,117 @@
       </aside>
 
       <main class="stage" aria-label="Program">
-        <section class="program" id="program" data-tour="program">
-          <div class="program-label">
-            Program
-            <span class="program-mode">• Live Output</span>
+        <div class="program-column">
+          <section class="program" id="program" data-tour="program">
+            <div class="program-label">
+              Program
+              <span class="program-mode">• Live Output</span>
+            </div>
+            <video id="program-video" autoplay muted playsinline hidden></video>
+            <div class="program-cam" id="program-cam" hidden>
+              <video id="program-cam-video" autoplay muted playsinline hidden></video>
+              <p class="program-cam-offline" id="program-cam-offline" hidden>video is offline</p>
+              <span class="program-cam-tag">Webcam</span>
+            </div>
+            <div class="program-browser" id="program-browser" hidden>
+              <video id="program-browser-video" autoplay muted playsinline></video>
+              <span class="program-browser-tag">Browser</span>
+            </div>
+            <p class="program-empty" id="program-empty">Select a display or window to start streaming</p>
+          </section>
+          <div class="program-stats" id="program-stats" aria-label="Program stream stats">
+            <label class="program-stats-field">
+              <span class="sr-only">Output mode</span>
+              <select id="program-output-mode" class="program-stats-select" disabled title="Program is the live output feed">
+                <option value="program" selected>Program</option>
+              </select>
+            </label>
+            <label class="program-stats-field">
+              <span class="sr-only">Stream quality</span>
+              <select id="program-quality-select" class="program-stats-select" aria-label="Stream quality"></select>
+            </label>
+            <span class="program-stat" id="stat-dropped">Dropped: 0</span>
+            <span class="program-stat" id="stat-fps">FPS: 30</span>
+            <span class="program-stat" id="stat-resolution">1280×720</span>
           </div>
-          <video id="program-video" autoplay muted playsinline hidden></video>
-          <div class="program-cam" id="program-cam" hidden>
-            <video id="program-cam-video" autoplay muted playsinline hidden></video>
-            <p class="program-cam-offline" id="program-cam-offline" hidden>video is offline</p>
-            <span class="program-cam-tag">Webcam</span>
-          </div>
-          <div class="program-browser" id="program-browser" hidden>
-            <video id="program-browser-video" autoplay muted playsinline></video>
-            <span class="program-browser-tag">Browser</span>
-          </div>
-          <p class="program-empty" id="program-empty">Select a display or window to start streaming</p>
-          <div class="program-stats" id="program-stats">
-            <span class="program-stat">Studio Mode ▼</span>
-            <span class="program-stat" id="stat-dropped">Dropped Frames: 0 (0.0%) ▼</span>
-            <span class="program-stat" id="stat-fps">FPS: 60</span>
-            <span class="program-stat" id="stat-latency">17 ms</span>
-            <span class="program-stat" id="stat-resolution">🔄 Auto (1920x1080)</span>
-          </div>
-        </section>
+        </div>
         <div class="stage-frame" id="stage-frame" aria-hidden="true"></div>
       </main>
 
-      <aside class="sidebar right studio-sidebar" aria-label="Stream controls">
-        <div class="studio-block">
+      <aside class="sidebar right studio-sidebar studio-sidebar-right" aria-label="Stream controls">
+        <div class="studio-block studio-block-compact">
           <h2>Audio Mixer</h2>
           <div class="audio-mixer" id="audio-mixer">
-            <div class="audio-channel" id="audio-desktop" title="Desktop audio capture not yet implemented">
-              <div class="audio-channel-head">
-                <span class="audio-channel-icon">🔊</span>
-                <span class="audio-channel-name">Desktop Audio</span>
-                <button type="button" class="audio-channel-settings" disabled title="Desktop audio settings (not implemented)" aria-label="Desktop audio settings">⚙</button>
-              </div>
-              <div class="audio-fader-container">
-                <div class="audio-fader-scale">
-                  <span>-30</span>
-                  <span>-24</span>
-                  <span>-18</span>
-                  <span>-12</span>
-                  <span>-6</span>
-                  <span>0</span>
+            <div class="audio-channel audio-channel-row" id="audio-desktop" title="Desktop audio capture not yet implemented">
+              <span class="audio-channel-icon" aria-hidden="true">🔊</span>
+              <div class="audio-channel-main">
+                <div class="audio-channel-head">
+                  <span class="audio-channel-name">Desktop Audio</span>
+                  <button type="button" class="audio-channel-settings" disabled title="Desktop audio settings (not implemented)" aria-label="Desktop audio settings">⚙</button>
                 </div>
-                <input type="range" class="audio-fader" id="desktop-fader" min="-30" max="0" value="0" step="1" orient="vertical" aria-label="Desktop audio volume" disabled />
-                <div class="audio-meter" id="desktop-meter"></div>
+                <div class="audio-meter-wrap" aria-hidden="true">
+                  <div class="audio-meter" id="desktop-meter"></div>
+                </div>
+                <input type="range" class="audio-fader" id="desktop-fader" min="-30" max="0" value="0" step="1" aria-label="Desktop audio volume" disabled />
+                <div class="audio-fader-scale" aria-hidden="true">
+                  <span>-30</span><span>-24</span><span>-18</span><span>-12</span><span>-6</span><span>0</span>
+                </div>
               </div>
             </div>
-            <div class="audio-channel" id="audio-mic">
-              <div class="audio-channel-head">
-                <span class="audio-channel-icon">🎙</span>
-                <span class="audio-channel-name">Microphone</span>
-                <button type="button" class="audio-channel-settings" title="Microphone settings" aria-label="Microphone settings">⚙</button>
-              </div>
-              <div class="audio-fader-container">
-                <div class="audio-fader-scale">
-                  <span>-30</span>
-                  <span>-24</span>
-                  <span>-18</span>
-                  <span>-12</span>
-                  <span>-6</span>
-                  <span>0</span>
+            <div class="audio-channel audio-channel-row" id="audio-mic">
+              <span class="audio-channel-icon" aria-hidden="true">🎙</span>
+              <div class="audio-channel-main">
+                <div class="audio-channel-head">
+                  <span class="audio-channel-name">Microphone</span>
+                  <button type="button" class="audio-channel-settings" title="Microphone settings" aria-label="Microphone settings">⚙</button>
                 </div>
-                <input type="range" class="audio-fader" id="mic-fader" min="-30" max="0" value="0" step="1" orient="vertical" aria-label="Microphone volume" />
-                <div class="audio-meter" id="mic-meter-visual"></div>
+                <div class="audio-meter-wrap" aria-hidden="true">
+                  <div class="audio-meter" id="mic-meter"></div>
+                </div>
+                <input type="range" class="audio-fader" id="mic-fader" min="-30" max="0" value="0" step="1" aria-label="Microphone volume" />
+                <div class="audio-fader-scale" aria-hidden="true">
+                  <span>-30</span><span>-24</span><span>-18</span><span>-12</span><span>-6</span><span>0</span>
+                </div>
               </div>
             </div>
-            <div class="audio-channel" id="audio-game" title="Game audio capture not yet implemented">
-              <div class="audio-channel-head">
-                <span class="audio-channel-icon">🎮</span>
-                <span class="audio-channel-name">Game Audio</span>
-                <button type="button" class="audio-channel-settings" disabled title="Game audio settings (not implemented)" aria-label="Game audio settings">⚙</button>
-              </div>
-              <div class="audio-fader-container">
-                <div class="audio-fader-scale">
-                  <span>-30</span>
-                  <span>-24</span>
-                  <span>-18</span>
-                  <span>-12</span>
-                  <span>-6</span>
-                  <span>0</span>
+            <div class="audio-channel audio-channel-row" id="audio-game" title="Game audio capture not yet implemented">
+              <span class="audio-channel-icon" aria-hidden="true">🎮</span>
+              <div class="audio-channel-main">
+                <div class="audio-channel-head">
+                  <span class="audio-channel-name">Game Audio</span>
+                  <button type="button" class="audio-channel-settings" disabled title="Game audio settings (not implemented)" aria-label="Game audio settings">⚙</button>
                 </div>
-                <input type="range" class="audio-fader" id="game-fader" min="-30" max="0" value="0" step="1" orient="vertical" aria-label="Game audio volume" disabled />
-                <div class="audio-meter" id="game-meter"></div>
+                <div class="audio-meter-wrap" aria-hidden="true">
+                  <div class="audio-meter" id="game-meter"></div>
+                </div>
+                <input type="range" class="audio-fader" id="game-fader" min="-30" max="0" value="0" step="1" aria-label="Game audio volume" disabled />
+                <div class="audio-fader-scale" aria-hidden="true">
+                  <span>-30</span><span>-24</span><span>-18</span><span>-12</span><span>-6</span><span>0</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="studio-block">
+        <div class="studio-block studio-block-compact studio-block-controls">
           <h2>Stream Controls</h2>
-          <button type="button" class="btn-block btn-primary btn-go-live" id="btn-go-live-sidebar">
-            <span class="btn-icon">📡</span>
-            <span id="btn-go-live-label">Start Streaming</span>
-          </button>
-          <button type="button" class="btn-block btn-secondary" id="btn-start-recording" disabled title="Recording feature not yet implemented">
-            <span class="btn-icon">⚪</span>
-            Start Recording
-          </button>
-          <button type="button" class="btn-block btn-secondary" id="btn-start-vcam" disabled title="Virtual camera not yet implemented">
-            <span class="btn-icon">□</span>
-            Start Virtual Camera
-          </button>
+          <div class="stream-controls-stack">
+            <button type="button" class="btn-block btn-primary btn-go-live" id="btn-go-live-sidebar">
+              <span class="btn-icon btn-icon-live" aria-hidden="true">((•))</span>
+              <span id="btn-go-live-label">Start Streaming</span>
+            </button>
+            <button type="button" class="btn-block btn-secondary" id="btn-start-recording" disabled title="Recording is not available in this build yet">
+              <span class="btn-icon" aria-hidden="true">●</span>
+              Start Recording
+            </button>
+            <button type="button" class="btn-block btn-secondary" id="btn-start-vcam" disabled title="Virtual camera is not available in this build yet">
+              <span class="btn-icon" aria-hidden="true">▢</span>
+              Start Virtual Camera
+            </button>
+          </div>
         </div>
 
-        <div class="studio-block">
+        <div class="studio-block studio-block-compact studio-block-stream-info">
           <h2>Stream Info</h2>
           <div class="stream-info" id="stream-info">
             <div class="stream-preview">
@@ -323,10 +326,7 @@
             </div>
             <div class="stream-encode">
               <label class="field-label" for="profile-select">Encode profile</label>
-              <select id="profile-select" class="select">
-                <option value="720p" selected>720p30 · 3 Mbps</option>
-                <option value="1080p">1080p60 · 6 Mbps</option>
-              </select>
+              <select id="profile-select" class="select" aria-label="Encode profile"></select>
             </div>
           </div>
         </div>
