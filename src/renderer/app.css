@@ -1875,12 +1875,16 @@ body:not([data-mode='settings']) .settings-view {
 
 .studio-source-list {
   gap: var(--studio-row-gap);
+  min-width: 0;
+  overflow-x: clip;
 }
 
 .studio-source-group {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .studio-source-toggle .studio-list-menu[aria-expanded='true'] {
@@ -1897,6 +1901,9 @@ body:not([data-mode='settings']) .settings-view {
   gap: 0.2rem;
   border-left: 2px solid rgba(201, 162, 39, 0.35);
   margin-left: 0.55rem;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .studio-source-picker[hidden] {
@@ -1908,6 +1915,9 @@ body:not([data-mode='settings']) .settings-view {
   align-items: center;
   gap: 0.4rem;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   padding: 0.38rem 0.45rem;
   border: 1px solid var(--line);
   border-radius: 0.55rem;

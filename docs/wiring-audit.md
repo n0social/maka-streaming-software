@@ -96,6 +96,8 @@ Living checklist of renderer ↔ relay ↔ capture wiring for the studio redesig
 | Legacy dropdowns | **OK** | `#camera-select`, `#mic-select`, `#source-list` live in `.studio-legacy-host` (off-screen). |
 | Refresh ↻ | **OK** | `#btn-refresh-sources` → `refreshSources()` re-fills open pickers. |
 
+**Broken → fixed (`cursor/wiring-audit-sources-dc6d`):** (1) multiple cascades could stay open — `toggleSourcePicker` now closes others; (2) overlay preset / “Follow scene layout” skipped `syncLayerTracks()` — chat/notification rows and program slots lagged; (3) `selectDesktopSource` did not re-enable gameplay layer; (4) `stopBrowserCapture` left `layerEnabled.browser` true after tab capture ended; (5) long picker labels could widen the sidebar — CSS `min-width: 0` / `overflow-x: clip` on source list and picker rows.
+
 **Manual verify:** Open Sources → click each row (except mic) and confirm program layer toggles + row dimming. Click ⋯ on two rows and confirm only one cascade is open and the sidebar width stays fixed. Game ⋯ lists displays/windows; Overlay ⋯ lists composition presets then Search tabs. Enable Chat/Notifications or pick an overlay preset and confirm gold placeholder regions on the program monitor. Pick a game source with gameplay hidden and confirm the layer turns on. End Search tab capture and confirm Overlay row deactivates.
 
 ## Fixes on `cursor/wiring-audit-controls-dc6d`

@@ -1092,7 +1092,7 @@ async function selectOverlayPreset(id: string): Promise<void> {
     syncChatSourceRow()
   }
   syncOverlaySourceRow()
-  refreshProgramPreviewLayout()
+  syncLayerTracks()
   if (expandedSourceKinds.has('browser')) {
     void refreshSourcePicker('browser')
   }
@@ -2086,7 +2086,7 @@ async function refreshSourcePicker(kind: SourceKind): Promise<void> {
       onPick: () => {
         activeOverlayPresetId = ''
         syncOverlaySourceRow()
-        refreshProgramPreviewLayout()
+        syncLayerTracks()
         void pushSceneLayout()
         void refreshSourcePicker('browser')
       },
@@ -2218,9 +2218,9 @@ function toggleLayerForSourceKind(kind: SourceKind): void {
 }
 
 function toggleSourcePicker(kind: SourceKind): void {
-  if (expandedSourceKinds.has(kind)) {
-    expandedSourceKinds.delete(kind)
-  } else {
+  const wasOpen = expandedSourceKinds.has(kind)
+  expandedSourceKinds.clear()
+  if (!wasOpen) {
     expandedSourceKinds.add(kind)
     void refreshSourcePicker(kind)
   }
@@ -2237,6 +2237,7 @@ function renderSources(sources: CaptureSource[]): void {
 async function selectDesktopSource(source: CaptureSource): Promise<void> {
   selectedSourceId = source.id
   captureKind = 'desktop'
+  layerEnabled.game = true
 
   for (const el of sourceList.querySelectorAll('.source-card')) {
     el.classList.toggle('active', (el as HTMLElement).dataset.id === source.id)
@@ -2332,6 +2333,7 @@ function bindBrowserStream(stream: MediaStream): void {
 async function stopBrowserCapture(): Promise<void> {
   stopStream(browserStream)
   browserStream = null
+  layerEnabled.browser = false
   programBrowserVideo.srcObject = null
   await window.tabcast.setBrowseCaptureActive(false)
   updateProgramBrowserOverlay()
