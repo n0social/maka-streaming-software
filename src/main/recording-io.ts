@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs'
+import { existsSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { dialog } from 'electron'
 import type { BrowserWindow } from 'electron'
@@ -7,26 +7,37 @@ export type SaveRecordingResult =
   | { canceled: true }
   | { canceled: false; filePath: string }
 
+function resolveDefaultSavePath(defaultName: string, saveFolder?: string): string {
+  const folder = saveFolder?.trim()
+  if (folder && existsSync(folder)) {
+    return join(folder, defaultName)
+  }
+  return defaultName
+}
+
 export async function saveRecordingWithDialog(
   parent: BrowserWindow | null,
   defaultName: string,
   data: Uint8Array,
   ext: 'webm' | 'mp4',
+  saveFolder?: string,
 ): Promise<SaveRecordingResult> {
   const filters =
     ext === 'mp4'
       ? [{ name: 'MP4 video', extensions: ['mp4'] }]
       : [{ name: 'WebM video', extensions: ['webm'] }]
 
+  const defaultPath = resolveDefaultSavePath(defaultName, saveFolder)
+
   const result = parent
     ? await dialog.showSaveDialog(parent, {
         title: 'Save recording',
-        defaultPath: defaultName,
+        defaultPath,
         filters,
       })
     : await dialog.showSaveDialog({
         title: 'Save recording',
-        defaultPath: defaultName,
+        defaultPath,
         filters,
       })
 

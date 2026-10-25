@@ -33,7 +33,7 @@
             <strong class="wordmark">Maka Studio</strong>
             <span class="brand-tag" id="brand-tag" hidden>Streaming studio</span>
           </div>
-          <span class="version">0.2</span>
+          <span class="version" id="app-version-label">0.2</span>
         </div>
         <div class="tabs" role="tablist" data-tour="modes" aria-label="Streaming studio">
           <button
@@ -52,7 +52,7 @@
           <span class="dot"></span>
           <span id="relay-label">Relay offline</span>
         </div>
-        <button type="button" class="ghost" id="btn-settings" title="Settings">Settings</button>
+        <button type="button" class="ghost" id="btn-settings" title="Settings" aria-pressed="false">Settings</button>
         <button type="button" class="go-live" id="btn-go-live" data-tour="go-live">Go Live</button>
         <div class="win-controls no-drag">
           <button type="button" id="btn-win-min" aria-label="Minimize">─</button>
@@ -496,6 +496,149 @@
           </div>
         </div>
       </aside>
+
+      <section
+        id="settings-view"
+        class="settings-view"
+        hidden
+        aria-label="Settings"
+        data-settings-tab="general"
+      >
+        <div class="settings-view-inner">
+          <header class="settings-view-header">
+            <h1 class="settings-view-title">Settings</h1>
+            <p class="settings-view-lead">Preferences for streaming, recording, and workspace layout.</p>
+          </header>
+          <div class="settings-layout">
+            <nav class="settings-tabs" aria-label="Settings categories">
+              <button type="button" class="settings-tab active" data-settings-tab="general">General</button>
+              <button type="button" class="settings-tab" data-settings-tab="streaming">Streaming</button>
+              <button type="button" class="settings-tab" data-settings-tab="audio">Audio</button>
+              <button type="button" class="settings-tab" data-settings-tab="video">Video / System</button>
+              <button type="button" class="settings-tab" data-settings-tab="recording">Recording</button>
+              <button type="button" class="settings-tab" data-settings-tab="modes">Studio &amp; Browser</button>
+              <button type="button" class="settings-tab" data-settings-tab="help">Help</button>
+            </nav>
+            <div class="settings-panels">
+              <div class="settings-panel active" id="settings-panel-general" data-settings-panel="general">
+                <h2>General</h2>
+                <label class="check">
+                  <input type="checkbox" id="set-tray-live" />
+                  Minimize to tray while live
+                </label>
+                <label class="check">
+                  <input type="checkbox" id="set-open-chat" />
+                  Open chat pop-out when entering Browser Mode
+                </label>
+                <label class="check">
+                  <input type="checkbox" id="set-lab-mode" />
+                  Demo mode (skip key validation)
+                </label>
+                <label class="check">
+                  <input type="checkbox" id="set-auto-update" />
+                  Check for updates when Maka starts
+                </label>
+                <p class="settings-version-block">
+                  <span class="field-label">Versions</span>
+                  <span id="settings-app-version">App —</span>
+                  <span id="settings-relay-version">Relay —</span>
+                </p>
+              </div>
+              <div class="settings-panel" id="settings-panel-streaming" data-settings-panel="streaming" hidden>
+                <h2>Streaming</h2>
+                <label class="field-label" for="set-encode-profile">Default encode quality</label>
+                <select id="set-encode-profile" class="select"></select>
+                <p class="hint tight">Same preset as the program stats bar. Used for relay and local recording.</p>
+                <label class="field-label" for="set-last-platform">Last go-live platform</label>
+                <select id="set-last-platform" class="select">
+                  <option value="none">Not set</option>
+                  <option value="twitch">Twitch</option>
+                  <option value="youtube">YouTube</option>
+                </select>
+              </div>
+              <div class="settings-panel" id="settings-panel-audio" data-settings-panel="audio" hidden>
+                <h2>Audio</h2>
+                <label class="field-label" for="set-mic-device">Preferred microphone</label>
+                <select id="set-mic-device" class="select">
+                  <option value="">System default</option>
+                </select>
+                <label class="field-label" for="set-mic-bitrate">Microphone bitrate (kbps)</label>
+                <select id="set-mic-bitrate" class="select">
+                  <option value="96">96</option>
+                  <option value="128">128</option>
+                  <option value="160" selected>160</option>
+                  <option value="192">192</option>
+                  <option value="256">256</option>
+                </select>
+                <label class="field-label" for="set-desktop-bitrate">Desktop / game audio bitrate (kbps)</label>
+                <select id="set-desktop-bitrate" class="select">
+                  <option value="96">96</option>
+                  <option value="128">128</option>
+                  <option value="160" selected>160</option>
+                  <option value="192">192</option>
+                  <option value="256">256</option>
+                </select>
+                <p class="hint tight">Saved for future relay encoding; mixer capture is still being wired.</p>
+              </div>
+              <div class="settings-panel" id="settings-panel-video" data-settings-panel="video" hidden>
+                <h2>Video / System</h2>
+                <label class="field-label" for="set-video-encoder">Video encoder</label>
+                <select id="set-video-encoder" class="select">
+                  <option value="system">System default</option>
+                  <option value="hardware">Hardware (GPU) when available</option>
+                  <option value="software">Software (CPU)</option>
+                </select>
+                <label class="field-label" for="set-gpu-pref">GPU preference</label>
+                <select id="set-gpu-pref" class="select">
+                  <option value="default">System default</option>
+                </select>
+                <p class="hint tight" id="set-gpu-hint">GPU names are detected on Windows when available.</p>
+              </div>
+              <div class="settings-panel" id="settings-panel-recording" data-settings-panel="recording" hidden>
+                <h2>Recording</h2>
+                <label class="field-label" for="set-recording-folder">Default save folder</label>
+                <div class="settings-folder-row">
+                  <input
+                    id="set-recording-folder"
+                    class="key-input settings-folder-input"
+                    type="text"
+                    readonly
+                    placeholder="Choose a folder…"
+                  />
+                  <button type="button" id="btn-pick-recording-folder">Choose…</button>
+                </div>
+                <p class="hint tight">Used as the starting location when you save a local program recording.</p>
+              </div>
+              <div class="settings-panel" id="settings-panel-modes" data-settings-panel="modes" hidden>
+                <h2>Studio &amp; Browser</h2>
+                <p class="hint tight">Pick which workspace opens when you launch Maka. You can switch anytime from the program stats bar.</p>
+                <div class="settings-mode-cards">
+                  <article class="settings-mode-card" data-workspace-mode="studio">
+                    <h3>Studio Mode</h3>
+                    <p>Three-column layout with scenes, program preview, mixer, and go-live controls. Best for composing your stream.</p>
+                    <button type="button" class="btn-block" data-set-startup="studio">Use Studio on startup</button>
+                  </article>
+                  <article class="settings-mode-card" data-workspace-mode="browse">
+                    <h3>Browser Mode</h3>
+                    <p>Full-window built-in browser for Twitch, YouTube Studio, and chat. Studio sidebars are hidden until you switch back.</p>
+                    <button type="button" class="btn-block" data-set-startup="browse">Use Browser on startup</button>
+                  </article>
+                </div>
+                <p class="hint tight" id="settings-startup-label">Startup: Studio Mode</p>
+              </div>
+              <div class="settings-panel" id="settings-panel-help" data-settings-panel="help" hidden>
+                <h2>Help</h2>
+                <button type="button" class="btn-block spaced-btn" id="btn-replay-setup">Replay setup wizard</button>
+                <button type="button" class="btn-block spaced-btn" id="btn-check-updates">Check for updates</button>
+                <button type="button" class="btn-block spaced-btn" id="btn-replay-tour">Replay onboarding tour</button>
+              </div>
+            </div>
+          </div>
+          <footer class="settings-view-footer">
+            <span id="settings-footer-version">Maka —</span>
+          </footer>
+        </div>
+      </section>
     </div>
 
     <dialog id="platform-key-dialog" class="platform-key-dialog">
@@ -617,28 +760,6 @@
           <button type="button" id="scene-image-menu-cancel">Cancel</button>
         </li>
       </menu>
-    </dialog>
-
-    <dialog id="settings-dialog">
-      <form method="dialog" id="settings-form" class="settings-form">
-        <h2>Settings</h2>
-        <label class="check"><input type="checkbox" id="set-tray-live" /> Minimize to tray while live</label>
-        <label class="check"><input type="checkbox" id="set-open-chat" /> Open chat pop-out when entering Browser Mode</label>
-        <label class="check"><input type="checkbox" id="set-lab-mode" /> Demo mode (skip key validation)</label>
-        <label class="field-label" for="set-startup">Startup mode</label>
-        <select id="set-startup" class="select">
-          <option value="studio">Streaming studio</option>
-          <option value="browse">Browser Mode</option>
-        </select>
-        <p class="hint tight">Streaming studio is the default. Browser Mode replaces the studio grid with the built-in browser (also available from the stats bar).</p>
-        <button type="button" class="btn-block spaced-btn" id="btn-replay-setup">Replay setup wizard</button>
-        <button type="button" class="btn-block spaced-btn" id="btn-check-updates">Check for updates</button>
-        <button type="button" class="btn-block spaced-btn" id="btn-replay-tour">Replay onboarding tour</button>
-        <div class="row">
-          <button type="submit" value="save" id="btn-settings-save">Save</button>
-          <button type="submit" value="cancel">Cancel</button>
-        </div>
-      </form>
     </dialog>
 
     <dialog id="marketplace-dialog" class="marketplace-dialog">

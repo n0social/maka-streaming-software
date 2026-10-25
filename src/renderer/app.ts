@@ -73,6 +73,7 @@ import {
 import { OnboardingTour } from './onboarding'
 import { SetupWizard } from './onboarding-wizard'
 import { initMarketplace } from './marketplace'
+import { initSettingsView } from './settings-view'
 import {
   getPhoneTracksSnapshot,
   initPhoneTracks,
@@ -143,7 +144,8 @@ const destHint = document.getElementById('dest-hint')!
 const destError = document.getElementById('dest-error')!
 const ffmpegLog = document.getElementById('ffmpeg-log')!
 const diagDrawer = document.getElementById('diag-drawer')!
-const settingsDialog = document.getElementById('settings-dialog') as HTMLDialogElement
+const settingsViewRoot = document.getElementById('settings-view')!
+const btnSettings = document.getElementById('btn-settings') as HTMLButtonElement
 const btnGoLive = document.getElementById('btn-go-live') as HTMLButtonElement
 const layerGame = document.getElementById('layer-game')!
 const layerCam = document.getElementById('layer-cam')!
@@ -255,18 +257,33 @@ function applyMode(mode: AppMode): void {
   currentMode = mode
   body.dataset.mode = mode
   const browseOpen = mode === 'browse'
+  const settingsOpen = mode === 'settings'
   navrow.hidden = !browseOpen
   browsetabs.hidden = !browseOpen
+  settingsViewRoot.hidden = !settingsOpen
 
-  if (programOutputMode && programOutputMode.value !== mode) {
+  if (programOutputMode && (mode === 'studio' || mode === 'browse') && programOutputMode.value !== mode) {
     programOutputMode.value = mode
   }
 
   if (brandTag) {
-    brandTag.textContent = browseOpen ? 'Browser Mode' : 'Streaming studio'
-    brandTag.hidden = !browseOpen
+    if (settingsOpen) {
+      brandTag.textContent = 'Settings'
+      brandTag.hidden = false
+    } else {
+      brandTag.textContent = browseOpen ? 'Browser Mode' : 'Streaming studio'
+      brandTag.hidden = !browseOpen
+    }
   }
-  document.title = browseOpen ? 'Maka — Browser' : 'Maka — Streaming'
+  document.title = settingsOpen
+    ? 'Maka — Settings'
+    : browseOpen
+      ? 'Maka — Browser'
+      : 'Maka — Streaming'
+
+  if (btnSettings) {
+    btnSettings.setAttribute('aria-pressed', settingsOpen ? 'true' : 'false')
+  }
 
   for (const tab of document.querySelectorAll<HTMLButtonElement>('.tab')) {
     const active = tab.dataset.tab === 'studio' && mode === 'studio'
@@ -1488,6 +1505,9 @@ function applyWizardPlatform(platform: GoLiveWizardPlatform): void {
   destYoutube.checked = platform === 'youtube'
   destCustom.checked = platform === 'custom'
   syncDestinationInputs()
+  if (platform === 'twitch' || platform === 'youtube') {
+    void window.tabcast.setSettings({ lastStreamPlatform: platform })
+  }
 }
 
 type PlatformKeyTarget = 'twitch' | 'youtube'
@@ -2247,7 +2267,12 @@ async function refreshAvDevices(): Promise<void> {
   }
 
   if ([...cameraSelect.options].some((o) => o.value === camValue)) cameraSelect.value = camValue
-  if ([...micSelect.options].some((o) => o.value === micValue)) micSelect.value = micValue
+  const preferredMic = micSelect.dataset.preferredMic
+  if (preferredMic && [...micSelect.options].some((o) => o.value === preferredMic)) {
+    micSelect.value = preferredMic
+  } else if ([...micSelect.options].some((o) => o.value === micValue)) {
+    micSelect.value = micValue
+  }
 }
 
 function syncWhipAvTracks(): void {
@@ -2774,8 +2799,12 @@ async function onVerifyKeys(): Promise<void> {
 
 for (const tab of document.querySelectorAll<HTMLButtonElement>('.tab')) {
   tab.addEventListener('click', () => {
-    const mode = tab.dataset.tab as AppMode
-    if (mode === 'studio' && currentMode !== 'studio') {
+    const mode = tab.dataset.tab as 'studio'
+    if (mode !== 'studio') return
+    if (currentMode === 'settings') {
+      void window.tabcast.exitSettingsMode()
+    }
+    if (currentMode !== 'studio') {
       void window.tabcast.setMode('studio')
       void window.tabcast.setSettings({ startupMode: 'studio' })
     }
@@ -2849,29 +2878,50 @@ document.getElementById('btn-win-max')!.addEventListener('click', () => {
 document.getElementById('btn-win-close')!.addEventListener('click', () => {
   void window.tabcast.windowClose()
 })
-document.getElementById('btn-settings')!.addEventListener('click', async () => {
-  const s = await window.tabcast.getSettings()
-  ;(document.getElementById('set-tray-live') as HTMLInputElement).checked = s.minimizeToTrayWhileLive
-  ;(document.getElementById('set-open-chat') as HTMLInputElement).checked = s.openChatOnBrowse
-  ;(document.getElementById('set-lab-mode') as HTMLInputElement).checked = s.labMode
-  ;(document.getElementById('set-startup') as HTMLSelectElement).value = s.startupMode
-  settingsDialog.showModal()
-})
-document.getElementById('settings-form')!.addEventListener('submit', async (event) => {
-  const submitter = (event as SubmitEvent).submitter as HTMLButtonElement | null
-  if (submitter?.value === 'save') {
-    const next = await window.tabcast.setSettings({
-      minimizeToTrayWhileLive: (document.getElementById('set-tray-live') as HTMLInputElement)
-        .checked,
-      openChatOnBrowse: (document.getElementById('set-open-chat') as HTMLInputElement).checked,
-      labMode: (document.getElementById('set-lab-mode') as HTMLInputElement).checked,
-      startupMode: (document.getElementById('set-startup') as HTMLSelectElement).value as AppMode,
-    })
-    labMode = next.labMode
+const settingsView = initSettingsView(window.tabcast, {
+  onLabModeChange: (nextLab) => {
+    labMode = nextLab
     destHint.textContent = labMode
       ? 'Demo mode on — key format checks skipped (for testing and walkthroughs).'
       : 'Keys stay in relay RAM only. Go Live publishes WHIP to localhost.'
+  },
+  onStartupModeChange: (mode) => {
+    if (currentMode === 'settings') return
+    void window.tabcast.setMode(mode)
+  },
+  onEncodeProfileChange: (id) => {
+    syncEncodeProfileSelects(id)
+    updateProgramStats()
+  },
+  onPreferredMicChange: (deviceId) => {
+    if ([...micSelect.options].some((o) => o.value === deviceId)) {
+      micSelect.value = deviceId
+      void applyMic()
+    }
+  },
+  onReplaySetup: () => {
+    void window.tabcast.exitSettingsMode().then(() => {
+      window.setTimeout(() => setupWizard.start(), 200)
+    })
+  },
+  onReplayTour: () => {
+    void window.tabcast.exitSettingsMode().then(() => {
+      window.setTimeout(() => onboardingTour.start(), 200)
+    })
+  },
+  onCheckUpdates: () => {
+    void window.tabcast.checkForUpdates().then(renderUpdateBanner)
+  },
+})
+
+btnSettings.addEventListener('click', () => {
+  if (currentMode === 'settings') {
+    void window.tabcast.exitSettingsMode()
+    return
   }
+  void settingsView.open().then(() => {
+    void window.tabcast.setMode('settings')
+  })
 })
 camScale.addEventListener('input', () => {
   updateProgramCamOverlay()
@@ -3161,6 +3211,9 @@ void window.tabcast.getSettings().then((s) => {
   syncAddSceneButtons()
   syncSceneImagePanel()
   syncSceneProgramPresentation()
+  if (s.preferredMicDeviceId) {
+    micSelect.dataset.preferredMic = s.preferredMicDeviceId
+  }
 })
 
 function formatDiag(events: DiagEvent[]): string {
@@ -3338,6 +3391,7 @@ syncDestinationInputs()
 syncProgramVideoSurface()
 updateStudioMixControls()
 void window.tabcast.getMode().then(applyMode)
+void settingsView.refreshVersions()
 window.tabcast.onRelayUpdate(handleRelayLiveRecovery)
 void window.tabcast.getBrowserState().then((state) => {
   if (state) urlInput.value = state.url
@@ -3420,20 +3474,6 @@ const setupWizard = new SetupWizard(
     },
   },
 )
-
-document.getElementById('btn-replay-tour')!.addEventListener('click', () => {
-  settingsDialog.close()
-  window.setTimeout(() => onboardingTour.start(), 200)
-})
-
-document.getElementById('btn-replay-setup')!.addEventListener('click', () => {
-  settingsDialog.close()
-  window.setTimeout(() => setupWizard.start(), 200)
-})
-
-document.getElementById('btn-check-updates')!.addEventListener('click', () => {
-  void window.tabcast.checkForUpdates().then(renderUpdateBanner)
-})
 
 const updateBanner = document.getElementById('update-banner')!
 const updateBannerText = document.getElementById('update-banner-text')!

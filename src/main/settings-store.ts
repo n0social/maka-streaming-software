@@ -11,12 +11,26 @@ import {
 } from '../shared/stream-destination-settings'
 import { coerceSettings, isValidTabId, sanitizeSavedTabs } from './security'
 
+export type StreamPlatformPreference = 'twitch' | 'youtube' | 'none'
+
+export type VideoEncoderPreference = 'system' | 'hardware' | 'software'
+
+export type GpuPreference = 'default' | 'discrete' | 'integrated'
+
 export type AppSettings = {
   bitrateProfile: EncodeProfileId
   startupMode: 'studio' | 'browse'
   minimizeToTrayWhileLive: boolean
   openChatOnBrowse: boolean
   labMode: boolean
+  autoCheckUpdatesOnStartup: boolean
+  recordingSaveFolder: string
+  lastStreamPlatform: StreamPlatformPreference
+  preferredMicDeviceId: string
+  audioMicBitrateKbps: number
+  audioDesktopBitrateKbps: number
+  videoEncoderPreference: VideoEncoderPreference
+  gpuPreference: GpuPreference
   onboardingComplete: boolean
   setupWizardComplete: boolean
   /** Absolute paths to PNG/JPG scene backgrounds keyed by scene template id. */
@@ -45,6 +59,14 @@ const DEFAULT_SETTINGS: AppSettings = {
   minimizeToTrayWhileLive: true,
   openChatOnBrowse: false,
   labMode: false,
+  autoCheckUpdatesOnStartup: true,
+  recordingSaveFolder: '',
+  lastStreamPlatform: 'none',
+  preferredMicDeviceId: '',
+  audioMicBitrateKbps: 160,
+  audioDesktopBitrateKbps: 160,
+  videoEncoderPreference: 'system',
+  gpuPreference: 'default',
   onboardingComplete: false,
   setupWizardComplete: false,
   sceneImages: {},

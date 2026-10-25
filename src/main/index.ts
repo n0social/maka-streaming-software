@@ -2,6 +2,7 @@ import {
   app,
   BrowserWindow,
   desktopCapturer,
+  dialog,
   ipcMain,
   protocol,
   session,
@@ -49,6 +50,7 @@ import {
 import { PhonePairServer, phoneWebRtcIceServersForSession } from './phone-pair'
 import { pickSceneImageFile, readSceneImageDataUrl } from './scene-image-io'
 import { saveRecordingWithDialog } from './recording-io'
+import { listGpuOptions } from './gpu-info'
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -73,7 +75,9 @@ let relayWasReady = false
 
 let mainWindow: BrowserWindow | null = null
 let chatWindow: BrowserWindow | null = null
-let appMode: 'studio' | 'browse' = 'studio'
+type ShellMode = 'studio' | 'browse' | 'settings'
+let appMode: ShellMode = 'studio'
+let workspaceBeforeSettings: 'studio' | 'browse' = 'studio'
 let settings = loadSettings()
 let quitInProgress = false
 let quitReadyResolve: (() => void) | null = null
@@ -162,6 +166,12 @@ function loadAppUi(win: BrowserWindow): void {
 }
 
 function layoutBrowserPane(win: BrowserWindow): void {
+  if (appMode === 'settings') {
+    browse.setVisible(false)
+    browse.setBounds({ x: 0, y: 0, width: 0, height: 0 })
+    return
+  }
+
   const browseChrome =
     appMode === 'browse' || browse.isCapturePinned()
 
@@ -187,7 +197,19 @@ function layoutBrowserPane(win: BrowserWindow): void {
   })
 }
 
-function setAppMode(mode: 'studio' | 'browse'): void {
+function setAppMode(mode: ShellMode): void {
+  if (mode === 'settings') {
+    if (appMode === 'studio' || appMode === 'browse') {
+      workspaceBeforeSettings = appMode
+    }
+    appMode = 'settings'
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      layoutBrowserPane(mainWindow)
+      mainWindow.webContents.send('app:mode', mode)
+    }
+    return
+  }
+
   appMode = mode
   if (mode === 'browse' && mainWindow && !mainWindow.isDestroyed()) {
     browse.attach(mainWindow)
@@ -532,12 +554,26 @@ function registerIpc(): void {
   })
 
   ipcMain.handle('app:get-mode', () => appMode)
-  ipcMain.handle('app:set-mode', (event, mode: 'studio' | 'browse') => {
+  ipcMain.handle('app:get-workspace-mode', () =>
+    appMode === 'settings' ? workspaceBeforeSettings : appMode === 'browse' ? 'browse' : 'studio',
+  )
+  ipcMain.handle('app:set-mode', (event, mode: ShellMode) => {
     if (!studioOk(event)) return appMode
-    if (mode !== 'studio' && mode !== 'browse') return appMode
+    if (mode !== 'studio' && mode !== 'browse' && mode !== 'settings') return appMode
     setAppMode(mode)
     return appMode
   })
+  ipcMain.handle('app:exit-settings', (event) => {
+    if (!studioOk(event)) return appMode
+    if (appMode !== 'settings') return appMode
+    setAppMode(workspaceBeforeSettings)
+    return appMode
+  })
+  ipcMain.handle('app:get-version-info', () => ({
+    appVersion: app.getVersion(),
+    relayVersion: relay.getSnapshot().health?.version ?? null,
+  }))
+  ipcMain.handle('system:list-gpu-options', async () => listGpuOptions())
 
   ipcMain.handle('window:minimize', (event) => {
     if (!studioOk(event)) return
@@ -599,7 +635,27 @@ function registerIpc(): void {
       return { canceled: true }
     }
     const win = BrowserWindow.fromWebContents(event.sender)
-    return saveRecordingWithDialog(win, defaultName, bytes, ext)
+    const folder =
+      typeof settings.recordingSaveFolder === 'string' ? settings.recordingSaveFolder : undefined
+    return saveRecordingWithDialog(win, defaultName, bytes, ext, folder)
+  })
+
+  ipcMain.handle('recording:pick-folder', async (event) => {
+    if (!studioOk(event)) return { canceled: true }
+    const win = BrowserWindow.fromWebContents(event.sender)
+    const result = win
+      ? await dialog.showOpenDialog(win, {
+          title: 'Choose recording folder',
+          properties: ['openDirectory', 'createDirectory'],
+        })
+      : await dialog.showOpenDialog({
+          title: 'Choose recording folder',
+          properties: ['openDirectory', 'createDirectory'],
+        })
+    if (result.canceled || !result.filePaths[0]) {
+      return { canceled: true }
+    }
+    return { canceled: false, path: result.filePaths[0] }
   })
 
   ipcMain.handle('scene:read-image-data-url', (event, filePath: unknown) => {
@@ -1089,7 +1145,9 @@ app.whenReady().then(() => {
       return snap.lifecycle === 'live'
     },
   })
-  initAutoUpdate(() => mainWindow)
+  initAutoUpdate(() => mainWindow, {
+    shouldCheckOnStartup: () => loadSettings().autoCheckUpdatesOnStartup,
+  })
   relay.subscribe(() => broadcastRelay())
   phonePair.subscribe(() => broadcastPhonePair())
   phonePair.onWebRtcOffer((offer) => {

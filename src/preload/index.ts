@@ -4,7 +4,8 @@ import type { PhoneIceServer } from '../shared/phone-ice-servers'
 import type { PhonePairSnapshot, PhoneWebRtcSessionDescription } from '../shared/phone-pair'
 import type { EncodeProfileId } from '../shared/stream-encode-profiles'
 import type { StreamDestinationSettings } from '../shared/stream-destination-settings'
-export type AppMode = 'studio' | 'browse'
+export type WorkspaceMode = 'studio' | 'browse'
+export type AppMode = WorkspaceMode | 'settings'
 
 export type CaptureSource = {
   id: string
@@ -28,18 +29,44 @@ export type BrowseTabInfo = {
   active: boolean
 }
 
+export type StreamPlatformPreference = 'twitch' | 'youtube' | 'none'
+export type VideoEncoderPreference = 'system' | 'hardware' | 'software'
+export type GpuPreference = 'default' | 'discrete' | 'integrated'
+
 export type AppSettings = {
   bitrateProfile: EncodeProfileId
-  startupMode: 'studio' | 'browse'
+  startupMode: WorkspaceMode
   minimizeToTrayWhileLive: boolean
   openChatOnBrowse: boolean
   labMode: boolean
+  autoCheckUpdatesOnStartup: boolean
+  recordingSaveFolder: string
+  lastStreamPlatform: StreamPlatformPreference
+  preferredMicDeviceId: string
+  audioMicBitrateKbps: number
+  audioDesktopBitrateKbps: number
+  videoEncoderPreference: VideoEncoderPreference
+  gpuPreference: GpuPreference
   onboardingComplete: boolean
   setupWizardComplete: boolean
   sceneImages: Partial<Record<string, string>>
   customScenes: Array<{ id: string; name: string }>
   streamDestinations: StreamDestinationSettings
 }
+
+export type AppVersionInfo = {
+  appVersion: string
+  relayVersion: string | null
+}
+
+export type GpuOption = {
+  id: string
+  label: string
+}
+
+export type PickRecordingFolderResult =
+  | { canceled: true }
+  | { canceled: false; path: string }
 
 export type SaveRecordingResult =
   | { canceled: true }
@@ -132,8 +159,13 @@ export type TabcastBridge = {
   refreshRelay: () => Promise<RelaySnapshot>
   onRelayUpdate: (cb: (snapshot: RelaySnapshot) => void) => () => void
   getMode: () => Promise<AppMode>
+  getWorkspaceMode: () => Promise<WorkspaceMode>
   setMode: (mode: AppMode) => Promise<AppMode>
+  exitSettingsMode: () => Promise<AppMode>
   onMode: (cb: (mode: AppMode) => void) => () => void
+  getVersionInfo: () => Promise<AppVersionInfo>
+  listGpuOptions: () => Promise<GpuOption[]>
+  pickRecordingFolder: () => Promise<PickRecordingFolderResult>
   navigate: (url: string) => Promise<string | null>
   back: () => Promise<void>
   forward: () => Promise<void>
@@ -232,7 +264,12 @@ const api: TabcastBridge = {
     return () => ipcRenderer.removeListener('relay:update', handler)
   },
   getMode: () => ipcRenderer.invoke('app:get-mode'),
+  getWorkspaceMode: () => ipcRenderer.invoke('app:get-workspace-mode'),
   setMode: (mode) => ipcRenderer.invoke('app:set-mode', mode),
+  exitSettingsMode: () => ipcRenderer.invoke('app:exit-settings'),
+  getVersionInfo: () => ipcRenderer.invoke('app:get-version-info'),
+  listGpuOptions: () => ipcRenderer.invoke('system:list-gpu-options'),
+  pickRecordingFolder: () => ipcRenderer.invoke('recording:pick-folder'),
   onMode: (cb) => {
     const handler = (_event: Electron.IpcRendererEvent, mode: AppMode) => cb(mode)
     ipcRenderer.on('app:mode', handler)
