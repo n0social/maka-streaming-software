@@ -11,6 +11,93 @@ export type WhipVideoStallState = {
   stallSinceMs: number | null
 }
 
+export type WhipStreamMetrics = {
+  roundTripMs: number | null
+  outboundVideoFramesDropped: number | null
+  outboundVideoFramesEncoded: number | null
+}
+
+export function parseWhipStreamMetrics(stats: RTCStatsReport): WhipStreamMetrics {
+  let roundTripMs: number | null = null
+  let outboundVideoFramesDropped: number | null = null
+  let outboundVideoFramesEncoded: number | null = null
+  for (const report of stats.values()) {
+    if (report.type === 'candidate-pair') {
+      const pair = report as RTCStats & {
+        state?: string
+        nominated?: boolean
+        currentRoundTripTime?: number
+      }
+      const rttSec = pair.currentRoundTripTime
+      if (
+        typeof rttSec === 'number' &&
+        rttSec > 0 &&
+        (pair.state === 'succeeded' || pair.nominated === true)
+      ) {
+        const ms = Math.round(rttSec * 1000)
+        roundTripMs = roundTripMs === null ? ms : Math.min(roundTripMs, ms)
+      }
+    }
+    if (report.type === 'remote-inbound-rtp' && report.kind === 'video') {
+      const inbound = report as RTCInboundRtpStreamStats & { roundTripTime?: number }
+      if (typeof inbound.roundTripTime === 'number' && inbound.roundTripTime > 0) {
+        roundTripMs = Math.round(inbound.roundTripTime * 1000)
+      }
+    }
+    if (report.type === 'outbound-rtp' && report.kind === 'video') {
+      const outbound = report as RTCOutboundRtpStreamStats & {
+        framesDropped?: number
+        framesEncoded?: number
+      }
+      if (typeof outbound.framesDropped === 'number' && outbound.framesDropped >= 0) {
+        outboundVideoFramesDropped =
+          (outboundVideoFramesDropped ?? 0) + Math.floor(outbound.framesDropped)
+      }
+      if (typeof outbound.framesEncoded === 'number' && outbound.framesEncoded >= 0) {
+        outboundVideoFramesEncoded =
+          (outboundVideoFramesEncoded ?? 0) + Math.floor(outbound.framesEncoded)
+      }
+    }
+  }
+  return { roundTripMs, outboundVideoFramesDropped, outboundVideoFramesEncoded }
+}
+
+export const WHIP_STATS_POLL_MS = 2_000
+
+export type WhipStatsSamplerOptions = {
+  pc: RTCPeerConnection
+  pollIntervalMs?: number
+  isLive: () => boolean
+  onMetrics: (metrics: WhipStreamMetrics) => void
+  getStats?: (pc: RTCPeerConnection) => Promise<RTCStatsReport>
+}
+
+export type WhipStatsSampler = { stop: () => void }
+
+export function startWhipStatsSampler(options: WhipStatsSamplerOptions): WhipStatsSampler {
+  const pollIntervalMs = options.pollIntervalMs ?? WHIP_STATS_POLL_MS
+  const getStats = options.getStats ?? ((pc) => pc.getStats())
+  let stopped = false
+  const tick = async () => {
+    if (stopped || !options.isLive()) return
+    if (options.pc.connectionState !== 'connected') return
+    try {
+      options.onMetrics(parseWhipStreamMetrics(await getStats(options.pc)))
+    } catch {
+      // ignore
+    }
+  }
+  const timer = setInterval(() => void tick(), pollIntervalMs)
+  void tick()
+  return {
+    stop() {
+      if (stopped) return
+      stopped = true
+      clearInterval(timer)
+    },
+  }
+}
+
 export function sumOutboundVideoBytesSent(stats: RTCStatsReport): number {
   let total = 0
   for (const report of stats.values()) {

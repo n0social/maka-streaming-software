@@ -6,7 +6,7 @@ import type {
   TabcastBridge,
 } from '../preload/index'
 import type { RelaySnapshot } from '../shared/relay-snapshot'
-import type { StreamProfile, SceneLayout, RelayHealth } from '../shared/tabcast'
+import type { RelayPlatformStatus, StreamProfile, SceneLayout, RelayHealth } from '../shared/tabcast'
 import {
   ENCODE_PROFILE_ORDER,
   canvasForEncodeProfile,
@@ -45,6 +45,7 @@ import {
   type IngestTarget,
 } from '../shared/ingest-failover'
 import { validateRelayStreamKeys, KICK_RTMP_URL } from '../shared/stream-keys'
+import { buildRelayConfigRequest, sanitizeStreamCategory, sanitizeStreamTitle, type RelayStudioSettings } from '../shared/relay-config'
 import type { StreamDestinationSettings } from '../shared/stream-destination-settings'
 import { GoLiveWizard, type GoLiveWizardPlatform } from './go-live-wizard'
 import {
@@ -73,8 +74,11 @@ import {
 } from './relay-client'
 import {
   publishWhip,
+  startWhipStatsSampler,
   startWhipVideoWatchdog,
   type WhipPublisher,
+  type WhipStatsSampler,
+  type WhipStreamMetrics,
   type WhipVideoWatchdog,
 } from './whip'
 import { startAudioLevelMeter, setHorizontalMeterLevel, type AudioLevelMeter } from './audio-level-meter'
@@ -234,11 +238,16 @@ let preferredDesktopOutputDeviceId = ''
 let currentMode: AppMode = 'studio'
 let whipPublisher: WhipPublisher | null = null
 let whipVideoWatchdog: WhipVideoWatchdog | null = null
+let whipStatsSampler: WhipStatsSampler | null = null
+let whipStreamMetrics: WhipStreamMetrics | null = null
+let lastRelaySnapshot: RelaySnapshot | null = null
 let goingLive = false
 let micMuted = false
 let labMode = false
 let recordingSaveFolder = ''
 let lastStreamPlatform: 'twitch' | 'youtube' | 'none' = 'none'
+let browseTabsCache: BrowseTabInfo[] = []
+let relayStudioSettings: RelayStudioSettings = { streamTitle: '', streamCategory: '', audioMicBitrateKbps: 160, audioDesktopBitrateKbps: 160, videoEncoderPreference: 'system', gpuPreference: 'default' }
 let pcCameraBeforePhone = ''
 let pcMicBeforePhone = ''
 let preferPhoneCamera = false
@@ -1136,6 +1145,7 @@ function liveReconnectStatusLine(): string {
 }
 
 function renderRelay(snapshot: RelaySnapshot): void {
+  lastRelaySnapshot = snapshot
   const live = isSessionLive()
   const relayUiState =
     live && liveReconnecting
@@ -1199,20 +1209,28 @@ function renderRelay(snapshot: RelaySnapshot): void {
 
   updateProgramStats(snapshot)
   updateGoLiveLabel(live)
-  updateStreamInfo(live)
+  updateStreamInfo(live, snapshot)
 }
 
 type PlatformChipState = 'off' | 'idle' | 'armed' | 'live' | 'error'
+
+function relayPlatformLiveFlag(value: RelayPlatformStatus | undefined): boolean | undefined {
+  if (value === undefined) return undefined
+  if (typeof value === 'boolean') return value
+  if (typeof value.live === 'boolean') return value.live
+  return undefined
+}
 
 function platformChipState(
   enabled: boolean,
   hasKey: boolean,
   live: boolean,
-  platformLive: boolean | undefined,
+  platformLive: RelayPlatformStatus | undefined,
 ): PlatformChipState {
+  const platformLiveFlag = relayPlatformLiveFlag(platformLive)
   if (!enabled) return 'off'
-  if (live && platformLive === true) return 'live'
-  if (live && platformLive === false) return 'error'
+  if (live && platformLiveFlag === true) return 'live'
+  if (live && platformLiveFlag === false) return 'error'
   if (hasKey) return 'armed'
   return 'idle'
 }
@@ -1249,6 +1267,27 @@ function bindProgramStream(stream: MediaStream): void {
 function stopWhipVideoWatchdog(): void {
   whipVideoWatchdog?.stop()
   whipVideoWatchdog = null
+  whipStatsSampler?.stop()
+  whipStatsSampler = null
+}
+
+function clearWhipStreamMetrics(): void {
+  whipStreamMetrics = null
+}
+
+function startWhipStatsSamplerForPublisher(): void {
+  whipStatsSampler?.stop()
+  whipStatsSampler = null
+  if (!whipPublisher || !sessionLiveIntent) return
+  whipStatsSampler = startWhipStatsSampler({
+    pc: whipPublisher.pc,
+    isLive: () => sessionLiveIntent && !goingLive && !liveReconnecting,
+    onMetrics: (metrics) => {
+      whipStreamMetrics = metrics
+      updateProgramStats(lastRelaySnapshot)
+      if (isSessionLive()) updateStreamInfo(true, lastRelaySnapshot)
+    },
+  })
 }
 
 function whipExpectsOutboundVideo(): boolean {
@@ -1264,6 +1303,7 @@ function whipExpectsOutboundVideo(): boolean {
 
 function startWhipVideoWatchdogForPublisher(): void {
   stopWhipVideoWatchdog()
+  startWhipStatsSamplerForPublisher()
   if (!whipPublisher || !sessionLiveIntent) return
   whipVideoWatchdog = startWhipVideoWatchdog({
     pc: whipPublisher.pc,
@@ -1316,6 +1356,7 @@ function onWhipConnectionState(state: RTCPeerConnectionState): void {
   }
   if (state === 'failed' || state === 'disconnected' || state === 'closed') {
     stopWhipVideoWatchdog()
+    clearWhipStreamMetrics()
     if (goingLive || liveReconnecting) return
     queueLiveRecovery(`whip:${state}`)
   }
@@ -1649,13 +1690,14 @@ function primaryCustomFromUi() {
 
 function relayConfigForIngest(ingestTarget: IngestTarget) {
   const custom = resolveCustomRtmpForPost(ingestTarget, primaryCustomFromUi(), backupIngestFromUi())
-  return {
-    twitchKey: destTwitch.checked ? twitchKey.value : '',
-    youtubeKey: destYoutube.checked ? youtubeKey.value : '',
-    customRtmpUrl: custom.url,
-    customRtmpKey: custom.key,
-    profile: selectedProfile(),
-  }
+  return buildRelayConfigRequest({ twitchKey: destTwitch.checked ? twitchKey.value : '', youtubeKey: destYoutube.checked ? youtubeKey.value : '', customRtmpUrl: custom.url, customRtmpKey: custom.key }, selectedProfile(), relayStudioSettings)
+}
+async function repostRelayConfigIfLive(): Promise<void> {
+  if (!sessionLiveIntent && !isSessionLive()) return
+  const snapshot = await window.tabcast.getRelay()
+  if (!snapshot.health) return
+  await postRelayConfig(snapshot.health, relayConfigForIngest(sessionIngestTarget))
+  await window.tabcast.refreshRelay()
 }
 
 function liveDestHintAfterRecovery(): string {
@@ -2833,6 +2875,7 @@ async function endLive(): Promise<void> {
   setDestError(null)
   sessionLiveIntent = false
   stopWhipVideoWatchdog()
+  clearWhipStreamMetrics()
   cancelLiveRecovery()
   liveRecoveryAttempts = 0
   liveRecoveryExhausted = false
@@ -2899,6 +2942,8 @@ async function goLive(): Promise<void> {
       throw new Error(snapshot.error ?? 'Relay is not ready. Start the relay first.')
     }
 
+    maybeFillStreamTitleFromBrowseTab()
+    await persistStreamMetaFromInputs()
     const profile = selectedProfile()
     sessionIngestTarget = 'primary'
     await postRelayConfig(snapshot.health, relayConfigForIngest('primary'))
@@ -2930,6 +2975,7 @@ async function goLive(): Promise<void> {
     sessionLiveIntent = false
     setDestError(err instanceof Error ? err.message : String(err))
     stopWhipVideoWatchdog()
+    clearWhipStreamMetrics()
     if (whipPublisher) {
       await whipPublisher.close().catch(() => undefined)
       whipPublisher = null
@@ -3108,6 +3154,10 @@ const settingsView = initSettingsView(window.tabcast, {
     updateProgramStats()
     syncStreamInfoMeta()
     void pushSceneLayout().catch(() => undefined)
+    void repostRelayConfigIfLive()
+  },
+  onRelayStudioSettingsChange: () => {
+    void window.tabcast.getSettings().then((s) => { applyRelayStudioSettingsFromAppSettings(s); void repostRelayConfigIfLive() })
   },
   onRecordingFolderChange: (folder) => {
     recordingSaveFolder = folder
@@ -3381,6 +3431,7 @@ platformKeyForm.addEventListener('submit', (event) => {
 async function teardownLiveSession(): Promise<void> {
   try {
     stopWhipVideoWatchdog()
+    clearWhipStreamMetrics()
     if (whipPublisher) {
       await whipPublisher.close().catch(() => undefined)
       whipPublisher = null
@@ -3425,6 +3476,7 @@ window.tabcast.onPrepareQuit(() => {
 })
 
 window.tabcast.onTabs((tabs) => {
+  browseTabsCache = tabs
   renderBrowseTabs(tabs)
   void refreshSources()
 })
@@ -3433,6 +3485,7 @@ void window.tabcast.getSettings().then((s) => {
   labMode = s.labMode
   recordingSaveFolder = s.recordingSaveFolder ?? ''
   lastStreamPlatform = s.lastStreamPlatform ?? 'none'
+  applyRelayStudioSettingsFromAppSettings(s)
   syncRecordingButtonHint()
   const profile = normalizeEncodeProfileId(s.bitrateProfile)
   syncEncodeProfileSelects(profile)
@@ -4147,8 +4200,74 @@ if (btnGoLiveSidebar) {
 function droppedFramesFromRelay(snapshot?: RelaySnapshot | null): number {
   const status = snapshot?.status
   if (!status || typeof status !== 'object') return 0
-  const raw = (status as { droppedFrames?: unknown }).droppedFrames
+  const raw = status.droppedFrames
   return typeof raw === 'number' && Number.isFinite(raw) && raw >= 0 ? Math.floor(raw) : 0
+}
+
+function relayLatencyMs(snapshot?: RelaySnapshot | null): number | undefined {
+  const status = snapshot?.status
+  if (!status) return undefined
+  const raw = status.latencyMs
+  return typeof raw === 'number' && Number.isFinite(raw) && raw >= 0 ? Math.round(raw) : undefined
+}
+
+function programLatencyMs(
+  snapshot?: RelaySnapshot | null,
+  whipMetrics?: WhipStreamMetrics | null,
+): number | undefined {
+  const relay = relayLatencyMs(snapshot)
+  if (relay != null) return relay
+  const whipRtt = whipMetrics?.roundTripMs ?? null
+  if (whipRtt != null && whipRtt >= 0) return whipRtt
+  return undefined
+}
+
+function formatLatencyStat(ms: number): string {
+  return `${ms} ms`
+}
+
+function droppedFramesForProgramStats(
+  snapshot?: RelaySnapshot | null,
+  whipMetrics?: WhipStreamMetrics | null,
+): { dropped: number; encoded: number | null } {
+  const relayDropped = droppedFramesFromRelay(snapshot)
+  const whipDropped = whipMetrics?.outboundVideoFramesDropped ?? null
+  const whipEncoded = whipMetrics?.outboundVideoFramesEncoded ?? null
+  if (relayDropped > 0) return { dropped: relayDropped, encoded: whipEncoded }
+  if (typeof whipDropped === 'number' && whipDropped > 0) {
+    return { dropped: whipDropped, encoded: whipEncoded }
+  }
+  return { dropped: relayDropped, encoded: whipEncoded }
+}
+
+function formatDropPercent(dropped: number, encoded: number | null): string {
+  if (encoded != null && encoded > 0) return ((dropped / encoded) * 100).toFixed(1)
+  return dropped === 0 ? '0.0' : '—'
+}
+
+function viewerCountFromRelay(snapshot?: RelaySnapshot | null): number | null {
+  const status = snapshot?.status
+  if (!status) return null
+  const aggregate = status.viewerCount ?? status.viewers
+  if (typeof aggregate === 'number' && Number.isFinite(aggregate) && aggregate >= 0) {
+    return Math.floor(aggregate)
+  }
+  const platforms = status.platforms
+  if (!platforms) return null
+  let sum = 0
+  let any = false
+  for (const key of ['twitch', 'youtube', 'custom'] as const) {
+    const entry = platforms[key]
+    if (entry && typeof entry === 'object' && typeof entry.viewers === 'number' && entry.viewers >= 0) {
+      sum += Math.floor(entry.viewers)
+      any = true
+    }
+  }
+  return any ? sum : null
+}
+
+function formatViewerCount(count: number): string {
+  return count.toLocaleString(undefined, { maximumFractionDigits: 0 })
 }
 
 function formatMbpsLabel(mbps: number): string {
@@ -4159,16 +4278,17 @@ function formatMbpsLabel(mbps: number): string {
 function relayObservedBitrateMbps(snapshot?: RelaySnapshot | null): number | undefined {
   const status = snapshot?.status
   if (!status || typeof status !== 'object') return undefined
-  const raw = (status as { bitrateMbps?: unknown }).bitrateMbps
+  const raw = status.bitrateMbps
   return typeof raw === 'number' && Number.isFinite(raw) && raw > 0 ? raw : undefined
 }
 
 function updateProgramStats(snapshot?: RelaySnapshot | null): void {
   const profile = selectedProfile()
   const spec = encodeProfileSpec(profile)
-  const dropped = droppedFramesFromRelay(snapshot)
-  const dropPct = dropped === 0 ? '0.0' : '—'
   const sessionLive = snapshot?.lifecycle === 'live' || isSessionLive()
+  const whipMetrics = sessionLive ? whipStreamMetrics : null
+  const { dropped, encoded } = droppedFramesForProgramStats(snapshot, whipMetrics)
+  const dropPct = formatDropPercent(dropped, encoded)
   const targetMbps = spec.bitrateMbps
   const observedMbps = relayObservedBitrateMbps(snapshot)
   const displayMbps = sessionLive && observedMbps != null ? observedMbps : targetMbps
@@ -4180,7 +4300,19 @@ function updateProgramStats(snapshot?: RelaySnapshot | null): void {
     statFps.textContent = `FPS: ${spec.fps}`
   }
   if (statLatency) {
-    statLatency.textContent = '—'
+    const latencyMs = sessionLive ? programLatencyMs(snapshot, whipMetrics) : undefined
+    if (latencyMs != null) {
+      statLatency.textContent = formatLatencyStat(latencyMs)
+      statLatency.title =
+        relayLatencyMs(snapshot) != null
+          ? 'Stream latency reported by relay'
+          : 'WHIP round-trip time to local relay'
+    } else {
+      statLatency.textContent = '—'
+      statLatency.title = sessionLive
+        ? 'Latency not available yet (waiting for WHIP or relay stats)'
+        : 'Stream latency'
+    }
   }
   if (statBitrate) {
     statBitrate.textContent = formatMbpsLabel(displayMbps)
@@ -4412,8 +4544,9 @@ const btnGoLiveLabel = document.getElementById('btn-go-live-label') as HTMLEleme
 
 // Stream info elements
 const streamThumb = document.getElementById('stream-thumb') as HTMLElement | null
-const streamTitle = document.getElementById('stream-title') as HTMLElement | null
-const streamCategory = document.getElementById('stream-category') as HTMLElement | null
+const streamTitleInput = document.getElementById('stream-title-input') as HTMLInputElement | null
+const streamCategoryInput = document.getElementById('stream-category-input') as HTMLInputElement | null
+const streamDestinationsHint = document.getElementById('stream-destinations-hint') as HTMLElement | null
 const streamLivePill = document.getElementById('stream-live-pill') as HTMLElement | null
 const streamViewers = document.getElementById('stream-viewers') as HTMLElement | null
 const streamDuration = document.getElementById('stream-duration') as HTMLElement | null
@@ -4439,7 +4572,7 @@ function formatStreamDuration(ms: number): string {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
-function streamDestinationMeta(): { title: string; category: string } {
+function streamDestinationsSummary(): string {
   const parts: string[] = []
   if (destTwitch.checked) {
     parts.push(twitchKey.value.trim() ? 'Twitch' : 'Twitch (add key)')
@@ -4450,19 +4583,35 @@ function streamDestinationMeta(): { title: string; category: string } {
   if (destCustom.checked) {
     parts.push(customRtmpKey.value.trim() ? 'Custom RTMP' : 'Custom RTMP (add key)')
   }
-  const title =
-    parts.length > 0
-      ? parts.join(' · ')
-      : 'No destination — use Twitch or YouTube in the stats bar'
-  const category = encodeProfileSpec(selectedProfile()).menuLabel
-  return { title, category }
+  if (parts.length === 0) return 'No destination — enable Twitch or YouTube in the stats bar'
+  return parts.join(' · ')
 }
 
-function syncStreamInfoMeta(): void {
-  const meta = streamDestinationMeta()
-  if (streamTitle) streamTitle.textContent = meta.title
-  if (streamCategory) streamCategory.textContent = meta.category
+function syncStreamInfoFields(): void {
+  if (streamTitleInput && streamTitleInput !== document.activeElement) streamTitleInput.value = relayStudioSettings.streamTitle
+  if (streamCategoryInput && streamCategoryInput !== document.activeElement) streamCategoryInput.value = relayStudioSettings.streamCategory
+  if (streamDestinationsHint) streamDestinationsHint.textContent = streamDestinationsSummary()
 }
+function applyRelayStudioSettingsFromAppSettings(s: { streamTitle?: string; streamCategory?: string; audioMicBitrateKbps: number; audioDesktopBitrateKbps: number; videoEncoderPreference: RelayStudioSettings['videoEncoderPreference']; gpuPreference: string }): void {
+  relayStudioSettings = { streamTitle: sanitizeStreamTitle(s.streamTitle ?? ''), streamCategory: sanitizeStreamCategory(s.streamCategory ?? ''), audioMicBitrateKbps: s.audioMicBitrateKbps, audioDesktopBitrateKbps: s.audioDesktopBitrateKbps, videoEncoderPreference: s.videoEncoderPreference, gpuPreference: s.gpuPreference || 'default' }
+  syncStreamInfoFields()
+}
+async function persistStreamMetaFromInputs(): Promise<void> {
+  const title = sanitizeStreamTitle(streamTitleInput?.value ?? '')
+  const category = sanitizeStreamCategory(streamCategoryInput?.value ?? '')
+  relayStudioSettings = { ...relayStudioSettings, streamTitle: title, streamCategory: category }
+  await window.tabcast.setSettings({ streamTitle: title, streamCategory: category })
+  syncStreamInfoFields()
+}
+function maybeFillStreamTitleFromBrowseTab(): void {
+  if (relayStudioSettings.streamTitle.trim()) return
+  const active = browseTabsCache.find((t) => t.active)
+  const tabTitle = active?.title?.trim()
+  if (!tabTitle || tabTitle === 'New Tab') return
+  relayStudioSettings = { ...relayStudioSettings, streamTitle: sanitizeStreamTitle(tabTitle) }
+  if (streamTitleInput) streamTitleInput.value = relayStudioSettings.streamTitle
+}
+function syncStreamInfoMeta(): void { syncStreamInfoFields() }
 
 function setLiveDurationClock(active: boolean): void {
   if (streamDurationTimer) {
@@ -4484,17 +4633,27 @@ function setLiveDurationClock(active: boolean): void {
   }
 }
 
-function updateStreamInfo(isLive: boolean): void {
+function updateStreamInfo(isLive: boolean, snapshot?: RelaySnapshot | null): void {
   syncStreamInfoMeta()
   if (streamLivePill) {
     streamLivePill.dataset.live = isLive ? 'true' : 'false'
     streamLivePill.textContent = isLive ? 'Live' : 'Offline'
   }
   if (streamViewers) {
-    streamViewers.textContent = isLive ? 'Viewers: N/A' : '—'
-    streamViewers.title = isLive
-      ? 'Viewer count is not available in the desktop app yet'
-      : ''
+    if (!isLive) {
+      streamViewers.textContent = 'Offline'
+      streamViewers.title = 'Viewer count when you go live'
+    } else {
+      const viewers = viewerCountFromRelay(snapshot ?? lastRelaySnapshot)
+      if (viewers != null) {
+        streamViewers.textContent = `Viewers: ${formatViewerCount(viewers)}`
+        streamViewers.title = 'Live viewer count from relay / platform ingest'
+      } else {
+        streamViewers.textContent = 'Viewers: —'
+        streamViewers.title =
+          'Relay has not reported viewer count (needs platform API support in TabcastRelay)'
+      }
+    }
   }
   setLiveDurationClock(isLive)
 }
@@ -4543,6 +4702,10 @@ btnGameAudioSettings.addEventListener('click', () => {
   void refreshGameAudioCapture()
   studioSourceGame.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
 })
+
+function onStreamMetaFieldCommit(): void { void persistStreamMetaFromInputs().then(() => repostRelayConfigIfLive()) }
+if (streamTitleInput) { streamTitleInput.addEventListener('change', onStreamMetaFieldCommit); streamTitleInput.addEventListener('blur', onStreamMetaFieldCommit) }
+if (streamCategoryInput) { streamCategoryInput.addEventListener('change', onStreamMetaFieldCommit); streamCategoryInput.addEventListener('blur', onStreamMetaFieldCommit) }
 
 // Initialize stream info
 highlightSceneSelection(activeSceneTemplateId)
