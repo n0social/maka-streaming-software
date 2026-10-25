@@ -39,6 +39,8 @@ export type AppSettings = {
   customScenes: CustomScene[]
   /** Twitch/YouTube enable flags and stream keys saved from the stats bar dialog. */
   streamDestinations: StreamDestinationSettings
+  /** Opt-in for minimal local analytics queue (default off). */
+  diagnosticsOptIn: boolean
 }
 
 export type SavedBrowseTab = {
@@ -72,6 +74,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   sceneImages: {},
   customScenes: [],
   streamDestinations: { ...DEFAULT_STREAM_DESTINATIONS },
+  diagnosticsOptIn: false,
 }
 
 function storeDir(): string {

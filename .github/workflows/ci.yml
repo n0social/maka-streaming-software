@@ -29,3 +29,6 @@ jobs:
 
       - name: Verify (offline)
         run: npm run verify:offline
+
+      - name: Verify addons
+        run: npm run verify:addons

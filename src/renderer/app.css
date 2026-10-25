@@ -952,6 +952,40 @@ body[data-mode='settings'] #brand-tag {
   margin-top: 0.45rem;
 }
 
+.studio-block-feedback .studio-feedback-optin {
+  margin-top: 0.45rem;
+  font-size: 0.78rem;
+}
+
+.studio-block-feedback .studio-feedback-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.studio-block-feedback .studio-feedback-hint a {
+  color: var(--gold);
+}
+
+.feedback-message-input {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 0.5rem;
+  padding: 0.45rem 0.5rem;
+  border-radius: 0.35rem;
+  border: 1px solid var(--line);
+  background: var(--panel-elevated, #1a1a22);
+  color: inherit;
+  font: inherit;
+  resize: vertical;
+  min-height: 5rem;
+}
+
+.feedback-dialog .platform-key-dialog-actions {
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
 .studio-footer {
   margin-top: auto;
   padding: 0.45rem var(--studio-pad-x);

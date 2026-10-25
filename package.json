@@ -21,6 +21,7 @@
     "fetch:relay": "node scripts/fetch-relay.mjs",
     "verify": "node scripts/verify.mjs",
     "verify:offline": "node scripts/verify.mjs --offline",
+    "verify:addons": "node scripts/verify-addons.mjs --write-report",
     "export:marketplace": "node scripts/export-marketplace.mjs",
     "marketing": "python scripts/generate-marketing.py",
     "dist": "npm run typecheck && npm run build && node scripts/verify.mjs --offline && electron-builder --win nsis",

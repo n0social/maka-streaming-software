@@ -24,6 +24,8 @@ import {
   onDiagnostic,
   recordDiagnostic,
 } from './diagnostics'
+import { trackAppStart, trackOptInChange, trackRelayLifecycle } from './analytics-collector'
+import { appendFeedback, formatFeedbackForSupport, getFeedbackIssueUrl } from './feedback-store'
 import { isAllowedBrowseUrl } from '../shared/browse-url'
 import { BROWSE_CAPTURE_SOURCE_ID } from '../shared/capture'
 import { coerceSettings, isStudioMediaPermission, isValidPresetId, isValidTabId } from './security'
@@ -610,8 +612,48 @@ function registerIpc(): void {
   })
   ipcMain.handle('settings:set', (event, partial: unknown) => {
     if (!studioOk(event)) return settings
+    const prevOptIn = settings.diagnosticsOptIn
     settings = saveSettings(coerceSettings(partial))
+    if (settings.diagnosticsOptIn !== prevOptIn) {
+      trackOptInChange(settings.diagnosticsOptIn)
+      if (settings.diagnosticsOptIn) trackAppStart()
+    }
     return settings
+  })
+
+  ipcMain.handle('shell:open-external', (_event, raw: unknown) => {
+    if (typeof raw !== 'string' || !raw.trim()) return
+    const url = raw.trim()
+    if (!/^(https?:|mailto:)/i.test(url)) return
+    void shell.openExternal(url)
+  })
+
+  ipcMain.handle('feedback:submit', (event, payload: unknown) => {
+    if (!studioOk(event)) return { ok: false, error: 'Studio only' }
+    if (!payload || typeof payload !== 'object') return { ok: false, error: 'Invalid payload' }
+    const p = payload as Record<string, unknown>
+    const message = typeof p.message === 'string' ? p.message.trim() : ''
+    if (!message || message.length > 8000) {
+      return { ok: false, error: 'Message is required (max 8000 characters).' }
+    }
+    let email: string | undefined
+    if (typeof p.email === 'string' && p.email.trim()) {
+      const e = p.email.trim()
+      if (e.length <= 200 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) email = e
+    }
+    const { path: logPath, entry } = appendFeedback({
+      message,
+      email,
+      appVersion: app.getVersion(),
+      platform: process.platform,
+      arch: process.arch,
+    })
+    const clipboardText = formatFeedbackForSupport(entry)
+    recordDiagnostic('info', 'feedback.submit', 'User feedback saved locally', undefined, {
+      logPath,
+      hasEmail: Boolean(email),
+    })
+    return { ok: true, logPath, clipboardText, issueUrl: getFeedbackIssueUrl() }
   })
 
   ipcMain.handle('scene:pick-image', async (event) => {
@@ -1133,6 +1175,8 @@ app.whenReady().then(() => {
     }
   })
   recordDiagnostic('info', 'app.boot', 'Maka 0.2 starting')
+  settings = loadSettings()
+  if (settings.diagnosticsOptIn) trackAppStart()
 
   allowCapturePermissions()
   neutralizeInstalledRelayConfig()
@@ -1149,7 +1193,11 @@ app.whenReady().then(() => {
   initAutoUpdate(() => mainWindow, {
     shouldCheckOnStartup: () => loadSettings().autoCheckUpdatesOnStartup,
   })
-  relay.subscribe(() => broadcastRelay())
+  relay.subscribe(() => {
+    const snap = relay.getSnapshot()
+    trackRelayLifecycle(snap.lifecycle, snap.error)
+    broadcastRelay()
+  })
   phonePair.subscribe(() => broadcastPhonePair())
   phonePair.onWebRtcOffer((offer) => {
     if (mainWindow && !mainWindow.isDestroyed()) {

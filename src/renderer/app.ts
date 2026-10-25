@@ -78,6 +78,7 @@ import { OnboardingTour } from './onboarding'
 import { SetupWizard } from './onboarding-wizard'
 import { initMarketplace } from './marketplace'
 import { initSettingsView } from './settings-view'
+import { initFeedbackPanel } from './feedback-panel'
 import {
   getPhoneTracksSnapshot,
   initPhoneTracks,
@@ -2883,6 +2884,8 @@ document.getElementById('btn-win-max')!.addEventListener('click', () => {
 document.getElementById('btn-win-close')!.addEventListener('click', () => {
   void window.tabcast.windowClose()
 })
+initFeedbackPanel(window.tabcast)
+
 const settingsView = initSettingsView(window.tabcast, {
   onLabModeChange: (nextLab) => {
     labMode = nextLab

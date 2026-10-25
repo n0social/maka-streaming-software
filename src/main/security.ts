@@ -85,6 +85,9 @@ export function coerceSettings(partial: unknown): Partial<AppSettings> {
   if (p.streamDestinations !== undefined) {
     out.streamDestinations = coerceStreamDestinations(p.streamDestinations)
   }
+  if (typeof p.diagnosticsOptIn === 'boolean') {
+    out.diagnosticsOptIn = p.diagnosticsOptIn
+  }
 
   return out
 }
