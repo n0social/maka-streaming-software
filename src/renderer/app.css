@@ -1830,6 +1830,10 @@ body:not([data-mode='browse']) #browsetabs {
   margin-bottom: 0;
 }
 
+.studio-block-marketplace h2 {
+  margin-bottom: 0.38rem;
+}
+
 #btn-start-recording[data-recording='1'] .btn-icon-rec {
   color: #ef4444;
 }
