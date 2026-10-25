@@ -282,6 +282,18 @@ export const OVERLAY_LAYOUT_PRESETS: OverlayLayoutPreset[] = [
   },
 ]
 
+/** Default chat placeholder when the user enables Chat without an overlay preset. */
+export function defaultChatOverlaySlot(canvas: { width: number; height: number }): SceneSource {
+  return chatPlaceholder(box(canvas, 0.02, 0.68, 0.28, 0.28), 1)
+}
+
+/** Default notifications placeholder when the user enables Notifications without an overlay preset. */
+export function defaultNotificationsOverlaySlot(
+  canvas: { width: number; height: number },
+): SceneSource {
+  return notificationsPlaceholder(box(canvas, 0.62, 0.38, 0.34, 0.22), 1)
+}
+
 export function overlayPresetById(id: string): OverlayLayoutPreset | undefined {
   return OVERLAY_LAYOUT_PRESETS.find((p) => p.id === id)
 }

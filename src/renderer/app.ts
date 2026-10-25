@@ -31,7 +31,12 @@ import {
   sceneSupportsImageUpload,
   type SceneImageMaskMode,
 } from '../shared/scene-images'
-import { OVERLAY_LAYOUT_PRESETS, overlayPresetById } from '../shared/overlay-layout-presets'
+import {
+  OVERLAY_LAYOUT_PRESETS,
+  defaultChatOverlaySlot,
+  defaultNotificationsOverlaySlot,
+  overlayPresetById,
+} from '../shared/overlay-layout-presets'
 import { BROWSE_CAPTURE_SOURCE_ID } from '../shared/capture'
 import {
   BACKUP_INGEST_STATUS,
@@ -127,6 +132,8 @@ const platformKeyPanelYoutube = document.getElementById('platform-key-panel-yout
 const platformKeyDialogTitle = document.getElementById('platform-key-dialog-title')!
 const camScale = document.getElementById('cam-scale') as HTMLInputElement
 const micMeter = document.getElementById('mic-meter')!
+const desktopMeter = document.getElementById('desktop-meter')!
+const gameMeter = document.getElementById('game-meter')!
 const destTwitch = document.getElementById('dest-twitch') as HTMLInputElement
 const destYoutube = document.getElementById('dest-youtube') as HTMLInputElement
 const twitchKey = document.getElementById('twitch-key') as HTMLInputElement
@@ -149,6 +156,8 @@ const studioSourceGame = document.getElementById('studio-source-game')!
 const studioSourceWebcam = document.getElementById('studio-source-webcam')!
 const studioSourceMic = document.getElementById('studio-source-mic')!
 const studioSourceBrowser = document.getElementById('studio-source-browser')!
+const studioSourceChat = document.getElementById('studio-source-chat')!
+const studioSourceNotifications = document.getElementById('studio-source-notifications')!
 const studioStatusDot = document.getElementById('studio-status-dot')!
 const studioStatusText = document.getElementById('studio-status-text')!
 const addonPanels = document.getElementById('addon-panels')!
@@ -203,7 +212,12 @@ const layerEnabled = {
   cam: true,
   mic: true,
   browser: false,
+  chat: false,
+  notifications: false,
 }
+
+/** Chat picker selection: off, placeholder panel, or a Search tab / pinned preset id. */
+let activeChatSourceId: 'off' | 'placeholder' | string = 'off'
 
 let activeSceneTemplateId = 'gaming-cam'
 const sceneImagePaths: Partial<Record<string, string>> = {}
@@ -327,6 +341,17 @@ function setMicMeterLevel(percent: number): void {
   micMeter.style.removeProperty('height')
 }
 
+function setStaticAudioMeterLevel(el: HTMLElement, percent: number): void {
+  const level = Math.max(0, Math.min(100, percent))
+  el.style.width = `${level}%`
+  el.style.removeProperty('height')
+}
+
+function resetUnimplementedAudioMeters(): void {
+  setStaticAudioMeterLevel(desktopMeter, 0)
+  setStaticAudioMeterLevel(gameMeter, 0)
+}
+
 function activeSceneImagePath(): string | undefined {
   if (!sceneSupportsImageUpload(activeSceneTemplateId)) return undefined
   return sceneImagePaths[activeSceneTemplateId]
@@ -433,6 +458,8 @@ function syncSceneProgramPresentation(): void {
     programVideo.hidden = true
     programCam.hidden = true
     programBrowser.hidden = true
+    programChatSlot.hidden = true
+    programNotificationsSlot.hidden = true
     programEmpty.hidden = true
     hideProgramSceneBg()
     return
@@ -445,6 +472,8 @@ function syncSceneProgramPresentation(): void {
     programVideo.hidden = true
     programCam.hidden = true
     programBrowser.hidden = true
+    programChatSlot.hidden = true
+    programNotificationsSlot.hidden = true
     programEmpty.hidden = true
     void refreshProgramSceneBgLayer()
     return
@@ -492,6 +521,11 @@ function updateStudioMixControls(): void {
   studioSourceBrowser.dataset.active =
     browserStream || Boolean(overlayPresetById(activeOverlayPresetId)) ? '1' : '0'
   studioSourceBrowser.dataset.enabled = '1'
+  studioSourceChat.dataset.enabled = layerEnabled.chat ? '1' : '0'
+  studioSourceChat.dataset.active = layerEnabled.chat ? '1' : '0'
+  studioSourceNotifications.dataset.enabled = layerEnabled.notifications ? '1' : '0'
+  studioSourceNotifications.dataset.active = layerEnabled.notifications ? '1' : '0'
+  syncChatSourceRow()
 }
 
 function updateStudioStatusFooter(snapshot: RelaySnapshot): void {
@@ -568,11 +602,6 @@ function usesOverlayPresetLayout(): boolean {
 }
 
 function syncWebcamPresentation(camLabel?: string): void {
-  if (!usesOverlayPresetLayout()) {
-    const scale = Math.max(12, Math.min(40, Number(camScale.value) || 22))
-    programCam.style.width = `${scale}%`
-  }
-
   const layerOn = layerEnabled.cam
   const hasVideo = hasLiveWebcamVideo()
 
@@ -583,6 +612,18 @@ function syncWebcamPresentation(camLabel?: string): void {
     programCamVideo.srcObject = null
     updateStudioMixControls()
     return
+  }
+
+  const layout = buildOutgoingSceneLayout()
+  const webcam = layout.sources.find((s) => s.id === 'webcam')
+  if (webcam) {
+    applySourceBox(programCam, webcam, layout.canvas)
+  } else if (!usesOverlayPresetLayout()) {
+    programCam.style.left = ''
+    programCam.style.top = ''
+    programCam.style.height = ''
+    const scale = Math.max(12, Math.min(40, Number(camScale.value) || 22))
+    programCam.style.width = `${scale}%`
   }
 
   programCam.hidden = false
@@ -646,8 +687,13 @@ function applyProgramPreviewLayout(layout: SceneLayout): void {
   }
 
   const webcam = sourceById('webcam')
-  if (usesOverlayPresetLayout() && webcam && layerEnabled.cam) {
+  if (webcam && layerEnabled.cam) {
     applySourceBox(programCam, webcam, canvas)
+  } else if (!usesOverlayPresetLayout()) {
+    programCam.style.left = ''
+    programCam.style.top = ''
+    programCam.style.width = ''
+    programCam.style.height = ''
   } else if (usesOverlayPresetLayout()) {
     programCam.style.left = ''
     programCam.style.top = ''
@@ -656,15 +702,16 @@ function applyProgramPreviewLayout(layout: SceneLayout): void {
 
   const chat = sourceById('chat')
   const showChatPlaceholder =
-    Boolean(chat) && !(browserStream && layerEnabled.browser)
+    layerEnabled.chat && Boolean(chat) && !(browserStream && layerEnabled.browser)
   programChatSlot.hidden = !showChatPlaceholder
   if (showChatPlaceholder && chat) {
     applySourceBox(programChatSlot, chat, canvas)
   }
 
   const notifications = sourceById('notifications')
-  programNotificationsSlot.hidden = !notifications
-  if (notifications) {
+  const showNotifications = layerEnabled.notifications && Boolean(notifications)
+  programNotificationsSlot.hidden = !showNotifications
+  if (showNotifications && notifications) {
     applySourceBox(programNotificationsSlot, notifications, canvas)
   }
 
@@ -718,6 +765,16 @@ function buildOutgoingSceneLayout(): SceneLayout {
   }
   if (!layerEnabled.browser) {
     layout.sources = layout.sources.filter((s) => s.id !== 'browser')
+  }
+  if (!layerEnabled.chat) {
+    layout.sources = layout.sources.filter((s) => s.id !== 'chat')
+  } else if (!layout.sources.some((s) => s.id === 'chat')) {
+    layout.sources.push(defaultChatOverlaySlot(layout.canvas))
+  }
+  if (!layerEnabled.notifications) {
+    layout.sources = layout.sources.filter((s) => s.id !== 'notifications')
+  } else if (!layout.sources.some((s) => s.id === 'notifications')) {
+    layout.sources.push(defaultNotificationsOverlaySlot(layout.canvas))
   }
 
   layout.sources = layout.sources.filter((s) => s.id !== 'scene-image')
@@ -792,6 +849,21 @@ function syncOverlaySourceRow(): void {
 
 async function selectOverlayPreset(id: string): Promise<void> {
   activeOverlayPresetId = id
+  const preset = overlayPresetById(id)
+  if (preset) {
+    const preview = preset.build({
+      profile: selectedProfile(),
+      hasWebcam: hasLiveWebcamVideo() && layerEnabled.cam,
+    })
+    if (preview.sources.some((s) => s.id === 'chat')) {
+      layerEnabled.chat = true
+      if (activeChatSourceId === 'off') activeChatSourceId = 'placeholder'
+    }
+    if (preview.sources.some((s) => s.id === 'notifications')) {
+      layerEnabled.notifications = true
+    }
+    syncChatSourceRow()
+  }
   syncOverlaySourceRow()
   refreshProgramPreviewLayout()
   if (expandedSourceKinds.has('browser')) {
@@ -1444,15 +1516,17 @@ async function persistCustomRtmpSettings(): Promise<void> {
   })
 }
 
-type SourceKind = 'game' | 'webcam' | 'mic' | 'browser'
+type SourceKind = 'game' | 'webcam' | 'mic' | 'browser' | 'chat' | 'notifications'
 
-const SOURCE_KINDS: SourceKind[] = ['game', 'webcam', 'mic', 'browser']
+const SOURCE_KINDS: SourceKind[] = ['game', 'webcam', 'mic', 'browser', 'chat', 'notifications']
 
 const sourcePickerEls: Record<SourceKind, HTMLUListElement> = {
   game: document.getElementById('source-picker-game') as HTMLUListElement,
   webcam: document.getElementById('source-picker-webcam') as HTMLUListElement,
   mic: document.getElementById('source-picker-mic') as HTMLUListElement,
   browser: document.getElementById('source-picker-browser') as HTMLUListElement,
+  chat: document.getElementById('source-picker-chat') as HTMLUListElement,
+  notifications: document.getElementById('source-picker-notifications') as HTMLUListElement,
 }
 
 const expandedSourceKinds = new Set<SourceKind>()
@@ -1538,6 +1612,40 @@ const sourceToggleEls: Record<SourceKind, HTMLButtonElement> = {
   webcam: studioSourceWebcam as HTMLButtonElement,
   mic: studioSourceMic as HTMLButtonElement,
   browser: studioSourceBrowser as HTMLButtonElement,
+  chat: studioSourceChat as HTMLButtonElement,
+  notifications: studioSourceNotifications as HTMLButtonElement,
+}
+
+const CHAT_PINNED_PRESETS: { id: string; label: string }[] = [
+  { id: 'pin-chat', label: 'Twitch chat popout' },
+  { id: 'pin-yt-chat', label: 'YouTube Live Chat' },
+]
+
+function isChatLikeTab(tab: BrowseTabInfo): boolean {
+  const hay = `${tab.title} ${tab.url}`.toLowerCase()
+  return (
+    hay.includes('chat') ||
+    hay.includes('popout') ||
+    tab.id === 'pin-chat' ||
+    tab.id === 'pin-yt-chat'
+  )
+}
+
+function syncChatSourceRow(): void {
+  if (!layerEnabled.chat) {
+    studioSourceChat.querySelector('.studio-list-text')!.textContent = 'Chat'
+    return
+  }
+  if (activeChatSourceId === 'placeholder') {
+    studioSourceChat.querySelector('.studio-list-text')!.textContent = 'Chat — placeholder'
+    return
+  }
+  const preset = CHAT_PINNED_PRESETS.find((p) => p.id === activeChatSourceId)
+  if (preset) {
+    studioSourceChat.querySelector('.studio-list-text')!.textContent = `Chat — ${preset.label}`
+    return
+  }
+  studioSourceChat.querySelector('.studio-list-text')!.textContent = 'Chat — on'
 }
 
 async function refreshSourcePicker(kind: SourceKind): Promise<void> {
@@ -1637,6 +1745,94 @@ async function refreshSourcePicker(kind: SourceKind): Promise<void> {
       return
     }
 
+    if (kind === 'chat') {
+      picker.innerHTML = ''
+      appendPickerButton(picker, {
+        label: 'Chat off',
+        active: !layerEnabled.chat,
+        onPick: () => {
+          layerEnabled.chat = false
+          activeChatSourceId = 'off'
+          syncChatSourceRow()
+          syncLayerTracks()
+          void refreshSourcePicker('chat')
+        },
+      })
+      appendPickerButton(picker, {
+        label: 'Placeholder panel',
+        kindLabel: 'Program',
+        active: layerEnabled.chat && activeChatSourceId === 'placeholder',
+        onPick: () => {
+          layerEnabled.chat = true
+          activeChatSourceId = 'placeholder'
+          syncChatSourceRow()
+          syncLayerTracks()
+          void refreshSourcePicker('chat')
+        },
+      })
+      appendPickerSectionHeader(picker, 'Chat presets (Search)')
+      for (const preset of CHAT_PINNED_PRESETS) {
+        appendPickerButton(picker, {
+          label: preset.label,
+          kindLabel: 'Pinned',
+          active: layerEnabled.chat && activeChatSourceId === preset.id,
+          onPick: async () => {
+            await window.tabcast.openPinned(preset.id)
+            layerEnabled.chat = true
+            activeChatSourceId = preset.id
+            syncChatSourceRow()
+            syncLayerTracks()
+            void refreshSourcePicker('chat')
+          },
+        })
+      }
+      const tabs = await window.tabcast.listTabs()
+      const chatTabs = tabs.filter(isChatLikeTab)
+      if (chatTabs.length) {
+        appendPickerSectionHeader(picker, 'Search tabs')
+        for (const tab of chatTabs) {
+          appendPickerButton(picker, {
+            label: tab.title || tab.url || 'Chat tab',
+            kindLabel: tab.pinned ? 'Pinned' : 'Tab',
+            active: layerEnabled.chat && activeChatSourceId === tab.id,
+            onPick: async () => {
+              await window.tabcast.activateTab(tab.id)
+              layerEnabled.chat = true
+              activeChatSourceId = tab.id
+              syncChatSourceRow()
+              syncLayerTracks()
+              void refreshSourcePicker('chat')
+            },
+          })
+        }
+      }
+      return
+    }
+
+    if (kind === 'notifications') {
+      picker.innerHTML = ''
+      appendPickerButton(picker, {
+        label: 'Notifications off',
+        active: !layerEnabled.notifications,
+        onPick: () => {
+          layerEnabled.notifications = false
+          syncLayerTracks()
+          void refreshSourcePicker('notifications')
+        },
+      })
+      appendPickerButton(picker, {
+        label: 'Placeholder overlay',
+        kindLabel: 'Program',
+        active: layerEnabled.notifications,
+        onPick: () => {
+          layerEnabled.notifications = true
+          syncLayerTracks()
+          void refreshSourcePicker('notifications')
+        },
+      })
+      return
+    }
+
     picker.innerHTML = ''
     appendPickerSectionHeader(picker, 'Layout presets')
     appendPickerButton(picker, {
@@ -1704,6 +1900,33 @@ async function refreshSourcePicker(kind: SourceKind): Promise<void> {
       picker,
       err instanceof Error ? err.message : 'Could not list sources for this type.',
     )
+  }
+}
+
+function toggleLayerForSourceKind(kind: SourceKind): void {
+  if (kind === 'webcam') {
+    layerEnabled.cam = !layerEnabled.cam
+    if (layerEnabled.cam && !cameraSelect.value) {
+      void refreshSourcePicker('webcam')
+    }
+    syncLayerTracks()
+    return
+  }
+  if (kind === 'chat') {
+    layerEnabled.chat = !layerEnabled.chat
+    if (layerEnabled.chat && activeChatSourceId === 'off') {
+      activeChatSourceId = 'placeholder'
+    }
+    if (!layerEnabled.chat) {
+      activeChatSourceId = 'off'
+    }
+    syncChatSourceRow()
+    syncLayerTracks()
+    return
+  }
+  if (kind === 'notifications') {
+    layerEnabled.notifications = !layerEnabled.notifications
+    syncLayerTracks()
   }
 }
 
@@ -2612,7 +2835,21 @@ toggleMic.addEventListener('click', () => {
 })
 
 for (const kind of SOURCE_KINDS) {
-  sourceToggleEls[kind].addEventListener('click', () => {
+  sourceToggleEls[kind].addEventListener('click', (event) => {
+    const onChevron = (event.target as HTMLElement).closest('.studio-source-chevron')
+    if (onChevron) {
+      toggleSourcePicker(kind)
+      return
+    }
+    if (kind === 'webcam' || kind === 'chat' || kind === 'notifications') {
+      toggleLayerForSourceKind(kind)
+      if (!expandedSourceKinds.has(kind)) {
+        expandedSourceKinds.add(kind)
+        void refreshSourcePicker(kind)
+        syncSourcePickerVisibility()
+      }
+      return
+    }
     toggleSourcePicker(kind)
   })
 }
@@ -3765,10 +4002,12 @@ function updateStreamInfo(isLive: boolean): void {
   setLiveDurationClock(isLive)
 }
 
-// Desktop and Game audio faders (disabled, no-op)
+// Desktop and Game audio capture not implemented — keep meters at 0%.
+resetUnimplementedAudioMeters()
 
 // Initialize stream info
 highlightSceneSelection(activeSceneTemplateId)
+syncChatSourceRow()
 syncSceneProgramPresentation()
 syncOverlaySourceRow()
 refreshProgramPreviewLayout()

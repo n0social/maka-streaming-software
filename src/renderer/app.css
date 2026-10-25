@@ -1763,6 +1763,20 @@ body:not([data-mode='browse']) #browsetabs {
 
 .studio-legacy-host {
   display: none !important;
+  position: fixed !important;
+  left: -10000px !important;
+  top: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}
+
+/* Legacy AV device hooks — never visible in the studio grid */
+.studio-legacy-host .av-device-select,
+.app > #dest-custom-block,
+.app > .dest-custom-block {
+  display: none !important;
 }
 
 /* Stream Controls */

@@ -231,6 +231,36 @@
               </button>
               <ul class="studio-source-picker" id="source-picker-browser" hidden role="list" aria-label="Overlay layout presets"></ul>
             </li>
+            <li class="studio-source-group">
+              <button
+                type="button"
+                class="studio-list-item studio-source-toggle"
+                id="studio-source-chat"
+                data-source-kind="chat"
+                aria-expanded="false"
+                aria-controls="source-picker-chat"
+              >
+                <span class="studio-list-leading source-icon" aria-hidden="true">💬</span>
+                <span class="studio-list-text">Chat</span>
+                <span class="studio-source-chevron" aria-hidden="true">▾</span>
+              </button>
+              <ul class="studio-source-picker" id="source-picker-chat" hidden role="list" aria-label="Chat sources"></ul>
+            </li>
+            <li class="studio-source-group">
+              <button
+                type="button"
+                class="studio-list-item studio-source-toggle"
+                id="studio-source-notifications"
+                data-source-kind="notifications"
+                aria-expanded="false"
+                aria-controls="source-picker-notifications"
+              >
+                <span class="studio-list-leading source-icon" aria-hidden="true">🔔</span>
+                <span class="studio-list-text">Notifications</span>
+                <span class="studio-source-chevron" aria-hidden="true">▾</span>
+              </button>
+              <ul class="studio-source-picker" id="source-picker-notifications" hidden role="list" aria-label="Notification overlays"></ul>
+            </li>
           </ul>
         </div>
 
@@ -312,7 +342,9 @@
                   class="program-stats-select program-stats-select-encode"
                   aria-label="Encode profile"
                   title="Stream resolution, frame rate, and target bitrate"
-                ></select>
+                >
+                  <option value="720p30" selected>720p @ 30fps</option>
+                </select>
               </label>
             </div>
           </div>
@@ -329,7 +361,7 @@
                 <span class="audio-channel-icon" aria-hidden="true">🔊</span>
                 <span class="audio-channel-name">Desktop Audio</span>
                 <div class="audio-meter-track" aria-hidden="true">
-                  <div class="audio-meter" id="desktop-meter" style="width: 12%;"></div>
+                  <div class="audio-meter" id="desktop-meter"></div>
                 </div>
                 <button type="button" class="audio-channel-settings" disabled title="Desktop audio settings (not implemented)" aria-label="Desktop audio settings">⚙</button>
               </div>
@@ -355,7 +387,7 @@
                 <span class="audio-channel-icon" aria-hidden="true">🎮</span>
                 <span class="audio-channel-name">Game Audio</span>
                 <div class="audio-meter-track" aria-hidden="true">
-                  <div class="audio-meter" id="game-meter" style="width: 12%;"></div>
+                  <div class="audio-meter" id="game-meter"></div>
                 </div>
                 <button type="button" class="audio-channel-settings" disabled title="Game audio settings (not implemented)" aria-label="Game audio settings">⚙</button>
               </div>
@@ -606,8 +638,8 @@
         <input id="custom-rtmp-key" class="key-input" type="password" autocomplete="off" spellcheck="false" placeholder="Stream key" disabled />
       </div>
       <div class="source-list" id="source-list"></div>
-      <select id="camera-select" class="select" tabindex="-1"><option value="">No camera</option></select>
-      <select id="mic-select" class="select" tabindex="-1"><option value="">No microphone</option></select>
+      <select id="camera-select" class="av-device-select" tabindex="-1" aria-hidden="true"><option value="">No camera</option></select>
+      <select id="mic-select" class="av-device-select" tabindex="-1" aria-hidden="true"><option value="">No microphone</option></select>
       <input id="cam-scale" type="range" min="12" max="40" value="22" />
       <button type="button" id="toggle-webcam" data-on="0"><span id="toggle-webcam-state">Off</span></button>
       <button type="button" id="toggle-mic" data-on="0"><span id="toggle-mic-state">Off</span></button>

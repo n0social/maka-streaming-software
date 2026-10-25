@@ -35,13 +35,14 @@ This pass separates **working** studio controls from **intentionally disabled** 
 | Mic level meter | **Working** | Live `AnalyserNode` → horizontal bar |
 | Program stats (dropped, FPS, health, bitrate) | **Working** | FPS/bitrate from encode profile; dropped from relay when live |
 | Stream info sidebar | **Working (honest)** | Title = enabled destinations; category = encode preset; duration = local live clock |
-| Desktop Audio meter/settings | **Disabled** | Relay has no WASAPI loopback yet |
-| Game Audio meter/settings | **Disabled** | Same as desktop |
+| Desktop Audio meter/settings | **Disabled** | Meter honest 0%; relay has no WASAPI loopback yet |
+| Game Audio meter/settings | **Disabled** | Meter honest 0%; same as desktop |
 | Start Recording | **Working (MVP)** | Sidebar toggle; stats bar **Now recording**; WebM via main-process save dialog |
 | Start Virtual Camera | **Stub** | Clickable; honest “not available” modal (no driver) |
 | Add Scene (+) | **Working** | Up to 3 custom scenes (`custom-1`…`custom-3`); inline rename; Just Chatting layout |
 | Stream viewer count | **Disabled** | Shows `Viewers: N/A` while live (no platform API) |
-| Chat / notification overlay slots | **Placeholder** | Layout regions only; labeled in preview |
+| Chat / notification overlay slots | **Partial** | Sources row toggles + program placeholders; feeds not composited to relay yet |
+| Chat / Notifications source rows | **Working** | Toggle layers; chat picker lists placeholder + pinned Twitch/YT + chat-like Search tabs |
 | Scene row `⋯` menus | **Working** | Image pick/clear on Just Chatting, custom scenes, and holding scenes; Gameplay static |
 | Studio Mode dropdown | **Disabled** | Single program output mode |
 
@@ -56,6 +57,9 @@ This pass separates **working** studio controls from **intentionally disabled** 
 7. **Mic mixer gear** — Opens/focuses the Microphone source picker.
 8. **Sources refresh control** — Icon/title corrected (refresh lists, not “add source”).
 9. **Stream controls** — Sidebar Go Live opens cream/gold wizard; recording + vcam buttons enabled (vcam = noop modal); stream keys persist from platform dialog.
+10. **Stray sidebar dropdown** — Custom RTMP / AV device hooks confined to `.studio-legacy-host`; encode select seeded in HTML.
+11. **Program overlays** — Chat + Notifications source rows; webcam/chat/notif slots respect `layerEnabled`; overlay presets auto-enable chat/notif when layout includes slots.
+12. **Mixer honesty** — Desktop/Game meters at 0% (no 12% placeholder).
 
 ## IPC added (this pass)
 

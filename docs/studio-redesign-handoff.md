@@ -31,7 +31,7 @@ Theme tokens in `app.css`: `--bg: #faf8f4`, `--gold: #c9a227`, text `#1a1408`. S
 
 Verified against `app.html`, `app.css`, and `app.ts` on `cursor/maka-mixer-layout-9bd4`.
 
-**Left.** Scenes lists five built-in rows (Gameplay, Starting Soon, Just Chatting, Intermission, Ending Scene) plus Add Scene. Sources lists Game Capture, Webcam, Microphone, and Overlay. Multiple source cascade pickers can stay open at once. **Game Capture** expands to displays/windows (`listCaptureSources` desktop paths) and marks the active capture. **Overlay** expands to named layout presets (webcam/chat/notification slots + gameplay full or PiP) that push `SceneLayout` via `pushSceneLayout`; chat and notifications are placeholder regions until wired. Search-tab browser capture lives under Overlay presets as "Search tab overlay", not as the only Overlay list. The footer reads "All systems nominal".
+**Left.** Scenes lists five built-in rows (Gameplay, Starting Soon, Just Chatting, Intermission, Ending Scene) plus Add Scene. Sources lists Game Capture, Webcam, Microphone, Overlay, **Chat**, and **Notifications**. Multiple source cascade pickers can stay open at once. **Game Capture** expands to displays/windows (`listCaptureSources` desktop paths) and marks the active capture. **Webcam** row click toggles the cam layer (chevron opens the camera picker). **Chat** / **Notifications** row clicks toggle program overlay slots; chevrons open pickers (chat presets: placeholder, Twitch/YouTube pinned popouts, chat-like Search tabs). **Overlay** expands to named layout presets (webcam/chat/notification slots + gameplay full or PiP) that push `SceneLayout` via `pushSceneLayout`; selecting a preset turns on chat/notif layers when that preset defines those slots. Search-tab browser capture lives under Overlay as "Search tab overlay". The footer reads "All systems nominal".
 
 **Center.** Program preview with a "Program • Live Output" label. Under it, a stats bar: a disabled Program select, a quality dropdown, dropped frames, FPS, and resolution. The quality menu is filled from `ENCODE_PROFILE_ORDER`: 720p @ 30fps, 720p @ 60fps, 1080p @ 30fps, 1080p @ 60fps, 2K @ 60fps, 4K @ 60fps. Default is `720p30` (1280×720, 30 fps). FPS and resolution labels follow that preset, not a measured capture clock.
 
@@ -43,7 +43,7 @@ Three rows only: Desktop Audio, Microphone, Game Audio. Each row is icon, name, 
 
 The microphone bar follows the live mic. `startMicMeter` reads an `AnalyserNode` and `setMicMeterLevel` sets `micMeter.style.width` to a percent. That function also removes any inline `height`, so the bar cannot become a vertical strip.
 
-Desktop and Game are not live. Their meters are a static `width: 12%` in `app.html`. Those rows are dimmed (`.audio-channel[title] { opacity: 0.55 }`).
+Desktop and Game are not live. Their meters stay at **0%** width (`resetUnimplementedAudioMeters` in `app.ts`; no fake fill in HTML). Those rows are dimmed (`.audio-channel[title] { opacity: 0.55 }`).
 
 Vertical meter strips and tall towers were rejected. Do not revert this to vertical bars.
 
@@ -51,8 +51,8 @@ Vertical meter strips and tall towers were rejected. Do not revert this to verti
 
 | Control | Why |
 | --- | --- |
-| Desktop Audio (row, gear, meter stuck at 12%) | Title on the row: "Desktop audio capture not yet implemented". |
-| Game Audio (row, gear, meter stuck at 12%) | Title on the row: "Game audio capture not yet implemented". |
+| Desktop Audio (row, gear, meter at 0%) | Title on the row: "Desktop audio capture not yet implemented". |
+| Game Audio (row, gear, meter at 0%) | Title on the row: "Game audio capture not yet implemented". |
 | Start Recording | Button `disabled`. Title: "Recording is not available in this build yet". |
 | Start Virtual Camera | Button `disabled`. Title: "Virtual camera is not available in this build yet". |
 
@@ -68,7 +68,7 @@ Compared with `docs/readme-hero.png`:
 - **Stats bar.** Lower program column: **left** — disabled Studio Mode dropdown and **`#stat-recording`** (“Now recording” while local record is active). **Right** (flex end) — dropped frames, FPS, latency placeholder, **Twitch | YouTube** platform chips (open `#platform-key-dialog`; **Save** writes `streamDestinations` to settings), stream health pill, **Mbps**, and **`#program-quality-select`** encode preset dropdown.
 - **Mixer vs the image.** dB ticks (-30 … 0) sit under each horizontal bar. Tracks stay 14px tall. Keep the red gradient end and width-based fill.
 - **Stream controls.** Sidebar **Go Live** opens `#go-live-wizard-dialog` (platform → key → validate → go live). **End Live** while live ends the session without the wizard. Top bar **Go Live** still uses the direct path (F8). **Start Recording** toggles local `MediaRecorder` output; stats bar shows **Now recording** on the left. **Virtual camera** opens an honest unavailable modal.
-- **Stream info.** The image shows a thumbnail, title, category, Live pill, viewers, and duration. The app still shows placeholders for metadata. Sidebar Stream Info is **preview + meta only** (no Twitch/YouTube checkboxes, key fields, or encode profile — those moved to the stats bar / platform key dialog). The old sidebar `#profile-select` / `.stream-encode` block is removed; custom RTMP fields live in `.studio-legacy-host` so they do not auto-place in the app grid. Stream info card uses a larger thumb (~84px), tighter horizontal padding, and bold title / category / status row.
+- **Stream info.** The image shows a thumbnail, title, category, Live pill, viewers, and duration. The app still shows placeholders for metadata. Sidebar Stream Info is **preview + meta only** (no Twitch/YouTube checkboxes, key fields, or encode profile — those moved to the stats bar / platform key dialog). The old sidebar `#profile-select` / `.stream-encode` block is removed; custom RTMP fields and AV device `<select>` hooks live only in `.studio-legacy-host` (off-screen + `display:none`) so they never appear as a stray dropdown in the right sidebar grid. Encode profile is `#program-quality-select` in the stats bar (seeded with a default `<option>` so it is never empty before JS runs). Stream info card uses a larger thumb (~84px), tighter horizontal padding, and bold title / category / status row.
 
 ## Screenshot comparison ritual
 
