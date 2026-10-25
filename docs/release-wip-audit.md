@@ -1,5 +1,15 @@
 # Release WIP audit (studio redesign)
 
+## Release handoff
+
+| Item | Value |
+| --- | --- |
+| CI tag | `v0.2.4-redesign-wip` (triggers `.github/workflows/release.yml`) |
+| Annotated WIP pointer | `0.2.4-redesign-(wip)` (same redesign line; may lag CI tag) |
+| Installer artifact | `Maka-Setup-0.2.4-redesign-wip.exe` |
+| Draft release | _(filled in after CI — see GitHub Releases)_ |
+| CI run | _(filled in after push)_ |
+
 Tag: `0.2.4-redesign-(wip)` (see git tags).
 
 This pass separates **working** studio controls from **intentionally disabled** placeholders and fixes cases where the UI implied behavior that code did not implement.
