@@ -2,6 +2,33 @@
 
 Living checklist of renderer ↔ relay ↔ capture wiring for the studio redesign shell.
 
+## Scenes + Program
+
+| Area | DOM / handlers | Status |
+|------|----------------|--------|
+| Built-in scene rows | `#scene-gameplay` … `#scene-ending`, `data-scene`, `selectScene()` | **OK** |
+| Active highlight | `.studio-list-item[data-scene]`, `highlightSceneSelection()` | **OK** |
+| Custom scenes | `#btn-add-scene`, `#btn-add-scene-alt`, `#studio-add-scene-row`, `renderCustomSceneRows()` | **OK** — max 3, rename on blur, scroll via `.studio-list--scenes` |
+| Per-scene ⋯ menu | `[data-scene-menu]`; `#scene-image-menu-dialog` | **OK** — Gameplay uses static `studio-list-menu--static` |
+| Scene image IPC | `pickSceneImageFile` / `readSceneImageDataUrl` | **OK** (`scene:pick-image`, `main/scene-image-io.ts`) |
+| Mask modes | `shared/scene-images.ts` | **OK** — desk-only + custom → `game-mask-only`; starting-soon / intermission / ending → `full-mask-except-chat`; gameplay → no upload |
+| Program monitor | `#program-video`, `#program-cam`, `#program-chat-slot`, `#program-notifications-slot`, `#program-scene-bg` | **OK** — `syncSceneProgramPresentation()` + `applyProgramPreviewLayout()` |
+| Overlay presets | `selectOverlayPreset()`, `OVERLAY_LAYOUT_PRESETS` | **OK** — `buildOutgoingSceneLayout()` + `pushSceneLayout()` when live |
+
+**Broken → fixed (scenes pass)**
+
+1. **Scene switch left chat/notification slots stale** — `selectScene()` did not call `refreshProgramPreviewLayout()` after leaving a holding card. **Fix:** refresh at end of `selectScene()`.
+2. **Holding scene + PNG/JPG hid overlay slots** — stub + image path forced chat/notifications hidden. **Fix:** `refreshProgramPreviewLayout()` + `updateProgramBrowserOverlay()` instead.
+3. **Overlay presets ignored on holding scenes** — stub branch skipped preset geometry. **Fix:** merge `chat` / `notifications` / `browser` sources from active preset into stub layout.
+4. **Settings hydrate** — loaded `sceneImages` / `customScenes` without refreshing program layout. **Fix:** `refreshProgramPreviewLayout()` in `getSettings()` callback.
+
+**Remaining gaps**
+
+- Active scene not persisted (`activeSceneTemplateId` defaults to `gaming-cam` on launch).
+- `selectScene()` clears `activeOverlayPresetId` (always “follow scene layout” after picking a scene).
+- Chat / notifications slots are layout placeholders only (no live feed).
+- Full-mask scene images are full-frame assets; chat regions are separate compositor sources (no punched mask in the image file).
+
 ## Stream controls
 
 | Control | Status | Wiring |
