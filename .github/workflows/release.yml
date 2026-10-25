@@ -22,7 +22,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -42,17 +42,27 @@ jobs:
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           TABCAST_SIGNING_REQUIRED: ${{ secrets.CSC_LINK && '1' || '' }}
-          TABCAST_PUBLISH: ${{ contains(github.ref_name, 'wip') && '' || '1' }}
+          TABCAST_PUBLISH: '1'
         run: npm run dist:signed
 
       - name: Update browser manifest
         run: npm run release:manifest
 
+      - name: Resolve release tag name
+        id: rel
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "name=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
-          draft: ${{ contains(github.event_name == 'workflow_dispatch' ? inputs.tag : github.ref_name, 'wip') }}
+          tag_name: ${{ steps.rel.outputs.name }}
+          draft: ${{ contains(steps.rel.outputs.name, 'wip') }}
           files: |
             dist-installer/*
             site/browser-manifest.json
