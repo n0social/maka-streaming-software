@@ -1,6 +1,6 @@
 import { coerceCustomScenes } from '../shared/custom-scenes'
 import { coerceStreamDestinations } from '../shared/stream-destination-settings'
-import { SETTINGS_TAB_IDS, type AppSettings, type SavedBrowseTab } from './settings-store'
+import { SETTINGS_TAB_IDS, type AppSettings, type GpuPreference, type SavedBrowseTab } from './settings-store'
 import { normalizeBrowseUrl } from '../shared/browse-url'
 import { isEncodeProfileId } from '../shared/stream-encode-profiles'
 import { coerceSceneImagesRecord } from './scene-image-io'
@@ -60,6 +60,12 @@ export function coerceSettings(partial: unknown): Partial<AppSettings> {
   if (p.lastStreamPlatform === 'twitch' || p.lastStreamPlatform === 'youtube' || p.lastStreamPlatform === 'none') {
     out.lastStreamPlatform = p.lastStreamPlatform
   }
+  if (typeof p.streamTitle === 'string') {
+    out.streamTitle = p.streamTitle.trim().replace(/\s+/g, ' ').slice(0, 140)
+  }
+  if (typeof p.streamCategory === 'string') {
+    out.streamCategory = p.streamCategory.trim().replace(/\s+/g, ' ').slice(0, 100)
+  }
   if (typeof p.preferredMicDeviceId === 'string') {
     const id = p.preferredMicDeviceId.trim()
     out.preferredMicDeviceId = id.length <= 512 ? id : id.slice(0, 512)
@@ -77,8 +83,11 @@ export function coerceSettings(partial: unknown): Partial<AppSettings> {
   if (p.videoEncoderPreference === 'system' || p.videoEncoderPreference === 'hardware' || p.videoEncoderPreference === 'software') {
     out.videoEncoderPreference = p.videoEncoderPreference
   }
-  if (p.gpuPreference === 'default' || p.gpuPreference === 'discrete' || p.gpuPreference === 'integrated') {
-    out.gpuPreference = p.gpuPreference
+  if (typeof p.gpuPreference === 'string') {
+    const gpu = p.gpuPreference.trim()
+    if (gpu === 'default' || gpu === 'discrete' || gpu === 'integrated' || /^gpu-\d+$/.test(gpu)) {
+      out.gpuPreference = gpu as GpuPreference
+    }
   }
   if (typeof p.onboardingComplete === 'boolean') {
     out.onboardingComplete = p.onboardingComplete

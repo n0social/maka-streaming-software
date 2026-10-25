@@ -51,6 +51,8 @@ export type AppSettings = {
     | 'modes'
     | 'help'
   lastStreamPlatform: StreamPlatformPreference
+  streamTitle: string
+  streamCategory: string
   preferredMicDeviceId: string
   preferredDesktopAudioOutputDeviceId: string
   audioMicBitrateKbps: number

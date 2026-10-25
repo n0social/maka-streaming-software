@@ -23,6 +23,7 @@ export type SettingsViewHooks = {
   onEncodeProfileChange: (profile: AppSettings['bitrateProfile']) => void
   onRecordingFolderChange: (folder: string) => void
   onPreferredMicChange: (deviceId: string) => void
+  onRelayStudioSettingsChange: () => void
   onReplaySetup: () => void
   onReplayTour: () => void
   onCheckUpdates: () => void
@@ -89,6 +90,8 @@ function applySettingsToForm(s: AppSettings): void {
   encodeSelect.value = s.bitrateProfile
   ;(document.getElementById('set-last-platform') as HTMLSelectElement).value =
     s.lastStreamPlatform
+  ;(document.getElementById('set-stream-title') as HTMLInputElement).value = s.streamTitle
+  ;(document.getElementById('set-stream-category') as HTMLInputElement).value = s.streamCategory
   ;(document.getElementById('set-mic-bitrate') as HTMLSelectElement).value = String(
     s.audioMicBitrateKbps,
   )
@@ -181,6 +184,17 @@ export function initSettingsView(tabcast: TabcastBridge, hooks: SettingsViewHook
     void tabcast.setSettings({ lastStreamPlatform: value })
   })
 
+  const persistStreamMetaField = (key: 'streamTitle' | 'streamCategory', raw: string) => {
+    const value = raw.trim().replace(/\s+/g, ' ').slice(0, key === 'streamTitle' ? 140 : 100)
+    void tabcast.setSettings({ [key]: value }).then(() => hooks.onRelayStudioSettingsChange())
+  }
+  document.getElementById('set-stream-title')!.addEventListener('change', (e) => {
+    persistStreamMetaField('streamTitle', (e.target as HTMLInputElement).value)
+  })
+  document.getElementById('set-stream-category')!.addEventListener('change', (e) => {
+    persistStreamMetaField('streamCategory', (e.target as HTMLInputElement).value)
+  })
+
   micSelect.addEventListener('change', () => {
     const deviceId = micSelect.value
     void tabcast.setSettings({ preferredMicDeviceId: deviceId }).then(() => {
@@ -195,19 +209,19 @@ export function initSettingsView(tabcast: TabcastBridge, hooks: SettingsViewHook
         id === 'set-mic-bitrate'
           ? { audioMicBitrateKbps: kbps }
           : { audioDesktopBitrateKbps: kbps }
-      void tabcast.setSettings(patch)
+      void tabcast.setSettings(patch).then(() => hooks.onRelayStudioSettingsChange())
     })
   }
 
   document.getElementById('set-video-encoder')!.addEventListener('change', (event) => {
     const value = (event.target as HTMLSelectElement)
       .value as AppSettings['videoEncoderPreference']
-    void tabcast.setSettings({ videoEncoderPreference: value })
+    void tabcast.setSettings({ videoEncoderPreference: value }).then(() => hooks.onRelayStudioSettingsChange())
   })
 
   document.getElementById('set-gpu-pref')!.addEventListener('change', (event) => {
     const value = (event.target as HTMLSelectElement).value as AppSettings['gpuPreference']
-    void tabcast.setSettings({ gpuPreference: value })
+    void tabcast.setSettings({ gpuPreference: value }).then(() => hooks.onRelayStudioSettingsChange())
   })
 
   document.getElementById('btn-pick-recording-folder')!.addEventListener('click', () => {

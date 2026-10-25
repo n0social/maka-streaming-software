@@ -486,8 +486,9 @@
                 <div class="stream-thumb-placeholder">No preview</div>
               </div>
               <div class="stream-meta">
-                <div class="stream-title" id="stream-title">—</div>
-                <div class="stream-category" id="stream-category">—</div>
+                <input type="text" id="stream-title-input" class="stream-title-input" maxlength="140" autocomplete="off" placeholder="Stream title" aria-label="Stream title" />
+                <input type="text" id="stream-category-input" class="stream-category-input" maxlength="100" autocomplete="off" placeholder="Category or game" aria-label="Stream category" />
+                <p class="stream-destinations" id="stream-destinations-hint"></p>
                 <div class="stream-status-row">
                   <span class="stream-live-pill" id="stream-live-pill" data-live="false">Offline</span>
                   <span class="stream-viewers" id="stream-viewers" title="Viewer count when you go live">Offline</span>
@@ -557,6 +558,10 @@
                   <option value="twitch">Twitch</option>
                   <option value="youtube">YouTube</option>
                 </select>
+                <label class="field-label" for="set-stream-title">Stream title</label>
+                <input id="set-stream-title" class="key-input" type="text" maxlength="140" autocomplete="off" />
+                <label class="field-label" for="set-stream-category">Category / game</label>
+                <input id="set-stream-category" class="key-input" type="text" maxlength="100" autocomplete="off" />
               </div>
               <div class="settings-panel" id="settings-panel-audio" data-settings-panel="audio" hidden>
                 <h2>Audio</h2>

@@ -10,10 +10,11 @@ Full-page tabbed settings opened from the top bar **Settings** button (toggle: c
 | --- | --- | --- | --- | --- |
 | **General** | `set-tray-live`, `set-open-chat`, `set-lab-mode`, `set-auto-update` | `minimizeToTrayWhileLive`, `openChatOnBrowse`, `labMode`, `autoCheckUpdatesOnStartup` | **Yes** | Tray minimize while live (`maybeMinimizeToTray`); chat pop-out on Browser Mode; demo key validation; packaged startup update check (`initAutoUpdate` + 12s delay). |
 | **General** | Version lines | (read-only) | **Yes** | `app:get-version-info` — `app.getVersion()` + relay health version. |
-| **Streaming** | `set-encode-profile` | `bitrateProfile` | **Yes** | Same encode presets as `#program-quality-select`; saved on change. |
+| **Streaming** | `set-encode-profile` | `bitrateProfile` | **Yes** | `buildRelayConfigRequest` → `profile` + `bitrateMbps` on `POST /config`. |
 | **Streaming** | `set-last-platform` | `lastStreamPlatform` | **Partial** | UI default / mirror; go-live wizard writes `twitch` / `youtube` when platform chosen. |
-| **Audio** | `set-mic-device`, `set-mic-bitrate`, `set-desktop-bitrate` | `preferredMicDeviceId`, `audioMicBitrateKbps`, `audioDesktopBitrateKbps` | **Partial** | Mic device applies to studio `mic-select` + capture; bitrates persisted for relay. Desktop loopback output: mixer gear → `#desktop-audio-output` → `preferredDesktopAudioOutputDeviceId` (Windows). |
-| **Video / System** | `set-video-encoder`, `set-gpu-pref` | `videoEncoderPreference`, `gpuPreference` | **Partial** | Persisted; GPU list from `system:list-gpu-options` (Windows CIM when available). |
+| **Streaming** | `set-stream-title`, `set-stream-category` | `streamTitle`, `streamCategory` | **Partial** | Stream Info + Settings; `/config` fields (v0.1.0 relay ignores). |
+| **Audio** | `set-mic-device`, `set-mic-bitrate`, `set-desktop-bitrate` | `preferredMicDeviceId`, `audioMicBitrateKbps`, `audioDesktopBitrateKbps` | **Partial** | Mic → capture; bitrates on `/config` (v0.1.0 fixed AAC). |
+| **Video / System** | `set-video-encoder`, `set-gpu-pref` | `videoEncoderPreference`, `gpuPreference` | **Partial** | Forwarded on `/config` (v0.1.0 `libx264` only). |
 | **Recording** | `set-recording-folder`, `btn-pick-recording-folder` | `recordingSaveFolder` | **Yes** | `recording:pick-folder` IPC; `recording:save` uses folder as save dialog `defaultPath`. |
 | **Studio & Browser** | `data-set-startup` buttons | `startupMode` | **Yes** | `studio` vs `browse` on launch; same as `#program-output-mode`. |
 | **Help** | `btn-replay-setup`, `btn-check-updates`, `btn-replay-tour` | (actions) | **Yes** | Setup wizard, `checkForUpdates` + banner, onboarding tour (exits settings first). |
@@ -50,6 +51,18 @@ Unchanged — tab list and active tab; not in Settings mode.
 | `#program-output-mode` | Yes (`startupMode`) | **Yes** | Studio vs Browser workspace. |
 | `#program-quality-select` | Yes (`bitrateProfile`) | **Yes** | Stats bar; synced with Settings → Streaming. |
 | Platform chips / go-live wizard | Partial | **Yes** | Keys and destinations. |
+| Stream Info title / category | Yes | **Partial** | Sidebar inputs + relay `/config`. |
+
+## Relay `POST /config` matrix
+
+| Setting | App (`buildRelayConfigRequest`) | TabcastRelay v0.1.0 | Gap |
+| --- | --- | --- | --- |
+| `bitrateProfile` | `profile`, `bitrateMbps` | `profile` only | Full presets + video bitrate in newer relay |
+| `streamTitle` / `streamCategory` | `/config` + UI | Ignored | Platform metadata APIs |
+| Audio bitrates | `audioMicBitrateKbps`, `audioDesktopBitrateKbps` | Fixed profile AAC | Per WHIP track |
+| Encoder / GPU | `videoEncoderPreference`, `gpuPreference` | Ignored | NVENC/QSV + device pick |
+| Custom RTMP | `customRtmpUrl` / `customRtmpKey` | Not in v0.1.0 binary | Custom RTMP relay |
+| Stream keys | `twitchKey`, `youtubeKey` | **Yes** | — |
 
 ## Deprecated
 
@@ -59,7 +72,7 @@ Unchanged — tab list and active tab; not in Settings mode.
 
 ## Cosmetic or placeholder UI
 
-Unchanged from prior inventory (mixer gears, latency placeholder, stream info API placeholders, vcam modal).
+Mixer gears, latency placeholder, viewer count when relay has no platform API.
 
 ---
 

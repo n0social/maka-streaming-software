@@ -15,7 +15,7 @@ export type StreamPlatformPreference = 'twitch' | 'youtube' | 'none'
 
 export type VideoEncoderPreference = 'system' | 'hardware' | 'software'
 
-export type GpuPreference = 'default' | 'discrete' | 'integrated'
+export type GpuPreference = 'default' | 'discrete' | 'integrated' | `gpu-${string}`
 
 export const SETTINGS_TAB_IDS = [
   'general',
@@ -40,6 +40,8 @@ export type AppSettings = {
   /** Last selected tab in full-page Settings mode. */
   settingsActiveTab: SettingsTabId
   lastStreamPlatform: StreamPlatformPreference
+  streamTitle: string
+  streamCategory: string
   preferredMicDeviceId: string
   /** Windows loopback output device (audiooutput); empty = default playback device. */
   preferredDesktopAudioOutputDeviceId: string
@@ -79,6 +81,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   recordingSaveFolder: '',
   settingsActiveTab: 'general',
   lastStreamPlatform: 'none',
+  streamTitle: '',
+  streamCategory: '',
   preferredMicDeviceId: '',
   preferredDesktopAudioOutputDeviceId: '',
   audioMicBitrateKbps: 160,

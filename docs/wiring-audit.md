@@ -61,10 +61,11 @@ Living checklist of renderer ↔ relay ↔ capture wiring for the studio redesig
 | Shell / chrome hidden | **OK** | `applyMode` + `app.css` hides studio columns and browse chrome. |
 | Tab fields load/save | **OK** | `settings-view.ts` + `settings.json` (see `docs/studio-settings-inventory.md`). |
 | Active tab memory | **OK** | `settingsActiveTab` persisted and restored on open. |
-| Encode from Settings | **OK** | Syncs stats bar, stream info, `pushSceneLayout`. |
+| Encode from Settings | **OK** | Syncs stats bar, `pushSceneLayout`, `repostRelayConfigIfLive()`. |
+| Stream title / category | **Partial** | Stream Info inputs + `buildRelayConfigRequest`. |
 | Recording folder copy | **OK** | Documents auto-save + Shift+stop override. |
 
-**Partial (intentional):** audio bitrates, video encoder/GPU — stored; not fully consumed by relay/mixer yet.
+**Partial:** metadata, audio bitrates, encoder/GPU forwarded in `POST /config`; v0.1.0 relay ignores most (inventory matrix).
 
 ## Browser (`body[data-mode='browse']`)
 
@@ -142,7 +143,7 @@ Living checklist of renderer ↔ relay ↔ capture wiring for the studio redesig
 - Stream Info viewer count when relay does not expose platform APIs (UI shows `Viewers: —` while live).
 - Marketplace modal kept but not promoted in sidebar.
 - Linux desktop/game capture unavailable (meters stub).
-- Stream title/category API placeholders on Stream Info card.
+- Stream title/category: UI + `/config` wired; v0.1.0 relay has no platform metadata APIs.
 
 ## Verification
 

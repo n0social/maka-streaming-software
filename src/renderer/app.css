@@ -2685,6 +2685,26 @@ body:not([data-mode='settings']) .settings-view {
   font-variant-numeric: tabular-nums;
 }
 
+.stream-title-input,
+.stream-category-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+}
+
+.stream-title-input {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.stream-category-input {
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: #4b5563;
+}
+
 .stream-destinations {
   display: flex;
   flex-direction: column;
