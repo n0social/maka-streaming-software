@@ -2,13 +2,28 @@
   "name": "tabcast-browser",
   "version": "0.2.4",
   "private": false,
-  "description": "Maka gaming streaming service — free streaming software and a free streaming software obs alternative for resource-light capture (Electron studio + local WHIP/RTMP relay).",
+  "description": "Maka — free Windows streaming software for game capture and RTMP live streaming (Electron studio + local WHIP relay). OBS-light alternative for Twitch and YouTube.",
+  "keywords": [
+    "streaming",
+    "live-streaming",
+    "game-capture",
+    "obs-alternative",
+    "twitch",
+    "youtube",
+    "rtmp",
+    "whip",
+    "electron",
+    "maka"
+  ],
   "author": "n0social",
   "license": "MIT",
-  "homepage": "https://github.com/n0social/Maka",
+  "homepage": "https://tabcast.live.skydav.work",
   "repository": {
     "type": "git",
-    "url": "https://github.com/n0social/Maka.git"
+    "url": "https://github.com/n0social/maka-streaming-software.git"
+  },
+  "bugs": {
+    "url": "https://github.com/n0social/maka-streaming-software/issues"
   },
   "main": "out/main/index.js",
   "type": "module",

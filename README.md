@@ -1,24 +1,24 @@
 # Maka gaming streaming service
 
-**The ultimate streaming software for gamers and creators who want a resource-light alternative.**
+**Free Windows streaming software for gamers and creators who want a resource-light OBS alternative.**
 
 ![Maka studio with a live game stream in the program monitor](docs/readme-hero.png)
 
-Maka is **free streaming software** for Windows—a **free streaming software obs alternative** built as a desktop **Electron studio** for capture, scenes, and **Go Live** without wiring up OBS first. A local **TabcastRelay** on `127.0.0.1:38473` takes WHIP from the app, encodes with FFmpeg, and pushes **RTMP** to Twitch, YouTube, or a custom RTMP endpoint. Stream keys stay in relay RAM — not written to disk by the UI.
+Maka is **free streaming software** for Windows: a desktop **Electron studio** for game capture, scenes, and **Go Live** without wiring up OBS first. A local **TabcastRelay** on `127.0.0.1:38473` takes WHIP from the app, encodes with FFmpeg, and pushes **RTMP** to Twitch, YouTube, or a custom RTMP endpoint. Stream keys stay in relay RAM — not written to disk by the UI.
 
 **Website:** [tabcast.live.skydav.work](https://tabcast.live.skydav.work)
 
 ---
 
-## Get Maka (v0.2.3 installer)
+## Get Maka (v0.2.4 installer)
 
-The current **unsigned** Windows installer on GitHub is **v0.2.3**. That tagged build includes the **phone camera/mic add-on** (QR pairing, independent camera and mic, 60-second rejoin, STUN and optional TURN) and **live stream recovery** (a bad stream key stops the stream immediately, network blips retry longer, WHIP stall watchdog, backup RTMP ingest).
+The current **unsigned** Windows installer on GitHub is **v0.2.4**. Recent builds include the **phone camera/mic add-on** (QR pairing, independent camera and mic, 60-second rejoin, STUN and optional TURN) and **live stream recovery** (a bad stream key stops the stream immediately, network blips retry longer, WHIP stall watchdog, backup RTMP ingest).
 
-`main` may be a few documentation commits ahead of the tag (SEO copy). The download and `git checkout v0.2.3` match the published installer; building `main` is the same app plus any commits made after the tag.
+`main` may be a few documentation commits ahead of the tag. The download and `git checkout v0.2.4` match the published installer; building `main` is the same app plus any commits made after the tag.
 
 ### Option A — Download (Windows)
 
-1. Download **[Maka-Setup-0.2.3.exe](https://github.com/n0social/maka-streaming-software/releases/download/v0.2.3/Maka-Setup-0.2.3.exe)** from the [v0.2.3 release](https://github.com/n0social/maka-streaming-software/releases/tag/v0.2.3).
+1. Download **[Maka-Setup-0.2.4.exe](https://github.com/n0social/maka-streaming-software/releases/download/v0.2.4/Maka-Setup-0.2.4.exe)** from the [v0.2.4 release](https://github.com/n0social/maka-streaming-software/releases/tag/v0.2.4).
 2. Run the installer on **Windows 10 or 11** (x64).
 3. **Windows SmartScreen** may warn because the build is **unsigned** — that is expected until code signing is in place.
 
@@ -33,7 +33,7 @@ npm run fetch:relay
 npm run dev
 ```
 
-On Windows, `npm run dist` produces the NSIS installer. Use **`v0.2.3`** if you need a tree that exactly matches the published installer above.
+On Windows, `npm run dist` produces the NSIS installer. Use **`v0.2.4`** if you need a tree that exactly matches the published installer above.
 
 ---
 
@@ -49,11 +49,11 @@ On Windows, `npm run dist` produces the NSIS installer. Use **`v0.2.3`** if you 
 
 ## Phone camera & mic
 
-In **v0.2.3** (and on `main`): optional add-on — pair your phone via **QR code**, use the phone as an independent camera and/or mic, **60s rejoin** if the connection drops, with **STUN** and optional **TURN**.
+In **v0.2.4** (and on `main`): optional add-on — pair your phone via **QR code**, use the phone as an independent camera and/or mic, **60s rejoin** if the connection drops, with **STUN** and optional **TURN**.
 
 ---
 
-## Live stream recovery (v0.2.3)
+## Live stream recovery (v0.2.4)
 
 Automatic reconnect with a **fatal-vs-blip** retry policy (ingest/key errors stop immediately; network blips retry longer), a **WHIP outbound video stall** watchdog, and optional **backup RTMP ingest** failover when primary ingest fails.
 
@@ -104,7 +104,7 @@ Automatic reconnect with a **fatal-vs-blip** retry policy (ingest/key errors sto
 
 ## SmartScreen & trust
 
-The v0.2.3 installer is **unsigned**. SmartScreen may block or warn on first run. Only download from the official GitHub release linked above.
+The v0.2.4 installer is **unsigned**. SmartScreen may block or warn on first run. Only download from the official GitHub release linked above.
 
 ---
 

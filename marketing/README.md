@@ -55,4 +55,4 @@ Publishes:
 - `/legacy.html` — Relay + web studio workflow
 - `/stream/` — Legacy SPA web studio
 - `/marketing/*` — Icons, feature graphic, download badges
-- `/downloads/TabcastBrowser-Setup-0.2.0.exe` — Browser installer (upload separately if missing)
+- `/downloads/Maka-Setup-<version>.exe` — Windows studio installer (upload after each release; see `site/browser-manifest.json`)
