@@ -111,35 +111,35 @@
               <button type="button" class="studio-list-item" id="scene-gameplay" data-scene="gaming-cam" data-active="1">
                 <span class="studio-list-leading scene-icon" aria-hidden="true">🎮</span>
                 <span class="studio-list-text">Gameplay</span>
-                <span class="studio-list-menu" aria-hidden="true">⋯</span>
+                <span class="studio-list-menu studio-list-menu--static" aria-hidden="true">⋯</span>
               </button>
             </li>
             <li>
               <button type="button" class="studio-list-item" id="scene-starting" data-scene="starting-soon">
                 <span class="studio-list-leading scene-icon" aria-hidden="true">📄</span>
                 <span class="studio-list-text">Starting Soon</span>
-                <span class="studio-list-menu" aria-hidden="true">⋯</span>
+                <button type="button" class="studio-list-menu" data-scene-menu="starting-soon" aria-label="Scene options" title="Scene options">⋯</button>
               </button>
             </li>
             <li>
               <button type="button" class="studio-list-item" id="scene-chatting" data-scene="desk-only">
                 <span class="studio-list-leading scene-icon" aria-hidden="true">▶️</span>
                 <span class="studio-list-text">Just Chatting</span>
-                <span class="studio-list-menu" aria-hidden="true">⋯</span>
+                <button type="button" class="studio-list-menu" data-scene-menu="desk-only" aria-label="Scene options" title="Scene options">⋯</button>
               </button>
             </li>
             <li>
               <button type="button" class="studio-list-item" id="scene-intermission" data-scene="intermission">
                 <span class="studio-list-leading scene-icon" aria-hidden="true">⏸️</span>
                 <span class="studio-list-text">Intermission</span>
-                <span class="studio-list-menu" aria-hidden="true">⋯</span>
+                <button type="button" class="studio-list-menu" data-scene-menu="intermission" aria-label="Scene options" title="Scene options">⋯</button>
               </button>
             </li>
             <li>
               <button type="button" class="studio-list-item" id="scene-ending" data-scene="ending">
                 <span class="studio-list-leading scene-icon" aria-hidden="true">🏠</span>
                 <span class="studio-list-text">Ending Scene</span>
-                <span class="studio-list-menu" aria-hidden="true">⋯</span>
+                <button type="button" class="studio-list-menu" data-scene-menu="ending" aria-label="Scene options" title="Scene options">⋯</button>
               </button>
             </li>
             <li>
@@ -149,6 +149,16 @@
               </button>
             </li>
           </ul>
+          <div class="scene-image-panel" id="scene-image-panel" hidden>
+            <p class="scene-image-panel-label" id="scene-image-panel-label">Scene image</p>
+            <div class="scene-image-panel-row">
+              <button type="button" class="scene-image-btn" id="btn-scene-image-pick">Choose image…</button>
+              <button type="button" class="scene-image-btn scene-image-btn--ghost" id="btn-scene-image-clear" hidden>
+                Clear
+              </button>
+            </div>
+            <p class="scene-image-panel-hint" id="scene-image-panel-hint"></p>
+          </div>
         </div>
 
         <div class="studio-block">
@@ -233,6 +243,7 @@
               Program
               <span class="program-mode">• Live Output</span>
             </div>
+            <img id="program-scene-bg" class="program-scene-bg" alt="" hidden />
             <video id="program-video" autoplay muted playsinline hidden></video>
             <div class="program-cam" id="program-cam" hidden>
               <video id="program-cam-video" autoplay muted playsinline hidden></video>
@@ -430,6 +441,20 @@
           <button type="submit" value="cancel">Cancel</button>
         </div>
       </form>
+    </dialog>
+
+    <dialog id="scene-image-menu-dialog" class="scene-image-menu-dialog">
+      <menu class="scene-image-menu">
+        <li>
+          <button type="button" id="scene-image-menu-pick">Choose image…</button>
+        </li>
+        <li>
+          <button type="button" id="scene-image-menu-clear">Clear image</button>
+        </li>
+        <li>
+          <button type="button" id="scene-image-menu-cancel">Cancel</button>
+        </li>
+      </menu>
     </dialog>
 
     <dialog id="settings-dialog">

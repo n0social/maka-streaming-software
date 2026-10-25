@@ -3,6 +3,7 @@ import type { RelaySnapshot } from '../shared/relay-snapshot'
 import type { PhoneIceServer } from '../shared/phone-ice-servers'
 import type { PhonePairSnapshot, PhoneWebRtcSessionDescription } from '../shared/phone-pair'
 import type { EncodeProfileId } from '../shared/stream-encode-profiles'
+import type { SceneImageSceneId } from '../shared/scene-images'
 
 export type AppMode = 'studio' | 'browse'
 
@@ -36,7 +37,12 @@ export type AppSettings = {
   labMode: boolean
   onboardingComplete: boolean
   setupWizardComplete: boolean
+  sceneImages: Partial<Record<SceneImageSceneId, string>>
 }
+
+export type PickSceneImageResult =
+  | { canceled: true }
+  | { canceled: false; path: string; dataUrl: string }
 
 export type UpdateStatus = {
   state: 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error'
@@ -183,6 +189,8 @@ export type TabcastBridge = {
   popoutChat: (url?: string) => Promise<void>
   getSettings: () => Promise<AppSettings>
   setSettings: (partial: Partial<AppSettings>) => Promise<AppSettings>
+  pickSceneImageFile: () => Promise<PickSceneImageResult>
+  readSceneImageDataUrl: (filePath: string) => Promise<string | null>
   windowMinimize: () => Promise<void>
   windowMaximize: () => Promise<boolean>
   windowClose: () => Promise<void>
@@ -280,6 +288,8 @@ const api: TabcastBridge = {
   popoutChat: (url) => ipcRenderer.invoke('browser:popout-chat', url),
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setSettings: (partial) => ipcRenderer.invoke('settings:set', partial),
+  pickSceneImageFile: () => ipcRenderer.invoke('scene:pick-image'),
+  readSceneImageDataUrl: (filePath) => ipcRenderer.invoke('scene:read-image-data-url', filePath),
   windowMinimize: () => ipcRenderer.invoke('window:minimize'),
   windowMaximize: () => ipcRenderer.invoke('window:maximize'),
   windowClose: () => ipcRenderer.invoke('window:close'),

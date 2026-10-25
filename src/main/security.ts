@@ -1,6 +1,7 @@
 import type { AppSettings, SavedBrowseTab } from './settings-store'
 import { normalizeBrowseUrl } from '../shared/browse-url'
 import { isEncodeProfileId } from '../shared/stream-encode-profiles'
+import { coerceSceneImagesRecord } from './scene-image-io'
 
 const TAB_ID_RE = /^[a-zA-Z0-9_-]{1,64}$/
 const PRESET_IDS = new Set(['pin-twitch', 'pin-yt-studio', 'pin-yt-chat', 'pin-chat'])
@@ -46,6 +47,9 @@ export function coerceSettings(partial: unknown): Partial<AppSettings> {
   }
   if (typeof p.setupWizardComplete === 'boolean') {
     out.setupWizardComplete = p.setupWizardComplete
+  }
+  if (p.sceneImages !== undefined) {
+    out.sceneImages = coerceSceneImagesRecord(p.sceneImages)
   }
 
   return out

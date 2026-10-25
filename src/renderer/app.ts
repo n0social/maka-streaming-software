@@ -16,6 +16,12 @@ import {
   type EncodeProfileId,
 } from '../shared/stream-encode-profiles'
 import { isSceneStubId, SCENE_TEMPLATES, sceneStubPreset } from '../shared/scene-templates'
+import {
+  sceneImageMaskMode,
+  sceneSupportsImageUpload,
+  type SceneImageMaskMode,
+  type SceneImageSceneId,
+} from '../shared/scene-images'
 import { OVERLAY_LAYOUT_PRESETS, overlayPresetById } from '../shared/overlay-layout-presets'
 import { BROWSE_CAPTURE_SOURCE_ID } from '../shared/capture'
 import {
@@ -84,6 +90,16 @@ const programEmpty = document.getElementById('program-empty')!
 const programSceneCard = document.getElementById('program-scene-card')!
 const programSceneCardTitle = document.getElementById('program-scene-card-title')!
 const programSceneCardSubtitle = document.getElementById('program-scene-card-subtitle')!
+const programSceneBg = document.getElementById('program-scene-bg') as HTMLImageElement
+const sceneImagePanel = document.getElementById('scene-image-panel')!
+const sceneImagePanelLabel = document.getElementById('scene-image-panel-label')!
+const sceneImagePanelHint = document.getElementById('scene-image-panel-hint')!
+const btnSceneImagePick = document.getElementById('btn-scene-image-pick') as HTMLButtonElement
+const btnSceneImageClear = document.getElementById('btn-scene-image-clear') as HTMLButtonElement
+const sceneImageMenuDialog = document.getElementById('scene-image-menu-dialog') as HTMLDialogElement
+const sceneImageMenuPick = document.getElementById('scene-image-menu-pick') as HTMLButtonElement
+const sceneImageMenuClear = document.getElementById('scene-image-menu-clear') as HTMLButtonElement
+const sceneImageMenuCancel = document.getElementById('scene-image-menu-cancel') as HTMLButtonElement
 const programCam = document.getElementById('program-cam')!
 const programCamVideo = document.getElementById('program-cam-video') as HTMLVideoElement
 const programCamOffline = document.getElementById('program-cam-offline')!
@@ -178,6 +194,9 @@ const layerEnabled = {
 }
 
 let activeSceneTemplateId = 'gaming-cam'
+const sceneImagePaths: Partial<Record<SceneImageSceneId, string>> = {}
+const sceneImageDataUrlCache = new Map<string, string>()
+let sceneImageMenuTargetId: SceneImageSceneId | null = null
 /** Empty = follow the active scene template; set when user picks an overlay layout preset. */
 let activeOverlayPresetId = ''
 
@@ -293,11 +312,98 @@ function setMicMeterLevel(percent: number): void {
   micMeter.style.removeProperty('height')
 }
 
+function activeSceneImagePath(): string | undefined {
+  if (!sceneSupportsImageUpload(activeSceneTemplateId)) return undefined
+  return sceneImagePaths[activeSceneTemplateId]
+}
+
+function sceneImageMimeForPath(filePath: string): 'image/png' | 'image/jpeg' {
+  return filePath.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg'
+}
+
+function sceneImageRectForLayout(
+  layout: SceneLayout,
+  mode: SceneImageMaskMode,
+): { x: number; y: number; width: number; height: number } {
+  const { canvas, sources } = layout
+  if (mode === 'game-mask-only') {
+    const gameplay = sources.find((s) => s.id === 'gameplay')
+    if (gameplay) {
+      return {
+        x: gameplay.x,
+        y: gameplay.y,
+        width: gameplay.width,
+        height: gameplay.height,
+      }
+    }
+  }
+  return { x: 0, y: 0, width: canvas.width, height: canvas.height }
+}
+
+function hideProgramSceneBg(): void {
+  programSceneBg.hidden = true
+  programSceneBg.removeAttribute('src')
+}
+
+async function resolveSceneImageDataUrl(filePath: string): Promise<string | null> {
+  const cached = sceneImageDataUrlCache.get(filePath)
+  if (cached) return cached
+  const dataUrl = await window.tabcast.readSceneImageDataUrl(filePath)
+  if (dataUrl) sceneImageDataUrlCache.set(filePath, dataUrl)
+  return dataUrl
+}
+
+async function refreshProgramSceneBgLayer(): Promise<void> {
+  const mode = sceneImageMaskMode(activeSceneTemplateId)
+  const path = activeSceneImagePath()
+  if (!mode || !path) {
+    hideProgramSceneBg()
+    return
+  }
+  const dataUrl = await resolveSceneImageDataUrl(path)
+  if (!dataUrl) {
+    hideProgramSceneBg()
+    return
+  }
+  const layout = buildOutgoingSceneLayout()
+  const rect = sceneImageRectForLayout(layout, mode)
+  applySourceBox(programSceneBg, { id: 'scene-image', type: 'overlay', ...rect, zIndex: 0 }, layout.canvas)
+  programSceneBg.src = dataUrl
+  programSceneBg.hidden = false
+}
+
+function syncSceneImagePanel(): void {
+  if (!sceneSupportsImageUpload(activeSceneTemplateId)) {
+    sceneImagePanel.hidden = true
+    return
+  }
+  sceneImagePanel.hidden = false
+  const sceneId = activeSceneTemplateId
+  const path = sceneImagePaths[sceneId]
+  btnSceneImageClear.hidden = !path
+  const mode = sceneImageMaskMode(activeSceneTemplateId)
+  if (mode === 'game-mask-only') {
+    sceneImagePanelLabel.textContent = 'Just Chatting image'
+    sceneImagePanelHint.textContent =
+      'PNG/JPG replaces the gameplay layer only. Webcam stays above the image; chat and notification slots follow your overlay layout.'
+  } else {
+    sceneImagePanelLabel.textContent = 'Scene image'
+    sceneImagePanelHint.textContent =
+      'PNG/JPG covers the program area (game + webcam). Chat and notification regions stay visible when an overlay layout is active.'
+  }
+  if (path) {
+    const name = path.split(/[/\\]/).pop() ?? path
+    sceneImagePanelHint.textContent = `${sceneImagePanelHint.textContent} Current: ${name}`
+  }
+}
+
 function syncSceneProgramPresentation(): void {
   const stub = isSceneStubId(activeSceneTemplateId)
   const preset = sceneStubPreset(activeSceneTemplateId)
+  const hasSceneImage = Boolean(activeSceneImagePath())
+  syncSceneImagePanel()
 
-  if (stub && preset) {
+  if (stub && preset && !hasSceneImage) {
     programSceneCard.hidden = false
     programSceneCard.dataset.scene = activeSceneTemplateId
     programSceneCardTitle.textContent = preset.title
@@ -306,14 +412,30 @@ function syncSceneProgramPresentation(): void {
     programCam.hidden = true
     programBrowser.hidden = true
     programEmpty.hidden = true
+    hideProgramSceneBg()
     return
   }
 
   programSceneCard.hidden = true
   programSceneCard.dataset.scene = ''
-  const showGameplay = Boolean(programStream)
+
+  if (stub && hasSceneImage) {
+    programVideo.hidden = true
+    programCam.hidden = true
+    programBrowser.hidden = true
+    programEmpty.hidden = true
+    void refreshProgramSceneBgLayer()
+    return
+  }
+
+  const showGameplay = Boolean(programStream) && layerEnabled.game && !hasSceneImage
   programVideo.hidden = !showGameplay
-  programEmpty.hidden = showGameplay
+  programEmpty.hidden = showGameplay || hasSceneImage
+  if (hasSceneImage) {
+    void refreshProgramSceneBgLayer()
+  } else {
+    hideProgramSceneBg()
+  }
   updateProgramCamOverlay()
   updateProgramBrowserOverlay()
 }
@@ -573,7 +695,28 @@ function buildOutgoingSceneLayout(): SceneLayout {
   }
   if (!layerEnabled.browser) {
     layout.sources = layout.sources.filter((s) => s.id !== 'browser')
-  } else if (hasBrowser && !layout.sources.some((s) => s.id === 'browser')) {
+  }
+
+  layout.sources = layout.sources.filter((s) => s.id !== 'scene-image')
+  const imageMode = sceneImageMaskMode(activeSceneTemplateId)
+  const imagePath =
+    imageMode && sceneSupportsImageUpload(activeSceneTemplateId)
+      ? sceneImagePaths[activeSceneTemplateId]
+      : undefined
+  if (imagePath && imageMode) {
+    const rect = sceneImageRectForLayout(layout, imageMode)
+    layout.sources.push({
+      id: 'scene-image',
+      type: 'overlay',
+      label: 'Scene image',
+      ...rect,
+      zIndex: imageMode === 'game-mask-only' ? 0 : 1,
+      assetPath: imagePath,
+      assetMime: sceneImageMimeForPath(imagePath),
+    })
+  }
+
+  if (hasBrowser && !layout.sources.some((s) => s.id === 'browser')) {
     const chat = layout.sources.find((s) => s.id === 'chat')
     if (chat) {
       layout.sources.push({
@@ -605,7 +748,11 @@ function buildOutgoingSceneLayout(): SceneLayout {
 }
 
 function refreshProgramPreviewLayout(): void {
-  applyProgramPreviewLayout(buildOutgoingSceneLayout())
+  const layout = buildOutgoingSceneLayout()
+  applyProgramPreviewLayout(layout)
+  if (activeSceneImagePath()) {
+    void refreshProgramSceneBgLayer()
+  }
 }
 
 function syncOverlaySourceRow(): void {
@@ -2613,6 +2760,9 @@ void window.tabcast.getSettings().then((s) => {
   const profile = normalizeEncodeProfileId(s.bitrateProfile)
   syncEncodeProfileSelects(profile)
   updateProgramStats()
+  Object.assign(sceneImagePaths, s.sceneImages ?? {})
+  syncSceneImagePanel()
+  syncSceneProgramPresentation()
 })
 
 function formatDiag(events: DiagEvent[]): string {
@@ -2991,6 +3141,35 @@ function highlightSceneSelection(sceneTemplate: string): void {
   }
 }
 
+async function persistSceneImage(sceneId: SceneImageSceneId, filePath: string | null): Promise<void> {
+  const previous = sceneImagePaths[sceneId]
+  if (filePath) {
+    sceneImagePaths[sceneId] = filePath
+  } else {
+    delete sceneImagePaths[sceneId]
+    if (previous) sceneImageDataUrlCache.delete(previous)
+  }
+  await window.tabcast.setSettings({
+    sceneImages: { [sceneId]: filePath ?? '' },
+  })
+  if (sceneId === activeSceneTemplateId) {
+    syncSceneProgramPresentation()
+    refreshProgramPreviewLayout()
+    if (isSessionLive()) {
+      await pushSceneLayout().catch(() => undefined)
+    }
+  } else {
+    syncSceneImagePanel()
+  }
+}
+
+async function chooseSceneImage(sceneId: SceneImageSceneId): Promise<void> {
+  const picked = await window.tabcast.pickSceneImageFile()
+  if (picked.canceled) return
+  sceneImageDataUrlCache.set(picked.path, picked.dataUrl)
+  await persistSceneImage(sceneId, picked.path)
+}
+
 // Scene selection handler
 async function selectScene(sceneTemplate: string): Promise<void> {
   activeSceneTemplateId = sceneTemplate
@@ -3032,6 +3211,45 @@ if (sceneIntermission) {
 if (sceneEnding) {
   sceneEnding.addEventListener('click', () => selectScene('ending'))
 }
+
+document.querySelectorAll<HTMLButtonElement>('[data-scene-menu]').forEach((btn) => {
+  btn.addEventListener('click', (event) => {
+    event.stopPropagation()
+    const id = btn.dataset.sceneMenu
+    if (!id || !sceneSupportsImageUpload(id)) return
+    sceneImageMenuTargetId = id
+    sceneImageMenuClear.disabled = !sceneImagePaths[id]
+    sceneImageMenuDialog.showModal()
+  })
+})
+
+sceneImageMenuPick.addEventListener('click', () => {
+  sceneImageMenuDialog.close()
+  const target = sceneImageMenuTargetId
+  if (!target) return
+  void chooseSceneImage(target)
+})
+
+sceneImageMenuClear.addEventListener('click', () => {
+  sceneImageMenuDialog.close()
+  const target = sceneImageMenuTargetId
+  if (!target) return
+  void persistSceneImage(target, null)
+})
+
+sceneImageMenuCancel.addEventListener('click', () => {
+  sceneImageMenuDialog.close()
+})
+
+btnSceneImagePick.addEventListener('click', () => {
+  if (!sceneSupportsImageUpload(activeSceneTemplateId)) return
+  void chooseSceneImage(activeSceneTemplateId)
+})
+
+btnSceneImageClear.addEventListener('click', () => {
+  if (!sceneSupportsImageUpload(activeSceneTemplateId)) return
+  void persistSceneImage(activeSceneTemplateId, null)
+})
 
 const addSceneUnavailableTitle = 'Custom scenes are not available in this build yet'
 if (btnAddScene) {

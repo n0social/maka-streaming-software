@@ -47,6 +47,7 @@ import {
   installUpdate,
 } from './auto-update'
 import { PhonePairServer, phoneWebRtcIceServersForSession } from './phone-pair'
+import { pickSceneImageFile, readSceneImageDataUrl } from './scene-image-io'
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -565,6 +566,18 @@ function registerIpc(): void {
     if (!studioOk(event)) return settings
     settings = saveSettings(coerceSettings(partial))
     return settings
+  })
+
+  ipcMain.handle('scene:pick-image', async (event) => {
+    if (!studioOk(event)) return { canceled: true }
+    const win = BrowserWindow.fromWebContents(event.sender)
+    return pickSceneImageFile(win)
+  })
+
+  ipcMain.handle('scene:read-image-data-url', (event, filePath: unknown) => {
+    if (!studioOk(event)) return null
+    if (typeof filePath !== 'string' || !filePath.trim()) return null
+    return readSceneImageDataUrl(filePath.trim())
   })
 
   ipcMain.handle('browser:navigate', (event, raw: unknown) => {

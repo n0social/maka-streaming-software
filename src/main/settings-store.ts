@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { app } from 'electron'
 import type { EncodeProfileId } from '../shared/stream-encode-profiles'
+import { isSceneImageSceneId, type SceneImageSceneId } from '../shared/scene-images'
 import { coerceSettings, isValidTabId, sanitizeSavedTabs } from './security'
 
 export type AppSettings = {
@@ -12,6 +13,8 @@ export type AppSettings = {
   labMode: boolean
   onboardingComplete: boolean
   setupWizardComplete: boolean
+  /** Absolute paths to PNG/JPG scene backgrounds keyed by scene template id. */
+  sceneImages: Partial<Record<SceneImageSceneId, string>>
 }
 
 export type SavedBrowseTab = {
@@ -34,6 +37,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   labMode: false,
   onboardingComplete: false,
   setupWizardComplete: false,
+  sceneImages: {},
 }
 
 function storeDir(): string {
@@ -62,7 +66,16 @@ export function loadSettings(): AppSettings {
 }
 
 export function saveSettings(partial: Partial<AppSettings>): AppSettings {
-  const next = { ...loadSettings(), ...partial }
+  const prev = loadSettings()
+  let sceneImages = { ...prev.sceneImages }
+  if (partial.sceneImages) {
+    for (const [key, value] of Object.entries(partial.sceneImages)) {
+      if (!isSceneImageSceneId(key)) continue
+      if (!value) delete sceneImages[key]
+      else sceneImages[key] = value
+    }
+  }
+  const next = { ...prev, ...partial, sceneImages }
   writeJson('settings.json', next)
   return next
 }

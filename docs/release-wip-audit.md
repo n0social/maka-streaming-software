@@ -23,8 +23,9 @@ This pass separates **working** studio controls from **intentionally disabled** 
 | Stream keys (Twitch/YouTube/custom) | **Working** | Platform chips + `#platform-key-dialog`; keys in relay RAM |
 | Encode profile (`#program-quality-select`) | **Working** | Drives relay layout canvas + stats bar Mbps/FPS |
 | Scene: Gameplay (`gaming-cam`) | **Working** | Game + cam layers; relay layout from scene template |
-| Scene: Just Chatting (`desk-only`) | **Working** | Cam-only layout; go live without display capture if webcam on |
-| Scene: Starting Soon / Intermission / Ending | **Working (preview)** | Branded `#program-scene-card`; relay empty sources on stub |
+| Scene: Just Chatting (`desk-only`) | **Working** | Cam-only layout; optional PNG/JPG masks gameplay layer only (`#program-scene-bg`) |
+| Scene: Starting Soon / Intermission / Ending | **Working (preview)** | Branded card or uploaded full-program image; relay gets `scene-image` overlay metadata |
+| Scene image uploads | **Working (local preview)** | `scene:pick-image` IPC; settings `sceneImages`; relay/WHIP unchanged until image compositing |
 | Overlay layout presets | **Working** | Optional; default is **Follow scene layout** (not forced classic-gaming) |
 | Game Capture picker | **Working** | `listCaptureSources` displays/windows |
 | Webcam / mic pickers | **Working** | Device list + phone cam options when available |
@@ -39,18 +40,19 @@ This pass separates **working** studio controls from **intentionally disabled** 
 | Add Scene (+) | **Disabled** | Custom scene editor not implemented |
 | Stream viewer count | **Disabled** | Shows `Viewers: N/A` while live (no platform API) |
 | Chat / notification overlay slots | **Placeholder** | Layout regions only; labeled in preview |
-| Scene row `⋯` menus | **Visual only** | No actions wired |
+| Scene row `⋯` menus | **Working** | Image pick/clear on Just Chatting + holding scenes |
 | Studio Mode dropdown | **Disabled** | Single program output mode |
 
 ## Fixed in this pass
 
-1. **Scene templates ignored by default** — `activeOverlayPresetId` no longer defaults to `classic-gaming`; scenes drive relay layout until the user picks an overlay preset. Overlay picker adds **Follow scene layout**.
-2. **Stub scenes on relay** — `buildOutgoingSceneLayout` applies stub templates (empty sources) even when an overlay was previously selected; selecting a scene clears the overlay preset.
-3. **Desk-only go live** — Webcam-only sessions can publish WHIP without a display/window capture.
-4. **Stream info** — Destination summary and encode category update from real UI state; live duration uses a local timer (not fabricated viewers).
-5. **Add Scene** — Buttons disabled with explicit tooltip (no console-only noop).
-6. **Mic mixer gear** — Opens/focuses the Microphone source picker.
-7. **Sources refresh control** — Icon/title corrected (refresh lists, not “add source”).
+1. **Per-scene PNG/JPG** — Upload via scene `⋯` or sidebar; persisted in `sceneImages`; program preview on `#program-scene-bg`; `SceneLayout.sources` includes `scene-image` with `assetPath` (relay compositing TBD).
+2. **Scene templates ignored by default** — `activeOverlayPresetId` no longer defaults to `classic-gaming`; scenes drive relay layout until the user picks an overlay preset. Overlay picker adds **Follow scene layout**.
+3. **Stub scenes on relay** — `buildOutgoingSceneLayout` applies stub templates (empty sources) even when an overlay was previously selected; selecting a scene clears the overlay preset.
+4. **Desk-only go live** — Webcam-only sessions can publish WHIP without a display/window capture.
+5. **Stream info** — Destination summary and encode category update from real UI state; live duration uses a local timer (not fabricated viewers).
+6. **Add Scene** — Buttons disabled with explicit tooltip (no console-only noop).
+7. **Mic mixer gear** — Opens/focuses the Microphone source picker.
+8. **Sources refresh control** — Icon/title corrected (refresh lists, not “add source”).
 
 ## Verification run
 

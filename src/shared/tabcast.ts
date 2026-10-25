@@ -62,6 +62,9 @@ export type SceneSource = {
   width: number
   height: number
   zIndex: number
+  /** Local image path for static scene backgrounds (relay may ignore until compositing supports it). */
+  assetPath?: string
+  assetMime?: 'image/png' | 'image/jpeg'
 }
 
 export type SceneLayout = {
