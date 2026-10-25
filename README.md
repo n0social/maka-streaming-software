@@ -14,11 +14,11 @@ Maka is **free streaming software** for Windows: a desktop **Electron studio** f
 
 The current **unsigned** Windows installer on GitHub is **v0.2.4**. Recent builds include the **phone camera/mic add-on** (QR pairing, independent camera and mic, 60-second rejoin, STUN and optional TURN) and **live stream recovery** (a bad stream key stops the stream immediately, network blips retry longer, WHIP stall watchdog, backup RTMP ingest).
 
-`main` may be a few documentation commits ahead of the tag. The download and `git checkout v0.2.4` match the published installer; building `main` is the same app plus any commits made after the tag.
+`main` may be a few documentation commits ahead of the tag. The download and `git checkout maka.streaming.v.01` match the published installer; building `main` is the same app plus any commits made after the tag.
 
 ### Option A — Download (Windows)
 
-1. Download **[Maka-Setup-0.2.4.exe](https://github.com/n0social/maka-streaming-software/releases/download/v0.2.4/Maka-Setup-0.2.4.exe)** from the [v0.2.4 release](https://github.com/n0social/maka-streaming-software/releases/tag/v0.2.4).
+1. Download **[Maka-Setup-0.2.4.exe](https://github.com/n0social/maka-streaming-software/releases/download/maka.streaming.v.01/Maka-Setup-0.2.4.exe)** from the [maka.streaming.v.01 release](https://github.com/n0social/maka-streaming-software/releases/tag/maka.streaming.v.01) (installer **v0.2.4**).
 2. Run the installer on **Windows 10 or 11** (x64).
 3. **Windows SmartScreen** may warn because the build is **unsigned** — that is expected until code signing is in place.
 
@@ -33,7 +33,7 @@ npm run fetch:relay
 npm run dev
 ```
 
-On Windows, `npm run dist` produces the NSIS installer. Use **`v0.2.4`** if you need a tree that exactly matches the published installer above.
+On Windows, `npm run dist` produces the NSIS installer. Use tag **`maka.streaming.v.01`** if you need a tree that exactly matches the published installer above.
 
 ---
 
