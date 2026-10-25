@@ -23,6 +23,11 @@ type RenderOptions = {
 }
 
 export function initMarketplace(api: TabcastBridge, ui: MarketplaceUi): void {
+  if (!ui.sidebarList) {
+    console.error('initMarketplace: #marketplace-sidebar-list is missing from the DOM')
+    return
+  }
+
   const rerender = () => void renderAllLists(api, ui)
 
   document.getElementById('marketplace-sidebar-refresh')?.addEventListener('click', () => {

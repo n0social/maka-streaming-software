@@ -3316,11 +3316,28 @@ window.tabcast.onTitle((title) => {
   document.title = title ? `${title} · Maka — Browser` : 'Maka — Browser'
 })
 
+initMarketplace(window.tabcast, {
+  sidebarList: document.getElementById('marketplace-sidebar-list')!,
+  dialog: {
+    dialog: document.getElementById('marketplace-dialog') as HTMLDialogElement,
+    list: document.getElementById('marketplace-list')!,
+  },
+  onRefreshPanels: () => {
+    void renderAddonPanels()
+  },
+  onToast: (message, isError) => {
+    if (isError) setDestError(message)
+    else {
+      setDestError(null)
+      destHint.textContent = message
+    }
+  },
+})
+
 syncDestinationInputs()
 syncProgramVideoSurface()
 updateStudioMixControls()
 void window.tabcast.getMode().then(applyMode)
-void window.tabcast.getRelay().then(renderRelay)
 window.tabcast.onRelayUpdate(handleRelayLiveRecovery)
 void window.tabcast.getBrowserState().then((state) => {
   if (state) urlInput.value = state.url
@@ -3351,24 +3368,6 @@ subscribePhoneTracks((snap) => {
 window.tabcast.onAddonStudioToast((message) => {
   setDestError(null)
   destHint.textContent = message
-})
-
-initMarketplace(window.tabcast, {
-  sidebarList: document.getElementById('marketplace-sidebar-list')!,
-  dialog: {
-    dialog: document.getElementById('marketplace-dialog') as HTMLDialogElement,
-    list: document.getElementById('marketplace-list')!,
-  },
-  onRefreshPanels: () => {
-    void renderAddonPanels()
-  },
-  onToast: (message, isError) => {
-    if (isError) setDestError(message)
-    else {
-      setDestError(null)
-      destHint.textContent = message
-    }
-  },
 })
 
 const onboardingTour = new OnboardingTour(
@@ -4080,3 +4079,5 @@ syncOverlaySourceRow()
 refreshProgramPreviewLayout()
 updateGoLiveLabel(false)
 updateStreamInfo(false)
+
+void window.tabcast.getRelay().then(renderRelay)

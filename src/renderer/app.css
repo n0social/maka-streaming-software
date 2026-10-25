@@ -1860,12 +1860,18 @@ body:not([data-mode='browse']) #browsetabs {
 
 .marketplace-sidebar-list {
   max-height: min(42vh, 340px);
+  min-height: 4.5rem;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
   padding-right: 0.12rem;
   scrollbar-gutter: stable;
+}
+
+.marketplace-sidebar-list .marketplace-card {
+  border-color: rgba(26, 20, 8, 0.12);
+  background: rgba(255, 255, 255, 0.72);
 }
 
 .marketplace-sidebar-list .marketplace-card-compact {
