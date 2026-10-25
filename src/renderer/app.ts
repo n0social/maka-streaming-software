@@ -264,6 +264,7 @@ function applyMode(mode: AppMode): void {
 
   if (brandTag) {
     brandTag.textContent = browseOpen ? 'Browser Mode' : 'Streaming studio'
+    brandTag.hidden = !browseOpen
   }
   document.title = browseOpen ? 'Maka — Browser' : 'Maka — Streaming'
 

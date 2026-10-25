@@ -326,6 +326,10 @@ function createMainWindow(): BrowserWindow {
 
   win.once('ready-to-show', () => {
     win.show()
+    const captureMode = process.env.MAKA_CAPTURE_MODE
+    if (captureMode === 'browse' || captureMode === 'studio') {
+      appMode = captureMode
+    }
     setAppMode(appMode)
     const capturePath = process.env.MAKA_CAPTURE_PATH
     if (capturePath) {
