@@ -48,7 +48,8 @@ Living checklist of renderer ↔ relay ↔ capture wiring for the studio redesig
 | Element | Status | Wiring |
 | --- | --- | --- |
 | `#program-output-mode` | **OK** | Studio ↔ Browser; `startupMode`; hidden in browse/settings CSS. |
-| Metrics (right) | **OK** | Dropped / FPS / latency placeholder / Mbps in `updateProgramStats`. |
+| Metrics (right) | **OK** | Dropped / FPS / latency / Mbps in `updateProgramStats`. Dropped: relay `droppedFrames` when set, else WHIP `outbound-rtp` `framesDropped` while live. Latency: relay `latencyMs` when set, else WHIP RTT (`parseWhipStreamMetrics` via `startWhipStatsSampler`). Mbps: relay `bitrateMbps` when live, else encode target. |
+| Stream info viewers | **Partial** | `#stream-viewers`: `Offline` when not live; live shows relay `viewerCount` / `viewers` or per-platform `platforms.*.viewers` when TabcastRelay reports them; otherwise `Viewers: —` (no fabricated counts). |
 | Twitch / YouTube chips | **OK** | Open `#platform-key-dialog`; persist `streamDestinations`. |
 | `#program-quality-select` | **OK** | Only encode dropdown in layout; default option in HTML; no stray `#profile-select`. |
 | Encode persistence | **OK** | Stats bar, wizard, Settings → Streaming share `bitrateProfile`. |
@@ -77,9 +78,10 @@ Living checklist of renderer ↔ relay ↔ capture wiring for the studio redesig
 
 | Surface | Status | Wiring |
 | --- | --- | --- |
-| Studio entry | **OK** | `#btn-open-marketplace` in right sidebar opens `#marketplace-dialog` (`showModal`). |
-| Modal catalog | **OK** | Scrollable `#marketplace-list`; install/enable/uninstall via `marketplace.ts` → `paintList`. |
-| Modal refresh / close | **OK** | `#marketplace-refresh`, `#marketplace-close` in dialog footer. |
+| Sidebar preview | **OK** | `#marketplace-sidebar-list` under Stream Controls — compact scrollable list (~4 rows visible); same catalog snapshot as modal via `paintCatalogSurfaces()` in `marketplace.ts`. |
+| Studio entry | **OK** | `#btn-open-marketplace` (**Browse addons**) opens `#marketplace-dialog` (`showModal`). |
+| Modal catalog | **OK** | Scrollable `#marketplace-list` (full cards + sections); install/enable/uninstall shared with preview. |
+| Modal refresh / close | **OK** | `#marketplace-refresh`, `#marketplace-close` in dialog footer; refresh repaints preview + modal. |
 | `npm run verify:addons` | **OK** | CI gate; `docs/addon-validation-report.md`. |
 
 ## Audio + Stream Audio
@@ -138,8 +140,7 @@ Living checklist of renderer ↔ relay ↔ capture wiring for the studio redesig
 ## Intentional stubs (unchanged)
 
 - Virtual camera driver not bundled.
-- Stats latency `—`; Stream Info viewer count N/A.
-- Marketplace modal kept but not promoted in sidebar.
+- Stream Info viewer count when relay does not expose platform APIs (UI shows `Viewers: —` while live).
 - Linux desktop/game capture unavailable (meters stub).
 - Stream title/category API placeholders on Stream Info card.
 

@@ -2025,7 +2025,86 @@ body:not([data-mode='settings']) .settings-view {
 }
 
 .studio-block-marketplace h2 {
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.marketplace-sidebar-preview {
+  --marketplace-preview-row: 2.35rem;
+  max-height: calc(var(--marketplace-preview-row) * 4.5);
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin-bottom: 0.38rem;
+  padding: 0.28rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  scrollbar-width: thin;
+  scrollbar-color: var(--gold-light) var(--champagne);
+}
+
+.marketplace-sidebar-preview .marketplace-card--compact {
+  padding: 0.38rem 0.45rem;
+  border-radius: 0.45rem;
+  border-color: rgba(201, 162, 39, 0.22);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.marketplace-sidebar-preview .marketplace-card--compact.featured {
+  border-color: rgba(201, 162, 39, 0.45);
+  background: linear-gradient(135deg, rgba(255, 252, 245, 0.95), rgba(246, 243, 236, 0.9));
+}
+
+.marketplace-sidebar-preview .marketplace-card-head strong {
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+
+.marketplace-sidebar-preview .marketplace-meta {
+  font-size: 0.62rem;
+}
+
+.marketplace-sidebar-preview .marketplace-badge {
+  font-size: 0.55rem;
+  padding: 0.1rem 0.32rem;
+}
+
+.marketplace-sidebar-preview .marketplace-card-blurb {
+  margin: 0.12rem 0 0;
+  font-size: 0.65rem;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.marketplace-sidebar-preview .marketplace-card-actions {
+  gap: 0.25rem;
+  margin-top: 0.2rem;
+}
+
+.marketplace-sidebar-preview .marketplace-card-actions button {
+  font-size: 0.65rem;
+  padding: 0.18rem 0.42rem;
+}
+
+.marketplace-sidebar-preview .marketplace-status {
+  font-size: 0.65rem;
+  color: var(--muted);
+}
+
+.marketplace-sidebar-preview .marketplace-preview-empty {
+  margin: 0.25rem 0;
+  font-size: 0.68rem;
+  text-align: center;
+}
+
+.btn-open-marketplace {
+  margin-top: 0.05rem;
 }
 
 .btn-open-marketplace .btn-icon {
