@@ -296,21 +296,6 @@
           </ul>
         </div>
 
-        <div class="studio-block studio-block-compact studio-block-feedback">
-          <header class="studio-block-head">
-            <h2>Feedback</h2>
-          </header>
-          <button type="button" class="btn-block btn-secondary" id="btn-studio-feedback">Send feedback</button>
-          <label class="check studio-feedback-optin">
-            <input type="checkbox" id="studio-diagnostics-opt-in" />
-            Help us collect information
-          </label>
-          <p class="hint tight studio-feedback-hint">
-            Optional diagnostics (app version, OS, relay errors). Off by default —
-            <a href="#" id="feedback-privacy-link" rel="noopener">privacy</a>.
-          </p>
-        </div>
-
         <footer class="studio-footer">
           <span class="studio-status-dot" id="studio-status-dot" data-state="ok" aria-hidden="true"></span>
           <span id="studio-status-text">All systems nominal</span>
@@ -655,40 +640,6 @@
         </div>
       </section>
     </div>
-
-    <dialog id="feedback-dialog" class="platform-key-dialog feedback-dialog">
-      <form method="dialog" id="feedback-form" class="platform-key-form">
-        <h2>Feedback</h2>
-        <p class="hint tight">
-          Your message is saved under app data on this PC. Nothing is emailed automatically — use Send, then paste the copied text into GitHub or email.
-        </p>
-        <label class="field-label" for="feedback-message">Message</label>
-        <textarea
-          id="feedback-message"
-          class="feedback-message-input"
-          rows="5"
-          maxlength="8000"
-          required
-          placeholder="What happened? What would you like to see improved?"
-        ></textarea>
-        <label class="field-label" for="feedback-email">Email (optional)</label>
-        <input
-          id="feedback-email"
-          class="key-input"
-          type="email"
-          autocomplete="email"
-          placeholder="you@example.com"
-          maxlength="200"
-        />
-        <p class="hint tight" id="feedback-status" role="status"></p>
-        <div class="row platform-key-dialog-actions">
-          <button type="submit" value="send" class="primary" id="feedback-send">Send</button>
-          <button type="button" class="btn-ghost" id="feedback-open-github">Open GitHub issue</button>
-          <button type="button" class="btn-ghost" id="feedback-open-email">Email support</button>
-          <button type="submit" value="cancel">Cancel</button>
-        </div>
-      </form>
-    </dialog>
 
     <dialog id="platform-key-dialog" class="platform-key-dialog">
       <form method="dialog" id="platform-key-form" class="platform-key-form">

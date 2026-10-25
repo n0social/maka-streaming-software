@@ -120,3 +120,5 @@ More detail: `docs/redesign-references/README.md`.
 ## Next session
 
 Continue section by section against `docs/readme-hero.png`. Do not flip the mixer back to vertical bars or tall towers. Do not repaint the studio chrome black to match an empty program monitor.
+
+There is no in-app feedback or analytics opt-in UI; see `docs/privacy-and-feedback.md`.

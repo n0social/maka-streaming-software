@@ -52,12 +52,7 @@ export type AppSettings = {
   sceneImages: Partial<Record<string, string>>
   customScenes: Array<{ id: string; name: string }>
   streamDestinations: StreamDestinationSettings
-  diagnosticsOptIn: boolean
 }
-
-export type SubmitFeedbackResult =
-  | { ok: true; logPath: string; clipboardText: string; issueUrl: string }
-  | { ok: false; error: string }
 
 export type AppVersionInfo = {
   appVersion: string
@@ -231,7 +226,6 @@ export type TabcastBridge = {
   popoutChat: (url?: string) => Promise<void>
   getSettings: () => Promise<AppSettings>
   setSettings: (partial: Partial<AppSettings>) => Promise<AppSettings>
-  submitFeedback: (payload: { message: string; email?: string }) => Promise<SubmitFeedbackResult>
   openExternal: (url: string) => Promise<void>
   pickSceneImageFile: () => Promise<PickSceneImageResult>
   readSceneImageDataUrl: (filePath: string) => Promise<string | null>
@@ -344,7 +338,6 @@ const api: TabcastBridge = {
   popoutChat: (url) => ipcRenderer.invoke('browser:popout-chat', url),
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setSettings: (partial) => ipcRenderer.invoke('settings:set', partial),
-  submitFeedback: (payload) => ipcRenderer.invoke('feedback:submit', payload),
   openExternal: (url) => ipcRenderer.invoke('shell:open-external', url),
   pickSceneImageFile: () => ipcRenderer.invoke('scene:pick-image'),
   readSceneImageDataUrl: (filePath) => ipcRenderer.invoke('scene:read-image-data-url', filePath),
