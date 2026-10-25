@@ -5,16 +5,16 @@
   "releaseUrl": "https://github.com/n0social/maka-streaming-software/releases/tag/maka.streaming.v.01",
   "ciWorkflow": ".github/workflows/release.yml",
   "ciRun": "https://github.com/n0social/maka-streaming-software/actions/runs/40239100242",
-  "packageVersion": "0.2.4-redesign-wip",
+  "packageVersion": "0.2.4",
   "assets": [
     {
-      "name": "Maka-Setup-0.2.4-redesign-wip.exe",
+      "name": "Maka-Setup-0.2.4.exe",
       "size": 190353856,
       "sha256": "b6de9c4a3325b2cfd5c11f989d86ac157fbdce6714b5142461eb51c192299a63",
       "required": true
     },
     {
-      "name": "Maka-Setup-0.2.4-redesign-wip.exe.blockmap",
+      "name": "Maka-Setup-0.2.4.exe.blockmap",
       "size": 199256,
       "sha256": "91992a8418c50c14e613cccc1d057725904a445222effdd186b724374ca3c2b2",
       "required": false
