@@ -4,11 +4,11 @@
 
 | Item | Value |
 | --- | --- |
-| CI tag | `v0.2.4-redesign-wip` (triggers `.github/workflows/release.yml`) |
-| Annotated WIP pointer | `0.2.4-redesign-(wip)` (same redesign line; may lag CI tag) |
+| CI tag | `v0.2.4-redesign-wip` @ `7def600` (triggers `.github/workflows/release.yml` on `v*` tags) |
+| Annotated WIP pointer | `0.2.4-redesign-(wip)` @ `dc95a99` (older snapshot; CI tag includes later audit commit `eecf690`) |
 | Installer artifact | `Maka-Setup-0.2.4-redesign-wip.exe` |
-| Draft release | _(filled in after CI — see GitHub Releases)_ |
-| CI run | _(filled in after push)_ |
+| Draft release | https://github.com/n0social/maka-streaming-software/releases/tag/untagged-712689142e449c1caeb2 (title: **Studio redesign WIP (0.2.4)**) |
+| CI run | https://github.com/n0social/maka-streaming-software/actions/runs/40216704711 |
 
 Tag: `0.2.4-redesign-(wip)` (see git tags).
 
