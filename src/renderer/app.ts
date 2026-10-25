@@ -3529,8 +3529,6 @@ const programStats = document.getElementById('program-stats')
 const statDropped = document.getElementById('stat-dropped')
 const statFps = document.getElementById('stat-fps')
 const statLatency = document.getElementById('stat-latency')
-const statStreamHealth = document.getElementById('stat-stream-health')
-const statHealthLabel = document.getElementById('stat-health-label')
 const statBitrate = document.getElementById('stat-bitrate')
 
 function highlightSceneSelection(sceneTemplate: string): void {
@@ -3879,33 +3877,6 @@ function relayObservedBitrateMbps(snapshot?: RelaySnapshot | null): number | und
   return typeof raw === 'number' && Number.isFinite(raw) && raw > 0 ? raw : undefined
 }
 
-type StreamHealthUiState = 'ok' | 'starting' | 'error' | 'offline'
-
-function streamHealthUi(snapshot?: RelaySnapshot | null): { state: StreamHealthUiState; label: string } {
-  const live = isSessionLive()
-  if (live && liveReconnecting) {
-    return { state: 'starting', label: 'Starting' }
-  }
-  if (live && liveRecoveryExhausted) {
-    return { state: 'error', label: 'Error' }
-  }
-  const lifecycle = snapshot?.lifecycle
-  const relayStatus = snapshot?.status?.status
-  if (live || lifecycle === 'live' || relayStatus === 'live') {
-    return { state: 'ok', label: 'OK' }
-  }
-  if (lifecycle === 'starting' || relayStatus === 'starting') {
-    return { state: 'starting', label: 'Starting' }
-  }
-  if (lifecycle === 'error' || relayStatus === 'error' || snapshot?.error) {
-    return { state: 'error', label: 'Error' }
-  }
-  if (lifecycle === 'ready') {
-    return { state: 'ok', label: 'OK' }
-  }
-  return { state: 'offline', label: 'Standby' }
-}
-
 function updateProgramStats(snapshot?: RelaySnapshot | null): void {
   const profile = selectedProfile()
   const spec = encodeProfileSpec(profile)
@@ -3932,11 +3903,6 @@ function updateProgramStats(snapshot?: RelaySnapshot | null): void {
     programQualitySelect.title = sessionLive
       ? `${spec.menuLabel} · transmitting at ${formatMbpsLabel(displayMbps)}`
       : `${spec.menuLabel} · ${formatMbpsLabel(targetMbps)} target`
-  }
-  if (statStreamHealth && statHealthLabel) {
-    const health = streamHealthUi(snapshot)
-    statStreamHealth.dataset.state = health.state
-    statHealthLabel.textContent = health.label
   }
 }
 
