@@ -79,9 +79,10 @@ Living checklist of renderer ↔ relay ↔ capture wiring for the studio redesig
 
 | Surface | Status | Wiring |
 | --- | --- | --- |
-| Studio entry | **OK** | `#btn-open-marketplace` in right sidebar opens `#marketplace-dialog` (`showModal`). |
-| Modal catalog | **OK** | Scrollable `#marketplace-list`; install/enable/uninstall via `marketplace.ts` → `paintList`. |
-| Modal refresh / close | **OK** | `#marketplace-refresh`, `#marketplace-close` in dialog footer. |
+| Sidebar preview | **OK** | `#marketplace-sidebar-list` under Stream Controls — compact scrollable list (~4 rows visible); same catalog snapshot as modal via `paintCatalogSurfaces()` in `marketplace.ts`. |
+| Studio entry | **OK** | `#btn-open-marketplace` (**Browse addons**) opens `#marketplace-dialog` (`showModal`). |
+| Modal catalog | **OK** | Scrollable `#marketplace-list` (full cards + sections); install/enable/uninstall shared with preview. |
+| Modal refresh / close | **OK** | `#marketplace-refresh`, `#marketplace-close` in dialog footer; refresh repaints preview + modal. |
 | `npm run verify:addons` | **OK** | CI gate; `docs/addon-validation-report.md`. |
 
 ## Audio + Stream Audio
@@ -141,7 +142,6 @@ Living checklist of renderer ↔ relay ↔ capture wiring for the studio redesig
 
 - Virtual camera **device** output not bundled (preview compositor + OBS fallback UX only).
 - Stream Info viewer count when relay does not expose platform APIs (UI shows `Viewers: —` while live).
-- Marketplace modal kept but not promoted in sidebar.
 - Linux desktop/game capture unavailable (meters stub).
 - Stream title/category: UI + `/config` wired; v0.1.0 relay has no platform metadata APIs.
 
