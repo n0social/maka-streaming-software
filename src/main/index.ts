@@ -2,6 +2,7 @@ import {
   app,
   BrowserWindow,
   desktopCapturer,
+  dialog,
   ipcMain,
   protocol,
   session,
@@ -47,6 +48,10 @@ import {
   installUpdate,
 } from './auto-update'
 import { PhonePairServer, phoneWebRtcIceServersForSession } from './phone-pair'
+import { getVirtualCameraCapability } from './virtual-camera'
+import { pickSceneImageFile, readSceneImageDataUrl } from './scene-image-io'
+import { saveRecording } from './recording-io'
+import { listGpuOptions } from './gpu-info'
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -71,7 +76,9 @@ let relayWasReady = false
 
 let mainWindow: BrowserWindow | null = null
 let chatWindow: BrowserWindow | null = null
-let appMode: 'studio' | 'browse' = 'studio'
+type ShellMode = 'studio' | 'browse' | 'settings'
+let appMode: ShellMode = 'studio'
+let workspaceBeforeSettings: 'studio' | 'browse' = 'studio'
 let settings = loadSettings()
 let quitInProgress = false
 let quitReadyResolve: (() => void) | null = null
@@ -160,6 +167,12 @@ function loadAppUi(win: BrowserWindow): void {
 }
 
 function layoutBrowserPane(win: BrowserWindow): void {
+  if (appMode === 'settings') {
+    browse.setVisible(false)
+    browse.setBounds({ x: 0, y: 0, width: 0, height: 0 })
+    return
+  }
+
   const browseChrome =
     appMode === 'browse' || browse.isCapturePinned()
 
@@ -172,15 +185,32 @@ function layoutBrowserPane(win: BrowserWindow): void {
   browse.ensureSeeded()
   browse.setVisible(appMode === 'browse')
   const [width, height] = win.getContentSize()
+  const fullWidthBrowse = appMode === 'browse'
+  const paneLeft = fullWidthBrowse ? 0 : SIDEBAR_LEFT
+  const paneWidth = fullWidthBrowse
+    ? width
+    : Math.max(320, width - SIDEBAR_LEFT - SIDEBAR_RIGHT)
   browse.setBounds({
-    x: SIDEBAR_LEFT,
+    x: paneLeft,
     y: appMode === 'browse' ? CHROME_BROWSE_TOP : CHROME_STUDIO_TOP,
-    width: Math.max(320, width - SIDEBAR_LEFT - SIDEBAR_RIGHT),
+    width: paneWidth,
     height: Math.max(240, height - (appMode === 'browse' ? CHROME_BROWSE_TOP : CHROME_STUDIO_TOP)),
   })
 }
 
-function setAppMode(mode: 'studio' | 'browse'): void {
+function setAppMode(mode: ShellMode): void {
+  if (mode === 'settings') {
+    if (appMode === 'studio' || appMode === 'browse') {
+      workspaceBeforeSettings = appMode
+    }
+    appMode = 'settings'
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      layoutBrowserPane(mainWindow)
+      mainWindow.webContents.send('app:mode', mode)
+    }
+    return
+  }
+
   appMode = mode
   if (mode === 'browse' && mainWindow && !mainWindow.isDestroyed()) {
     browse.attach(mainWindow)
@@ -319,6 +349,10 @@ function createMainWindow(): BrowserWindow {
 
   win.once('ready-to-show', () => {
     win.show()
+    const captureMode = process.env.MAKA_CAPTURE_MODE
+    if (captureMode === 'browse' || captureMode === 'studio') {
+      appMode = captureMode
+    }
     setAppMode(appMode)
     const capturePath = process.env.MAKA_CAPTURE_PATH
     if (capturePath) {
@@ -521,12 +555,31 @@ function registerIpc(): void {
   })
 
   ipcMain.handle('app:get-mode', () => appMode)
-  ipcMain.handle('app:set-mode', (event, mode: 'studio' | 'browse') => {
+  ipcMain.handle('app:get-workspace-mode', () =>
+    appMode === 'settings' ? workspaceBeforeSettings : appMode === 'browse' ? 'browse' : 'studio',
+  )
+  ipcMain.handle('app:set-mode', (event, mode: ShellMode) => {
     if (!studioOk(event)) return appMode
-    if (mode !== 'studio' && mode !== 'browse') return appMode
+    if (mode !== 'studio' && mode !== 'browse' && mode !== 'settings') return appMode
     setAppMode(mode)
     return appMode
   })
+  ipcMain.handle('app:exit-settings', (event) => {
+    if (!studioOk(event)) return appMode
+    if (appMode !== 'settings') return appMode
+    setAppMode(workspaceBeforeSettings)
+    return appMode
+  })
+  ipcMain.handle('app:get-version-info', () => ({
+    appVersion: app.getVersion(),
+    relayVersion: relay.getSnapshot().health?.version ?? null,
+    platform: process.platform,
+  }))
+  ipcMain.handle('vcam:get-capability', (event) => {
+    if (!studioOk(event)) return getVirtualCameraCapability()
+    return getVirtualCameraCapability()
+  })
+  ipcMain.handle('system:list-gpu-options', async () => listGpuOptions())
 
   ipcMain.handle('window:minimize', (event) => {
     if (!studioOk(event)) return
@@ -565,6 +618,64 @@ function registerIpc(): void {
     if (!studioOk(event)) return settings
     settings = saveSettings(coerceSettings(partial))
     return settings
+  })
+
+  ipcMain.handle('shell:open-external', (_event, raw: unknown) => {
+    if (typeof raw !== 'string' || !raw.trim()) return
+    const url = raw.trim()
+    if (!/^(https?:|mailto:)/i.test(url)) return
+    void shell.openExternal(url)
+  })
+
+  ipcMain.handle('scene:pick-image', async (event) => {
+    if (!studioOk(event)) return { canceled: true }
+    const win = BrowserWindow.fromWebContents(event.sender)
+    return pickSceneImageFile(win)
+  })
+
+  ipcMain.handle('recording:save', async (event, payload: unknown) => {
+    if (!studioOk(event)) return { canceled: true }
+    if (!payload || typeof payload !== 'object') return { canceled: true }
+    const p = payload as Record<string, unknown>
+    const data = p.data
+    const defaultName = typeof p.defaultName === 'string' ? p.defaultName.slice(0, 200) : 'maka-recording.webm'
+    const ext = p.ext === 'mp4' ? 'mp4' : 'webm'
+    if (!(data instanceof ArrayBuffer) && !Buffer.isBuffer(data)) {
+      return { canceled: true }
+    }
+    const bytes = data instanceof ArrayBuffer ? new Uint8Array(data) : new Uint8Array(data)
+    if (bytes.length === 0 || bytes.length > 2 * 1024 * 1024 * 1024) {
+      return { canceled: true }
+    }
+    const win = BrowserWindow.fromWebContents(event.sender)
+    const folder =
+      typeof settings.recordingSaveFolder === 'string' ? settings.recordingSaveFolder : undefined
+    const forceDialog = p.forceDialog === true
+    return saveRecording(win, defaultName, bytes, ext, { saveFolder: folder, forceDialog })
+  })
+
+  ipcMain.handle('recording:pick-folder', async (event) => {
+    if (!studioOk(event)) return { canceled: true }
+    const win = BrowserWindow.fromWebContents(event.sender)
+    const result = win
+      ? await dialog.showOpenDialog(win, {
+          title: 'Choose recording folder',
+          properties: ['openDirectory', 'createDirectory'],
+        })
+      : await dialog.showOpenDialog({
+          title: 'Choose recording folder',
+          properties: ['openDirectory', 'createDirectory'],
+        })
+    if (result.canceled || !result.filePaths[0]) {
+      return { canceled: true }
+    }
+    return { canceled: false, path: result.filePaths[0] }
+  })
+
+  ipcMain.handle('scene:read-image-data-url', (event, filePath: unknown) => {
+    if (!studioOk(event)) return null
+    if (typeof filePath !== 'string' || !filePath.trim()) return null
+    return readSceneImageDataUrl(filePath.trim())
   })
 
   ipcMain.handle('browser:navigate', (event, raw: unknown) => {
@@ -966,11 +1077,12 @@ function registerIpc(): void {
     if (!studioOk(event)) {
       return { mode: appMode, top: CHROME_STUDIO_TOP, left: SIDEBAR_LEFT, right: SIDEBAR_RIGHT }
     }
+    const fullWidthBrowse = appMode === 'browse'
     return {
       mode: appMode,
       top: appMode === 'browse' ? CHROME_BROWSE_TOP : CHROME_STUDIO_TOP,
-      left: SIDEBAR_LEFT,
-      right: SIDEBAR_RIGHT,
+      left: fullWidthBrowse ? 0 : SIDEBAR_LEFT,
+      right: fullWidthBrowse ? 0 : SIDEBAR_RIGHT,
     }
   })
 
@@ -1034,6 +1146,7 @@ app.whenReady().then(() => {
     }
   })
   recordDiagnostic('info', 'app.boot', 'Maka 0.2 starting')
+  settings = loadSettings()
 
   allowCapturePermissions()
   neutralizeInstalledRelayConfig()
@@ -1047,8 +1160,12 @@ app.whenReady().then(() => {
       return snap.lifecycle === 'live'
     },
   })
-  initAutoUpdate(() => mainWindow)
-  relay.subscribe(() => broadcastRelay())
+  initAutoUpdate(() => mainWindow, {
+    shouldCheckOnStartup: () => loadSettings().autoCheckUpdatesOnStartup,
+  })
+  relay.subscribe(() => {
+    broadcastRelay()
+  })
   phonePair.subscribe(() => broadcastPhonePair())
   phonePair.onWebRtcOffer((offer) => {
     if (mainWindow && !mainWindow.isDestroyed()) {

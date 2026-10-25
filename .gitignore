@@ -3,6 +3,8 @@ dist
 out
 release
 dist-installer
+releases/backup/**/*.exe
+releases/backup/**/*.exe.blockmap
 pack-out-*
 electron-builder-log.txt
 unpack-test

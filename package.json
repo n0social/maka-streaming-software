@@ -1,6 +1,6 @@
 {
   "name": "tabcast-browser",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "private": false,
   "description": "Maka gaming streaming service — free streaming software and a free streaming software obs alternative for resource-light capture (Electron studio + local WHIP/RTMP relay).",
   "author": "n0social",
@@ -19,8 +19,10 @@
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "fetch:relay": "node scripts/fetch-relay.mjs",
+    "fetch:release-backup": "node scripts/fetch-release-backup.mjs",
     "verify": "node scripts/verify.mjs",
     "verify:offline": "node scripts/verify.mjs --offline",
+    "verify:addons": "node scripts/verify-addons.mjs --write-report",
     "export:marketplace": "node scripts/export-marketplace.mjs",
     "marketing": "python scripts/generate-marketing.py",
     "dist": "npm run typecheck && npm run build && node scripts/verify.mjs --offline && electron-builder --win nsis",

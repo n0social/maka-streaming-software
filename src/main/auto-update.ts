@@ -14,6 +14,7 @@ export type UpdateStatus = {
 }
 
 let getMainWindow: () => BrowserWindow | null = () => null
+let shouldCheckOnStartup: () => boolean = () => true
 let lastStatus: UpdateStatus = { state: 'idle' }
 
 function broadcast(status: UpdateStatus): void {
@@ -28,8 +29,14 @@ function broadcast(status: UpdateStatus): void {
   }
 }
 
-export function initAutoUpdate(getMain: () => BrowserWindow | null): void {
+export function initAutoUpdate(
+  getMain: () => BrowserWindow | null,
+  options?: { shouldCheckOnStartup?: () => boolean },
+): void {
   getMainWindow = getMain
+  if (options?.shouldCheckOnStartup) {
+    shouldCheckOnStartup = options.shouldCheckOnStartup
+  }
 
   if (!app.isPackaged) {
     recordDiagnostic('info', 'app.update', 'Auto-update disabled in dev (unpackaged)')
@@ -57,6 +64,10 @@ export function initAutoUpdate(getMain: () => BrowserWindow | null): void {
 
   // Non-blocking startup check — give relay/UI time to settle first.
   setTimeout(() => {
+    if (!shouldCheckOnStartup()) {
+      recordDiagnostic('info', 'app.update', 'Startup update check skipped (settings)')
+      return
+    }
     void checkForUpdates().catch((err) => {
       recordDiagnostic('warn', 'app.update', 'Startup update check failed', err)
     })

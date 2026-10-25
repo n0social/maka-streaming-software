@@ -28,11 +28,14 @@ export const RELAY_TRACK_STREAM_IDS = {
   browser: 'browser',
   webcam: 'webcam',
   mic: 'mic',
+  desktopAudio: 'desktop-audio',
+  gameAudio: 'game-audio',
 } as const
 
 export type RelayTrackStreamId =
   (typeof RELAY_TRACK_STREAM_IDS)[keyof typeof RELAY_TRACK_STREAM_IDS]
 
+/** POST /config body — see src/shared/relay-config.ts. v0.1.0 relay uses profile + keys only. */
 export type RelayConfigRequest = {
   twitchKey?: string
   youtubeKey?: string
@@ -41,6 +44,12 @@ export type RelayConfigRequest = {
   customRtmpKey?: string
   profile: StreamProfile
   bitrateMbps?: number
+  streamTitle?: string
+  streamCategory?: string
+  audioMicBitrateKbps?: number
+  audioDesktopBitrateKbps?: number
+  videoEncoderPreference?: 'system' | 'hardware' | 'software'
+  gpuPreference?: string
 }
 
 export type RelayVerifyResponse = {
@@ -62,6 +71,9 @@ export type SceneSource = {
   width: number
   height: number
   zIndex: number
+  /** Local image path for static scene backgrounds (relay may ignore until compositing supports it). */
+  assetPath?: string
+  assetMime?: 'image/png' | 'image/jpeg'
 }
 
 export type SceneLayout = {
@@ -79,13 +91,26 @@ export type RelayHealth = {
   relayToken: string
 }
 
+export type RelayPlatformStatus =
+  | boolean
+  | {
+      live?: boolean
+      viewers?: number
+      error?: string
+    }
+
 export type RelayStatusResponse = {
   status: 'idle' | 'starting' | 'live' | 'error'
   profile?: StreamProfile
-  platforms?: { twitch?: boolean; youtube?: boolean; custom?: boolean }
+  platforms?: { twitch?: RelayPlatformStatus; youtube?: RelayPlatformStatus; custom?: RelayPlatformStatus }
   whipSessionActive?: boolean
   error?: string
   ffmpegLog?: string[]
+  bitrateMbps?: number
+  droppedFrames?: number
+  latencyMs?: number
+  viewerCount?: number
+  viewers?: number
 }
 
 /** Hosts that belong to the old web/portfolio surface — never open these. */
