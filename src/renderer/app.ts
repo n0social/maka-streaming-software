@@ -125,6 +125,7 @@ const micSelect = document.getElementById('mic-select') as HTMLSelectElement
 const programQualitySelect = document.getElementById(
   'program-quality-select',
 ) as HTMLSelectElement
+const programOutputMode = document.getElementById('program-output-mode') as HTMLSelectElement
 const platformKeyDialog = document.getElementById('platform-key-dialog') as HTMLDialogElement
 const platformKeyForm = document.getElementById('platform-key-form') as HTMLFormElement
 const platformKeyPanelTwitch = document.getElementById('platform-key-panel-twitch')!
@@ -253,17 +254,21 @@ function setDestError(message: string | null): void {
 function applyMode(mode: AppMode): void {
   currentMode = mode
   body.dataset.mode = mode
-  const searchOpen = mode === 'browse'
-  navrow.hidden = !searchOpen
-  browsetabs.hidden = !searchOpen
+  const browseOpen = mode === 'browse'
+  navrow.hidden = !browseOpen
+  browsetabs.hidden = !browseOpen
+
+  if (programOutputMode && programOutputMode.value !== mode) {
+    programOutputMode.value = mode
+  }
 
   if (brandTag) {
-    brandTag.textContent = searchOpen ? 'Search · optional browser' : 'Streaming studio'
+    brandTag.textContent = browseOpen ? 'Browser Mode' : 'Streaming studio'
   }
-  document.title = searchOpen ? 'Maka — Search' : 'Maka — Streaming'
+  document.title = browseOpen ? 'Maka — Browser' : 'Maka — Streaming'
 
   for (const tab of document.querySelectorAll<HTMLButtonElement>('.tab')) {
-    const active = tab.dataset.tab === mode
+    const active = tab.dataset.tab === 'studio' && mode === 'studio'
     tab.classList.toggle('active', active)
     tab.setAttribute('aria-selected', active ? 'true' : 'false')
   }
@@ -2769,7 +2774,19 @@ async function onVerifyKeys(): Promise<void> {
 for (const tab of document.querySelectorAll<HTMLButtonElement>('.tab')) {
   tab.addEventListener('click', () => {
     const mode = tab.dataset.tab as AppMode
+    if (mode === 'studio' && currentMode !== 'studio') {
+      void window.tabcast.setMode('studio')
+      void window.tabcast.setSettings({ startupMode: 'studio' })
+    }
+  })
+}
+
+if (programOutputMode) {
+  programOutputMode.addEventListener('change', () => {
+    const mode = programOutputMode.value as AppMode
+    if (mode !== 'studio' && mode !== 'browse') return
     void window.tabcast.setMode(mode)
+    void window.tabcast.setSettings({ startupMode: mode })
   })
 }
 
@@ -3283,7 +3300,9 @@ window.addEventListener('keydown', (event) => {
   }
   if (event.ctrlKey && event.key.toLowerCase() === 'b') {
     event.preventDefault()
-    void window.tabcast.setMode(currentMode === 'browse' ? 'studio' : 'browse')
+    const next = currentMode === 'browse' ? 'studio' : 'browse'
+    void window.tabcast.setMode(next)
+    void window.tabcast.setSettings({ startupMode: next })
   }
 })
 
@@ -3293,7 +3312,7 @@ window.tabcast.onNavigated((state) => {
 })
 window.tabcast.onTitle((title) => {
   if (currentMode !== 'browse') return
-  document.title = title ? `${title} · Maka — Search` : 'Maka — Search'
+  document.title = title ? `${title} · Maka — Browser` : 'Maka — Browser'
 })
 
 syncDestinationInputs()
@@ -3884,7 +3903,7 @@ function streamHealthUi(snapshot?: RelaySnapshot | null): { state: StreamHealthU
   if (lifecycle === 'ready') {
     return { state: 'ok', label: 'OK' }
   }
-  return { state: 'offline', label: 'Offline' }
+  return { state: 'offline', label: 'Standby' }
 }
 
 function updateProgramStats(snapshot?: RelaySnapshot | null): void {
@@ -3944,7 +3963,10 @@ function setRecordingUi(active: boolean): void {
   if (btnRecordingLabel) {
     btnRecordingLabel.textContent = active ? 'Stop Recording' : 'Start Recording'
   }
-  if (statRecording) statRecording.hidden = !active
+  if (statRecording) {
+    statRecording.dataset.recording = active ? '1' : '0'
+    statRecording.textContent = active ? 'Now recording' : 'Not recording'
+  }
 }
 
 if (btnStartRecording) {

@@ -174,10 +174,15 @@ function layoutBrowserPane(win: BrowserWindow): void {
   browse.ensureSeeded()
   browse.setVisible(appMode === 'browse')
   const [width, height] = win.getContentSize()
+  const fullWidthBrowse = appMode === 'browse'
+  const paneLeft = fullWidthBrowse ? 0 : SIDEBAR_LEFT
+  const paneWidth = fullWidthBrowse
+    ? width
+    : Math.max(320, width - SIDEBAR_LEFT - SIDEBAR_RIGHT)
   browse.setBounds({
-    x: SIDEBAR_LEFT,
+    x: paneLeft,
     y: appMode === 'browse' ? CHROME_BROWSE_TOP : CHROME_STUDIO_TOP,
-    width: Math.max(320, width - SIDEBAR_LEFT - SIDEBAR_RIGHT),
+    width: paneWidth,
     height: Math.max(240, height - (appMode === 'browse' ? CHROME_BROWSE_TOP : CHROME_STUDIO_TOP)),
   })
 }
@@ -998,11 +1003,12 @@ function registerIpc(): void {
     if (!studioOk(event)) {
       return { mode: appMode, top: CHROME_STUDIO_TOP, left: SIDEBAR_LEFT, right: SIDEBAR_RIGHT }
     }
+    const fullWidthBrowse = appMode === 'browse'
     return {
       mode: appMode,
       top: appMode === 'browse' ? CHROME_BROWSE_TOP : CHROME_STUDIO_TOP,
-      left: SIDEBAR_LEFT,
-      right: SIDEBAR_RIGHT,
+      left: fullWidthBrowse ? 0 : SIDEBAR_LEFT,
+      right: fullWidthBrowse ? 0 : SIDEBAR_RIGHT,
     }
   })
 

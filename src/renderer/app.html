@@ -35,7 +35,7 @@
           </div>
           <span class="version">0.2</span>
         </div>
-        <div class="tabs" role="tablist" data-tour="modes" aria-label="Streaming studio and optional search">
+        <div class="tabs" role="tablist" data-tour="modes" aria-label="Streaming studio">
           <button
             type="button"
             class="tab tab-primary active"
@@ -43,19 +43,9 @@
             id="tab-stream"
             role="tab"
             aria-selected="true"
+            title="Return to the three-column studio layout"
           >
             Stream
-          </button>
-          <button
-            type="button"
-            class="tab tab-optional"
-            data-tab="browse"
-            id="tab-search"
-            role="tab"
-            aria-selected="false"
-            title="Optional browser. Open Search when you want Twitch, YouTube, or chat."
-          >
-            Search
           </button>
         </div>
         <div class="relay-chip" id="relay-chip" data-state="stopped" data-tour="relay">
@@ -352,12 +342,23 @@
           <div class="program-stats" id="program-stats" aria-label="Program stream stats">
             <div class="program-stats-left">
               <label class="program-stats-field">
-                <span class="sr-only">Output mode</span>
-                <select id="program-output-mode" class="program-stats-select" disabled title="Studio Mode is the live program output">
+                <span class="sr-only">Studio or browser layout</span>
+                <select
+                  id="program-output-mode"
+                  class="program-stats-select"
+                  title="Studio Mode shows the program and sidebars; Browser Mode opens the built-in browser"
+                >
                   <option value="studio" selected>Studio Mode</option>
+                  <option value="browse">Browser Mode</option>
                 </select>
               </label>
-              <span class="program-stat program-stat-recording" id="stat-recording" hidden>Now recording</span>
+            </div>
+            <div class="program-stats-center" aria-live="polite">
+              <span
+                class="program-stat program-stat-recording"
+                id="stat-recording"
+                data-recording="0"
+              >Not recording</span>
             </div>
             <div class="program-stats-right">
               <span class="program-stat" id="stat-dropped">Dropped Frames: 0 (0.0%)</span>
@@ -374,7 +375,7 @@
               </div>
               <span class="program-stats-health" id="stat-stream-health" data-state="offline" title="Stream health">
                 <span class="dot" aria-hidden="true"></span>
-                <span id="stat-health-label">Offline</span>
+                <span id="stat-health-label">Standby</span>
               </span>
               <span class="program-stat program-stat-bitrate" id="stat-bitrate">—</span>
               <label class="program-stats-field program-stats-field-encode">
@@ -605,14 +606,14 @@
       <form method="dialog" id="settings-form" class="settings-form">
         <h2>Settings</h2>
         <label class="check"><input type="checkbox" id="set-tray-live" /> Minimize to tray while live</label>
-        <label class="check"><input type="checkbox" id="set-open-chat" /> Open chat pop-out when entering Search</label>
+        <label class="check"><input type="checkbox" id="set-open-chat" /> Open chat pop-out when entering Browser Mode</label>
         <label class="check"><input type="checkbox" id="set-lab-mode" /> Demo mode (skip key validation)</label>
         <label class="field-label" for="set-startup">Startup mode</label>
         <select id="set-startup" class="select">
           <option value="studio">Streaming studio</option>
-          <option value="browse">Search (browser)</option>
+          <option value="browse">Browser Mode</option>
         </select>
-        <p class="hint tight">Streaming studio is the default. Search opens the browser only when you choose that tab, or when this setting says so.</p>
+        <p class="hint tight">Streaming studio is the default. Browser Mode replaces the studio grid with the built-in browser (also available from the stats bar).</p>
         <button type="button" class="btn-block spaced-btn" id="btn-replay-setup">Replay setup wizard</button>
         <button type="button" class="btn-block spaced-btn" id="btn-check-updates">Check for updates</button>
         <button type="button" class="btn-block spaced-btn" id="btn-replay-tour">Replay onboarding tour</button>
