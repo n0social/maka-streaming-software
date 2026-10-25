@@ -117,6 +117,10 @@ Compared with `docs/readme-hero.png`:
 
 More detail: `docs/redesign-references/README.md`.
 
+## Release backup (`maka.streaming.v.01`)
+
+Signed Windows installer from the successful Release workflow is mirrored in-repo via `releases/backup/maka.streaming.v.01/` (manifest + SHA256SUMS). Run `npm run fetch:release-backup` to download `Maka-Setup-0.2.4-redesign-wip.exe` locally; the binary is gitignored. Rebuild on Windows: `npm run fetch:relay && npm run dist:signed` (see folder README).
+
 ## Next session
 
 Continue section by section against `docs/readme-hero.png`. Do not flip the mixer back to vertical bars or tall towers. Do not repaint the studio chrome black to match an empty program monitor.

@@ -19,6 +19,7 @@
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "fetch:relay": "node scripts/fetch-relay.mjs",
+    "fetch:release-backup": "node scripts/fetch-release-backup.mjs",
     "verify": "node scripts/verify.mjs",
     "verify:offline": "node scripts/verify.mjs --offline",
     "verify:addons": "node scripts/verify-addons.mjs --write-report",
