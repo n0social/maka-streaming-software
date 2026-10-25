@@ -58,6 +58,14 @@ jobs:
             echo "name=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Render release notes from template
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          sed -e "s/{{tag_name}}/${{ steps.rel.outputs.name }}/g" \
+              -e "s/{{version}}/${VERSION}/g" \
+              .github/RELEASE_NOTES_TEMPLATE.md > release-notes.md
+
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -67,4 +75,5 @@ jobs:
           files: |
             dist-installer/*
             site/browser-manifest.json
+          body_path: release-notes.md
           generate_release_notes: true

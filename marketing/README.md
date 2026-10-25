@@ -45,8 +45,18 @@ CREW Neon Four on Court Black — cyan `#2AF5FF`, pink `#FF2AD4`, lime `#C6FF2A`
 
 ## Deploy site
 
+Run on the production host (`/opt/tabcast/web`, nginx, root). Not available from CI sandboxes.
+
+**Full static site** (landing, download page, `robots.txt`, `sitemap.xml`, marketing assets, nginx snippet):
+
 ```bash
 bash site/deploy-site.sh
+```
+
+**Installer + download page only** (after uploading `Maka-Setup-<version>.exe` and `browser-manifest.json` to `/tmp/tabcast-upload/`):
+
+```bash
+bash site/deploy-download.sh
 ```
 
 Publishes:
