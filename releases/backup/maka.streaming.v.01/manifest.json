@@ -1,34 +1,22 @@
 {
   "tag": "maka.streaming.v.01",
-  "commit": "2421964a9008501ad7d5bf62df09fd64d9e3fffe",
+  "commit": "fa1cfb381942888b84816b113cf4f324a81321bb",
   "repository": "n0social/maka-streaming-software",
   "releaseUrl": "https://github.com/n0social/maka-streaming-software/releases/tag/maka.streaming.v.01",
   "ciWorkflow": ".github/workflows/release.yml",
-  "ciRun": "https://github.com/n0social/maka-streaming-software/actions/runs/40239100242",
+  "ciRun": "https://github.com/n0social/maka-streaming-software/actions/runs/40240640932",
   "packageVersion": "0.2.4",
   "assets": [
     {
       "name": "Maka-Setup-0.2.4.exe",
-      "size": 190353856,
-      "sha256": "b6de9c4a3325b2cfd5c11f989d86ac157fbdce6714b5142461eb51c192299a63",
+      "size": 190353895,
+      "sha256": "b7a38f437359bbd11653d716e49faab7fe42a26b6ac82a85f1bd502c3e4c3d87",
       "required": true
     },
     {
       "name": "Maka-Setup-0.2.4.exe.blockmap",
-      "size": 199256,
-      "sha256": "91992a8418c50c14e613cccc1d057725904a445222effdd186b724374ca3c2b2",
-      "required": false
-    },
-    {
-      "name": "latest.yml",
-      "size": 376,
-      "sha256": "98bb9805e6afd97ce1d8d673c0edbf03b1dd73a4c298fdfbfba6faafb9aa5c5d",
-      "required": false
-    },
-    {
-      "name": "browser-manifest.json",
-      "size": 428,
-      "sha256": "cdf521ba6d61e4b3d7029ccf3219ce8751003482c399822f2816fb7e05380187",
+      "size": 199135,
+      "sha256": "8ad2cfbbe8f4cb89cfe2a33d50dfab64d1bacf463600f7b49568af9c141ce9ad",
       "required": false
     }
   ]
