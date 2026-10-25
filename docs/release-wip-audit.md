@@ -37,8 +37,8 @@ This pass separates **working** studio controls from **intentionally disabled** 
 | Mic level meter | **Working** | Live `AnalyserNode` → horizontal bar |
 | Program stats (dropped, FPS, health, bitrate) | **Working** | FPS/bitrate from encode profile; dropped from relay when live |
 | Stream info sidebar | **Working (honest)** | Title = enabled destinations; category = encode preset; duration = local live clock |
-| Desktop Audio meter/settings | **Disabled** | Meter honest 0%; relay has no WASAPI loopback yet |
-| Game Audio meter/settings | **Disabled** | Meter honest 0%; same as desktop |
+| Desktop Audio meter/settings | **Windows** | Loopback via Chromium desktop capture; WHIP `desktop-audio` track; Linux stub 0% |
+| Game Audio meter/settings | **Windows** | Per-source desktop audio when gameplay capture selected; WHIP `game-audio` track |
 | Start Recording | **Working (MVP)** | Sidebar toggle; stats bar **Now recording**; WebM via main-process save dialog |
 | Start Virtual Camera | **Stub** | Clickable; honest “not available” modal (no driver) |
 | Add Scene (+) | **Working** | Up to 3 custom scenes (`custom-1`…`custom-3`); inline rename; Just Chatting layout |

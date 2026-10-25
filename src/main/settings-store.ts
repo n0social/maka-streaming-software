@@ -27,6 +27,8 @@ export type AppSettings = {
   recordingSaveFolder: string
   lastStreamPlatform: StreamPlatformPreference
   preferredMicDeviceId: string
+  /** Windows loopback output device (audiooutput); empty = default playback device. */
+  preferredDesktopAudioOutputDeviceId: string
   audioMicBitrateKbps: number
   audioDesktopBitrateKbps: number
   videoEncoderPreference: VideoEncoderPreference
@@ -63,6 +65,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   recordingSaveFolder: '',
   lastStreamPlatform: 'none',
   preferredMicDeviceId: '',
+  preferredDesktopAudioOutputDeviceId: '',
   audioMicBitrateKbps: 160,
   audioDesktopBitrateKbps: 160,
   videoEncoderPreference: 'system',

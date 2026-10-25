@@ -43,7 +43,7 @@ Three rows only: Desktop Audio, Microphone, Game Audio. Each row is icon, name, 
 
 The microphone bar follows the live mic. `startMicMeter` reads an `AnalyserNode` and `setMicMeterLevel` sets `micMeter.style.width` to a percent. That function also removes any inline `height`, so the bar cannot become a vertical strip.
 
-Desktop and Game are not live. Their meters stay at **0%** width (`resetUnimplementedAudioMeters` in `app.ts`; no fake fill in HTML). Those rows are dimmed (`.audio-channel[title] { opacity: 0.55 }`).
+On **Windows**, Desktop Audio uses WASAPI loopback (`system-audio-capture.ts`); Game Audio follows the selected gameplay display/window source. Meters use `startAudioLevelMeter`; WHIP publishes separate `desktop-audio` and `game-audio` msid tracks. Click a channel name to mute that track for the stream (meters stay live). On **Linux** (and non-Windows builds), rows stay at honest **0%** with `data-capture-unavailable="1"` dimming (`.audio-channel[data-capture-unavailable='1']`).
 
 Vertical meter strips and tall towers were rejected. Do not revert this to vertical bars.
 
@@ -51,12 +51,12 @@ Vertical meter strips and tall towers were rejected. Do not revert this to verti
 
 | Control | Why |
 | --- | --- |
-| Desktop Audio (row, gear, meter at 0%) | Title on the row: "Desktop audio capture not yet implemented". |
-| Game Audio (row, gear, meter at 0%) | Title on the row: "Game audio capture not yet implemented". |
+| Desktop Audio on Linux CI / dev VM | Windows-only loopback; meter 0%, tooltip explains platform requirement. |
+| Game Audio without gameplay source | Meter 0% until a display/window capture is selected (Windows). |
 | Start Recording | Button `disabled`. Title: "Recording is not available in this build yet". |
 | Start Virtual Camera | Button `disabled`. Title: "Virtual camera is not available in this build yet". |
 
-`app.ts` leaves the desktop and game faders as a no-op for the same reason.
+Desktop/game gear: output device picker (desktop) and jump-to-gameplay + refresh (game).
 
 ## Not a 1:1 copy yet
 

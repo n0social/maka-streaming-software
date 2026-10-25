@@ -396,14 +396,17 @@
           <h2>Audio Mixer</h2>
           <div class="audio-mixer" id="audio-mixer">
             <div class="audio-channel-wrap">
-              <div class="audio-channel" id="audio-desktop" title="Desktop audio capture not yet implemented">
+              <div class="audio-channel" id="audio-desktop" data-capture-unavailable="0">
                 <span class="audio-channel-icon" aria-hidden="true">🔊</span>
-                <span class="audio-channel-name">Desktop Audio</span>
+                <span class="audio-channel-name" id="audio-desktop-label">Desktop Audio</span>
                 <div class="audio-meter-track" aria-hidden="true">
                   <div class="audio-meter" id="desktop-meter"></div>
                 </div>
-                <button type="button" class="audio-channel-settings" disabled title="Desktop audio settings (not implemented)" aria-label="Desktop audio settings">⚙</button>
+                <button type="button" class="audio-channel-settings" id="btn-desktop-audio-settings" title="Desktop output device" aria-label="Desktop audio settings" aria-expanded="false" aria-controls="desktop-audio-picker">⚙</button>
               </div>
+              <select id="desktop-audio-output" class="audio-channel-picker" hidden aria-label="Desktop audio output device">
+                <option value="">Default system output</option>
+              </select>
               <div class="audio-db-scale" aria-hidden="true">
                 <span>-30</span><span>-24</span><span>-18</span><span>-12</span><span>-6</span><span>0</span>
               </div>
@@ -422,13 +425,13 @@
               </div>
             </div>
             <div class="audio-channel-wrap">
-              <div class="audio-channel" id="audio-game" title="Game audio capture not yet implemented">
+              <div class="audio-channel" id="audio-game" data-capture-unavailable="0">
                 <span class="audio-channel-icon" aria-hidden="true">🎮</span>
-                <span class="audio-channel-name">Game Audio</span>
+                <span class="audio-channel-name" id="audio-game-label">Game Audio</span>
                 <div class="audio-meter-track" aria-hidden="true">
                   <div class="audio-meter" id="game-meter"></div>
                 </div>
-                <button type="button" class="audio-channel-settings" disabled title="Game audio settings (not implemented)" aria-label="Game audio settings">⚙</button>
+                <button type="button" class="audio-channel-settings" id="btn-game-audio-settings" title="Linked to gameplay capture source" aria-label="Game audio settings">⚙</button>
               </div>
               <div class="audio-db-scale" aria-hidden="true">
                 <span>-30</span><span>-24</span><span>-18</span><span>-12</span><span>-6</span><span>0</span>

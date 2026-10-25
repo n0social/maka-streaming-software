@@ -28,6 +28,8 @@ export const RELAY_TRACK_STREAM_IDS = {
   browser: 'browser',
   webcam: 'webcam',
   mic: 'mic',
+  desktopAudio: 'desktop-audio',
+  gameAudio: 'game-audio',
 } as const
 
 export type RelayTrackStreamId =

@@ -572,6 +572,7 @@ function registerIpc(): void {
   ipcMain.handle('app:get-version-info', () => ({
     appVersion: app.getVersion(),
     relayVersion: relay.getSnapshot().health?.version ?? null,
+    platform: process.platform,
   }))
   ipcMain.handle('system:list-gpu-options', async () => listGpuOptions())
 

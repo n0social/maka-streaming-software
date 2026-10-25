@@ -94,8 +94,11 @@ export function startWhipVideoWatchdog(options: WhipVideoWatchdogOptions): WhipV
 export type WhipPublisher = {
   pc: RTCPeerConnection
   resourceUrl: string | null
+  audioSenders: WhipAudioSenders
   close: () => Promise<void>
 }
+
+export type WhipAudioTrackRole = 'mic' | 'desktop' | 'game'
 
 export type WhipPublishSources = {
   /** Primary program / gameplay video track. */
@@ -104,7 +107,11 @@ export type WhipPublishSources = {
   browser?: MediaStream | null
   webcam?: MediaStream | null
   mic?: MediaStream | null
+  desktopAudio?: MediaStream | null
+  gameAudio?: MediaStream | null
 }
+
+export type WhipAudioSenders = Partial<Record<WhipAudioTrackRole, RTCRtpSender>>
 
 function waitForIceGathering(pc: RTCPeerConnection, timeoutMs = 4000): Promise<void> {
   if (pc.iceGatheringState === 'complete') return Promise.resolve()
@@ -133,7 +140,11 @@ export function createNamedMediaStream(
   return stream
 }
 
-function attachWhipSources(pc: RTCPeerConnection, sources: WhipPublishSources): void {
+function attachWhipSources(
+  pc: RTCPeerConnection,
+  sources: WhipPublishSources,
+  audioSenders: WhipAudioSenders,
+): void {
   const gameplayTracks = sources.gameplay.getTracks().filter((t) => t.readyState === 'live')
   if (gameplayTracks.length > 0) {
     const gameplayStream = createNamedMediaStream(RELAY_TRACK_STREAM_IDS.gameplay, gameplayTracks)
@@ -156,13 +167,23 @@ function attachWhipSources(pc: RTCPeerConnection, sources: WhipPublishSources): 
     }
   }
 
-  if (sources.mic) {
-    const micTracks = sources.mic.getAudioTracks().filter((t) => t.readyState === 'live')
-    if (micTracks.length > 0) {
-      const micStream = createNamedMediaStream(RELAY_TRACK_STREAM_IDS.mic, micTracks)
-      for (const track of micTracks) pc.addTrack(track, micStream)
+  const attachAudioRole = (
+    role: WhipAudioTrackRole,
+    streamId: RelayTrackStreamId,
+    stream: MediaStream | null | undefined,
+  ) => {
+    if (!stream) return
+    const audioTracks = stream.getAudioTracks().filter((t) => t.readyState === 'live')
+    if (audioTracks.length === 0) return
+    const named = createNamedMediaStream(streamId, audioTracks)
+    for (const track of audioTracks) {
+      audioSenders[role] = pc.addTrack(track, named)
     }
   }
+
+  attachAudioRole('mic', RELAY_TRACK_STREAM_IDS.mic, sources.mic)
+  attachAudioRole('desktop', RELAY_TRACK_STREAM_IDS.desktopAudio, sources.desktopAudio)
+  attachAudioRole('game', RELAY_TRACK_STREAM_IDS.gameAudio, sources.gameAudio)
 }
 
 /** Prefer H.264 for relay ffmpeg (`-f h264`). */
@@ -209,7 +230,8 @@ export async function publishWhip(
     }
   }
 
-  attachWhipSources(pc, sources)
+  const audioSenders: WhipAudioSenders = {}
+  attachWhipSources(pc, sources, audioSenders)
   preferH264VideoCodecs(pc)
 
   const offer = await pc.createOffer()
@@ -250,6 +272,7 @@ export async function publishWhip(
   return {
     pc,
     resourceUrl,
+    audioSenders,
     async close() {
       if (resourceUrl) {
         try {

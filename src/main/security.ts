@@ -58,6 +58,10 @@ export function coerceSettings(partial: unknown): Partial<AppSettings> {
     const id = p.preferredMicDeviceId.trim()
     out.preferredMicDeviceId = id.length <= 512 ? id : id.slice(0, 512)
   }
+  if (typeof p.preferredDesktopAudioOutputDeviceId === 'string') {
+    const id = p.preferredDesktopAudioOutputDeviceId.trim()
+    out.preferredDesktopAudioOutputDeviceId = id.length <= 512 ? id : id.slice(0, 512)
+  }
   if (typeof p.audioMicBitrateKbps === 'number' && Number.isFinite(p.audioMicBitrateKbps)) {
     out.audioMicBitrateKbps = Math.min(320, Math.max(64, Math.round(p.audioMicBitrateKbps)))
   }

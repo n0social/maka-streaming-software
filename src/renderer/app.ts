@@ -74,6 +74,15 @@ import {
   type WhipPublisher,
   type WhipVideoWatchdog,
 } from './whip'
+import { startAudioLevelMeter, setHorizontalMeterLevel, type AudioLevelMeter } from './audio-level-meter'
+import {
+  parseCapturePlatform,
+  startDesktopLoopbackAudio,
+  startGameLinkedAudio,
+  stopMediaStream,
+  systemAudioCaptureSupported,
+  type SystemAudioCapturePlatform,
+} from './system-audio-capture'
 import { OnboardingTour } from './onboarding'
 import { SetupWizard } from './onboarding-wizard'
 import { initMarketplace } from './marketplace'
@@ -140,6 +149,17 @@ const camScale = document.getElementById('cam-scale') as HTMLInputElement
 const micMeter = document.getElementById('mic-meter')!
 const desktopMeter = document.getElementById('desktop-meter')!
 const gameMeter = document.getElementById('game-meter')!
+const audioDesktopChannel = document.getElementById('audio-desktop')!
+const audioGameChannel = document.getElementById('audio-game')!
+const audioDesktopLabel = document.getElementById('audio-desktop-label')!
+const audioGameLabel = document.getElementById('audio-game-label')!
+const desktopAudioOutputSelect = document.getElementById(
+  'desktop-audio-output',
+) as HTMLSelectElement
+const btnDesktopAudioSettings = document.getElementById(
+  'btn-desktop-audio-settings',
+) as HTMLButtonElement
+const btnGameAudioSettings = document.getElementById('btn-game-audio-settings') as HTMLButtonElement
 const destTwitch = document.getElementById('dest-twitch') as HTMLInputElement
 const destYoutube = document.getElementById('dest-youtube') as HTMLInputElement
 const twitchKey = document.getElementById('twitch-key') as HTMLInputElement
@@ -199,6 +219,15 @@ let programStream: MediaStream | null = null
 let browserStream: MediaStream | null = null
 let cameraStream: MediaStream | null = null
 let micStream: MediaStream | null = null
+let desktopAudioStream: MediaStream | null = null
+let gameAudioStream: MediaStream | null = null
+let desktopMeterHandle: AudioLevelMeter | null = null
+let gameMeterHandle: AudioLevelMeter | null = null
+let desktopAudioMuted = false
+let gameAudioMuted = false
+let desktopAudioStarting = false
+let capturePlatform: SystemAudioCapturePlatform = 'other'
+let preferredDesktopOutputDeviceId = ''
 let currentMode: AppMode = 'studio'
 let whipPublisher: WhipPublisher | null = null
 let whipVideoWatchdog: WhipVideoWatchdog | null = null
@@ -219,6 +248,8 @@ const layerEnabled = {
   game: true,
   cam: true,
   mic: true,
+  desktopAudio: true,
+  gameAudio: true,
   browser: false,
   overlay: false,
   chat: false,
@@ -370,15 +401,182 @@ function setMicMeterLevel(percent: number): void {
   micMeter.style.removeProperty('height')
 }
 
-function setStaticAudioMeterLevel(el: HTMLElement, percent: number): void {
-  const level = Math.max(0, Math.min(100, percent))
-  el.style.width = `${level}%`
-  el.style.removeProperty('height')
+function setDesktopMeterLevel(percent: number): void {
+  setHorizontalMeterLevel(desktopMeter, percent)
 }
 
-function resetUnimplementedAudioMeters(): void {
-  setStaticAudioMeterLevel(desktopMeter, 0)
-  setStaticAudioMeterLevel(gameMeter, 0)
+function setGameMeterLevel(percent: number): void {
+  setHorizontalMeterLevel(gameMeter, percent)
+}
+
+function syncSystemAudioChannelUi(): void {
+  const supported = systemAudioCaptureSupported(capturePlatform)
+  audioDesktopChannel.dataset.captureUnavailable = supported ? '0' : '1'
+  audioGameChannel.dataset.captureUnavailable = supported ? '0' : '1'
+  audioDesktopChannel.dataset.muted = desktopAudioMuted ? '1' : '0'
+  audioGameChannel.dataset.muted = gameAudioMuted ? '1' : '0'
+  btnDesktopAudioSettings.disabled = !supported
+  btnGameAudioSettings.disabled = !supported
+
+  if (!supported) {
+    audioDesktopChannel.title = 'System audio capture requires Windows'
+    audioGameChannel.title = 'System audio capture requires Windows'
+    audioDesktopLabel.textContent = 'Desktop Audio'
+    audioGameLabel.textContent = 'Game Audio'
+    return
+  }
+
+  audioDesktopChannel.title = desktopAudioMuted
+    ? 'Desktop audio muted for stream (click name to unmute)'
+    : 'Full system loopback — click name to mute for stream'
+  const gameLinked = Boolean(selectedSourceId) && captureKind === 'desktop'
+  if (!gameLinked) {
+    audioGameLabel.textContent = 'Game Audio'
+    audioGameChannel.title = 'Select a display or window capture to link game audio'
+  } else if (gameAudioMuted) {
+    audioGameChannel.title = 'Game audio muted for stream (click name to unmute)'
+    audioGameLabel.textContent = 'Game Audio'
+  } else {
+    audioGameChannel.title = 'Audio from gameplay capture — click name to mute for stream'
+    audioGameLabel.textContent = 'Game Audio'
+  }
+}
+
+function applyDesktopGameAudioTrackEnabled(): void {
+  if (desktopAudioStream) {
+    for (const track of desktopAudioStream.getAudioTracks()) {
+      track.enabled = layerEnabled.desktopAudio && !desktopAudioMuted
+    }
+  }
+  if (gameAudioStream) {
+    for (const track of gameAudioStream.getAudioTracks()) {
+      track.enabled = layerEnabled.gameAudio && !gameAudioMuted
+    }
+  }
+}
+
+function stopDesktopAudioMeter(): void {
+  desktopMeterHandle?.stop()
+  desktopMeterHandle = null
+  setDesktopMeterLevel(0)
+}
+
+function stopGameAudioMeter(): void {
+  gameMeterHandle?.stop()
+  gameMeterHandle = null
+  setGameMeterLevel(0)
+}
+
+function stopDesktopAudioCapture(): void {
+  stopDesktopAudioMeter()
+  stopMediaStream(desktopAudioStream)
+  desktopAudioStream = null
+}
+
+function stopGameAudioCapture(): void {
+  stopGameAudioMeter()
+  stopMediaStream(gameAudioStream)
+  gameAudioStream = null
+}
+
+async function refreshDesktopAudioCapture(): Promise<void> {
+  if (!systemAudioCaptureSupported(capturePlatform)) {
+    stopDesktopAudioCapture()
+    syncSystemAudioChannelUi()
+    return
+  }
+  if (desktopAudioStarting) return
+  desktopAudioStarting = true
+  stopDesktopAudioCapture()
+  try {
+    const stream = await startDesktopLoopbackAudio(preferredDesktopOutputDeviceId)
+    if (!stream) {
+      syncSystemAudioChannelUi()
+      return
+    }
+    desktopAudioStream = stream
+    applyDesktopGameAudioTrackEnabled()
+    desktopMeterHandle = startAudioLevelMeter(stream, setDesktopMeterLevel)
+    syncWhipAvTracks()
+  } finally {
+    desktopAudioStarting = false
+    syncSystemAudioChannelUi()
+  }
+}
+
+async function refreshGameAudioCapture(): Promise<void> {
+  if (!systemAudioCaptureSupported(capturePlatform)) {
+    stopGameAudioCapture()
+    syncSystemAudioChannelUi()
+    return
+  }
+  stopGameAudioCapture()
+  const sourceId =
+    captureKind === 'desktop' && selectedSourceId && selectedSourceId !== BROWSE_CAPTURE_SOURCE_ID
+      ? selectedSourceId
+      : null
+  if (!sourceId) {
+    syncSystemAudioChannelUi()
+    syncWhipAvTracks()
+    return
+  }
+  const stream = await startGameLinkedAudio(sourceId)
+  if (!stream) {
+    syncSystemAudioChannelUi()
+    syncWhipAvTracks()
+    return
+  }
+  gameAudioStream = stream
+  applyDesktopGameAudioTrackEnabled()
+  gameMeterHandle = startAudioLevelMeter(stream, setGameMeterLevel)
+  syncWhipAvTracks()
+  syncSystemAudioChannelUi()
+}
+
+async function refreshDesktopAudioOutputDevices(): Promise<void> {
+  let devices: MediaDeviceInfo[] = []
+  try {
+    devices = await navigator.mediaDevices.enumerateDevices()
+  } catch {
+    devices = []
+  }
+  const outputs = devices.filter((d) => d.kind === 'audiooutput')
+  const prev = desktopAudioOutputSelect.value
+  desktopAudioOutputSelect.innerHTML = '<option value="">Default system output</option>'
+  for (const out of outputs) {
+    const opt = document.createElement('option')
+    opt.value = out.deviceId
+    opt.textContent = out.label || `Output ${desktopAudioOutputSelect.options.length}`
+    desktopAudioOutputSelect.appendChild(opt)
+  }
+  const preferred = preferredDesktopOutputDeviceId
+  if (preferred && [...desktopAudioOutputSelect.options].some((o) => o.value === preferred)) {
+    desktopAudioOutputSelect.value = preferred
+  } else if ([...desktopAudioOutputSelect.options].some((o) => o.value === prev)) {
+    desktopAudioOutputSelect.value = prev
+  }
+}
+
+async function initSystemAudioCapture(): Promise<void> {
+  const info = await window.tabcast.getVersionInfo()
+  capturePlatform = parseCapturePlatform(info.platform)
+  syncSystemAudioChannelUi()
+  if (!systemAudioCaptureSupported(capturePlatform)) {
+    setDesktopMeterLevel(0)
+    setGameMeterLevel(0)
+    return
+  }
+  await refreshDesktopAudioOutputDevices()
+  await refreshDesktopAudioCapture()
+  await refreshGameAudioCapture()
+}
+
+function whipLiveAudioTrack(
+  stream: MediaStream | null,
+  enabled: boolean,
+): MediaStreamTrack | null {
+  if (!stream || !enabled) return null
+  return stream.getAudioTracks().find((t) => t.readyState === 'live') ?? null
 }
 
 function activeSceneImagePath(): string | undefined {
@@ -598,6 +796,7 @@ function syncLayerTracks(): void {
       track.enabled = layerEnabled.mic && !micMuted
     }
   }
+  applyDesktopGameAudioTrackEnabled()
   layerGame.dataset.enabled = layerEnabled.game ? '1' : '0'
   layerCam.dataset.enabled = layerEnabled.cam ? '1' : '0'
   layerMic.dataset.enabled = layerEnabled.mic ? '1' : '0'
@@ -1372,6 +1571,8 @@ async function attachWhipPublisher(health: RelayHealth): Promise<WhipPublisher> 
       browser: layerEnabled.browser && browserStream ? browserStream : null,
       webcam: layerEnabled.cam ? cameraStream : null,
       mic: layerEnabled.mic ? micStream : null,
+      desktopAudio: layerEnabled.desktopAudio ? desktopAudioStream : null,
+      gameAudio: layerEnabled.gameAudio ? gameAudioStream : null,
     },
     authHeaders(health),
     onWhipConnectionState,
@@ -2067,6 +2268,7 @@ async function selectDesktopSource(source: CaptureSource): Promise<void> {
     if (expandedSourceKinds.has('game')) {
       void refreshSourcePicker('game')
     }
+    void refreshGameAudioCapture()
   } catch (err) {
     programVideo.srcObject = null
     syncProgramVideoSurface()
@@ -2075,6 +2277,7 @@ async function selectDesktopSource(source: CaptureSource): Promise<void> {
     layerGame.dataset.active = '0'
     layerGame.textContent = 'Gameplay — none'
     captureKind = null
+    void refreshGameAudioCapture()
   }
 }
 
@@ -2120,6 +2323,7 @@ function bindGameplayStream(stream: MediaStream): void {
       programStream = null
       captureKind = null
       selectedSourceId = null
+      void refreshGameAudioCapture()
     }
   }
 }
@@ -2287,27 +2491,32 @@ function syncWhipAvTracks(): void {
   const browserIds = new Set(browserStream?.getVideoTracks().map((t) => t.id) ?? [])
 
   let webcamSender: RTCRtpSender | null = null
-  let micSender: RTCRtpSender | null = null
   for (const sender of pc.getSenders()) {
     const track = sender.track
     if (!track) continue
     if (track.kind === 'video' && !gameplayIds.has(track.id) && !browserIds.has(track.id)) {
       webcamSender = sender
     }
-    if (track.kind === 'audio') micSender = sender
   }
 
   const nextWebcam =
     layerEnabled.cam && cameraStream
       ? cameraStream.getVideoTracks().find((t) => t.readyState === 'live') ?? null
       : null
-  const nextMic =
-    layerEnabled.mic && micStream
-      ? micStream.getAudioTracks().find((t) => t.readyState === 'live') ?? null
-      : null
+  const nextMic = whipLiveAudioTrack(micStream, layerEnabled.mic && !micMuted)
+  const nextDesktop = whipLiveAudioTrack(
+    desktopAudioStream,
+    layerEnabled.desktopAudio && !desktopAudioMuted,
+  )
+  const nextGame = whipLiveAudioTrack(gameAudioStream, layerEnabled.gameAudio && !gameAudioMuted)
 
   if (webcamSender) void webcamSender.replaceTrack(nextWebcam).catch(() => undefined)
-  if (micSender) void micSender.replaceTrack(nextMic).catch(() => undefined)
+  const { audioSenders } = whipPublisher
+  if (audioSenders.mic) void audioSenders.mic.replaceTrack(nextMic).catch(() => undefined)
+  if (audioSenders.desktop) {
+    void audioSenders.desktop.replaceTrack(nextDesktop).catch(() => undefined)
+  }
+  if (audioSenders.game) void audioSenders.game.replaceTrack(nextGame).catch(() => undefined)
 }
 
 async function handlePhoneVideoAvailable(): Promise<void> {
@@ -3187,6 +3396,7 @@ async function teardownLiveSession(): Promise<void> {
     cameraStream = null
     stopStream(micStream)
     micStream = null
+    void refreshGameAudioCapture()
   } catch (err) {
     console.error('teardownLiveSession', err)
   }
@@ -3222,6 +3432,7 @@ void window.tabcast.getSettings().then((s) => {
   if (s.preferredMicDeviceId) {
     micSelect.dataset.preferredMic = s.preferredMicDeviceId
   }
+  preferredDesktopOutputDeviceId = s.preferredDesktopAudioOutputDeviceId ?? ''
 })
 
 function formatDiag(events: DiagEvent[]): string {
@@ -4131,8 +4342,50 @@ function updateStreamInfo(isLive: boolean): void {
   setLiveDurationClock(isLive)
 }
 
-// Desktop and Game audio capture not implemented — keep meters at 0%.
-resetUnimplementedAudioMeters()
+void initSystemAudioCapture()
+
+audioDesktopLabel.addEventListener('click', () => {
+  if (!systemAudioCaptureSupported(capturePlatform)) return
+  desktopAudioMuted = !desktopAudioMuted
+  applyDesktopGameAudioTrackEnabled()
+  syncWhipAvTracks()
+  syncSystemAudioChannelUi()
+})
+
+audioGameLabel.addEventListener('click', () => {
+  if (!systemAudioCaptureSupported(capturePlatform)) return
+  if (!gameAudioStream) return
+  gameAudioMuted = !gameAudioMuted
+  applyDesktopGameAudioTrackEnabled()
+  syncWhipAvTracks()
+  syncSystemAudioChannelUi()
+})
+
+btnDesktopAudioSettings.addEventListener('click', () => {
+  if (!systemAudioCaptureSupported(capturePlatform)) return
+  const show = desktopAudioOutputSelect.hidden
+  desktopAudioOutputSelect.hidden = !show
+  btnDesktopAudioSettings.setAttribute('aria-expanded', show ? 'true' : 'false')
+  if (show) void refreshDesktopAudioOutputDevices()
+})
+
+desktopAudioOutputSelect.addEventListener('change', () => {
+  preferredDesktopOutputDeviceId = desktopAudioOutputSelect.value
+  void window.tabcast.setSettings({
+    preferredDesktopAudioOutputDeviceId: preferredDesktopOutputDeviceId,
+  })
+  void refreshDesktopAudioCapture()
+})
+
+btnGameAudioSettings.addEventListener('click', () => {
+  if (!systemAudioCaptureSupported(capturePlatform)) return
+  if (!selectedSourceId || captureKind !== 'desktop') {
+    setDestError('Select a display or window under Gameplay to link game audio.')
+    return
+  }
+  void refreshGameAudioCapture()
+  studioSourceGame.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+})
 
 // Initialize stream info
 highlightSceneSelection(activeSceneTemplateId)

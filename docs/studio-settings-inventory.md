@@ -12,7 +12,7 @@ Full-page tabbed settings opened from the top bar **Settings** button (toggle: c
 | **General** | Version lines | (read-only) | **Yes** | `app:get-version-info` — `app.getVersion()` + relay health version. |
 | **Streaming** | `set-encode-profile` | `bitrateProfile` | **Yes** | Same encode presets as `#program-quality-select`; saved on change. |
 | **Streaming** | `set-last-platform` | `lastStreamPlatform` | **Partial** | UI default / mirror; go-live wizard writes `twitch` / `youtube` when platform chosen. |
-| **Audio** | `set-mic-device`, `set-mic-bitrate`, `set-desktop-bitrate` | `preferredMicDeviceId`, `audioMicBitrateKbps`, `audioDesktopBitrateKbps` | **Partial** | Mic device applies to studio `mic-select` + capture; bitrates persisted for future relay wiring. |
+| **Audio** | `set-mic-device`, `set-mic-bitrate`, `set-desktop-bitrate` | `preferredMicDeviceId`, `audioMicBitrateKbps`, `audioDesktopBitrateKbps` | **Partial** | Mic device applies to studio `mic-select` + capture; bitrates persisted for relay. Desktop loopback output: mixer gear → `#desktop-audio-output` → `preferredDesktopAudioOutputDeviceId` (Windows). |
 | **Video / System** | `set-video-encoder`, `set-gpu-pref` | `videoEncoderPreference`, `gpuPreference` | **Partial** | Persisted; GPU list from `system:list-gpu-options` (Windows CIM when available). |
 | **Recording** | `set-recording-folder`, `btn-pick-recording-folder` | `recordingSaveFolder` | **Yes** | `recording:pick-folder` IPC; `recording:save` uses folder as save dialog `defaultPath`. |
 | **Studio & Browser** | `data-set-startup` buttons | `startupMode` | **Yes** | `studio` vs `browse` on launch; same as `#program-output-mode`. |

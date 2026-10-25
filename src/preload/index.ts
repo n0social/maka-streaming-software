@@ -43,6 +43,7 @@ export type AppSettings = {
   recordingSaveFolder: string
   lastStreamPlatform: StreamPlatformPreference
   preferredMicDeviceId: string
+  preferredDesktopAudioOutputDeviceId: string
   audioMicBitrateKbps: number
   audioDesktopBitrateKbps: number
   videoEncoderPreference: VideoEncoderPreference
@@ -57,6 +58,7 @@ export type AppSettings = {
 export type AppVersionInfo = {
   appVersion: string
   relayVersion: string | null
+  platform: string
 }
 
 export type GpuOption = {
