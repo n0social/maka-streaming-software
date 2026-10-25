@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { extname } from 'node:path'
 import { dialog } from 'electron'
 import type { BrowserWindow } from 'electron'
-import { isSceneImageSceneId } from '../shared/scene-images'
+import { isSceneImageStorageKey } from '../shared/scene-images'
 
 const IMAGE_FILTERS = [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg'] }]
 
@@ -52,11 +52,11 @@ export async function pickSceneImageFile(
 
 export function coerceSceneImagesRecord(
   raw: unknown,
-): Partial<Record<import('../shared/scene-images').SceneImageSceneId, string>> {
+): Partial<Record<string, string>> {
   if (!raw || typeof raw !== 'object') return {}
-  const out: Partial<Record<import('../shared/scene-images').SceneImageSceneId, string>> = {}
+  const out: Partial<Record<string, string>> = {}
   for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
-    if (!isSceneImageSceneId(key)) continue
+    if (!isSceneImageStorageKey(key)) continue
     if (value === null || value === '') {
       out[key] = ''
       continue

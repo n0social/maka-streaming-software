@@ -2,7 +2,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { app } from 'electron'
 import type { EncodeProfileId } from '../shared/stream-encode-profiles'
-import { isSceneImageSceneId, type SceneImageSceneId } from '../shared/scene-images'
+import { coerceCustomScenes, type CustomScene } from '../shared/custom-scenes'
+import { isSceneImageStorageKey } from '../shared/scene-images'
 import { coerceSettings, isValidTabId, sanitizeSavedTabs } from './security'
 
 export type AppSettings = {
@@ -14,7 +15,9 @@ export type AppSettings = {
   onboardingComplete: boolean
   setupWizardComplete: boolean
   /** Absolute paths to PNG/JPG scene backgrounds keyed by scene template id. */
-  sceneImages: Partial<Record<SceneImageSceneId, string>>
+  sceneImages: Partial<Record<string, string>>
+  /** User-defined scenes (max three); ids `custom-1` … `custom-3`. */
+  customScenes: CustomScene[]
 }
 
 export type SavedBrowseTab = {
@@ -38,6 +41,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   onboardingComplete: false,
   setupWizardComplete: false,
   sceneImages: {},
+  customScenes: [],
 }
 
 function storeDir(): string {
@@ -70,12 +74,16 @@ export function saveSettings(partial: Partial<AppSettings>): AppSettings {
   let sceneImages = { ...prev.sceneImages }
   if (partial.sceneImages) {
     for (const [key, value] of Object.entries(partial.sceneImages)) {
-      if (!isSceneImageSceneId(key)) continue
+      if (!isSceneImageStorageKey(key)) continue
       if (!value) delete sceneImages[key]
       else sceneImages[key] = value
     }
   }
-  const next = { ...prev, ...partial, sceneImages }
+  let customScenes = prev.customScenes
+  if (partial.customScenes) {
+    customScenes = coerceCustomScenes(partial.customScenes)
+  }
+  const next = { ...prev, ...partial, sceneImages, customScenes }
   writeJson('settings.json', next)
   return next
 }

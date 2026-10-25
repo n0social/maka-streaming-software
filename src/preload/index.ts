@@ -3,8 +3,6 @@ import type { RelaySnapshot } from '../shared/relay-snapshot'
 import type { PhoneIceServer } from '../shared/phone-ice-servers'
 import type { PhonePairSnapshot, PhoneWebRtcSessionDescription } from '../shared/phone-pair'
 import type { EncodeProfileId } from '../shared/stream-encode-profiles'
-import type { SceneImageSceneId } from '../shared/scene-images'
-
 export type AppMode = 'studio' | 'browse'
 
 export type CaptureSource = {
@@ -37,7 +35,8 @@ export type AppSettings = {
   labMode: boolean
   onboardingComplete: boolean
   setupWizardComplete: boolean
-  sceneImages: Partial<Record<SceneImageSceneId, string>>
+  sceneImages: Partial<Record<string, string>>
+  customScenes: Array<{ id: string; name: string }>
 }
 
 export type PickSceneImageResult =

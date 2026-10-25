@@ -37,10 +37,10 @@ This pass separates **working** studio controls from **intentionally disabled** 
 | Game Audio meter/settings | **Disabled** | Same as desktop |
 | Start Recording | **Disabled** | No relay record path in this build |
 | Start Virtual Camera | **Disabled** | Not implemented |
-| Add Scene (+) | **Disabled** | Custom scene editor not implemented |
+| Add Scene (+) | **Working** | Up to 3 custom scenes (`custom-1`…`custom-3`); inline rename; Just Chatting layout |
 | Stream viewer count | **Disabled** | Shows `Viewers: N/A` while live (no platform API) |
 | Chat / notification overlay slots | **Placeholder** | Layout regions only; labeled in preview |
-| Scene row `⋯` menus | **Working** | Image pick/clear on Just Chatting + holding scenes |
+| Scene row `⋯` menus | **Working** | Image pick/clear on Just Chatting, custom scenes, and holding scenes; Gameplay static |
 | Studio Mode dropdown | **Disabled** | Single program output mode |
 
 ## Fixed in this pass
@@ -50,7 +50,7 @@ This pass separates **working** studio controls from **intentionally disabled** 
 3. **Stub scenes on relay** — `buildOutgoingSceneLayout` applies stub templates (empty sources) even when an overlay was previously selected; selecting a scene clears the overlay preset.
 4. **Desk-only go live** — Webcam-only sessions can publish WHIP without a display/window capture.
 5. **Stream info** — Destination summary and encode category update from real UI state; live duration uses a local timer (not fabricated viewers).
-6. **Add Scene** — Buttons disabled with explicit tooltip (no console-only noop).
+6. **Add Scene** — Creates persisted custom scenes (max 3) with `customScenes` + per-id `sceneImages`.
 7. **Mic mixer gear** — Opens/focuses the Microphone source picker.
 8. **Sources refresh control** — Icon/title corrected (refresh lists, not “add source”).
 
@@ -66,4 +66,4 @@ Manual smoke on Linux VM: build only; full Electron preview/WHIP not exercised w
 
 ## Still intentionally disabled
 
-See `docs/studio-redesign-handoff.md` § Intentionally disabled, plus Add Scene, viewer count, and overlay chat/notification feeds.
+See `docs/studio-redesign-handoff.md` § Intentionally disabled, plus viewer count and overlay chat/notification feeds.

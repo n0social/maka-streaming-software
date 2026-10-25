@@ -15,12 +15,21 @@ import {
   normalizeEncodeProfileId,
   type EncodeProfileId,
 } from '../shared/stream-encode-profiles'
+import {
+  coerceCustomScenes,
+  defaultCustomSceneName,
+  isCustomSceneId,
+  isDeskOnlyLikeScene,
+  MAX_CUSTOM_SCENES,
+  nextCustomSceneId,
+  resolveSceneLayoutTemplateId,
+  type CustomScene,
+} from '../shared/custom-scenes'
 import { isSceneStubId, SCENE_TEMPLATES, sceneStubPreset } from '../shared/scene-templates'
 import {
   sceneImageMaskMode,
   sceneSupportsImageUpload,
   type SceneImageMaskMode,
-  type SceneImageSceneId,
 } from '../shared/scene-images'
 import { OVERLAY_LAYOUT_PRESETS, overlayPresetById } from '../shared/overlay-layout-presets'
 import { BROWSE_CAPTURE_SOURCE_ID } from '../shared/capture'
@@ -194,9 +203,12 @@ const layerEnabled = {
 }
 
 let activeSceneTemplateId = 'gaming-cam'
-const sceneImagePaths: Partial<Record<SceneImageSceneId, string>> = {}
+const sceneImagePaths: Partial<Record<string, string>> = {}
 const sceneImageDataUrlCache = new Map<string, string>()
-let sceneImageMenuTargetId: SceneImageSceneId | null = null
+let sceneImageMenuTargetId: string | null = null
+let customScenes: CustomScene[] = []
+const studioScenesList = document.getElementById('studio-scenes-list')!
+const studioAddSceneRow = document.getElementById('studio-add-scene-row')!
 /** Empty = follow the active scene template; set when user picks an overlay layout preset. */
 let activeOverlayPresetId = ''
 
@@ -383,7 +395,14 @@ function syncSceneImagePanel(): void {
   btnSceneImageClear.hidden = !path
   const mode = sceneImageMaskMode(activeSceneTemplateId)
   if (mode === 'game-mask-only') {
-    sceneImagePanelLabel.textContent = 'Just Chatting image'
+    if (activeSceneTemplateId === 'desk-only') {
+      sceneImagePanelLabel.textContent = 'Just Chatting image'
+    } else if (isCustomSceneId(activeSceneTemplateId)) {
+      const custom = customScenes.find((s) => s.id === activeSceneTemplateId)
+      sceneImagePanelLabel.textContent = custom ? `${custom.name} image` : 'Scene image'
+    } else {
+      sceneImagePanelLabel.textContent = 'Scene image'
+    }
     sceneImagePanelHint.textContent =
       'PNG/JPG replaces the gameplay layer only. Webcam stays above the image; chat and notification slots follow your overlay layout.'
   } else {
@@ -669,7 +688,8 @@ function buildOutgoingSceneLayout(): SceneLayout {
   } else if (preset) {
     layout = preset.build({ profile, hasWebcam })
   } else {
-    const template = SCENE_TEMPLATES.find((t) => t.id === activeSceneTemplateId)
+    const layoutTemplateId = resolveSceneLayoutTemplateId(activeSceneTemplateId)
+    const template = SCENE_TEMPLATES.find((t) => t.id === layoutTemplateId)
     layout = template
       ? template.build({ profile, hasWebcam })
       : defaultSceneLayout({
@@ -1201,7 +1221,7 @@ function handleRelayLiveRecovery(snapshot: RelaySnapshot): void {
 
 function primaryVideoStreamForWhip(): MediaStream | null {
   if (programStream) return programStream
-  if (activeSceneTemplateId === 'desk-only' && layerEnabled.cam && cameraStream) {
+  if (isDeskOnlyLikeScene(activeSceneTemplateId) && layerEnabled.cam && cameraStream) {
     return cameraStream
   }
   return null
@@ -1211,14 +1231,14 @@ function captureReadyForGoLive(): boolean {
   if (isSceneStubId(activeSceneTemplateId)) {
     return Boolean(primaryVideoStreamForWhip() || (layerEnabled.cam && cameraStream))
   }
-  if (activeSceneTemplateId === 'desk-only') {
+  if (isDeskOnlyLikeScene(activeSceneTemplateId)) {
     return Boolean(primaryVideoStreamForWhip())
   }
   return Boolean(programStream)
 }
 
 function goLiveCaptureError(): string {
-  if (activeSceneTemplateId === 'desk-only') {
+  if (isDeskOnlyLikeScene(activeSceneTemplateId)) {
     return 'Select a webcam (or gameplay source) before going live.'
   }
   if (isSceneStubId(activeSceneTemplateId)) {
@@ -2761,6 +2781,9 @@ void window.tabcast.getSettings().then((s) => {
   syncEncodeProfileSelects(profile)
   updateProgramStats()
   Object.assign(sceneImagePaths, s.sceneImages ?? {})
+  customScenes = coerceCustomScenes(s.customScenes ?? [])
+  renderCustomSceneRows()
+  syncAddSceneButtons()
   syncSceneImagePanel()
   syncSceneProgramPresentation()
 })
@@ -3141,7 +3164,112 @@ function highlightSceneSelection(sceneTemplate: string): void {
   }
 }
 
-async function persistSceneImage(sceneId: SceneImageSceneId, filePath: string | null): Promise<void> {
+function syncAddSceneButtons(): void {
+  const atMax = customScenes.length >= MAX_CUSTOM_SCENES
+  const title = atMax ? `Maximum of ${MAX_CUSTOM_SCENES} custom scenes` : 'Add scene'
+  if (btnAddScene) {
+    btnAddScene.disabled = atMax
+    btnAddScene.title = title
+  }
+  if (btnAddSceneAlt) {
+    btnAddSceneAlt.disabled = atMax
+    btnAddSceneAlt.title = title
+  }
+}
+
+function renderCustomSceneRows(): void {
+  studioScenesList
+    .querySelectorAll<HTMLLIElement>('li[data-custom-scene-row]')
+    .forEach((row) => row.remove())
+  for (const scene of customScenes) {
+    const li = document.createElement('li')
+    li.dataset.customSceneRow = '1'
+    const btn = document.createElement('button')
+    btn.type = 'button'
+    btn.className = 'studio-list-item'
+    btn.dataset.scene = scene.id
+    btn.dataset.active = activeSceneTemplateId === scene.id ? '1' : '0'
+
+    const leading = document.createElement('span')
+    leading.className = 'studio-list-leading scene-icon'
+    leading.setAttribute('aria-hidden', 'true')
+    leading.textContent = '▶️'
+
+    const nameInput = document.createElement('input')
+    nameInput.type = 'text'
+    nameInput.className = 'studio-scene-name-input studio-list-text'
+    nameInput.value = scene.name
+    nameInput.spellcheck = false
+    nameInput.setAttribute('aria-label', 'Scene name')
+    nameInput.title = 'Double-click to rename'
+    nameInput.addEventListener('click', (event) => event.stopPropagation())
+    nameInput.addEventListener('dblclick', (event) => {
+      event.stopPropagation()
+      nameInput.select()
+    })
+    nameInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault()
+        nameInput.blur()
+      }
+    })
+    nameInput.addEventListener('blur', () => {
+      void renameCustomScene(scene.id, nameInput.value)
+    })
+
+    const menu = document.createElement('span')
+    menu.setAttribute('role', 'button')
+    menu.tabIndex = 0
+    menu.className = 'studio-list-menu'
+    menu.dataset.sceneMenu = scene.id
+    menu.setAttribute('aria-label', 'Scene options')
+    menu.title = 'Scene options'
+    menu.textContent = '⋯'
+
+    btn.append(leading, nameInput, menu)
+    btn.addEventListener('click', (event) => {
+      if ((event.target as HTMLElement).closest('[data-scene-menu]')) return
+      void selectScene(scene.id)
+    })
+    li.append(btn)
+    studioScenesList.insertBefore(li, studioAddSceneRow)
+  }
+}
+
+async function persistCustomScenes(next: CustomScene[]): Promise<void> {
+  customScenes = coerceCustomScenes(next)
+  await window.tabcast.setSettings({ customScenes })
+  renderCustomSceneRows()
+  syncAddSceneButtons()
+  syncSceneImagePanel()
+}
+
+async function renameCustomScene(sceneId: string, rawName: string): Promise<void> {
+  if (!isCustomSceneId(sceneId)) return
+  const trimmed = rawName.trim().slice(0, 80) || defaultCustomSceneName(sceneId)
+  const index = customScenes.findIndex((s) => s.id === sceneId)
+  if (index < 0 || customScenes[index].name === trimmed) return
+  const next = customScenes.map((s) => (s.id === sceneId ? { ...s, name: trimmed } : s))
+  await persistCustomScenes(next)
+}
+
+async function addCustomScene(): Promise<void> {
+  const id = nextCustomSceneId(customScenes)
+  if (!id) return
+  const next: CustomScene[] = [...customScenes, { id, name: defaultCustomSceneName(id) }]
+  await persistCustomScenes(next)
+  await selectScene(id)
+  const input = studioScenesList.querySelector<HTMLInputElement>(
+    `button[data-scene="${id}"] .studio-scene-name-input`,
+  )
+  if (input) {
+    input.focus()
+    input.select()
+  }
+}
+
+async function persistSceneImage(sceneId: string, filePath: string | null): Promise<void> {
+  if (!sceneSupportsImageUpload(sceneId)) return
   const previous = sceneImagePaths[sceneId]
   if (filePath) {
     sceneImagePaths[sceneId] = filePath
@@ -3163,7 +3291,8 @@ async function persistSceneImage(sceneId: SceneImageSceneId, filePath: string | 
   }
 }
 
-async function chooseSceneImage(sceneId: SceneImageSceneId): Promise<void> {
+async function chooseSceneImage(sceneId: string): Promise<void> {
+  if (!sceneSupportsImageUpload(sceneId)) return
   const picked = await window.tabcast.pickSceneImageFile()
   if (picked.canceled) return
   sceneImageDataUrlCache.set(picked.path, picked.dataUrl)
@@ -3180,7 +3309,7 @@ async function selectScene(sceneTemplate: string): Promise<void> {
   if (sceneTemplate === 'gaming-cam') {
     layerEnabled.game = true
     layerEnabled.cam = true
-  } else if (sceneTemplate === 'desk-only') {
+  } else if (sceneTemplate === 'desk-only' || isCustomSceneId(sceneTemplate)) {
     layerEnabled.game = false
     layerEnabled.cam = true
   } else if (isSceneStubId(sceneTemplate)) {
@@ -3212,22 +3341,38 @@ if (sceneEnding) {
   sceneEnding.addEventListener('click', () => selectScene('ending'))
 }
 
-document.querySelectorAll<HTMLElement>('[data-scene-menu]').forEach((btn) => {
-  const openSceneMenu = (event: Event) => {
-    event.stopPropagation()
-    const id = btn.dataset.sceneMenu
-    if (!id || !sceneSupportsImageUpload(id)) return
-    sceneImageMenuTargetId = id
-    sceneImageMenuClear.disabled = !sceneImagePaths[id]
-    sceneImageMenuDialog.showModal()
-  }
-  btn.addEventListener('click', openSceneMenu)
-  btn.addEventListener('keydown', (event) => {
-    if (event.key !== 'Enter' && event.key !== ' ') return
+function openSceneImageMenuFromTarget(menu: HTMLElement): void {
+  const id = menu.dataset.sceneMenu
+  if (!id || !sceneSupportsImageUpload(id)) return
+  sceneImageMenuTargetId = id
+  sceneImageMenuClear.disabled = !sceneImagePaths[id]
+  sceneImageMenuDialog.showModal()
+}
+
+studioScenesList.addEventListener(
+  'click',
+  (event) => {
+    const target = (event.target as HTMLElement).closest<HTMLElement>('[data-scene-menu]')
+    if (!target || target.classList.contains('studio-list-menu--static')) return
     event.preventDefault()
-    openSceneMenu(event)
-  })
-})
+    event.stopPropagation()
+    openSceneImageMenuFromTarget(target)
+  },
+  true,
+)
+
+studioScenesList.addEventListener(
+  'keydown',
+  (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return
+    const target = (event.target as HTMLElement).closest<HTMLElement>('[data-scene-menu]')
+    if (!target || target.classList.contains('studio-list-menu--static')) return
+    event.preventDefault()
+    event.stopPropagation()
+    openSceneImageMenuFromTarget(target)
+  },
+  true,
+)
 
 sceneImageMenuPick.addEventListener('click', () => {
   sceneImageMenuDialog.close()
@@ -3257,14 +3402,16 @@ btnSceneImageClear.addEventListener('click', () => {
   void persistSceneImage(activeSceneTemplateId, null)
 })
 
-const addSceneUnavailableTitle = 'Custom scenes are not available in this build yet'
+syncAddSceneButtons()
 if (btnAddScene) {
-  btnAddScene.disabled = true
-  btnAddScene.title = addSceneUnavailableTitle
+  btnAddScene.addEventListener('click', () => {
+    void addCustomScene()
+  })
 }
 if (btnAddSceneAlt) {
-  btnAddSceneAlt.disabled = true
-  btnAddSceneAlt.title = addSceneUnavailableTitle
+  btnAddSceneAlt.addEventListener('click', () => {
+    void addCustomScene()
+  })
 }
 
 // Go Live sidebar button (wire to existing Go Live)

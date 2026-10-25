@@ -1,3 +1,4 @@
+import { coerceCustomScenes } from '../shared/custom-scenes'
 import type { AppSettings, SavedBrowseTab } from './settings-store'
 import { normalizeBrowseUrl } from '../shared/browse-url'
 import { isEncodeProfileId } from '../shared/stream-encode-profiles'
@@ -50,6 +51,9 @@ export function coerceSettings(partial: unknown): Partial<AppSettings> {
   }
   if (p.sceneImages !== undefined) {
     out.sceneImages = coerceSceneImagesRecord(p.sceneImages)
+  }
+  if (p.customScenes !== undefined) {
+    out.customScenes = coerceCustomScenes(p.customScenes)
   }
 
   return out

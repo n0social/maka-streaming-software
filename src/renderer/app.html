@@ -106,12 +106,16 @@
             <h2>Scenes</h2>
             <button type="button" class="studio-icon-btn" id="btn-add-scene" title="Add scene" aria-label="Add scene">+</button>
           </header>
-          <ul class="studio-list studio-list--scenes" aria-label="Scenes">
+          <ul class="studio-list studio-list--scenes" id="studio-scenes-list" aria-label="Scenes">
             <li>
               <button type="button" class="studio-list-item" id="scene-gameplay" data-scene="gaming-cam" data-active="1">
                 <span class="studio-list-leading scene-icon" aria-hidden="true">🎮</span>
                 <span class="studio-list-text">Gameplay</span>
-                <span class="studio-list-menu studio-list-menu--static" aria-hidden="true">⋯</span>
+                <span
+                  class="studio-list-menu studio-list-menu--static"
+                  aria-hidden="true"
+                  title="No image for Gameplay"
+                >⋯</span>
               </button>
             </li>
             <li>
@@ -142,7 +146,7 @@
                 <span role="button" tabindex="0" class="studio-list-menu" data-scene-menu="ending" aria-label="Scene options" title="Scene options">⋯</span>
               </button>
             </li>
-            <li>
+            <li id="studio-add-scene-row">
               <button type="button" class="studio-list-item studio-list-add" id="btn-add-scene-alt">
                 <span class="studio-list-leading scene-icon" aria-hidden="true">+</span>
                 <span class="studio-list-text">Add Scene</span>
