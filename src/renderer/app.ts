@@ -9,17 +9,14 @@ import type { RelaySnapshot } from '../shared/relay-snapshot'
 import type { StreamProfile, SceneLayout, RelayHealth } from '../shared/tabcast'
 import {
   ENCODE_PROFILE_ORDER,
+  canvasForEncodeProfile,
   encodeProfileSpec,
   formatAutoEncodeLabel,
   normalizeEncodeProfileId,
   type EncodeProfileId,
 } from '../shared/stream-encode-profiles'
 import { isSceneStubId, SCENE_TEMPLATES, sceneStubPreset } from '../shared/scene-templates'
-import {
-  DEFAULT_OVERLAY_PRESET_ID,
-  OVERLAY_LAYOUT_PRESETS,
-  overlayPresetById,
-} from '../shared/overlay-layout-presets'
+import { OVERLAY_LAYOUT_PRESETS, overlayPresetById } from '../shared/overlay-layout-presets'
 import { BROWSE_CAPTURE_SOURCE_ID } from '../shared/capture'
 import {
   BACKUP_INGEST_STATUS,
@@ -181,7 +178,8 @@ const layerEnabled = {
 }
 
 let activeSceneTemplateId = 'gaming-cam'
-let activeOverlayPresetId = DEFAULT_OVERLAY_PRESET_ID
+/** Empty = follow the active scene template; set when user picks an overlay layout preset. */
+let activeOverlayPresetId = ''
 
 const WEBCAM_OFFLINE_TEXT = 'video is offline'
 
@@ -422,7 +420,7 @@ function hasLiveWebcamVideo(): boolean {
 }
 
 function usesOverlayPresetLayout(): boolean {
-  return Boolean(overlayPresetById(activeOverlayPresetId))
+  return Boolean(activeOverlayPresetId && overlayPresetById(activeOverlayPresetId))
 }
 
 function syncWebcamPresentation(camLabel?: string): void {
@@ -539,9 +537,14 @@ function buildOutgoingSceneLayout(): SceneLayout {
   const hasWebcam = hasLiveWebcamVideo() && layerEnabled.cam
   const hasBrowser = Boolean(browserStream) && layerEnabled.browser
 
-  const preset = overlayPresetById(activeOverlayPresetId)
+  const preset = activeOverlayPresetId ? overlayPresetById(activeOverlayPresetId) : undefined
   let layout: SceneLayout
-  if (preset) {
+  if (isSceneStubId(activeSceneTemplateId)) {
+    const template = SCENE_TEMPLATES.find((t) => t.id === activeSceneTemplateId)
+    layout = template
+      ? template.build({ profile, hasWebcam })
+      : { canvas: canvasForEncodeProfile(profile), sources: [] }
+  } else if (preset) {
     layout = preset.build({ profile, hasWebcam })
   } else {
     const template = SCENE_TEMPLATES.find((t) => t.id === activeSceneTemplateId)
@@ -606,8 +609,8 @@ function refreshProgramPreviewLayout(): void {
 }
 
 function syncOverlaySourceRow(): void {
-  const preset = overlayPresetById(activeOverlayPresetId)
-  const presetLabel = preset?.name ?? 'Custom'
+  const preset = activeOverlayPresetId ? overlayPresetById(activeOverlayPresetId) : undefined
+  const presetLabel = preset?.name ?? 'Scene layout'
   if (browserStream && layerEnabled.browser) {
     layerBrowser.dataset.active = '1'
     layerBrowser.textContent = `Overlay — ${presetLabel} · Search tab on`
@@ -906,7 +909,7 @@ async function runLiveRecovery(reason: string): Promise<void> {
   )
 
   try {
-    if (!programStream) {
+    if (!primaryVideoStreamForWhip()) {
       throw new Error('Program source missing — cannot reconnect live session.')
     }
 
@@ -1049,14 +1052,43 @@ function handleRelayLiveRecovery(snapshot: RelaySnapshot): void {
   queueLiveRecovery(reason, detail)
 }
 
+function primaryVideoStreamForWhip(): MediaStream | null {
+  if (programStream) return programStream
+  if (activeSceneTemplateId === 'desk-only' && layerEnabled.cam && cameraStream) {
+    return cameraStream
+  }
+  return null
+}
+
+function captureReadyForGoLive(): boolean {
+  if (isSceneStubId(activeSceneTemplateId)) {
+    return Boolean(primaryVideoStreamForWhip() || (layerEnabled.cam && cameraStream))
+  }
+  if (activeSceneTemplateId === 'desk-only') {
+    return Boolean(primaryVideoStreamForWhip())
+  }
+  return Boolean(programStream)
+}
+
+function goLiveCaptureError(): string {
+  if (activeSceneTemplateId === 'desk-only') {
+    return 'Select a webcam (or gameplay source) before going live.'
+  }
+  if (isSceneStubId(activeSceneTemplateId)) {
+    return 'Attach a capture source before going live on a holding scene.'
+  }
+  return 'Select a display or window for gameplay first.'
+}
+
 async function attachWhipPublisher(health: RelayHealth): Promise<WhipPublisher> {
-  if (!programStream) {
-    throw new Error('Select a gameplay source before going live.')
+  const gameplay = primaryVideoStreamForWhip()
+  if (!gameplay) {
+    throw new Error(goLiveCaptureError())
   }
   return publishWhip(
     whipUrlFromHealth(health),
     {
-      gameplay: programStream,
+      gameplay,
       browser: layerEnabled.browser && browserStream ? browserStream : null,
       webcam: layerEnabled.cam ? cameraStream : null,
       mic: layerEnabled.mic ? micStream : null,
@@ -1118,6 +1150,7 @@ function syncEncodeProfileSelects(id: EncodeProfileId): void {
 function onEncodeProfileChanged(id: EncodeProfileId): void {
   syncEncodeProfileSelects(id)
   updateProgramStats()
+  syncStreamInfoMeta()
   void window.tabcast.setSettings({ bitrateProfile: id })
   void pushSceneLayout().catch(() => undefined)
 }
@@ -1163,6 +1196,7 @@ function syncDestinationInputs(): void {
   customRtmpKey.disabled = !customEnabled
   backupRtmpUrl.disabled = !customEnabled
   backupRtmpKey.disabled = !customEnabled
+  syncStreamInfoMeta()
 }
 
 type PlatformKeyTarget = 'twitch' | 'youtube'
@@ -1402,6 +1436,18 @@ async function refreshSourcePicker(kind: SourceKind): Promise<void> {
 
     picker.innerHTML = ''
     appendPickerSectionHeader(picker, 'Layout presets')
+    appendPickerButton(picker, {
+      label: 'Follow scene layout',
+      kindLabel: 'Composition',
+      active: !activeOverlayPresetId,
+      onPick: () => {
+        activeOverlayPresetId = ''
+        syncOverlaySourceRow()
+        refreshProgramPreviewLayout()
+        void pushSceneLayout()
+        void refreshSourcePicker('browser')
+      },
+    })
     for (const preset of OVERLAY_LAYOUT_PRESETS) {
       appendPickerButton(picker, {
         label: preset.name,
@@ -2088,8 +2134,8 @@ async function goLive(): Promise<void> {
   setDestError(null)
 
   try {
-    if (!programStream) {
-      throw new Error('Select a display or window for gameplay first.')
+    if (!captureReadyForGoLive()) {
+      throw new Error(goLiveCaptureError())
     }
 
     const twitch = destTwitch.checked ? twitchKey.value : ''
@@ -2357,6 +2403,16 @@ for (const kind of SOURCE_KINDS) {
     toggleSourcePicker(kind)
   })
 }
+
+const micMixerSettingsBtn = document.querySelector(
+  '#audio-mic .audio-channel-settings',
+) as HTMLButtonElement | null
+micMixerSettingsBtn?.addEventListener('click', () => {
+  if (!expandedSourceKinds.has('mic')) {
+    toggleSourcePicker('mic')
+  }
+  studioSourceMic.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+})
 
 async function renderAddonPanels(): Promise<void> {
   const panels = await window.tabcast.listAddonPanels()
@@ -2938,7 +2994,9 @@ function highlightSceneSelection(sceneTemplate: string): void {
 // Scene selection handler
 async function selectScene(sceneTemplate: string): Promise<void> {
   activeSceneTemplateId = sceneTemplate
+  activeOverlayPresetId = ''
   highlightSceneSelection(sceneTemplate)
+  syncOverlaySourceRow()
 
   if (sceneTemplate === 'gaming-cam') {
     layerEnabled.game = true
@@ -2952,6 +3010,7 @@ async function selectScene(sceneTemplate: string): Promise<void> {
   }
 
   syncLayerTracks()
+  syncSceneProgramPresentation()
   if (isSessionLive()) {
     await pushSceneLayout().catch(() => undefined)
   }
@@ -2964,7 +3023,6 @@ if (sceneGameplay) {
 if (sceneChatting) {
   sceneChatting.addEventListener('click', () => selectScene('desk-only'))
 }
-// Starting Soon, Intermission, Ending have no templates yet
 if (sceneStarting) {
   sceneStarting.addEventListener('click', () => selectScene('starting-soon'))
 }
@@ -2975,17 +3033,14 @@ if (sceneEnding) {
   sceneEnding.addEventListener('click', () => selectScene('ending'))
 }
 
-// Add Scene buttons
+const addSceneUnavailableTitle = 'Custom scenes are not available in this build yet'
 if (btnAddScene) {
-  btnAddScene.addEventListener('click', () => {
-    console.log('Add scene clicked')
-    // Future: Open scene creation dialog
-  })
+  btnAddScene.disabled = true
+  btnAddScene.title = addSceneUnavailableTitle
 }
 if (btnAddSceneAlt) {
-  btnAddSceneAlt.addEventListener('click', () => {
-    console.log('Add scene clicked (alt)')
-  })
+  btnAddSceneAlt.disabled = true
+  btnAddSceneAlt.title = addSceneUnavailableTitle
 }
 
 // Go Live sidebar button (wire to existing Go Live)
@@ -3097,42 +3152,81 @@ function updateGoLiveLabel(isLive: boolean): void {
   }
 }
 
-// Update stream info display
+let liveSessionStartedAt: number | null = null
+let streamDurationTimer: ReturnType<typeof setInterval> | null = null
+
+function formatStreamDuration(ms: number): string {
+  const totalSec = Math.max(0, Math.floor(ms / 1000))
+  const h = Math.floor(totalSec / 3600)
+  const m = Math.floor((totalSec % 3600) / 60)
+  const s = totalSec % 60
+  if (h > 0) {
+    return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  }
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
+function streamDestinationMeta(): { title: string; category: string } {
+  const parts: string[] = []
+  if (destTwitch.checked) {
+    parts.push(twitchKey.value.trim() ? 'Twitch' : 'Twitch (add key)')
+  }
+  if (destYoutube.checked) {
+    parts.push(youtubeKey.value.trim() ? 'YouTube' : 'YouTube (add key)')
+  }
+  if (destCustom.checked) {
+    parts.push(customRtmpKey.value.trim() ? 'Custom RTMP' : 'Custom RTMP (add key)')
+  }
+  const title =
+    parts.length > 0
+      ? parts.join(' · ')
+      : 'No destination — use Twitch or YouTube in the stats bar'
+  const category = encodeProfileSpec(selectedProfile()).menuLabel
+  return { title, category }
+}
+
+function syncStreamInfoMeta(): void {
+  const meta = streamDestinationMeta()
+  if (streamTitle) streamTitle.textContent = meta.title
+  if (streamCategory) streamCategory.textContent = meta.category
+}
+
+function setLiveDurationClock(active: boolean): void {
+  if (streamDurationTimer) {
+    clearInterval(streamDurationTimer)
+    streamDurationTimer = null
+  }
+  if (!active) {
+    liveSessionStartedAt = null
+    if (streamDuration) streamDuration.textContent = '—'
+    return
+  }
+  liveSessionStartedAt = liveSessionStartedAt ?? Date.now()
+  streamDurationTimer = setInterval(() => {
+    if (!streamDuration || liveSessionStartedAt === null) return
+    streamDuration.textContent = formatStreamDuration(Date.now() - liveSessionStartedAt)
+  }, 1000)
+  if (streamDuration && liveSessionStartedAt !== null) {
+    streamDuration.textContent = formatStreamDuration(Date.now() - liveSessionStartedAt)
+  }
+}
+
 function updateStreamInfo(isLive: boolean): void {
+  syncStreamInfoMeta()
   if (streamLivePill) {
     streamLivePill.dataset.live = isLive ? 'true' : 'false'
     streamLivePill.textContent = isLive ? 'Live' : 'Offline'
   }
-  
-  // Don't fake viewer count or duration - show placeholder when not live
   if (streamViewers) {
-    streamViewers.textContent = isLive ? '—' : '—'
+    streamViewers.textContent = isLive ? 'Viewers: N/A' : '—'
+    streamViewers.title = isLive
+      ? 'Viewer count is not available in the desktop app yet'
+      : ''
   }
-  if (streamDuration) {
-    streamDuration.textContent = isLive ? '—' : '—'
-  }
-}
-
-// Wire existing Go Live button to update labels
-const originalGoLiveHandler = btnGoLive.onclick
-btnGoLive.addEventListener('click', () => {
-  // Update UI after state change
-  setTimeout(() => {
-    const isLive = btnGoLive.textContent?.includes('End') || false
-    updateGoLiveLabel(isLive)
-    updateStreamInfo(isLive)
-  }, 100)
-})
-
-// Wire sidebar Go Live button to main Go Live
-if (btnGoLiveSidebar) {
-  btnGoLiveSidebar.addEventListener('click', () => {
-    btnGoLive.click()
-  })
+  setLiveDurationClock(isLive)
 }
 
 // Desktop and Game audio faders (disabled, no-op)
-// These are shown but don't do anything since the features aren't implemented
 
 // Initialize stream info
 highlightSceneSelection(activeSceneTemplateId)

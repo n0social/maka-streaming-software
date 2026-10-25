@@ -419,6 +419,11 @@ body[data-mode='browse'] .app {
   color: var(--text);
 }
 
+.studio-icon-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .studio-toggles {
   display: grid;
   gap: 0.4rem;
@@ -485,6 +490,11 @@ body[data-mode='browse'] .app {
   text-align: left;
   cursor: pointer;
   transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+}
+
+.studio-list-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .studio-list-leading {

@@ -1,6 +1,6 @@
 # Studio redesign handoff
 
-Checkpoint tag: `0.2.3.1-redesign`.
+Checkpoint tag: `0.2.3.1-redesign`. Latest WIP tag: `0.2.4-redesign-(wip)` — see `docs/release-wip-audit.md` for working vs disabled features.
 
 This is the last dev checkpoint of the cream/gold studio before a new agent continues the work. The live Electron studio should match `docs/readme-hero.png` section by section. Keep the chrome cream (`#faf8f4`) and gold (`#c9a227`). The program monitor may stay black when nothing is captured. Do not turn the window chrome black.
 
@@ -63,7 +63,7 @@ Vertical meter strips and tall towers were rejected. Do not revert this to verti
 Compared with `docs/readme-hero.png`:
 
 - **Title bar.** Brand lockup reads "Maka Studio". The app top bar still has Stream/Search tabs, a relay chip, a "0.2" version, settings, and a second Go Live button. The hero shows help + settings only.
-- **Scene and source rows.** Scenes list uses hero-style gold fill for the active row (`.studio-list--scenes`). Rows have a trailing `⋯` menu (visual only). `selectScene` switches templates: **Gameplay** (`gaming-cam`, game+cam on), **Just Chatting** (`desk-only`, cam only), **Starting Soon / Intermission / Ending** (stub templates in `scene-templates.ts` — branded `#program-scene-card` in preview, layers off but capture streams stay attached). Add Scene logs only. `browse-showcase` exists in the template file and is not in the list.
+- **Scene and source rows.** Scenes list uses hero-style gold fill for the active row (`.studio-list--scenes`). Rows have a trailing `⋯` menu (visual only). `selectScene` switches templates: **Gameplay** (`gaming-cam`, game+cam on), **Just Chatting** (`desk-only`, cam only), **Starting Soon / Intermission / Ending** (stub templates in `scene-templates.ts` — branded `#program-scene-card` in preview, layers off but capture streams stay attached). Add Scene is disabled (`Custom scenes are not available in this build yet`). `browse-showcase` exists in the template file and is not in the list.
 - **Program.** The image shows a composed gameplay frame (HUD, webcam picture-in-picture, gold "Program • Live Output" on a dark pill). The empty app program is cream (`#f6f3ec`) with the line "Select a display or window to start streaming". Once a capture is attached, `#program-video` is black (`background: #000`). That black video surface is fine. The surrounding chrome stays cream and gold.
 - **Stats bar.** Lower program column: **left** — disabled Studio Mode dropdown only (no second quality dropdown; the old empty `#program-quality-select` beside Studio Mode was removed). **Right** (flex end) — dropped frames, FPS, latency placeholder, **Twitch | YouTube** platform chips (open `#platform-key-dialog` for enable + stream key), stream health pill, **Mbps**, and **`#program-quality-select`** encode preset dropdown (`720p @ 30fps`, etc.; tooltip shows target/transmit bitrate when live). Keys and `dest-twitch` / `dest-youtube` live only in the dialog.
 - **Mixer vs the image.** dB ticks (-30 … 0) sit under each horizontal bar. Tracks stay 14px tall. Keep the red gradient end and width-based fill.
