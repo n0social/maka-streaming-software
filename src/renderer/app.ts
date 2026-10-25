@@ -212,6 +212,7 @@ const layerEnabled = {
   cam: true,
   mic: true,
   browser: false,
+  overlay: false,
   chat: false,
   notifications: false,
 }
@@ -518,9 +519,9 @@ function updateStudioMixControls(): void {
   studioSourceWebcam.dataset.enabled = layerEnabled.cam ? '1' : '0'
   studioSourceMic.dataset.active = micStream ? '1' : '0'
   studioSourceMic.dataset.enabled = layerEnabled.mic ? '1' : '0'
-  studioSourceBrowser.dataset.active =
-    browserStream || Boolean(overlayPresetById(activeOverlayPresetId)) ? '1' : '0'
-  studioSourceBrowser.dataset.enabled = '1'
+  const overlayActive = overlaySourceShowingInProgram()
+  studioSourceBrowser.dataset.active = overlayActive ? '1' : '0'
+  studioSourceBrowser.dataset.enabled = overlayActive ? '1' : '0'
   studioSourceChat.dataset.enabled = layerEnabled.chat ? '1' : '0'
   studioSourceChat.dataset.active = layerEnabled.chat ? '1' : '0'
   studioSourceNotifications.dataset.enabled = layerEnabled.notifications ? '1' : '0'
@@ -598,7 +599,9 @@ function hasLiveWebcamVideo(): boolean {
 }
 
 function usesOverlayPresetLayout(): boolean {
-  return Boolean(activeOverlayPresetId && overlayPresetById(activeOverlayPresetId))
+  return Boolean(
+    activeOverlayPresetId && layerEnabled.overlay && overlayPresetById(activeOverlayPresetId),
+  )
 }
 
 function syncWebcamPresentation(camLabel?: string): void {
@@ -728,7 +731,10 @@ function buildOutgoingSceneLayout(): SceneLayout {
   const hasWebcam = hasLiveWebcamVideo() && layerEnabled.cam
   const hasBrowser = Boolean(browserStream) && layerEnabled.browser
 
-  const preset = activeOverlayPresetId ? overlayPresetById(activeOverlayPresetId) : undefined
+  const preset =
+    activeOverlayPresetId && layerEnabled.overlay
+      ? overlayPresetById(activeOverlayPresetId)
+      : undefined
   let layout: SceneLayout
   if (isSceneStubId(activeSceneTemplateId)) {
     const template = SCENE_TEMPLATES.find((t) => t.id === activeSceneTemplateId)
@@ -836,7 +842,10 @@ function refreshProgramPreviewLayout(): void {
 }
 
 function syncOverlaySourceRow(): void {
-  const preset = activeOverlayPresetId ? overlayPresetById(activeOverlayPresetId) : undefined
+  const preset =
+    activeOverlayPresetId && layerEnabled.overlay
+      ? overlayPresetById(activeOverlayPresetId)
+      : undefined
   const presetLabel = preset?.name ?? 'Scene layout'
   if (browserStream && layerEnabled.browser) {
     layerBrowser.dataset.active = '1'
@@ -849,6 +858,7 @@ function syncOverlaySourceRow(): void {
 
 async function selectOverlayPreset(id: string): Promise<void> {
   activeOverlayPresetId = id
+  layerEnabled.overlay = true
   const preset = overlayPresetById(id)
   if (preset) {
     const preview = preset.build({
@@ -1387,6 +1397,8 @@ function populateEncodeProfileSelect(select: HTMLSelectElement): void {
 
 function syncEncodeProfileSelects(id: EncodeProfileId): void {
   if (programQualitySelect.value !== id) programQualitySelect.value = id
+  const wizardQuality = document.getElementById('go-live-wizard-quality') as HTMLSelectElement | null
+  if (wizardQuality && wizardQuality.value !== id) wizardQuality.value = id
 }
 
 function onEncodeProfileChanged(id: EncodeProfileId): void {
@@ -1532,14 +1544,22 @@ const sourcePickerEls: Record<SourceKind, HTMLUListElement> = {
 const expandedSourceKinds = new Set<SourceKind>()
 let activeBrowseTabId: string | null = null
 
+function sourceMenuEl(kind: SourceKind): HTMLElement | null {
+  return sourceToggleEls[kind].querySelector<HTMLElement>('[data-source-menu]')
+}
+
 function syncSourcePickerVisibility(): void {
   for (const kind of SOURCE_KINDS) {
     const picker = sourcePickerEls[kind]
     const toggle = sourceToggleEls[kind]
+    const menu = sourceMenuEl(kind)
     const open = expandedSourceKinds.has(kind)
     picker.hidden = !open
     toggle.setAttribute('aria-expanded', open ? 'true' : 'false')
     toggle.dataset.expanded = open ? '1' : '0'
+    if (menu) {
+      menu.setAttribute('aria-expanded', open ? 'true' : 'false')
+    }
   }
 }
 
@@ -1903,7 +1923,50 @@ async function refreshSourcePicker(kind: SourceKind): Promise<void> {
   }
 }
 
+function toggleGameLayer(): void {
+  layerEnabled.game = !layerEnabled.game
+  syncLayerTracks()
+  void pushSceneLayout().catch(() => undefined)
+}
+
+function overlaySourceShowingInProgram(): boolean {
+  return (
+    (Boolean(browserStream) && layerEnabled.browser) ||
+    (Boolean(activeOverlayPresetId) && layerEnabled.overlay)
+  )
+}
+
+function toggleOverlaySourceLayer(): void {
+  if (overlaySourceShowingInProgram()) {
+    layerEnabled.overlay = false
+    if (layerEnabled.browser || browserStream) {
+      layerEnabled.browser = false
+      void stopBrowserCapture()
+      return
+    }
+    syncLayerTracks()
+    void pushSceneLayout().catch(() => undefined)
+    return
+  }
+  layerEnabled.overlay = true
+  if (!browserStream && !activeOverlayPresetId) {
+    layerEnabled.browser = true
+    void startBrowserCapture()
+    return
+  }
+  syncLayerTracks()
+  void pushSceneLayout().catch(() => undefined)
+}
+
 function toggleLayerForSourceKind(kind: SourceKind): void {
+  if (kind === 'game') {
+    toggleGameLayer()
+    return
+  }
+  if (kind === 'browser') {
+    toggleOverlaySourceLayer()
+    return
+  }
   if (kind === 'webcam') {
     layerEnabled.cam = !layerEnabled.cam
     if (layerEnabled.cam && !cameraSelect.value) {
@@ -2834,23 +2897,27 @@ toggleMic.addEventListener('click', () => {
   toggleMicLayer()
 })
 
+function onSourceMenuActivate(kind: SourceKind, event: Event): void {
+  event.preventDefault()
+  event.stopPropagation()
+  toggleSourcePicker(kind)
+}
+
 for (const kind of SOURCE_KINDS) {
+  const menu = sourceMenuEl(kind)
+  menu?.addEventListener('click', (event) => onSourceMenuActivate(kind, event))
+  menu?.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return
+    onSourceMenuActivate(kind, event)
+  })
+
   sourceToggleEls[kind].addEventListener('click', (event) => {
-    const onChevron = (event.target as HTMLElement).closest('.studio-source-chevron')
-    if (onChevron) {
-      toggleSourcePicker(kind)
+    if ((event.target as HTMLElement).closest('[data-source-menu]')) return
+    if (kind === 'mic') {
+      toggleMicLayer()
       return
     }
-    if (kind === 'webcam' || kind === 'chat' || kind === 'notifications') {
-      toggleLayerForSourceKind(kind)
-      if (!expandedSourceKinds.has(kind)) {
-        expandedSourceKinds.add(kind)
-        void refreshSourcePicker(kind)
-        syncSourcePickerVisibility()
-      }
-      return
-    }
-    toggleSourcePicker(kind)
+    toggleLayerForSourceKind(kind)
   })
 }
 
@@ -3721,6 +3788,8 @@ const goLiveWizard = new GoLiveWizard(
   document.getElementById('wizard-custom-rtmp-url') as HTMLInputElement,
   document.getElementById('wizard-custom-rtmp-key') as HTMLInputElement,
   document.getElementById('go-live-wizard-custom-fields')!,
+  document.getElementById('go-live-wizard-quality') as HTMLSelectElement,
+  document.getElementById('go-live-wizard-go-status')!,
   document.getElementById('go-live-wizard-back') as HTMLButtonElement,
   document.getElementById('go-live-wizard-next') as HTMLButtonElement,
   document.getElementById('go-live-wizard-cancel') as HTMLButtonElement,
@@ -3757,7 +3826,13 @@ const goLiveWizard = new GoLiveWizard(
     endLive: async () => {
       await endLive()
     },
+    readEncodeProfile: () => selectedProfile(),
+    applyEncodeProfile: (id) => onEncodeProfileChanged(id),
   },
+)
+
+populateEncodeProfileSelect(
+  document.getElementById('go-live-wizard-quality') as HTMLSelectElement,
 )
 
 if (btnGoLiveSidebar) {

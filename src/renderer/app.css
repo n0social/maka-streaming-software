@@ -1650,21 +1650,8 @@ body:not([data-mode='browse']) #browsetabs {
   gap: 0.2rem;
 }
 
-.studio-source-chevron {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  align-self: center;
-  min-width: 0.85rem;
-  color: var(--muted);
-  font-size: 0.72rem;
-  line-height: 1;
-  transition: transform 120ms ease;
-}
-
-.studio-source-toggle[aria-expanded='true'] .studio-source-chevron {
-  transform: rotate(180deg);
+.studio-source-toggle .studio-list-menu[aria-expanded='true'] {
+  opacity: 1;
   color: var(--gold-dark);
 }
 

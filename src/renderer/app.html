@@ -182,7 +182,14 @@
               >
                 <span class="studio-list-leading source-icon" aria-hidden="true">🎮</span>
                 <span class="studio-list-text">Game Capture</span>
-                <span class="studio-source-chevron" aria-hidden="true">▾</span>
+                <span
+                  role="button"
+                  tabindex="0"
+                  class="studio-list-menu"
+                  data-source-menu="game"
+                  aria-label="Pick display or window"
+                  title="Pick display or window"
+                >⋯</span>
               </button>
               <ul class="studio-source-picker" id="source-picker-game" hidden role="list" aria-label="Displays and windows"></ul>
             </li>
@@ -197,7 +204,14 @@
               >
                 <span class="studio-list-leading source-icon" aria-hidden="true">📹</span>
                 <span class="studio-list-text">Webcam</span>
-                <span class="studio-source-chevron" aria-hidden="true">▾</span>
+                <span
+                  role="button"
+                  tabindex="0"
+                  class="studio-list-menu"
+                  data-source-menu="webcam"
+                  aria-label="Pick camera"
+                  title="Pick camera"
+                >⋯</span>
               </button>
               <ul class="studio-source-picker" id="source-picker-webcam" hidden role="list" aria-label="Cameras"></ul>
             </li>
@@ -212,7 +226,14 @@
               >
                 <span class="studio-list-leading source-icon" aria-hidden="true">🎙</span>
                 <span class="studio-list-text">Microphone</span>
-                <span class="studio-source-chevron" aria-hidden="true">▾</span>
+                <span
+                  role="button"
+                  tabindex="0"
+                  class="studio-list-menu"
+                  data-source-menu="mic"
+                  aria-label="Pick microphone"
+                  title="Pick microphone"
+                >⋯</span>
               </button>
               <ul class="studio-source-picker" id="source-picker-mic" hidden role="list" aria-label="Microphones"></ul>
             </li>
@@ -227,7 +248,14 @@
               >
                 <span class="studio-list-leading source-icon" aria-hidden="true">🌐</span>
                 <span class="studio-list-text">Overlay</span>
-                <span class="studio-source-chevron" aria-hidden="true">▾</span>
+                <span
+                  role="button"
+                  tabindex="0"
+                  class="studio-list-menu"
+                  data-source-menu="browser"
+                  aria-label="Overlay options"
+                  title="Overlay options"
+                >⋯</span>
               </button>
               <ul class="studio-source-picker" id="source-picker-browser" hidden role="list" aria-label="Overlay layout presets"></ul>
             </li>
@@ -242,7 +270,14 @@
               >
                 <span class="studio-list-leading source-icon" aria-hidden="true">💬</span>
                 <span class="studio-list-text">Chat</span>
-                <span class="studio-source-chevron" aria-hidden="true">▾</span>
+                <span
+                  role="button"
+                  tabindex="0"
+                  class="studio-list-menu"
+                  data-source-menu="chat"
+                  aria-label="Pick chat source"
+                  title="Pick chat source"
+                >⋯</span>
               </button>
               <ul class="studio-source-picker" id="source-picker-chat" hidden role="list" aria-label="Chat sources"></ul>
             </li>
@@ -257,7 +292,14 @@
               >
                 <span class="studio-list-leading source-icon" aria-hidden="true">🔔</span>
                 <span class="studio-list-text">Notifications</span>
-                <span class="studio-source-chevron" aria-hidden="true">▾</span>
+                <span
+                  role="button"
+                  tabindex="0"
+                  class="studio-list-menu"
+                  data-source-menu="notifications"
+                  aria-label="Notification options"
+                  title="Notification options"
+                >⋯</span>
               </button>
               <ul class="studio-source-picker" id="source-picker-notifications" hidden role="list" aria-label="Notification overlays"></ul>
             </li>
@@ -522,6 +564,9 @@
           <p class="go-live-wizard-status" id="go-live-wizard-status" data-state="idle">Press Validate to continue.</p>
         </div>
         <div id="go-live-wizard-panel-go" hidden>
+          <label class="field-label" for="go-live-wizard-quality">Stream quality</label>
+          <select id="go-live-wizard-quality" class="program-stats-select program-stats-select-encode" aria-label="Stream quality"></select>
+          <p class="hint tight">Matches the encode preset in the program stats bar. Changes here update that preset.</p>
           <p class="go-live-wizard-status" id="go-live-wizard-go-status"></p>
         </div>
         <div class="row platform-key-dialog-actions go-live-wizard-actions">

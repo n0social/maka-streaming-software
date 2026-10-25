@@ -1,3 +1,5 @@
+import type { EncodeProfileId } from '../shared/stream-encode-profiles'
+
 export type GoLiveWizardPlatform = 'twitch' | 'youtube' | 'custom'
 
 export type GoLiveWizardStep = 'platform' | 'key' | 'validate' | 'go'
@@ -24,6 +26,8 @@ export type GoLiveWizardBindings = {
   validate: () => Promise<{ ok: boolean; message: string }>
   goLive: () => Promise<void>
   endLive: () => Promise<void>
+  readEncodeProfile: () => EncodeProfileId
+  applyEncodeProfile: (id: EncodeProfileId) => void
 }
 
 export class GoLiveWizard {
@@ -48,6 +52,8 @@ export class GoLiveWizard {
     private wizardCustomUrl: HTMLInputElement,
     private wizardCustomKey: HTMLInputElement,
     private customKeyBlock: HTMLElement,
+    private wizardQualitySelect: HTMLSelectElement,
+    private goStatusEl: HTMLElement,
     private btnBack: HTMLButtonElement,
     private btnNext: HTMLButtonElement,
     private btnCancel: HTMLButtonElement,
@@ -65,6 +71,18 @@ export class GoLiveWizard {
     this.dialog.addEventListener('close', () => {
       this.validating = false
     })
+    this.wizardQualitySelect.addEventListener('change', () => {
+      this.bindings.applyEncodeProfile(this.wizardQualitySelect.value as EncodeProfileId)
+      this.syncGoStepQualityStatus()
+    })
+  }
+
+  private syncGoStepQualityStatus(): void {
+    const option = this.wizardQualitySelect.selectedOptions[0]
+    const label = option?.textContent?.trim() ?? this.wizardQualitySelect.value
+    this.goStatusEl.textContent = this.lastValidateMessage
+      ? `${this.lastValidateMessage} · ${label}`
+      : `Ready at ${label}.`
   }
 
   open(): void {
@@ -85,6 +103,10 @@ export class GoLiveWizard {
     this.wizardCustomUrl.value = ui.customUrl
     this.wizardCustomKey.value = ui.customKey
     this.customKeyBlock.hidden = !this.bindings.hasCustomRtmp()
+    const profile = this.bindings.readEncodeProfile()
+    if (this.wizardQualitySelect.value !== profile) {
+      this.wizardQualitySelect.value = profile
+    }
     this.step = 'platform'
     this.lastValidateMessage = ''
     this.render()
@@ -142,6 +164,7 @@ export class GoLiveWizard {
       this.bodyEl.textContent =
         'Start publishing WHIP to the local relay. End Live from the same button when you are finished.'
       this.statusEl.textContent = this.lastValidateMessage
+      this.syncGoStepQualityStatus()
       this.btnBack.hidden = false
       this.btnNext.textContent = 'Go Live'
       this.btnNext.disabled = false
