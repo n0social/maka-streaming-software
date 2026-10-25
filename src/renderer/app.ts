@@ -235,15 +235,14 @@ let goingLive = false
 let micMuted = false
 let labMode = false
 let recordingSaveFolder = ''
+let lastStreamPlatform: 'twitch' | 'youtube' | 'none' = 'none'
 let pcCameraBeforePhone = ''
 let pcMicBeforePhone = ''
 let preferPhoneCamera = false
 let phoneVideoWasLive = false
 let phoneAudioWasLive = false
 let sessionIngestTarget: IngestTarget = 'primary'
-let audioCtx: AudioContext | null = null
-let analyser: AnalyserNode | null = null
-let meterRaf = 0
+let micMeterHandle: AudioLevelMeter | null = null
 const layerEnabled = {
   game: true,
   cam: true,
@@ -362,36 +361,12 @@ function renderBrowseTabs(tabs: BrowseTabInfo[]): void {
 
 function startMicMeter(stream: MediaStream): void {
   stopMicMeter()
-  try {
-    audioCtx = new AudioContext()
-    const source = audioCtx.createMediaStreamSource(stream)
-    analyser = audioCtx.createAnalyser()
-    analyser.fftSize = 256
-    source.connect(analyser)
-    const data = new Uint8Array(analyser.frequencyBinCount)
-    const tick = () => {
-      if (!analyser) return
-      analyser.getByteFrequencyData(data)
-      let sum = 0
-      for (const v of data) sum += v
-      const avg = sum / data.length / 255
-      setMicMeterLevel(Math.min(100, Math.round(avg * 140)))
-      meterRaf = requestAnimationFrame(tick)
-    }
-    tick()
-  } catch {
-    setMicMeterLevel(0)
-  }
+  micMeterHandle = startAudioLevelMeter(stream, setMicMeterLevel)
 }
 
 function stopMicMeter(): void {
-  if (meterRaf) cancelAnimationFrame(meterRaf)
-  meterRaf = 0
-  analyser = null
-  if (audioCtx) {
-    void audioCtx.close()
-    audioCtx = null
-  }
+  micMeterHandle?.stop()
+  micMeterHandle = null
   setMicMeterLevel(0)
 }
 
@@ -566,6 +541,12 @@ async function initSystemAudioCapture(): Promise<void> {
     setGameMeterLevel(0)
     return
   }
+  try {
+    const s = await window.tabcast.getSettings()
+    preferredDesktopOutputDeviceId = s.preferredDesktopAudioOutputDeviceId ?? ''
+  } catch {
+    // Non-fatal — default output device is fine.
+  }
   await refreshDesktopAudioOutputDevices()
   await refreshDesktopAudioCapture()
   await refreshGameAudioCapture()
@@ -699,10 +680,10 @@ function syncSceneProgramPresentation(): void {
     programVideo.hidden = true
     programCam.hidden = true
     programBrowser.hidden = true
-    programChatSlot.hidden = true
-    programNotificationsSlot.hidden = true
     programEmpty.hidden = true
     void refreshProgramSceneBgLayer()
+    refreshProgramPreviewLayout()
+    updateProgramBrowserOverlay()
     return
   }
 
@@ -966,8 +947,17 @@ function buildOutgoingSceneLayout(): SceneLayout {
   if (isSceneStubId(activeSceneTemplateId)) {
     const template = SCENE_TEMPLATES.find((t) => t.id === activeSceneTemplateId)
     layout = template
-      ? template.build({ profile, hasWebcam })
+      ? template.build({ profile, hasWebcam: false })
       : { canvas: canvasForEncodeProfile(profile), sources: [] }
+    if (preset) {
+      const presetLayout = preset.build({ profile, hasWebcam: false })
+      const overlaySlotIds = new Set(['chat', 'notifications', 'browser'])
+      for (const source of presetLayout.sources) {
+        if (overlaySlotIds.has(source.id)) {
+          layout.sources.push({ ...source })
+        }
+      }
+    }
   } else if (preset) {
     layout = preset.build({ profile, hasWebcam })
   } else {
@@ -1431,6 +1421,7 @@ async function runLiveRecovery(reason: string): Promise<void> {
     }
 
     whipPublisher = await attachWhipPublisher(snapshot.health)
+    syncWhipAvTracks()
     await window.tabcast.refreshRelay()
 
     if (runId !== liveReconnectRunId) return
@@ -1712,6 +1703,7 @@ function applyWizardPlatform(platform: GoLiveWizardPlatform): void {
   destCustom.checked = platform === 'custom'
   syncDestinationInputs()
   if (platform === 'twitch' || platform === 'youtube') {
+    lastStreamPlatform = platform
     void window.tabcast.setSettings({ lastStreamPlatform: platform })
   }
 }
@@ -2777,6 +2769,7 @@ function toggleMicMute(): void {
   }
   const label = micSelect.selectedOptions[0]?.textContent ?? 'on'
   layerMic.textContent = micMuted ? `Mic — muted (${label})` : `Mic — ${label}`
+  syncWhipAvTracks()
   updateStudioMixControls()
 }
 
@@ -2922,6 +2915,7 @@ async function goLive(): Promise<void> {
     sessionLiveIntent = true
 
     whipPublisher = await attachWhipPublisher(snapshot.health)
+    syncWhipAvTracks()
     await window.tabcast.refreshRelay()
     await dispatchAddonLiveEvents('live.start')
     destHint.textContent = 'Live — keys stay in relay RAM. End Live to tear down WHIP.'
@@ -3107,6 +3101,12 @@ const settingsView = initSettingsView(window.tabcast, {
   onEncodeProfileChange: (id) => {
     syncEncodeProfileSelects(id)
     updateProgramStats()
+    syncStreamInfoMeta()
+    void pushSceneLayout().catch(() => undefined)
+  },
+  onRecordingFolderChange: (folder) => {
+    recordingSaveFolder = folder
+    syncRecordingButtonHint()
   },
   onPreferredMicChange: (deviceId) => {
     if ([...micSelect.options].some((o) => o.value === deviceId)) {
@@ -3416,6 +3416,7 @@ window.tabcast.onTabs((tabs) => {
 void window.tabcast.getSettings().then((s) => {
   labMode = s.labMode
   recordingSaveFolder = s.recordingSaveFolder ?? ''
+  lastStreamPlatform = s.lastStreamPlatform ?? 'none'
   syncRecordingButtonHint()
   const profile = normalizeEncodeProfileId(s.bitrateProfile)
   syncEncodeProfileSelects(profile)
@@ -3429,10 +3430,14 @@ void window.tabcast.getSettings().then((s) => {
   syncAddSceneButtons()
   syncSceneImagePanel()
   syncSceneProgramPresentation()
+  refreshProgramPreviewLayout()
   if (s.preferredMicDeviceId) {
     micSelect.dataset.preferredMic = s.preferredMicDeviceId
   }
   preferredDesktopOutputDeviceId = s.preferredDesktopAudioOutputDeviceId ?? ''
+  if (systemAudioCaptureSupported(capturePlatform)) {
+    void refreshDesktopAudioOutputDevices().then(() => refreshDesktopAudioCapture())
+  }
 })
 
 function formatDiag(events: DiagEvent[]): string {
@@ -3955,6 +3960,7 @@ async function selectScene(sceneTemplate: string): Promise<void> {
 
   syncLayerTracks()
   syncSceneProgramPresentation()
+  refreshProgramPreviewLayout()
   if (isSessionLive()) {
     await pushSceneLayout().catch(() => undefined)
   }
@@ -4107,6 +4113,7 @@ const goLiveWizard = new GoLiveWizard(
     },
     readEncodeProfile: () => selectedProfile(),
     applyEncodeProfile: (id) => onEncodeProfileChanged(id),
+    readPreferredPlatform: () => lastStreamPlatform,
   },
 )
 
@@ -4116,7 +4123,10 @@ populateEncodeProfileSelect(
 
 if (btnGoLiveSidebar) {
   btnGoLiveSidebar.addEventListener('click', () => {
-    goLiveWizard.open()
+    void window.tabcast.getSettings().then((s) => {
+      lastStreamPlatform = s.lastStreamPlatform ?? 'none'
+      goLiveWizard.open()
+    })
   })
 }
 
@@ -4183,6 +4193,8 @@ const programRecording = createProgramRecording({
   hasGameplayVideo: () =>
     Boolean(programStream?.getVideoTracks().some((track) => track.readyState === 'live')),
   getMicStream: () => micStream,
+  getDesktopAudioStream: () => desktopAudioStream,
+  getGameAudioStream: () => gameAudioStream,
   getEncodeSpec: () => encodeProfileSpec(selectedProfile()),
 })
 

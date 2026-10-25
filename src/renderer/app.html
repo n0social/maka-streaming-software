@@ -402,7 +402,7 @@
                 <div class="audio-meter-track" aria-hidden="true">
                   <div class="audio-meter" id="desktop-meter"></div>
                 </div>
-                <button type="button" class="audio-channel-settings" id="btn-desktop-audio-settings" title="Desktop output device" aria-label="Desktop audio settings" aria-expanded="false" aria-controls="desktop-audio-picker">⚙</button>
+                <button type="button" class="audio-channel-settings" id="btn-desktop-audio-settings" title="Desktop output device" aria-label="Desktop audio settings" aria-expanded="false" aria-controls="desktop-audio-output">⚙</button>
               </div>
               <select id="desktop-audio-output" class="audio-channel-picker" hidden aria-label="Desktop audio output device">
                 <option value="">Default system output</option>
@@ -610,7 +610,9 @@
                   />
                   <button type="button" id="btn-pick-recording-folder">Choose…</button>
                 </div>
-                <p class="hint tight">Used as the starting location when you save a local program recording.</p>
+                <p class="hint tight">
+                  When set, stopping a recording saves automatically here (timestamped filename). Shift+click Stop Recording to pick another path.
+                </p>
               </div>
               <div class="settings-panel" id="settings-panel-modes" data-settings-panel="modes" hidden>
                 <h2>Studio &amp; Browser</h2>

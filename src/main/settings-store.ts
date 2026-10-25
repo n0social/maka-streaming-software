@@ -17,6 +17,18 @@ export type VideoEncoderPreference = 'system' | 'hardware' | 'software'
 
 export type GpuPreference = 'default' | 'discrete' | 'integrated'
 
+export const SETTINGS_TAB_IDS = [
+  'general',
+  'streaming',
+  'audio',
+  'video',
+  'recording',
+  'modes',
+  'help',
+] as const
+
+export type SettingsTabId = (typeof SETTINGS_TAB_IDS)[number]
+
 export type AppSettings = {
   bitrateProfile: EncodeProfileId
   startupMode: 'studio' | 'browse'
@@ -25,6 +37,8 @@ export type AppSettings = {
   labMode: boolean
   autoCheckUpdatesOnStartup: boolean
   recordingSaveFolder: string
+  /** Last selected tab in full-page Settings mode. */
+  settingsActiveTab: SettingsTabId
   lastStreamPlatform: StreamPlatformPreference
   preferredMicDeviceId: string
   /** Windows loopback output device (audiooutput); empty = default playback device. */
@@ -63,6 +77,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   labMode: false,
   autoCheckUpdatesOnStartup: true,
   recordingSaveFolder: '',
+  settingsActiveTab: 'general',
   lastStreamPlatform: 'none',
   preferredMicDeviceId: '',
   preferredDesktopAudioOutputDeviceId: '',

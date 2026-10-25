@@ -41,6 +41,14 @@ export type AppSettings = {
   labMode: boolean
   autoCheckUpdatesOnStartup: boolean
   recordingSaveFolder: string
+  settingsActiveTab:
+    | 'general'
+    | 'streaming'
+    | 'audio'
+    | 'video'
+    | 'recording'
+    | 'modes'
+    | 'help'
   lastStreamPlatform: StreamPlatformPreference
   preferredMicDeviceId: string
   preferredDesktopAudioOutputDeviceId: string

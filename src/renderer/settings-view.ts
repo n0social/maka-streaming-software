@@ -1,17 +1,34 @@
 import type { AppSettings, TabcastBridge, WorkspaceMode } from '../preload/index'
+
+const SETTINGS_TAB_IDS = [
+  'general',
+  'streaming',
+  'audio',
+  'video',
+  'recording',
+  'modes',
+  'help',
+] as const
+
+type SettingsTabId = (typeof SETTINGS_TAB_IDS)[number]
+
+function isSettingsTabId(value: string): value is SettingsTabId {
+  return (SETTINGS_TAB_IDS as readonly string[]).includes(value)
+}
 import { ENCODE_PROFILE_ORDER, encodeProfileSpec } from '../shared/stream-encode-profiles'
 
 export type SettingsViewHooks = {
   onLabModeChange: (labMode: boolean) => void
   onStartupModeChange: (mode: WorkspaceMode) => void
   onEncodeProfileChange: (profile: AppSettings['bitrateProfile']) => void
+  onRecordingFolderChange: (folder: string) => void
   onPreferredMicChange: (deviceId: string) => void
   onReplaySetup: () => void
   onReplayTour: () => void
   onCheckUpdates: () => void
 }
 
-function setActiveSettingsTab(root: HTMLElement, tabId: string): void {
+function setActiveSettingsTab(root: HTMLElement, tabId: SettingsTabId): void {
   root.dataset.settingsTab = tabId
   for (const btn of root.querySelectorAll<HTMLButtonElement>('.settings-tab')) {
     const active = btn.dataset.settingsTab === tabId
@@ -85,6 +102,10 @@ function applySettingsToForm(s: AppSettings): void {
   folderInput.value = s.recordingSaveFolder || ''
   folderInput.placeholder = s.recordingSaveFolder ? '' : 'Choose a folder…'
   updateStartupLabel(s.startupMode)
+  const tab = s.settingsActiveTab
+  if (isSettingsTabId(tab)) {
+    setActiveSettingsTab(document.getElementById('settings-view') as HTMLElement, tab)
+  }
 }
 
 async function refreshVersionLabels(tabcast: TabcastBridge): Promise<void> {
@@ -128,7 +149,9 @@ export function initSettingsView(tabcast: TabcastBridge, hooks: SettingsViewHook
   for (const btn of root.querySelectorAll<HTMLButtonElement>('.settings-tab')) {
     btn.addEventListener('click', () => {
       const tab = btn.dataset.settingsTab
-      if (tab) setActiveSettingsTab(root, tab)
+      if (!tab || !isSettingsTabId(tab)) return
+      setActiveSettingsTab(root, tab)
+      void tabcast.setSettings({ settingsActiveTab: tab })
     })
   }
 
@@ -193,6 +216,7 @@ export function initSettingsView(tabcast: TabcastBridge, hooks: SettingsViewHook
       void tabcast.setSettings({ recordingSaveFolder: result.path }).then((s) => {
         const folderInput = document.getElementById('set-recording-folder') as HTMLInputElement
         folderInput.value = s.recordingSaveFolder
+        hooks.onRecordingFolderChange(s.recordingSaveFolder)
       })
     })
   })
@@ -226,7 +250,8 @@ export function initSettingsView(tabcast: TabcastBridge, hooks: SettingsViewHook
       await populateGpuSelect(tabcast, s.gpuPreference)
       await refreshVersionLabels(tabcast)
       root.hidden = false
-      setActiveSettingsTab(root, root.dataset.settingsTab || 'general')
+      const tabFromDom = root.dataset.settingsTab || 'general'
+      setActiveSettingsTab(root, isSettingsTabId(tabFromDom) ? tabFromDom : 'general')
     },
     refreshVersions: () => refreshVersionLabels(tabcast),
   }

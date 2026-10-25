@@ -8,7 +8,20 @@ export type ProgramRecordingDeps = {
   /** Returns true when gameplay track is live on program video. */
   hasGameplayVideo: () => boolean
   getMicStream: () => MediaStream | null
+  getDesktopAudioStream: () => MediaStream | null
+  getGameAudioStream: () => MediaStream | null
   getEncodeSpec: () => EncodeProfileSpec
+}
+
+/** Live, unmuted tracks from mixer sources (mirrors stream mute / layer enabled flags on tracks). */
+export function liveEnabledAudioTracks(streams: (MediaStream | null)[]): MediaStreamTrack[] {
+  const out: MediaStreamTrack[] = []
+  for (const stream of streams) {
+    if (!stream) continue
+    const track = stream.getAudioTracks().find((t) => t.readyState === 'live' && t.enabled)
+    if (track) out.push(track)
+  }
+  return out
 }
 
 export type ProgramRecordingController = {
@@ -31,7 +44,7 @@ function pickRecorderMime(): string {
 }
 
 /**
- * Records program output via a canvas compositor (primary video + mic).
+ * Records program output via a canvas compositor (primary video + mixer audio).
  * Limitations: browser overlay, scene PNG masks, and PiP layout are not composited —
  * only the main program video element (or webcam fallback) is drawn each frame.
  */
@@ -100,12 +113,14 @@ export function createProgramRecording(deps: ProgramRecordingDeps): ProgramRecor
     canvas = document.createElement('canvas')
     startCanvasPump()
     const videoStream = canvas.captureStream(spec.fps)
-    const tracks = [...videoStream.getVideoTracks()]
-    const mic = deps.getMicStream()
-    if (mic) {
-      const audio = mic.getAudioTracks().find((t) => t.readyState === 'live')
-      if (audio) tracks.push(audio)
-    }
+    const tracks = [
+      ...videoStream.getVideoTracks(),
+      ...liveEnabledAudioTracks([
+        deps.getMicStream(),
+        deps.getDesktopAudioStream(),
+        deps.getGameAudioStream(),
+      ]),
+    ]
     return new MediaStream(tracks)
   }
 

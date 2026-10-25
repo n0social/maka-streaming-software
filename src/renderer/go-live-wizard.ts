@@ -28,6 +28,7 @@ export type GoLiveWizardBindings = {
   endLive: () => Promise<void>
   readEncodeProfile: () => EncodeProfileId
   applyEncodeProfile: (id: EncodeProfileId) => void
+  readPreferredPlatform: () => 'twitch' | 'youtube' | 'none'
 }
 
 export class GoLiveWizard {
@@ -91,7 +92,10 @@ export class GoLiveWizard {
       return
     }
     const ui = this.bindings.readUi()
-    if (ui.destYoutube && ui.youtubeKey.trim()) this.platform = 'youtube'
+    const preferred = this.bindings.readPreferredPlatform()
+    if (preferred === 'youtube') this.platform = 'youtube'
+    else if (preferred === 'twitch') this.platform = 'twitch'
+    else if (ui.destYoutube && ui.youtubeKey.trim()) this.platform = 'youtube'
     else if (ui.destCustom && this.bindings.hasCustomRtmp()) this.platform = 'custom'
     else this.platform = 'twitch'
 

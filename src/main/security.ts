@@ -1,6 +1,6 @@
 import { coerceCustomScenes } from '../shared/custom-scenes'
 import { coerceStreamDestinations } from '../shared/stream-destination-settings'
-import type { AppSettings, SavedBrowseTab } from './settings-store'
+import { SETTINGS_TAB_IDS, type AppSettings, type SavedBrowseTab } from './settings-store'
 import { normalizeBrowseUrl } from '../shared/browse-url'
 import { isEncodeProfileId } from '../shared/stream-encode-profiles'
 import { coerceSceneImagesRecord } from './scene-image-io'
@@ -50,6 +50,12 @@ export function coerceSettings(partial: unknown): Partial<AppSettings> {
   if (typeof p.recordingSaveFolder === 'string') {
     const folder = p.recordingSaveFolder.trim()
     out.recordingSaveFolder = folder.length <= 4096 ? folder : folder.slice(0, 4096)
+  }
+  if (
+    typeof p.settingsActiveTab === 'string' &&
+    (SETTINGS_TAB_IDS as readonly string[]).includes(p.settingsActiveTab)
+  ) {
+    out.settingsActiveTab = p.settingsActiveTab as AppSettings['settingsActiveTab']
   }
   if (p.lastStreamPlatform === 'twitch' || p.lastStreamPlatform === 'youtube' || p.lastStreamPlatform === 'none') {
     out.lastStreamPlatform = p.lastStreamPlatform
