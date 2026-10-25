@@ -48,6 +48,7 @@ import {
   installUpdate,
 } from './auto-update'
 import { PhonePairServer, phoneWebRtcIceServersForSession } from './phone-pair'
+import { getVirtualCameraCapability } from './virtual-camera'
 import { pickSceneImageFile, readSceneImageDataUrl } from './scene-image-io'
 import { saveRecording } from './recording-io'
 import { listGpuOptions } from './gpu-info'
@@ -574,6 +575,10 @@ function registerIpc(): void {
     relayVersion: relay.getSnapshot().health?.version ?? null,
     platform: process.platform,
   }))
+  ipcMain.handle('vcam:get-capability', (event) => {
+    if (!studioOk(event)) return getVirtualCameraCapability()
+    return getVirtualCameraCapability()
+  })
   ipcMain.handle('system:list-gpu-options', async () => listGpuOptions())
 
   ipcMain.handle('window:minimize', (event) => {

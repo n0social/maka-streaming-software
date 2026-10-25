@@ -359,6 +359,12 @@
                 id="stat-recording"
                 data-recording="0"
               >Not recording</span>
+              <span
+                class="program-stat program-stat-vcam"
+                id="stat-vcam"
+                data-vcam="0"
+                hidden
+              >Virtual cam off</span>
             </div>
             <div class="program-stats-right">
               <span class="program-stat" id="stat-dropped">Dropped Frames: 0 (0.0%)</span>
@@ -451,9 +457,9 @@
               <span class="btn-icon btn-icon-rec" id="btn-recording-icon" aria-hidden="true">●</span>
               <span id="btn-recording-label">Start Recording</span>
             </button>
-            <button type="button" class="btn-block btn-secondary" id="btn-start-vcam" title="Virtual camera is not available in this build">
-              <span class="btn-icon" aria-hidden="true">▢</span>
-              Start Virtual Camera
+            <button type="button" class="btn-block btn-secondary" id="btn-start-vcam" title="Send program output to a virtual camera (preview mode on this build)">
+              <span class="btn-icon btn-icon-vcam" id="btn-vcam-icon" aria-hidden="true">▢</span>
+              <span id="btn-vcam-label">Start Virtual Camera</span>
             </button>
           </div>
         </div>
@@ -484,7 +490,7 @@
                 <div class="stream-category" id="stream-category">—</div>
                 <div class="stream-status-row">
                   <span class="stream-live-pill" id="stream-live-pill" data-live="false">Offline</span>
-                  <span class="stream-viewers" id="stream-viewers" title="">—</span>
+                  <span class="stream-viewers" id="stream-viewers" title="Viewer count when you go live">Offline</span>
                   <span class="stream-duration" id="stream-duration" title="Live duration (local clock)">—</span>
                 </div>
               </div>
@@ -736,13 +742,36 @@
       </div>
     </dialog>
 
-    <dialog id="vcam-unavailable-dialog" class="platform-key-dialog">
+    <dialog id="vcam-unavailable-dialog" class="platform-key-dialog vcam-info-dialog">
       <form method="dialog" class="platform-key-form">
         <h2>Virtual camera</h2>
-        <p class="hint tight">A virtual camera driver is not bundled in this build. Use OBS Virtual Camera or a similar tool if you need one.</p>
-        <div class="row platform-key-dialog-actions">
-          <button type="submit" value="ok" class="primary">OK</button>
+        <p class="hint tight" id="vcam-info-lead">
+          Feed your program layout to Zoom, Discord, or OBS as a camera device.
+        </p>
+        <p class="hint tight" id="vcam-info-limitation"></p>
+        <div class="vcam-info-panel">
+          <p class="field-label">This build (preview mode)</p>
+          <ul class="vcam-info-list hint tight">
+            <li>Start / Stop runs the same program compositor as local recording (gameplay or webcam + mixer audio).</li>
+            <li>PiP, browser overlay, and scene PNG masks are not composited yet.</li>
+            <li>Other apps cannot select “Maka” as a camera until a driver is bundled.</li>
+          </ul>
         </div>
+        <div class="vcam-info-panel" id="vcam-info-fallback-panel" hidden>
+          <p class="field-label">Windows fallback</p>
+          <ol class="vcam-info-list hint tight" id="vcam-info-fallback-steps">
+            <li>Install <strong>OBS Studio</strong> or the standalone OBS Virtual Camera package.</li>
+            <li>Start OBS Virtual Camera from OBS, or register the OBS virtual cam DLL.</li>
+            <li>In your meeting app, choose <strong>OBS Virtual Camera</strong> as the video source.</li>
+            <li>Point OBS at Maka with a Window Capture or Display Capture of the program monitor.</li>
+          </ol>
+          <button type="button" class="btn-secondary btn-inline" id="vcam-open-fallback-url">Open OBS Virtual Camera download</button>
+        </div>
+        <div class="row platform-key-dialog-actions vcam-info-actions">
+          <button type="button" class="primary" id="vcam-copy-frame">Copy program frame</button>
+          <button type="submit" value="ok">Close</button>
+        </div>
+        <p class="hint tight vcam-info-status" id="vcam-info-status" aria-live="polite"></p>
       </form>
     </dialog>
 

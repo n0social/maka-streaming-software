@@ -52,6 +52,9 @@ import {
   createProgramRecording,
   recordingFileExtension,
 } from './program-recording'
+import { createProgramOutputCompositor } from './program-output-compositor'
+import { createProgramVirtualCamera } from './program-virtual-camera'
+import type { VcamCapability } from '../shared/virtual-camera'
 import {
   authHeaders,
   defaultSceneLayout,
@@ -3405,6 +3408,17 @@ async function teardownLiveSession(): Promise<void> {
 }
 
 window.tabcast.onPrepareQuit(() => {
+  if (programVirtualCamera.isActive()) {
+    programVirtualCamera.stop()
+    setVcamUi(false)
+  }
+  if (programRecording.isRecording()) {
+    void programRecording.stop().finally(() => {
+      programOutputCompositor.stop()
+    })
+  } else {
+    programOutputCompositor.stop()
+  }
   void teardownLiveSession().finally(() => {
     window.tabcast.ackPrepareQuit()
   })
@@ -4183,11 +4197,18 @@ initEncodeProfileControls()
 // Stream control buttons
 const btnStartRecording = document.getElementById('btn-start-recording') as HTMLButtonElement | null
 const btnStartVcam = document.getElementById('btn-start-vcam') as HTMLButtonElement | null
+const btnVcamLabel = document.getElementById('btn-vcam-label')
 const btnRecordingLabel = document.getElementById('btn-recording-label')
 const statRecording = document.getElementById('stat-recording')
+const statVcam = document.getElementById('stat-vcam')
 const vcamUnavailableDialog = document.getElementById('vcam-unavailable-dialog') as HTMLDialogElement | null
+const vcamInfoLimitation = document.getElementById('vcam-info-limitation')
+const vcamInfoFallbackPanel = document.getElementById('vcam-info-fallback-panel')
+const vcamOpenFallbackUrl = document.getElementById('vcam-open-fallback-url') as HTMLButtonElement | null
+const vcamCopyFrame = document.getElementById('vcam-copy-frame') as HTMLButtonElement | null
+const vcamInfoStatus = document.getElementById('vcam-info-status')
 
-const programRecording = createProgramRecording({
+const programOutputDeps = {
   getProgramVideo: () => programVideo,
   getWebcamVideo: () => programCamVideo,
   hasGameplayVideo: () =>
@@ -4196,7 +4217,78 @@ const programRecording = createProgramRecording({
   getDesktopAudioStream: () => desktopAudioStream,
   getGameAudioStream: () => gameAudioStream,
   getEncodeSpec: () => encodeProfileSpec(selectedProfile()),
+}
+
+const programOutputCompositor = createProgramOutputCompositor(programOutputDeps)
+
+const programRecording = createProgramRecording({
+  ...programOutputDeps,
+  compositor: programOutputCompositor,
 })
+
+const programVirtualCamera = createProgramVirtualCamera({
+  ...programOutputDeps,
+  compositor: programOutputCompositor,
+})
+
+let vcamCapability: VcamCapability | null = null
+let vcamInfoSeen = false
+
+function stopProgramOutputCompositorIfIdle(): void {
+  if (!programRecording.isRecording() && !programVirtualCamera.isActive()) {
+    programOutputCompositor.stop()
+  }
+}
+
+function setVcamUi(active: boolean): void {
+  if (btnStartVcam) btnStartVcam.dataset.vcam = active ? '1' : '0'
+  if (btnVcamLabel) {
+    btnVcamLabel.textContent = active ? 'Stop Virtual Camera' : 'Start Virtual Camera'
+  }
+  if (statVcam) {
+    statVcam.hidden = !active
+    statVcam.dataset.vcam = active ? '1' : '0'
+    statVcam.textContent = active ? 'Virtual cam preview' : 'Virtual cam off'
+  }
+  if (btnStartVcam) {
+    const previewNote = vcamCapability?.canOutputToDevice
+      ? 'Outputs to a system virtual camera device.'
+      : 'Preview mode: program compositor only (no system camera device in this build). Shift+click for help.'
+    btnStartVcam.title = active
+      ? `Stop virtual camera preview. ${previewNote}`
+      : `Start virtual camera preview. ${previewNote}`
+  }
+}
+
+function setVcamInfoStatus(message: string, state: 'ok' | 'error' | ''): void {
+  if (!vcamInfoStatus) return
+  vcamInfoStatus.textContent = message
+  if (state) vcamInfoStatus.dataset.state = state
+  else delete vcamInfoStatus.dataset.state
+}
+
+function hydrateVcamInfoDialog(cap: VcamCapability): void {
+  if (vcamInfoLimitation) vcamInfoLimitation.textContent = cap.limitationMessage
+  if (vcamInfoFallbackPanel) {
+    vcamInfoFallbackPanel.hidden = !cap.recommendedFallback
+  }
+}
+
+async function ensureVcamCapability(): Promise<VcamCapability> {
+  if (vcamCapability) return vcamCapability
+  const cap = await window.tabcast.getVcamCapability()
+  vcamCapability = cap
+  hydrateVcamInfoDialog(cap)
+  setVcamUi(programVirtualCamera.isActive())
+  return cap
+}
+
+function openVcamInfoDialog(): void {
+  void ensureVcamCapability().then(() => {
+    setVcamInfoStatus('', '')
+    vcamUnavailableDialog?.showModal()
+  })
+}
 
 function setRecordingUi(active: boolean): void {
   if (btnStartRecording) btnStartRecording.dataset.recording = active ? '1' : '0'
@@ -4225,6 +4317,7 @@ if (btnStartRecording) {
       if (programRecording.isRecording()) {
         const blob = await programRecording.stop()
         setRecordingUi(false)
+        stopProgramOutputCompositorIfIdle()
         if (!blob) {
           setDestError('Recording produced no data.')
           return
@@ -4259,10 +4352,62 @@ if (btnStartRecording) {
 }
 
 if (btnStartVcam) {
-  btnStartVcam.addEventListener('click', () => {
-    vcamUnavailableDialog?.showModal()
+  btnStartVcam.addEventListener('click', (ev) => {
+    void (async () => {
+      if (ev.shiftKey) {
+        openVcamInfoDialog()
+        return
+      }
+      await ensureVcamCapability()
+      if (programVirtualCamera.isActive()) {
+        programVirtualCamera.stop()
+        stopProgramOutputCompositorIfIdle()
+        setVcamUi(false)
+        destHint.textContent = 'Virtual camera preview stopped.'
+        return
+      }
+      try {
+        setDestError(null)
+        programVirtualCamera.start()
+        setVcamUi(true)
+        if (!vcamInfoSeen && vcamCapability && !vcamCapability.canOutputToDevice) {
+          vcamInfoSeen = true
+          openVcamInfoDialog()
+        }
+        destHint.textContent =
+          'Virtual camera preview active (program compositor). Other apps cannot use Maka as a camera device in this build — Shift+click Virtual Camera for OBS fallback steps.'
+      } catch (err) {
+        setDestError(err instanceof Error ? err.message : String(err))
+      }
+    })()
   })
 }
+
+if (vcamOpenFallbackUrl) {
+  vcamOpenFallbackUrl.addEventListener('click', () => {
+    void ensureVcamCapability().then((cap) => {
+      const url = cap.recommendedFallback?.url
+      if (url) void window.tabcast.openExternal(url)
+    })
+  })
+}
+
+if (vcamCopyFrame) {
+  vcamCopyFrame.addEventListener('click', () => {
+    void (async () => {
+      try {
+        setVcamInfoStatus('', '')
+        await programVirtualCamera.copyProgramFrameToClipboard()
+        setVcamUi(programVirtualCamera.isActive())
+        setVcamInfoStatus('Program frame copied to clipboard as PNG.', 'ok')
+      } catch (err) {
+        setVcamInfoStatus(err instanceof Error ? err.message : String(err), 'error')
+      }
+    })()
+  })
+}
+
+void ensureVcamCapability()
 const btnGoLiveLabel = document.getElementById('btn-go-live-label') as HTMLElement | null
 
 // Stream info elements

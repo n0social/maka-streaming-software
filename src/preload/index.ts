@@ -4,6 +4,7 @@ import type { PhoneIceServer } from '../shared/phone-ice-servers'
 import type { PhonePairSnapshot, PhoneWebRtcSessionDescription } from '../shared/phone-pair'
 import type { EncodeProfileId } from '../shared/stream-encode-profiles'
 import type { StreamDestinationSettings } from '../shared/stream-destination-settings'
+import type { VcamCapability } from '../shared/virtual-camera'
 export type WorkspaceMode = 'studio' | 'browse'
 export type AppMode = WorkspaceMode | 'settings'
 
@@ -174,6 +175,7 @@ export type TabcastBridge = {
   exitSettingsMode: () => Promise<AppMode>
   onMode: (cb: (mode: AppMode) => void) => () => void
   getVersionInfo: () => Promise<AppVersionInfo>
+  getVcamCapability: () => Promise<VcamCapability>
   listGpuOptions: () => Promise<GpuOption[]>
   pickRecordingFolder: () => Promise<PickRecordingFolderResult>
   navigate: (url: string) => Promise<string | null>
@@ -281,6 +283,7 @@ const api: TabcastBridge = {
   setMode: (mode) => ipcRenderer.invoke('app:set-mode', mode),
   exitSettingsMode: () => ipcRenderer.invoke('app:exit-settings'),
   getVersionInfo: () => ipcRenderer.invoke('app:get-version-info'),
+  getVcamCapability: () => ipcRenderer.invoke('vcam:get-capability'),
   listGpuOptions: () => ipcRenderer.invoke('system:list-gpu-options'),
   pickRecordingFolder: () => ipcRenderer.invoke('recording:pick-folder'),
   onMode: (cb) => {

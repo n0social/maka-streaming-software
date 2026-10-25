@@ -1,27 +1,16 @@
-import type { EncodeProfileId, EncodeProfileSpec } from '../shared/stream-encode-profiles'
+import type { EncodeProfileId } from '../shared/stream-encode-profiles'
+import type { ProgramOutputCompositor } from './program-output-compositor'
+import {
+  createProgramOutputCompositor,
+  liveEnabledAudioTracks,
+  type ProgramOutputCompositorDeps,
+} from './program-output-compositor'
 
-export type ProgramRecordingDeps = {
-  /** Primary gameplay / program video element. */
-  getProgramVideo: () => HTMLVideoElement
-  /** Webcam element when desk-only or cam is the only feed. */
-  getWebcamVideo: () => HTMLVideoElement
-  /** Returns true when gameplay track is live on program video. */
-  hasGameplayVideo: () => boolean
-  getMicStream: () => MediaStream | null
-  getDesktopAudioStream: () => MediaStream | null
-  getGameAudioStream: () => MediaStream | null
-  getEncodeSpec: () => EncodeProfileSpec
-}
+export { liveEnabledAudioTracks }
 
-/** Live, unmuted tracks from mixer sources (mirrors stream mute / layer enabled flags on tracks). */
-export function liveEnabledAudioTracks(streams: (MediaStream | null)[]): MediaStreamTrack[] {
-  const out: MediaStreamTrack[] = []
-  for (const stream of streams) {
-    if (!stream) continue
-    const track = stream.getAudioTracks().find((t) => t.readyState === 'live' && t.enabled)
-    if (track) out.push(track)
-  }
-  return out
+export type ProgramRecordingDeps = ProgramOutputCompositorDeps & {
+  /** When omitted, a private compositor is created for this recorder only. */
+  compositor?: ProgramOutputCompositor
 }
 
 export type ProgramRecordingController = {
@@ -49,80 +38,13 @@ function pickRecorderMime(): string {
  * only the main program video element (or webcam fallback) is drawn each frame.
  */
 export function createProgramRecording(deps: ProgramRecordingDeps): ProgramRecordingController {
+  const compositor = deps.compositor ?? createProgramOutputCompositor(deps)
+  const ownsCompositor = !deps.compositor
+
   let recorder: MediaRecorder | null = null
   let recordStream: MediaStream | null = null
-  let canvas: HTMLCanvasElement | null = null
-  let rafId = 0
   const chunks: Blob[] = []
   let active = false
-
-  function primaryVideoEl(): HTMLVideoElement | null {
-    if (deps.hasGameplayVideo()) {
-      const el = deps.getProgramVideo()
-      if (el.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && !el.hidden) return el
-    }
-    const cam = deps.getWebcamVideo()
-    if (cam.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && !cam.hidden) return cam
-    const program = deps.getProgramVideo()
-    if (program.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) return program
-    return cam.readyState >= HTMLMediaElement.HAVE_METADATA ? cam : program
-  }
-
-  function startCanvasPump(): void {
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    const spec = deps.getEncodeSpec()
-    canvas.width = spec.width
-    canvas.height = spec.height
-
-    const tick = () => {
-      if (!active) return
-      const video = primaryVideoEl()
-      ctx.fillStyle = '#0a0a0a'
-      ctx.fillRect(0, 0, canvas!.width, canvas!.height)
-      if (video && video.videoWidth > 0) {
-        const vw = video.videoWidth
-        const vh = video.videoHeight
-        const scale = Math.min(canvas!.width / vw, canvas!.height / vh)
-        const dw = vw * scale
-        const dh = vh * scale
-        const dx = (canvas!.width - dw) / 2
-        const dy = (canvas!.height - dh) / 2
-        ctx.drawImage(video, dx, dy, dw, dh)
-      } else {
-        ctx.fillStyle = '#f6f3ec'
-        ctx.fillRect(0, 0, canvas!.width, canvas!.height)
-        ctx.fillStyle = '#1a1408'
-        ctx.font = '24px system-ui, sans-serif'
-        ctx.textAlign = 'center'
-        ctx.fillText('No program video', canvas!.width / 2, canvas!.height / 2)
-      }
-      rafId = requestAnimationFrame(tick)
-    }
-    rafId = requestAnimationFrame(tick)
-  }
-
-  function stopCanvasPump(): void {
-    if (rafId) cancelAnimationFrame(rafId)
-    rafId = 0
-  }
-
-  function buildRecordStream(): MediaStream {
-    const spec = deps.getEncodeSpec()
-    canvas = document.createElement('canvas')
-    startCanvasPump()
-    const videoStream = canvas.captureStream(spec.fps)
-    const tracks = [
-      ...videoStream.getVideoTracks(),
-      ...liveEnabledAudioTracks([
-        deps.getMicStream(),
-        deps.getDesktopAudioStream(),
-        deps.getGameAudioStream(),
-      ]),
-    ]
-    return new MediaStream(tracks)
-  }
 
   return {
     isRecording: () => active,
@@ -133,7 +55,10 @@ export function createProgramRecording(deps: ProgramRecordingDeps): ProgramRecor
         throw new Error('MediaRecorder is not supported in this environment.')
       }
       chunks.length = 0
-      recordStream = buildRecordStream()
+      recordStream = compositor.isActive() ? compositor.getStream() : compositor.start()
+      if (!recordStream) {
+        throw new Error('Could not start program output compositor.')
+      }
       recorder = mime
         ? new MediaRecorder(recordStream, { mimeType: mime })
         : new MediaRecorder(recordStream)
@@ -158,12 +83,10 @@ export function createProgramRecording(deps: ProgramRecordingDeps): ProgramRecor
         }
       })
 
-      stopCanvasPump()
-      if (recordStream) {
-        for (const track of recordStream.getTracks()) track.stop()
-        recordStream = null
+      if (ownsCompositor && compositor.isActive()) {
+        compositor.stop()
       }
-      canvas = null
+      recordStream = null
 
       if (!chunks.length) return null
       const type = rec.mimeType || 'video/webm'

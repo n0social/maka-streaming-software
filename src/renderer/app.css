@@ -2149,8 +2149,10 @@ body:not([data-mode='settings']) .settings-view {
 .program-stats-center {
   flex: 1 1 auto;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
+  gap: 0.35rem 0.75rem;
   min-width: 0;
   padding: 0 0.35rem;
 }
@@ -2167,6 +2169,56 @@ body:not([data-mode='settings']) .settings-view {
 
 .program-stat-recording[hidden] {
   display: none !important;
+}
+
+.program-stat-vcam {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #6b6256;
+}
+
+.program-stat-vcam[data-vcam='1'] {
+  color: #9a6700;
+}
+
+.program-stat-vcam[hidden] {
+  display: none !important;
+}
+
+.stream-controls-stack [data-vcam='1'] {
+  border-color: #c9a227;
+  box-shadow: inset 0 0 0 1px rgba(201, 162, 39, 0.35);
+}
+
+.vcam-info-dialog .vcam-info-panel {
+  margin: 0.75rem 0 0;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid rgba(26, 20, 8, 0.12);
+  background: rgba(246, 243, 236, 0.65);
+}
+
+.vcam-info-dialog .vcam-info-list {
+  margin: 0.35rem 0 0;
+  padding-left: 1.15rem;
+}
+
+.vcam-info-dialog .vcam-info-actions {
+  margin-top: 0.85rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.vcam-info-dialog .btn-inline {
+  margin-top: 0.5rem;
+}
+
+.vcam-info-status[data-state='ok'] {
+  color: #166534;
+}
+
+.vcam-info-status[data-state='error'] {
+  color: #b91c1c;
 }
 
 .program-stats-right {
