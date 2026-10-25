@@ -1,6 +1,6 @@
 # Addon validation report
 
-Generated: 2026-10-25T21:08:26.861Z
+Generated: 2026-10-25T22:09:51.704Z
 
 | Addon id | Result | Detail |
 | --- | --- | --- |

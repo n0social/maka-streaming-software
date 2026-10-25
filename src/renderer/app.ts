@@ -3848,7 +3848,6 @@ const sceneStarting = document.getElementById('scene-starting') as HTMLButtonEle
 const sceneChatting = document.getElementById('scene-chatting') as HTMLButtonElement
 const sceneIntermission = document.getElementById('scene-intermission') as HTMLButtonElement
 const sceneEnding = document.getElementById('scene-ending') as HTMLButtonElement
-const btnAddScene = document.getElementById('btn-add-scene') as HTMLButtonElement
 const btnAddSceneAlt = document.getElementById('btn-add-scene-alt') as HTMLButtonElement
 
 // Audio mixer
@@ -3876,10 +3875,6 @@ function highlightSceneSelection(sceneTemplate: string): void {
 function syncAddSceneButtons(): void {
   const atMax = customScenes.length >= MAX_CUSTOM_SCENES
   const title = atMax ? `Maximum of ${MAX_CUSTOM_SCENES} custom scenes` : 'Add scene'
-  if (btnAddScene) {
-    btnAddScene.disabled = atMax
-    btnAddScene.title = title
-  }
   if (btnAddSceneAlt) {
     btnAddSceneAlt.disabled = atMax
     btnAddSceneAlt.title = title
@@ -4113,11 +4108,6 @@ btnSceneImageClear.addEventListener('click', () => {
 })
 
 syncAddSceneButtons()
-if (btnAddScene) {
-  btnAddScene.addEventListener('click', () => {
-    void addCustomScene()
-  })
-}
 if (btnAddSceneAlt) {
   btnAddSceneAlt.addEventListener('click', () => {
     void addCustomScene()

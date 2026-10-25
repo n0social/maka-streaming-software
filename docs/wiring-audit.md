@@ -8,7 +8,7 @@ Living checklist of renderer ↔ relay ↔ capture wiring for the studio redesig
 |------|----------------|--------|
 | Built-in scene rows | `#scene-gameplay` … `#scene-ending`, `data-scene`, `selectScene()` | **OK** |
 | Active highlight | `.studio-list-item[data-scene]`, `highlightSceneSelection()` | **OK** |
-| Custom scenes | `#btn-add-scene`, `#btn-add-scene-alt`, `#studio-add-scene-row`, `renderCustomSceneRows()` | **OK** — max 3, rename on blur, scroll via `.studio-list--scenes` |
+| Custom scenes | `#btn-add-scene-alt`, `#studio-add-scene-row`, `renderCustomSceneRows()` | **OK** — max 3, rename on blur, scroll via `.studio-list--scenes` |
 | Per-scene ⋯ menu | `[data-scene-menu]`; `#scene-image-menu-dialog` | **OK** — Gameplay uses static `studio-list-menu--static` |
 | Scene image IPC | `pickSceneImageFile` / `readSceneImageDataUrl` | **OK** (`scene:pick-image`, `main/scene-image-io.ts`) |
 | Mask modes | `shared/scene-images.ts` | **OK** — desk-only + custom → `game-mask-only`; starting-soon / intermission / ending → `full-mask-except-chat`; gameplay → no upload |
