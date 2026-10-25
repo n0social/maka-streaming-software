@@ -3596,11 +3596,9 @@ window.tabcast.onTitle((title) => {
 })
 
 initMarketplace(window.tabcast, {
-  sidebarList: document.getElementById('marketplace-sidebar-list')!,
-  dialog: {
-    dialog: document.getElementById('marketplace-dialog') as HTMLDialogElement,
-    list: document.getElementById('marketplace-list')!,
-  },
+  dialog: document.getElementById('marketplace-dialog') as HTMLDialogElement,
+  list: document.getElementById('marketplace-list')!,
+  openControl: document.getElementById('btn-open-marketplace'),
   onRefreshPanels: () => {
     void renderAddonPanels()
   },

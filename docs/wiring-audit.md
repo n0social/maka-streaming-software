@@ -77,9 +77,9 @@ Living checklist of renderer ↔ relay ↔ capture wiring for the studio redesig
 
 | Surface | Status | Wiring |
 | --- | --- | --- |
-| Inline sidebar list | **OK** | `#marketplace-sidebar-list` scrollable; refresh `#marketplace-sidebar-refresh`. |
-| No “Browse addons” button | **OK** | Catalog inline only in studio sidebar. |
-| Modal `#marketplace-dialog` | **Legacy** | Same `paintList`; not linked from sidebar (optional full view). |
+| Studio entry | **OK** | `#btn-open-marketplace` in right sidebar opens `#marketplace-dialog` (`showModal`). |
+| Modal catalog | **OK** | Scrollable `#marketplace-list`; install/enable/uninstall via `marketplace.ts` → `paintList`. |
+| Modal refresh / close | **OK** | `#marketplace-refresh`, `#marketplace-close` in dialog footer. |
 | `npm run verify:addons` | **OK** | CI gate; `docs/addon-validation-report.md`. |
 
 ## Audio + Stream Audio

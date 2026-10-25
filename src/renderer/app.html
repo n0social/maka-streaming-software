@@ -459,24 +459,17 @@
         </div>
 
         <div class="studio-block studio-block-compact studio-block-marketplace">
-          <div class="marketplace-sidebar-head">
-            <h2>Addon Marketplace</h2>
-            <button
-              type="button"
-              class="marketplace-sidebar-refresh"
-              id="marketplace-sidebar-refresh"
-              title="Refresh catalog"
-              aria-label="Refresh addon catalog"
-            >
-              ↻
-            </button>
-          </div>
-          <div
-            id="marketplace-sidebar-list"
-            class="marketplace-sidebar-list"
-            role="list"
-            aria-label="Available addons"
-          ></div>
+          <h2>Addon Marketplace</h2>
+          <button
+            type="button"
+            class="btn-block btn-secondary btn-open-marketplace"
+            id="btn-open-marketplace"
+            aria-haspopup="dialog"
+            aria-controls="marketplace-dialog"
+          >
+            <span class="btn-icon" aria-hidden="true">▣</span>
+            Browse addons
+          </button>
         </div>
 
         <div class="studio-block studio-block-compact studio-block-stream-info">
