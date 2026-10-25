@@ -47,7 +47,7 @@ Not exposed in Settings dialog; managed by browser UI and `src/main/browse-tabs.
 | Go Live wizard keys | Partial | **Yes** | Wizard writes keys into relay RAM; saving platform dialog persists to `streamDestinations`. |
 | Custom RTMP (legacy host + wizard) | Partial | **Conditional** | Legacy `#dest-custom-block` is hidden; wizard shows Custom RTMP when `com.tabcast.custom-rtmp` addon is installed/enabled. |
 | Scene / source toggles, overlay layout | No (session) | **Yes** | Runtime program layout; not in `settings.json`. |
-| Addon Marketplace | No | **Yes** | Right sidebar **Browse addons** → `#marketplace-dialog`; install/enable affects addon panels and custom RTMP visibility. |
+| Addon Marketplace | No | **Yes** | Right sidebar scroll list `#marketplace-sidebar-list` (catalog via `listMarketplace`); install/enable affects addon panels and custom RTMP visibility. Optional `#marketplace-dialog` retained for full detail. |
 
 ## Cosmetic or placeholder UI
 

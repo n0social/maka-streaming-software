@@ -1,5 +1,7 @@
 # Release WIP audit (studio redesign)
 
+**Storage cleanup (2026-10-25):** Deleted published releases `v0.2.0` (Tabcast Browser 0.2.0) and `v0.2.2` (0.2.2) — the two oldest by publish date. Draft `v0.2.4-redesign-wip` and releases `v0.2.3` / `0.2.3.1-redesign` were left intact.
+
 ## Release handoff
 
 | Item | Value |

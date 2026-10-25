@@ -35,7 +35,7 @@ Verified against `app.html`, `app.css`, and `app.ts` on `cursor/maka-mixer-layou
 
 **Center.** Program preview with a "Program • Live Output" label. Under it, a stats bar: a disabled Program select, a quality dropdown, dropped frames, FPS, and resolution. The quality menu is filled from `ENCODE_PROFILE_ORDER`: 720p @ 30fps, 720p @ 60fps, 1080p @ 30fps, 1080p @ 60fps, 2K @ 60fps, 4K @ 60fps. Default is `720p30` (1280×720, 30 fps). FPS and resolution labels follow that preset, not a measured capture clock.
 
-**Right.** Audio mixer, then Stream controls (Go Live, Recording, Virtual Cam), then **Addon Marketplace** (`#btn-open-marketplace` → `#marketplace-dialog`), then Stream info pinned to the bottom (`margin-top: auto` on `.studio-block-stream-info`). Settings inventory: `docs/studio-settings-inventory.md`.
+**Right.** Audio mixer, then Stream controls (Go Live, Recording, Virtual Cam), then **Addon Marketplace** (embedded `#marketplace-sidebar-list` under Stream Controls), then Stream info pinned to the bottom (`margin-top: auto` on `.studio-block-stream-info`). Settings inventory: `docs/studio-settings-inventory.md`.
 
 ### Audio mixer (accepted)
 

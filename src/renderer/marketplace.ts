@@ -9,40 +9,69 @@ function escapeHtml(value: string): string {
 }
 
 type MarketplaceUi = {
-  dialog: HTMLDialogElement
-  list: HTMLElement
+  sidebarList: HTMLElement
+  dialog?: {
+    dialog: HTMLDialogElement
+    list: HTMLElement
+  }
   onRefreshPanels: () => void
   onToast: (message: string, isError?: boolean) => void
 }
 
+type RenderOptions = {
+  compact?: boolean
+}
+
 export function initMarketplace(api: TabcastBridge, ui: MarketplaceUi): void {
-  document.getElementById('btn-open-marketplace')!.addEventListener('click', () => {
-    void renderMarketplace(api, ui)
-    ui.dialog.showModal()
-  })
+  const rerender = () => void renderAllLists(api, ui)
 
-  document.getElementById('marketplace-close')!.addEventListener('click', () => {
-    ui.dialog.close()
-  })
-
-  const refreshBtn = document.getElementById('marketplace-refresh')
-  refreshBtn?.addEventListener('click', () => {
+  document.getElementById('marketplace-sidebar-refresh')?.addEventListener('click', () => {
     void (async () => {
-      ui.list.textContent = 'Refreshing catalog…'
+      ui.sidebarList.textContent = 'Refreshing catalog…'
       await api.refreshMarketplace()
-      await renderMarketplace(api, ui)
+      await rerender()
       ui.onToast('Catalog refreshed')
     })()
   })
+
+  ui.dialog?.dialog.querySelector('#marketplace-close')?.addEventListener('click', () => {
+    ui.dialog!.dialog.close()
+  })
+
+  document.getElementById('marketplace-refresh')?.addEventListener('click', () => {
+    void (async () => {
+      if (ui.dialog) ui.dialog.list.textContent = 'Refreshing catalog…'
+      await api.refreshMarketplace()
+      await rerender()
+      ui.onToast('Catalog refreshed')
+    })()
+  })
+
+  void rerender()
 }
 
-async function renderMarketplace(api: TabcastBridge, ui: MarketplaceUi): Promise<void> {
-  ui.list.textContent = 'Loading catalog…'
+async function renderAllLists(api: TabcastBridge, ui: MarketplaceUi): Promise<void> {
+  ui.sidebarList.textContent = 'Loading catalog…'
+  if (ui.dialog) ui.dialog.list.textContent = 'Loading catalog…'
+
   const items = await api.listMarketplace()
-  ui.list.innerHTML = ''
+  paintList(ui.sidebarList, items, api, ui, { compact: true })
+  if (ui.dialog) {
+    paintList(ui.dialog.list, items, api, ui, { compact: false })
+  }
+}
+
+function paintList(
+  root: HTMLElement,
+  items: MarketplaceItem[],
+  api: TabcastBridge,
+  ui: MarketplaceUi,
+  options: RenderOptions,
+): void {
+  root.innerHTML = ''
 
   if (!items.length) {
-    ui.list.innerHTML = '<p class="hint">Marketplace catalog is empty.</p>'
+    root.innerHTML = '<p class="hint tight">Marketplace catalog is empty.</p>'
     return
   }
 
@@ -50,10 +79,10 @@ async function renderMarketplace(api: TabcastBridge, ui: MarketplaceUi): Promise
   const rest = items.filter((i) => !i.featured)
 
   if (featured.length) {
-    appendSection(ui.list, 'Featured', featured, api, ui)
+    appendSection(root, 'Featured', featured, api, ui, options)
   }
   if (rest.length) {
-    appendSection(ui.list, 'All extensions', rest, api, ui)
+    appendSection(root, options.compact ? 'Extensions' : 'All extensions', rest, api, ui, options)
   }
 }
 
@@ -63,6 +92,7 @@ function appendSection(
   items: MarketplaceItem[],
   api: TabcastBridge,
   ui: MarketplaceUi,
+  options: RenderOptions,
 ): void {
   const heading = document.createElement('h3')
   heading.className = 'marketplace-section-title'
@@ -70,13 +100,19 @@ function appendSection(
   root.appendChild(heading)
 
   for (const item of items) {
-    root.appendChild(renderCard(item, api, ui))
+    root.appendChild(renderCard(item, api, ui, options))
   }
 }
 
-function renderCard(item: MarketplaceItem, api: TabcastBridge, ui: MarketplaceUi): HTMLElement {
+function renderCard(
+  item: MarketplaceItem,
+  api: TabcastBridge,
+  ui: MarketplaceUi,
+  options: RenderOptions,
+): HTMLElement {
   const card = document.createElement('article')
   card.className = 'marketplace-card' + (item.featured ? ' featured' : '')
+  if (options.compact) card.classList.add('marketplace-card-compact')
   card.dataset.catalogId = item.catalogId
 
   const perms =
@@ -84,16 +120,24 @@ function renderCard(item: MarketplaceItem, api: TabcastBridge, ui: MarketplaceUi
       ? item.permissions.map((p) => `<code>${escapeHtml(p)}</code>`).join(' ')
       : '<span class="hint tight">No special permissions</span>'
 
+  const permsBlock = options.compact
+    ? ''
+    : `<p class="marketplace-perms">${perms}</p>`
+
+  const metaLine = options.compact
+    ? ''
+    : `<span class="marketplace-meta">${escapeHtml(item.version)} · ${escapeHtml(item.author ?? 'Community')}</span>`
+
   card.innerHTML = `
     <header class="marketplace-card-head">
       <div>
         <strong>${escapeHtml(item.name)}</strong>
-        <span class="marketplace-meta">${escapeHtml(item.version)} · ${escapeHtml(item.author ?? 'Community')}</span>
+        ${metaLine}
       </div>
       <span class="marketplace-badge" data-kind="${escapeHtml(item.category ?? 'utility')}">${escapeHtml(item.category ?? 'utility')}</span>
     </header>
     <p class="hint tight">${escapeHtml(item.description ?? '')}</p>
-    <p class="marketplace-perms">${perms}</p>
+    ${permsBlock}
     <div class="marketplace-card-actions"></div>
   `
 
@@ -115,30 +159,32 @@ function renderCard(item: MarketplaceItem, api: TabcastBridge, ui: MarketplaceUi
         if (res.ok) {
           await api.reloadAddons()
           ui.onRefreshPanels()
-          void renderMarketplace(api, ui)
+          void renderAllLists(api, ui)
         }
       })()
     })
     actions.appendChild(toggle)
 
-    const remove = document.createElement('button')
-    remove.type = 'button'
-    remove.textContent = 'Uninstall'
-    remove.addEventListener('click', () => {
-      void (async () => {
-        const res = await api.uninstallAddon(item.id)
-        ui.onToast(res.message ?? (res.ok ? 'Removed' : 'Failed'), !res.ok)
-        if (res.ok) {
-          ui.onRefreshPanels()
-          void renderMarketplace(api, ui)
-        }
-      })()
-    })
-    actions.appendChild(remove)
+    if (!options.compact) {
+      const remove = document.createElement('button')
+      remove.type = 'button'
+      remove.textContent = 'Uninstall'
+      remove.addEventListener('click', () => {
+        void (async () => {
+          const res = await api.uninstallAddon(item.id)
+          ui.onToast(res.message ?? (res.ok ? 'Removed' : 'Failed'), !res.ok)
+          if (res.ok) {
+            ui.onRefreshPanels()
+            void renderAllLists(api, ui)
+          }
+        })()
+      })
+      actions.appendChild(remove)
+    }
   } else {
     const install = document.createElement('button')
     install.type = 'button'
-    install.className = 'primary'
+    install.className = options.compact ? 'primary marketplace-install-compact' : 'primary'
     install.textContent = 'Install'
     install.addEventListener('click', () => {
       void (async () => {
@@ -148,7 +194,7 @@ function renderCard(item: MarketplaceItem, api: TabcastBridge, ui: MarketplaceUi
         install.disabled = false
         if (res.ok) {
           ui.onRefreshPanels()
-          void renderMarketplace(api, ui)
+          void renderAllLists(api, ui)
         }
       })()
     })

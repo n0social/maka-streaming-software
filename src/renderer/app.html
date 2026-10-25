@@ -456,10 +456,24 @@
         </div>
 
         <div class="studio-block studio-block-compact studio-block-marketplace">
-          <h2>Addon Marketplace</h2>
-          <button type="button" class="btn-block btn-secondary" id="btn-open-marketplace">
-            Browse addons
-          </button>
+          <div class="marketplace-sidebar-head">
+            <h2>Addon Marketplace</h2>
+            <button
+              type="button"
+              class="marketplace-sidebar-refresh"
+              id="marketplace-sidebar-refresh"
+              title="Refresh catalog"
+              aria-label="Refresh addon catalog"
+            >
+              ↻
+            </button>
+          </div>
+          <div
+            id="marketplace-sidebar-list"
+            class="marketplace-sidebar-list"
+            role="list"
+            aria-label="Available addons"
+          ></div>
         </div>
 
         <div class="studio-block studio-block-compact studio-block-stream-info">

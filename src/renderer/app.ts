@@ -3354,8 +3354,11 @@ window.tabcast.onAddonStudioToast((message) => {
 })
 
 initMarketplace(window.tabcast, {
-  dialog: document.getElementById('marketplace-dialog') as HTMLDialogElement,
-  list: document.getElementById('marketplace-list')!,
+  sidebarList: document.getElementById('marketplace-sidebar-list')!,
+  dialog: {
+    dialog: document.getElementById('marketplace-dialog') as HTMLDialogElement,
+    list: document.getElementById('marketplace-list')!,
+  },
   onRefreshPanels: () => {
     void renderAddonPanels()
   },
