@@ -4,6 +4,11 @@ import { app } from 'electron'
 import type { EncodeProfileId } from '../shared/stream-encode-profiles'
 import { coerceCustomScenes, type CustomScene } from '../shared/custom-scenes'
 import { isSceneImageStorageKey } from '../shared/scene-images'
+import {
+  DEFAULT_STREAM_DESTINATIONS,
+  type StreamDestinationSettings,
+  coerceStreamDestinations,
+} from '../shared/stream-destination-settings'
 import { coerceSettings, isValidTabId, sanitizeSavedTabs } from './security'
 
 export type AppSettings = {
@@ -18,6 +23,8 @@ export type AppSettings = {
   sceneImages: Partial<Record<string, string>>
   /** User-defined scenes (max three); ids `custom-1` … `custom-3`. */
   customScenes: CustomScene[]
+  /** Twitch/YouTube enable flags and stream keys saved from the stats bar dialog. */
+  streamDestinations: StreamDestinationSettings
 }
 
 export type SavedBrowseTab = {
@@ -42,6 +49,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   setupWizardComplete: false,
   sceneImages: {},
   customScenes: [],
+  streamDestinations: { ...DEFAULT_STREAM_DESTINATIONS },
 }
 
 function storeDir(): string {
@@ -83,7 +91,11 @@ export function saveSettings(partial: Partial<AppSettings>): AppSettings {
   if (partial.customScenes) {
     customScenes = coerceCustomScenes(partial.customScenes)
   }
-  const next = { ...prev, ...partial, sceneImages, customScenes }
+  let streamDestinations = prev.streamDestinations
+  if (partial.streamDestinations !== undefined) {
+    streamDestinations = coerceStreamDestinations(partial.streamDestinations)
+  }
+  const next = { ...prev, ...partial, sceneImages, customScenes, streamDestinations }
   writeJson('settings.json', next)
   return next
 }

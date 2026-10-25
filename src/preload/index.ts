@@ -3,6 +3,7 @@ import type { RelaySnapshot } from '../shared/relay-snapshot'
 import type { PhoneIceServer } from '../shared/phone-ice-servers'
 import type { PhonePairSnapshot, PhoneWebRtcSessionDescription } from '../shared/phone-pair'
 import type { EncodeProfileId } from '../shared/stream-encode-profiles'
+import type { StreamDestinationSettings } from '../shared/stream-destination-settings'
 export type AppMode = 'studio' | 'browse'
 
 export type CaptureSource = {
@@ -37,7 +38,12 @@ export type AppSettings = {
   setupWizardComplete: boolean
   sceneImages: Partial<Record<string, string>>
   customScenes: Array<{ id: string; name: string }>
+  streamDestinations: StreamDestinationSettings
 }
+
+export type SaveRecordingResult =
+  | { canceled: true }
+  | { canceled: false; filePath: string }
 
 export type PickSceneImageResult =
   | { canceled: true }
@@ -190,6 +196,11 @@ export type TabcastBridge = {
   setSettings: (partial: Partial<AppSettings>) => Promise<AppSettings>
   pickSceneImageFile: () => Promise<PickSceneImageResult>
   readSceneImageDataUrl: (filePath: string) => Promise<string | null>
+  saveRecording: (payload: {
+    data: ArrayBuffer
+    defaultName: string
+    ext: 'webm' | 'mp4'
+  }) => Promise<SaveRecordingResult>
   windowMinimize: () => Promise<void>
   windowMaximize: () => Promise<boolean>
   windowClose: () => Promise<void>
@@ -289,6 +300,7 @@ const api: TabcastBridge = {
   setSettings: (partial) => ipcRenderer.invoke('settings:set', partial),
   pickSceneImageFile: () => ipcRenderer.invoke('scene:pick-image'),
   readSceneImageDataUrl: (filePath) => ipcRenderer.invoke('scene:read-image-data-url', filePath),
+  saveRecording: (payload) => ipcRenderer.invoke('recording:save', payload),
   windowMinimize: () => ipcRenderer.invoke('window:minimize'),
   windowMaximize: () => ipcRenderer.invoke('window:maximize'),
   windowClose: () => ipcRenderer.invoke('window:close'),

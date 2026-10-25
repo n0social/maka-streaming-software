@@ -20,7 +20,9 @@ This pass separates **working** studio controls from **intentionally disabled** 
 | --- | --- | --- |
 | Relay start/stop, health chip | **Working** | Top bar + legacy controls |
 | Go Live / End Live (WHIP → relay) | **Working** | Requires capture; desk-only can use webcam-only video |
-| Stream keys (Twitch/YouTube/custom) | **Working** | Platform chips + `#platform-key-dialog`; keys in relay RAM |
+| Stream keys (Twitch/YouTube/custom) | **Working** | Platform chips + `#platform-key-dialog`; keys saved in `settings.json` on Save; relay RAM while live |
+| Go Live wizard (sidebar) | **Working** | `#go-live-wizard-dialog`: platform → key → validate (`verifyRelayConfig`) → go live |
+| Local recording | **Partial** | `MediaRecorder` + canvas compositor; `recording:save` IPC (save dialog). No PiP/browser/scene-PNG composite yet |
 | Encode profile (`#program-quality-select`) | **Working** | Drives relay layout canvas + stats bar Mbps/FPS |
 | Scene: Gameplay (`gaming-cam`) | **Working** | Game + cam layers; relay layout from scene template |
 | Scene: Just Chatting (`desk-only`) | **Working** | Cam-only layout; optional PNG/JPG masks gameplay layer only (`#program-scene-bg`) |
@@ -35,8 +37,8 @@ This pass separates **working** studio controls from **intentionally disabled** 
 | Stream info sidebar | **Working (honest)** | Title = enabled destinations; category = encode preset; duration = local live clock |
 | Desktop Audio meter/settings | **Disabled** | Relay has no WASAPI loopback yet |
 | Game Audio meter/settings | **Disabled** | Same as desktop |
-| Start Recording | **Disabled** | No relay record path in this build |
-| Start Virtual Camera | **Disabled** | Not implemented |
+| Start Recording | **Working (MVP)** | Sidebar toggle; stats bar **Now recording**; WebM via main-process save dialog |
+| Start Virtual Camera | **Stub** | Clickable; honest “not available” modal (no driver) |
 | Add Scene (+) | **Working** | Up to 3 custom scenes (`custom-1`…`custom-3`); inline rename; Just Chatting layout |
 | Stream viewer count | **Disabled** | Shows `Viewers: N/A` while live (no platform API) |
 | Chat / notification overlay slots | **Placeholder** | Layout regions only; labeled in preview |
@@ -53,6 +55,15 @@ This pass separates **working** studio controls from **intentionally disabled** 
 6. **Add Scene** — Creates persisted custom scenes (max 3) with `customScenes` + per-id `sceneImages`.
 7. **Mic mixer gear** — Opens/focuses the Microphone source picker.
 8. **Sources refresh control** — Icon/title corrected (refresh lists, not “add source”).
+9. **Stream controls** — Sidebar Go Live opens cream/gold wizard; recording + vcam buttons enabled (vcam = noop modal); stream keys persist from platform dialog.
+
+## IPC added (this pass)
+
+| Channel | Purpose |
+| --- | --- |
+| `recording:save` | Studio → main: `ArrayBuffer` + default filename → `dialog.showSaveDialog` → write WebM/MP4 |
+
+Existing: `settings:set` / `settings:get` now include `streamDestinations` (`destTwitch`, `destYoutube`, `destCustom`, `twitchKey`, `youtubeKey`).
 
 ## Verification run
 

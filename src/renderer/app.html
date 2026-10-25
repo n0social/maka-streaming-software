@@ -285,6 +285,7 @@
                   <option value="studio" selected>Studio Mode</option>
                 </select>
               </label>
+              <span class="program-stat program-stat-recording" id="stat-recording" hidden>Now recording</span>
             </div>
             <div class="program-stats-right">
               <span class="program-stat" id="stat-dropped">Dropped Frames: 0 (0.0%)</span>
@@ -372,11 +373,11 @@
               <span class="btn-icon btn-icon-live" aria-hidden="true">((•))</span>
               <span id="btn-go-live-label">Go Live</span>
             </button>
-            <button type="button" class="btn-block btn-secondary" id="btn-start-recording" disabled title="Recording is not available in this build yet">
-              <span class="btn-icon" aria-hidden="true">●</span>
-              Start Recording
+            <button type="button" class="btn-block btn-secondary" id="btn-start-recording" title="Record program output locally (not streaming)">
+              <span class="btn-icon btn-icon-rec" id="btn-recording-icon" aria-hidden="true">●</span>
+              <span id="btn-recording-label">Start Recording</span>
             </button>
-            <button type="button" class="btn-block btn-secondary" id="btn-start-vcam" disabled title="Virtual camera is not available in this build yet">
+            <button type="button" class="btn-block btn-secondary" id="btn-start-vcam" title="Virtual camera is not available in this build">
               <span class="btn-icon" aria-hidden="true">▢</span>
               Start Virtual Camera
             </button>
@@ -408,7 +409,7 @@
     <dialog id="platform-key-dialog" class="platform-key-dialog">
       <form method="dialog" id="platform-key-form" class="platform-key-form">
         <h2 id="platform-key-dialog-title">Stream key</h2>
-        <p class="hint tight">Keys stay in relay RAM only — never written to disk.</p>
+        <p class="hint tight" id="platform-key-hint">Saved locally when you click Save. Relay still holds keys in RAM while live.</p>
         <div class="platform-key-panel" id="platform-key-panel-twitch" data-platform="twitch">
           <label class="check">
             <input type="checkbox" id="dest-twitch" checked />
@@ -443,6 +444,68 @@
         <div class="row platform-key-dialog-actions">
           <button type="submit" value="save" class="primary" id="platform-key-save">Save</button>
           <button type="submit" value="cancel">Cancel</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="go-live-wizard-dialog" class="go-live-wizard-dialog platform-key-dialog">
+      <div class="go-live-wizard-form platform-key-form">
+        <p class="go-live-wizard-step" id="go-live-wizard-step">Step 1 of 4</p>
+        <h2 id="go-live-wizard-title">Go live</h2>
+        <p class="hint tight" id="go-live-wizard-body"></p>
+        <div id="go-live-wizard-panel-platform">
+          <fieldset class="go-live-wizard-platforms">
+            <legend class="sr-only">Platform</legend>
+            <label class="check">
+              <input type="radio" name="go-live-platform" value="twitch" checked />
+              Twitch
+            </label>
+            <label class="check">
+              <input type="radio" name="go-live-platform" value="youtube" />
+              YouTube
+            </label>
+            <label class="check" id="go-live-wizard-custom-option" hidden>
+              <input type="radio" name="go-live-platform" value="custom" />
+              Custom RTMP
+            </label>
+          </fieldset>
+        </div>
+        <div id="go-live-wizard-panel-key" hidden>
+          <div data-wizard-key="twitch">
+            <label class="field-label" for="wizard-twitch-key">Twitch stream key</label>
+            <input id="wizard-twitch-key" class="key-input" type="password" autocomplete="off" spellcheck="false" />
+          </div>
+          <div data-wizard-key="youtube" hidden>
+            <label class="field-label" for="wizard-youtube-key">YouTube stream key</label>
+            <input id="wizard-youtube-key" class="key-input" type="password" autocomplete="off" spellcheck="false" />
+          </div>
+          <div id="go-live-wizard-custom-fields" hidden>
+            <label class="field-label" for="wizard-custom-rtmp-url">RTMP URL</label>
+            <input id="wizard-custom-rtmp-url" class="key-input" type="text" autocomplete="off" spellcheck="false" />
+            <label class="field-label" for="wizard-custom-rtmp-key">Stream key</label>
+            <input id="wizard-custom-rtmp-key" class="key-input" type="password" autocomplete="off" spellcheck="false" />
+          </div>
+        </div>
+        <div id="go-live-wizard-panel-validate" hidden>
+          <p class="go-live-wizard-status" id="go-live-wizard-status" data-state="idle">Press Validate to continue.</p>
+        </div>
+        <div id="go-live-wizard-panel-go" hidden>
+          <p class="go-live-wizard-status" id="go-live-wizard-go-status"></p>
+        </div>
+        <div class="row platform-key-dialog-actions go-live-wizard-actions">
+          <button type="button" class="primary" id="go-live-wizard-next">Next</button>
+          <button type="button" id="go-live-wizard-back" hidden>Back</button>
+          <button type="button" id="go-live-wizard-cancel">Cancel</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="vcam-unavailable-dialog" class="platform-key-dialog">
+      <form method="dialog" class="platform-key-form">
+        <h2>Virtual camera</h2>
+        <p class="hint tight">A virtual camera driver is not bundled in this build. Use OBS Virtual Camera or a similar tool if you need one.</p>
+        <div class="row platform-key-dialog-actions">
+          <button type="submit" value="ok" class="primary">OK</button>
         </div>
       </form>
     </dialog>

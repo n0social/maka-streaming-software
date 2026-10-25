@@ -1780,6 +1780,53 @@ body:not([data-mode='browse']) #browsetabs {
   margin-bottom: 0;
 }
 
+#btn-start-recording[data-recording='1'] .btn-icon-rec {
+  color: #ef4444;
+}
+
+#btn-start-recording[data-recording='1'] {
+  border-color: #f87171;
+}
+
+.go-live-wizard-dialog {
+  max-width: 26rem;
+}
+
+.go-live-wizard-step {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.go-live-wizard-platforms {
+  border: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.go-live-wizard-status {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.go-live-wizard-status[data-state='error'] {
+  color: #b91c1c;
+}
+
+.go-live-wizard-status[data-state='ok'] {
+  color: #166534;
+}
+
+.go-live-wizard-actions {
+  flex-wrap: wrap;
+}
+
 /* Stream Info */
 .stream-info {
   display: flex;
@@ -1842,6 +1889,19 @@ body:not([data-mode='browse']) #browsetabs {
 
 .program-stats-left {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.program-stat-recording {
+  color: #b91c1c;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.program-stat-recording[hidden] {
+  display: none !important;
 }
 
 .program-stats-right {

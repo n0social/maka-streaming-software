@@ -48,6 +48,7 @@ import {
 } from './auto-update'
 import { PhonePairServer, phoneWebRtcIceServersForSession } from './phone-pair'
 import { pickSceneImageFile, readSceneImageDataUrl } from './scene-image-io'
+import { saveRecordingWithDialog } from './recording-io'
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -572,6 +573,24 @@ function registerIpc(): void {
     if (!studioOk(event)) return { canceled: true }
     const win = BrowserWindow.fromWebContents(event.sender)
     return pickSceneImageFile(win)
+  })
+
+  ipcMain.handle('recording:save', async (event, payload: unknown) => {
+    if (!studioOk(event)) return { canceled: true }
+    if (!payload || typeof payload !== 'object') return { canceled: true }
+    const p = payload as Record<string, unknown>
+    const data = p.data
+    const defaultName = typeof p.defaultName === 'string' ? p.defaultName.slice(0, 200) : 'maka-recording.webm'
+    const ext = p.ext === 'mp4' ? 'mp4' : 'webm'
+    if (!(data instanceof ArrayBuffer) && !Buffer.isBuffer(data)) {
+      return { canceled: true }
+    }
+    const bytes = data instanceof ArrayBuffer ? new Uint8Array(data) : new Uint8Array(data)
+    if (bytes.length === 0 || bytes.length > 2 * 1024 * 1024 * 1024) {
+      return { canceled: true }
+    }
+    const win = BrowserWindow.fromWebContents(event.sender)
+    return saveRecordingWithDialog(win, defaultName, bytes, ext)
   })
 
   ipcMain.handle('scene:read-image-data-url', (event, filePath: unknown) => {

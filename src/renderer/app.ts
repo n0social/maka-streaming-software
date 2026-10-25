@@ -40,6 +40,9 @@ import {
   type IngestTarget,
 } from '../shared/ingest-failover'
 import { validateRelayStreamKeys, KICK_RTMP_URL } from '../shared/stream-keys'
+import type { StreamDestinationSettings } from '../shared/stream-destination-settings'
+import { GoLiveWizard, type GoLiveWizardPlatform } from './go-live-wizard'
+import { createProgramRecording, recordingFileExtension } from './program-recording'
 import {
   authHeaders,
   defaultSceneLayout,
@@ -1355,6 +1358,30 @@ function liveDestHintAfterRecovery(): string {
   return 'Live — stream recovered. Keys stay in relay RAM.'
 }
 
+function streamDestinationsFromUi(): StreamDestinationSettings {
+  return {
+    destTwitch: destTwitch.checked,
+    destYoutube: destYoutube.checked,
+    destCustom: destCustom.checked,
+    twitchKey: twitchKey.value,
+    youtubeKey: youtubeKey.value,
+  }
+}
+
+function applyStreamDestinations(saved: StreamDestinationSettings): void {
+  destTwitch.checked = saved.destTwitch
+  destYoutube.checked = saved.destYoutube
+  destCustom.checked = saved.destCustom
+  twitchKey.value = saved.twitchKey
+  youtubeKey.value = saved.youtubeKey
+  syncDestinationInputs()
+  void window.tabcast.getRelay().then(renderPlatformStatus)
+}
+
+async function persistStreamDestinationsFromUi(): Promise<void> {
+  await window.tabcast.setSettings({ streamDestinations: streamDestinationsFromUi() })
+}
+
 function syncDestinationInputs(): void {
   twitchKey.disabled = !destTwitch.checked
   youtubeKey.disabled = !destYoutube.checked
@@ -1364,6 +1391,13 @@ function syncDestinationInputs(): void {
   backupRtmpUrl.disabled = !customEnabled
   backupRtmpKey.disabled = !customEnabled
   syncStreamInfoMeta()
+}
+
+function applyWizardPlatform(platform: GoLiveWizardPlatform): void {
+  destTwitch.checked = platform === 'twitch'
+  destYoutube.checked = platform === 'youtube'
+  destCustom.checked = platform === 'custom'
+  syncDestinationInputs()
 }
 
 type PlatformKeyTarget = 'twitch' | 'youtube'
@@ -1384,6 +1418,8 @@ function openPlatformKeyDialog(platform: PlatformKeyTarget): void {
 function syncCustomRtmpBlock(show: boolean): void {
   destCustomBlock.hidden = !show
   platCustom.hidden = !show
+  const wizardCustom = document.getElementById('go-live-wizard-custom-option')
+  if (wizardCustom) wizardCustom.hidden = !show
 }
 
 async function loadCustomRtmpSettings(): Promise<void> {
@@ -2384,10 +2420,7 @@ async function onGoLiveClick(): Promise<void> {
   await goLive()
 }
 
-async function onVerifyKeys(): Promise<void> {
-  setDestError(null)
-  destHint.textContent = 'Verifying…'
-
+async function verifyStreamKeys(): Promise<{ ok: boolean; message: string }> {
   try {
     const twitch = destTwitch.checked ? twitchKey.value : ''
     const youtube = destYoutube.checked ? youtubeKey.value : ''
@@ -2427,9 +2460,22 @@ async function onVerifyKeys(): Promise<void> {
       throw new Error(parts.join('\n') || 'Verification failed')
     }
 
-    destHint.textContent = result.message ?? 'Keys look good.'
+    return { ok: true, message: result.message ?? 'Keys look good.' }
   } catch (err) {
-    setDestError(err instanceof Error ? err.message : String(err))
+    const message = err instanceof Error ? err.message : String(err)
+    return { ok: false, message }
+  }
+}
+
+async function onVerifyKeys(): Promise<void> {
+  setDestError(null)
+  destHint.textContent = 'Verifying…'
+  const result = await verifyStreamKeys()
+  if (result.ok) {
+    destHint.textContent = result.message
+    setDestError(null)
+  } else {
+    setDestError(result.message)
     destHint.textContent = 'Keys stay in relay RAM only. Go Live publishes WHIP to localhost — not OBS.'
   }
 }
@@ -2732,7 +2778,11 @@ platYoutube.addEventListener('click', () => {
   openPlatformKeyDialog('youtube')
 })
 
-platformKeyForm.addEventListener('submit', () => {
+platformKeyForm.addEventListener('submit', (event) => {
+  const submitter = (event as SubmitEvent).submitter as HTMLButtonElement | null
+  if (submitter?.value === 'save') {
+    void persistStreamDestinationsFromUi()
+  }
   void window.tabcast.getRelay().then(renderPlatformStatus)
 })
 
@@ -2782,6 +2832,9 @@ void window.tabcast.getSettings().then((s) => {
   updateProgramStats()
   Object.assign(sceneImagePaths, s.sceneImages ?? {})
   customScenes = coerceCustomScenes(s.customScenes ?? [])
+  if (s.streamDestinations) {
+    applyStreamDestinations(s.streamDestinations)
+  }
   renderCustomSceneRows()
   syncAddSceneButtons()
   syncSceneImagePanel()
@@ -3414,10 +3467,65 @@ if (btnAddSceneAlt) {
   })
 }
 
-// Go Live sidebar button (wire to existing Go Live)
+const goLiveWizardDialog = document.getElementById('go-live-wizard-dialog') as HTMLDialogElement
+const goLiveWizard = new GoLiveWizard(
+  goLiveWizardDialog,
+  document.getElementById('go-live-wizard-step')!,
+  document.getElementById('go-live-wizard-title')!,
+  document.getElementById('go-live-wizard-body')!,
+  document.getElementById('go-live-wizard-status')!,
+  document.getElementById('go-live-wizard-panel-platform')!,
+  document.getElementById('go-live-wizard-panel-key')!,
+  document.getElementById('go-live-wizard-panel-validate')!,
+  document.getElementById('go-live-wizard-panel-go')!,
+  document.querySelectorAll<HTMLInputElement>('input[name="go-live-platform"]'),
+  document.getElementById('wizard-twitch-key') as HTMLInputElement,
+  document.getElementById('wizard-youtube-key') as HTMLInputElement,
+  document.getElementById('wizard-custom-rtmp-url') as HTMLInputElement,
+  document.getElementById('wizard-custom-rtmp-key') as HTMLInputElement,
+  document.getElementById('go-live-wizard-custom-fields')!,
+  document.getElementById('go-live-wizard-back') as HTMLButtonElement,
+  document.getElementById('go-live-wizard-next') as HTMLButtonElement,
+  document.getElementById('go-live-wizard-cancel') as HTMLButtonElement,
+  {
+    hasCustomRtmp: () => !destCustomBlock.hidden,
+    isLive: () => isSessionLive(),
+    readUi: () => ({
+      destTwitch: destTwitch.checked,
+      destYoutube: destYoutube.checked,
+      destCustom: destCustom.checked,
+      twitchKey: twitchKey.value,
+      youtubeKey: youtubeKey.value,
+      customUrl: customRtmpUrl.value,
+      customKey: customRtmpKey.value,
+    }),
+    applyPlatform: applyWizardPlatform,
+    applyKeys: (partial) => {
+      if (partial.twitchKey !== undefined) twitchKey.value = partial.twitchKey
+      if (partial.youtubeKey !== undefined) youtubeKey.value = partial.youtubeKey
+      if (partial.customUrl !== undefined) customRtmpUrl.value = partial.customUrl
+      if (partial.customKey !== undefined) customRtmpKey.value = partial.customKey
+      syncDestinationInputs()
+      void persistStreamDestinationsFromUi()
+    },
+    validate: async () => {
+      if (labMode) {
+        return { ok: true, message: 'Demo mode — skipped relay verification.' }
+      }
+      return verifyStreamKeys()
+    },
+    goLive: async () => {
+      await goLive()
+    },
+    endLive: async () => {
+      await endLive()
+    },
+  },
+)
+
 if (btnGoLiveSidebar) {
   btnGoLiveSidebar.addEventListener('click', () => {
-    btnGoLive.click()
+    goLiveWizard.open()
   })
 }
 
@@ -3506,6 +3614,66 @@ initEncodeProfileControls()
 // Stream control buttons
 const btnStartRecording = document.getElementById('btn-start-recording') as HTMLButtonElement | null
 const btnStartVcam = document.getElementById('btn-start-vcam') as HTMLButtonElement | null
+const btnRecordingLabel = document.getElementById('btn-recording-label')
+const statRecording = document.getElementById('stat-recording')
+const vcamUnavailableDialog = document.getElementById('vcam-unavailable-dialog') as HTMLDialogElement | null
+
+const programRecording = createProgramRecording({
+  getProgramVideo: () => programVideo,
+  getWebcamVideo: () => programCamVideo,
+  hasGameplayVideo: () =>
+    Boolean(programStream?.getVideoTracks().some((track) => track.readyState === 'live')),
+  getMicStream: () => micStream,
+  getEncodeSpec: () => encodeProfileSpec(selectedProfile()),
+})
+
+function setRecordingUi(active: boolean): void {
+  if (btnStartRecording) btnStartRecording.dataset.recording = active ? '1' : '0'
+  if (btnRecordingLabel) {
+    btnRecordingLabel.textContent = active ? 'Stop Recording' : 'Start Recording'
+  }
+  if (statRecording) statRecording.hidden = !active
+}
+
+if (btnStartRecording) {
+  btnStartRecording.addEventListener('click', () => {
+    void (async () => {
+      if (programRecording.isRecording()) {
+        const blob = await programRecording.stop()
+        setRecordingUi(false)
+        if (!blob) {
+          setDestError('Recording produced no data.')
+          return
+        }
+        const ext = recordingFileExtension(blob)
+        const ts = new Date().toISOString().replace(/[:.]/g, '-')
+        const defaultName = `maka-recording-${ts}.${ext}`
+        const data = await blob.arrayBuffer()
+        const saved = await window.tabcast.saveRecording({ data, defaultName, ext })
+        if (!saved.canceled) {
+          setDestError(null)
+          destHint.textContent = `Recording saved: ${saved.filePath}`
+        }
+        return
+      }
+      try {
+        setDestError(null)
+        await programRecording.start()
+        setRecordingUi(true)
+        destHint.textContent =
+          'Recording program video (canvas compositor). PiP, browser overlay, and scene PNG masks are not in the file yet.'
+      } catch (err) {
+        setDestError(err instanceof Error ? err.message : String(err))
+      }
+    })()
+  })
+}
+
+if (btnStartVcam) {
+  btnStartVcam.addEventListener('click', () => {
+    vcamUnavailableDialog?.showModal()
+  })
+}
 const btnGoLiveLabel = document.getElementById('btn-go-live-label') as HTMLElement | null
 
 // Stream info elements

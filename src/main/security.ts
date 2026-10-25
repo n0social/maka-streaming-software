@@ -1,4 +1,5 @@
 import { coerceCustomScenes } from '../shared/custom-scenes'
+import { coerceStreamDestinations } from '../shared/stream-destination-settings'
 import type { AppSettings, SavedBrowseTab } from './settings-store'
 import { normalizeBrowseUrl } from '../shared/browse-url'
 import { isEncodeProfileId } from '../shared/stream-encode-profiles'
@@ -54,6 +55,9 @@ export function coerceSettings(partial: unknown): Partial<AppSettings> {
   }
   if (p.customScenes !== undefined) {
     out.customScenes = coerceCustomScenes(p.customScenes)
+  }
+  if (p.streamDestinations !== undefined) {
+    out.streamDestinations = coerceStreamDestinations(p.streamDestinations)
   }
 
   return out
