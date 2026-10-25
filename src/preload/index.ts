@@ -232,6 +232,8 @@ export type TabcastBridge = {
     data: ArrayBuffer
     defaultName: string
     ext: 'webm' | 'mp4'
+    /** When true, show the save dialog even if a default folder is configured. */
+    forceDialog?: boolean
   }) => Promise<SaveRecordingResult>
   windowMinimize: () => Promise<void>
   windowMaximize: () => Promise<boolean>

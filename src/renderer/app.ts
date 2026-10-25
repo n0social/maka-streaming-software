@@ -47,7 +47,11 @@ import {
 import { validateRelayStreamKeys, KICK_RTMP_URL } from '../shared/stream-keys'
 import type { StreamDestinationSettings } from '../shared/stream-destination-settings'
 import { GoLiveWizard, type GoLiveWizardPlatform } from './go-live-wizard'
-import { createProgramRecording, recordingFileExtension } from './program-recording'
+import {
+  buildRecordingFileName,
+  createProgramRecording,
+  recordingFileExtension,
+} from './program-recording'
 import {
   authHeaders,
   defaultSceneLayout,
@@ -201,6 +205,7 @@ let whipVideoWatchdog: WhipVideoWatchdog | null = null
 let goingLive = false
 let micMuted = false
 let labMode = false
+let recordingSaveFolder = ''
 let pcCameraBeforePhone = ''
 let pcMicBeforePhone = ''
 let preferPhoneCamera = false
@@ -3199,6 +3204,8 @@ window.tabcast.onTabs((tabs) => {
 
 void window.tabcast.getSettings().then((s) => {
   labMode = s.labMode
+  recordingSaveFolder = s.recordingSaveFolder ?? ''
+  syncRecordingButtonHint()
   const profile = normalizeEncodeProfileId(s.bitrateProfile)
   syncEncodeProfileSelects(profile)
   updateProgramStats()
@@ -3978,8 +3985,18 @@ function setRecordingUi(active: boolean): void {
   }
 }
 
+function syncRecordingButtonHint(): void {
+  if (!btnStartRecording) return
+  const base = 'Record program output locally (not streaming).'
+  if (recordingSaveFolder.trim()) {
+    btnStartRecording.title = `${base} Stops save to your recording folder. Shift+click Stop to choose location.`
+  } else {
+    btnStartRecording.title = `${base} Shift+click Stop to choose save location.`
+  }
+}
+
 if (btnStartRecording) {
-  btnStartRecording.addEventListener('click', () => {
+  btnStartRecording.addEventListener('click', (ev) => {
     void (async () => {
       if (programRecording.isRecording()) {
         const blob = await programRecording.stop()
@@ -3989,10 +4006,15 @@ if (btnStartRecording) {
           return
         }
         const ext = recordingFileExtension(blob)
-        const ts = new Date().toISOString().replace(/[:.]/g, '-')
-        const defaultName = `maka-recording-${ts}.${ext}`
+        const defaultName = buildRecordingFileName(selectedProfile(), ext)
         const data = await blob.arrayBuffer()
-        const saved = await window.tabcast.saveRecording({ data, defaultName, ext })
+        const forceDialog = ev.shiftKey
+        const saved = await window.tabcast.saveRecording({
+          data,
+          defaultName,
+          ext,
+          forceDialog,
+        })
         if (!saved.canceled) {
           setDestError(null)
           destHint.textContent = `Recording saved: ${saved.filePath}`

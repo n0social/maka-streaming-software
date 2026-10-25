@@ -1,4 +1,4 @@
-import type { EncodeProfileSpec } from '../shared/stream-encode-profiles'
+import type { EncodeProfileId, EncodeProfileSpec } from '../shared/stream-encode-profiles'
 
 export type ProgramRecordingDeps = {
   /** Primary gameplay / program video element. */
@@ -160,4 +160,18 @@ export function createProgramRecording(deps: ProgramRecordingDeps): ProgramRecor
 export function recordingFileExtension(blob: Blob): 'webm' | 'mp4' {
   if (blob.type.includes('mp4')) return 'mp4'
   return 'webm'
+}
+
+export function recordingTimestampForFilename(at = new Date()): string {
+  return at.toISOString().replace(/[:.]/g, '-')
+}
+
+/** Local recording filename: timestamp + encode profile id. */
+export function buildRecordingFileName(
+  profileId: EncodeProfileId,
+  ext: 'webm' | 'mp4',
+  at = new Date(),
+): string {
+  const ts = recordingTimestampForFilename(at)
+  return `maka-recording-${ts}-${profileId}.${ext}`
 }

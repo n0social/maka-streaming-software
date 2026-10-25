@@ -15,6 +15,36 @@ function resolveDefaultSavePath(defaultName: string, saveFolder?: string): strin
   return defaultName
 }
 
+export type SaveRecordingOptions = {
+  /** When set and the path exists, write here without a dialog unless `forceDialog`. */
+  saveFolder?: string
+  /** Shift-click stop: always show the save dialog. */
+  forceDialog?: boolean
+}
+
+function shouldUseSaveDialog(saveFolder?: string, forceDialog?: boolean): boolean {
+  if (forceDialog) return true
+  const folder = saveFolder?.trim()
+  if (!folder || !existsSync(folder)) return true
+  return false
+}
+
+export async function saveRecording(
+  parent: BrowserWindow | null,
+  defaultName: string,
+  data: Uint8Array,
+  ext: 'webm' | 'mp4',
+  options: SaveRecordingOptions = {},
+): Promise<SaveRecordingResult> {
+  const { saveFolder, forceDialog } = options
+  if (!shouldUseSaveDialog(saveFolder, forceDialog)) {
+    const filePath = join(saveFolder!.trim(), defaultName)
+    writeFileSync(filePath, data)
+    return { canceled: false, filePath }
+  }
+  return saveRecordingWithDialog(parent, defaultName, data, ext, saveFolder)
+}
+
 export async function saveRecordingWithDialog(
   parent: BrowserWindow | null,
   defaultName: string,

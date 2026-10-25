@@ -49,7 +49,7 @@ import {
 } from './auto-update'
 import { PhonePairServer, phoneWebRtcIceServersForSession } from './phone-pair'
 import { pickSceneImageFile, readSceneImageDataUrl } from './scene-image-io'
-import { saveRecordingWithDialog } from './recording-io'
+import { saveRecording } from './recording-io'
 import { listGpuOptions } from './gpu-info'
 
 protocol.registerSchemesAsPrivileged([
@@ -637,7 +637,8 @@ function registerIpc(): void {
     const win = BrowserWindow.fromWebContents(event.sender)
     const folder =
       typeof settings.recordingSaveFolder === 'string' ? settings.recordingSaveFolder : undefined
-    return saveRecordingWithDialog(win, defaultName, bytes, ext, folder)
+    const forceDialog = p.forceDialog === true
+    return saveRecording(win, defaultName, bytes, ext, { saveFolder: folder, forceDialog })
   })
 
   ipcMain.handle('recording:pick-folder', async (event) => {
