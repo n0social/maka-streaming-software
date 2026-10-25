@@ -3212,14 +3212,20 @@ if (sceneEnding) {
   sceneEnding.addEventListener('click', () => selectScene('ending'))
 }
 
-document.querySelectorAll<HTMLButtonElement>('[data-scene-menu]').forEach((btn) => {
-  btn.addEventListener('click', (event) => {
+document.querySelectorAll<HTMLElement>('[data-scene-menu]').forEach((btn) => {
+  const openSceneMenu = (event: Event) => {
     event.stopPropagation()
     const id = btn.dataset.sceneMenu
     if (!id || !sceneSupportsImageUpload(id)) return
     sceneImageMenuTargetId = id
     sceneImageMenuClear.disabled = !sceneImagePaths[id]
     sceneImageMenuDialog.showModal()
+  }
+  btn.addEventListener('click', openSceneMenu)
+  btn.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return
+    event.preventDefault()
+    openSceneMenu(event)
   })
 })
 
