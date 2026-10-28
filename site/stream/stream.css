@@ -16,6 +16,10 @@
   background: var(--panel);
 }
 
+.stream-top--minimal {
+  justify-content: flex-end;
+}
+
 .stream-top .site-logo-text {
   font-size: 1rem;
 }

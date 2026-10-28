@@ -87,6 +87,10 @@ svg {
   margin-bottom: 2.5rem;
 }
 
+.site-header--nav-only {
+  justify-content: flex-end;
+}
+
 .site-logo {
   display: flex;
   align-items: center;
@@ -279,6 +283,7 @@ svg {
   border-top: 1px solid var(--line);
   color: var(--muted);
   font-size: 0.78rem;
+  letter-spacing: 0.06em;
 }
 
 .panel-note {
@@ -323,17 +328,12 @@ svg {
 
 .site-shell--mvp {
   max-width: 52rem;
-  padding-top: 1.25rem;
+  padding-top: clamp(1.5rem, 4vw, 2.25rem);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   position: relative;
   z-index: 1;
-}
-
-.site-header--mvp {
-  justify-content: space-between;
-  margin-bottom: 0.75rem;
 }
 
 .site-footer--center {
@@ -453,13 +453,11 @@ svg {
 }
 
 .hero-mvp__mascot-wrap {
-  position: relative;
   flex-shrink: 0;
-  width: clamp(6.5rem, 22vw, 9.5rem);
-  height: clamp(6.5rem, 22vw, 9.5rem);
   margin: 0;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .hero-mvp__actions {
@@ -490,25 +488,12 @@ svg {
   box-shadow: 0 14px 36px rgba(201, 162, 39, 0.4);
 }
 
-.hero-mvp__mascot-ring {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.95), rgba(246, 243, 236, 0.9) 45%, rgba(224, 179, 58, 0.25) 100%);
-  box-shadow:
-    0 0 0 3px rgba(201, 162, 39, 0.22),
-    0 0 0 8px rgba(201, 162, 39, 0.08),
-    0 20px 48px rgba(201, 162, 39, 0.28),
-    inset 0 2px 12px rgba(255, 255, 255, 0.65);
-}
-
 .hero-mvp__mascot {
-  position: relative;
-  z-index: 1;
-  width: 72%;
-  height: auto;
+  display: block;
+  width: auto;
+  height: clamp(12.5rem, 24vw, 17.5rem);
+  max-height: 17.5rem;
   animation: mascot-float 5s ease-in-out infinite;
-  filter: drop-shadow(0 8px 16px rgba(26, 20, 8, 0.12));
 }
 
 .eyebrow--center {
@@ -672,18 +657,6 @@ svg {
   .site-shell--mvp {
     padding-left: 1rem;
     padding-right: 1rem;
-  }
-
-  .site-header--mvp {
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 0.75rem;
-    margin-bottom: 0.5rem;
-  }
-
-  .site-header--mvp .site-nav {
-    width: 100%;
-    justify-content: center;
   }
 
   .hero-mvp {
