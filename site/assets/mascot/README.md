@@ -1,6 +1,18 @@
 # Maka mascot assets
 
-Original **anime-style** character art for the **Maka** streaming studio brand: a determined blonde streamer with pigtails, headset, and cream-and-gold studio colors (`#faf8f4`, `#c9a227`). Fan-inspired by the “studious heroine” archetype — **not** traced from, affiliated with, or depicting *Soul Eater*, BONES, or any other third-party franchise.
+Original **anime-style** character art for the **Maka** streaming studio brand: a warm, studious stream-host look with **platinum white-blonde** hair, **professional + gamer** outfit, and cream-and-gold studio colors (`#faf8f4`, `#c9a227`). Fan-inspired by the “studious heroine” / Maka Albarn *archetype* — **not** traced from, affiliated with, or depicting *Soul Eater*, BONES, or any other third-party franchise.
+
+## Character design (current)
+
+| Element | Direction |
+|---------|-----------|
+| Hair | White-blonde / platinum; straight blunt bangs; shoulder-length with small pigtails; subtle ahoge |
+| Face | Large anime eyes (green or brown), friendly smile, light blush |
+| Outfit | White button-up shirt under **black thin-strap shortalls** (sleek overall dress, not bulky work overalls) |
+| Accents | Small gold star pin, cream/gold trim (`#c9a227`); gaming headset (black + gold) |
+| Framing | Half-body or bust, cel-shaded illustration on cream `#faf8f4` (or soft gradient) |
+
+Primary raster: **`maka-mascot.png`** (1024×1024). Regenerate marketing sizes with `export-png.sh` after replacing the PNG.
 
 ## Files
 
@@ -17,11 +29,12 @@ PNG outputs land in `marketing/icons/` when you run the export script from the r
 
 | Token | Hex | Usage |
 |-------|-----|--------|
-| Cream | `#faf8f4` | Blazer, highlights |
-| Gold | `#c9a227` | Trim, star, hair highlights, mic |
-| Ink | `#2a2418` | Outlines, eyes, hair line art |
+| Cream | `#faf8f4` | Background, shirt highlights |
+| Gold | `#c9a227` | Trim, star pin, headset accents |
+| Ink | `#2a2418` | Outlines, hair line art |
+| Overalls | `#1a1a1a` | Thin-strap shortalls |
 
-Supporting tints in art: skin `#f5e8dc`, hair gradient `#f0e2c4` → `#c9a227`.
+Supporting tints in art: skin `#f5e8dc`, hair `#f5f0e8` → `#e8dcc8` with gold highlights.
 
 ## Usage on site
 
