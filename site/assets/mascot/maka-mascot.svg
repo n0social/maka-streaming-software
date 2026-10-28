@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="maka-title maka-desc">
   <title id="maka-title">Maka mascot</title>
-  <desc id="maka-desc">Optional vector fallback for the Maka streaming studio anime streamer mascot. Primary art is maka-mascot.png. Original character; not affiliated with any third-party anime franchise.</desc>
+  <desc id="maka-desc">Original Maka streaming studio mascot - a determined student streamer with gold star motif. Not affiliated with any third-party anime franchise.</desc>
   <defs>
     <linearGradient id="maka-hair" x1="20%" y1="0%" x2="80%" y2="100%">
       <stop offset="0%" stop-color="#f0e2c4"/>

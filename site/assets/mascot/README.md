@@ -1,48 +1,36 @@
 # Maka mascot assets
 
-Original **anime-style** character art for the **Maka** streaming studio brand: a warm, studious stream-host look with **platinum white-blonde** hair, **professional + gamer** outfit, and cream-and-gold studio colors (`#faf8f4`, `#c9a227`). Fan-inspired by the “studious heroine” / Maka Albarn *archetype* — **not** traced from, affiliated with, or depicting *Soul Eater*, BONES, or any other third-party franchise.
-
-## Character design (current)
-
-| Element | Direction |
-|---------|-----------|
-| Hair | White-blonde / platinum; straight blunt bangs; shoulder-length with small pigtails; subtle ahoge |
-| Face | Large anime eyes (green or brown), friendly smile, light blush |
-| Outfit | White button-up shirt under **black thin-strap shortalls** (sleek overall dress, not bulky work overalls) |
-| Accents | Small gold star pin, cream/gold trim (`#c9a227`); gaming headset (black + gold) |
-| Framing | Half-body or bust, cel-shaded illustration on cream `#faf8f4` (or soft gradient) |
-
-Primary raster: **`maka-mascot.png`** (1024×1024). Regenerate marketing sizes with `export-png.sh` after replacing the PNG.
+Original character art for the **Maka** streaming studio brand: a chibi student streamer with cream-and-gold studio colors and abstract star / arc motifs. Evokes determined anime-protagonist energy without copying any licensed character — **not** affiliated with *Soul Eater*, BONES, or other franchises.
 
 ## Files
 
 | File | Use |
 |------|-----|
-| `maka-mascot.png` | **Primary** illustration (1024×1024). Hero embeds, corner decoration, source for PNG exports. |
-| `maka-mascot.svg` | Optional secondary vector (256×256 viewBox) for crisp tiny scales or legacy links. |
-| `export-png.sh` | Renders `maka-mascot-48.png`, `maka-mascot-256.png`, and `maka-mascot-512.png` from the primary PNG. |
+| `maka-mascot.svg` | **Primary** vector (256×256 viewBox). Hero, corner decoration, source for PNG exports. |
+| `export-png.sh` | Renders `maka-mascot-48.png` and `maka-mascot-256.png` via `@resvg/resvg-js` (Node/npm). |
 | `preview.html` | Local scale check (48px vs 256px on cream `#faf8f4`). |
 
-PNG outputs land in `marketing/icons/` when you run the export script from the repo root.
+PNG exports live in `marketing/icons/` after running the script from the repo root.
 
 ## Palette
 
 | Token | Hex | Usage |
 |-------|-----|--------|
-| Cream | `#faf8f4` | Background, shirt highlights |
-| Gold | `#c9a227` | Trim, star pin, headset accents |
-| Ink | `#2a2418` | Outlines, hair line art |
-| Overalls | `#1a1a1a` | Thin-strap shortalls |
+| Cream | `#faf8f4` | Blazer, highlights |
+| Gold | `#c9a227` | Trim, star, hair highlights, mic |
+| Ink | `#2a2418` | Outlines, eyes, hair line art |
 
-Supporting tints in art: skin `#f5e8dc`, hair `#f5f0e8` → `#e8dcc8` with gold highlights.
+Supporting tints: skin `#f5e8dc`, hair gradient `#f0e2c4` → `#c9a227`.
 
 ## Usage on site
 
-Landing pages use `/assets/mascot/maka-mascot.png` (or `.svg` where vector is preferred) in a fixed `.mascot-corner` slot. A mirror at `/maka-mascot.svg` is copied on deploy for older links.
+- Hero: `/assets/mascot/maka-mascot.svg` on `site/index.html`
+- Corner: same path on download, stream, and preview pages (`.mascot-corner`)
+- Legacy URL: `/maka-mascot.svg` (mirrored on deploy)
 
 ## Favicon
 
-App favicons remain the gold **M** tile under `site/marketing/`. The mascot is decorative at ~48px; use exported `maka-mascot-48.png` if you switch to a mascot favicon later.
+Keep the gold **M** tile under `site/marketing/` for favicons. Use exported `maka-mascot-48.png` only if you intentionally switch to a mascot favicon.
 
 ## Legal
 

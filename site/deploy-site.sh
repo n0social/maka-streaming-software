@@ -27,13 +27,14 @@ cp "${SRC_DIR}/preview/preview.css" "${WEB_ROOT}/preview/preview.css"
 
 mkdir -p "${WEB_ROOT}/assets/mascot"
 cp -r "${SRC_DIR}/assets/mascot/." "${WEB_ROOT}/assets/mascot/"
+cp "${SRC_DIR}/assets/mascot/maka-mascot.svg" "${WEB_ROOT}/maka-mascot.svg"
 
 mkdir -p "${WEB_ROOT}/marketing/icons"
 cp -r "${SRC_DIR}/marketing/." "${WEB_ROOT}/marketing/"
 
 find "${WEB_ROOT}/marketing" -type f -exec chmod 644 {} \;
 chmod 644 "${WEB_ROOT}/index.html" "${WEB_ROOT}/legacy.html" "${WEB_ROOT}/download.html" \
-  "${WEB_ROOT}/404.html" "${WEB_ROOT}/maka.css" "${WEB_ROOT}/robots.txt" "${WEB_ROOT}/sitemap.xml" \
+  "${WEB_ROOT}/404.html" "${WEB_ROOT}/maka.css" "${WEB_ROOT}/maka-mascot.svg" "${WEB_ROOT}/robots.txt" "${WEB_ROOT}/sitemap.xml" \
   "${WEB_ROOT}/stream/index.html" "${WEB_ROOT}/stream/stream.css" "${WEB_ROOT}/stream/stream.js" \
   "${WEB_ROOT}/preview/index.html" "${WEB_ROOT}/preview/preview.css"
 

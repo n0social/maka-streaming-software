@@ -17,6 +17,7 @@ python scripts/generate-marketing.py
 | `icon-48.png` | 48×48 | Windows / favicon |
 | `icon-16.png` … `icon-1024.png` | various | Full export set |
 | `icon.ico` | multi-size | Windows installer / shell |
+| `maka-mascot-48.png` / `maka-mascot-256.png` | 48 / 256 | Brand mascot raster exports (`site/assets/mascot/export-png.sh`) |
 
 ## Store graphics (`marketing/store/`)
 

@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="maka-title maka-desc">
+  <title id="maka-title">Maka mascot</title>
+  <desc id="maka-desc">Original Maka streaming studio mascot - a determined student streamer with gold star motif. Not affiliated with any third-party anime franchise.</desc>
+  <defs>
+    <linearGradient id="maka-hair" x1="20%" y1="0%" x2="80%" y2="100%">
+      <stop offset="0%" stop-color="#f0e2c4"/>
+      <stop offset="55%" stop-color="#e8d4a8"/>
+      <stop offset="100%" stop-color="#c9a227"/>
+    </linearGradient>
+    <linearGradient id="maka-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e0b33a"/>
+      <stop offset="100%" stop-color="#c9a227"/>
+    </linearGradient>
+    <clipPath id="maka-face-clip">
+      <ellipse cx="128" cy="118" rx="58" ry="62"/>
+    </clipPath>
+  </defs>
+
+  <!-- Abstract stream motif: soft arc + star (not a licensed weapon silhouette) -->
+  <g opacity="0.42" fill="none" stroke="url(#maka-gold)" stroke-linecap="round">
+    <path d="M 198 36 C 238 78 236 148 204 196" stroke-width="7"/>
+    <path d="M 58 52 C 28 96 34 156 62 198" stroke-width="5" opacity="0.65"/>
+  </g>
+  <path fill="#c9a227" d="M 206 32 l 8 14 16 2 -11 11 3 16 -16 -8 -16 8 3 -16 -11 -11 16 -2z" opacity="0.85"/>
+
+  <!-- Shoulders / blazer -->
+  <path fill="#faf8f4" stroke="#2a2418" stroke-width="4" stroke-linejoin="round"
+    d="M 48 196 C 62 168 88 152 128 152 C 168 152 194 168 208 196 L 220 236 C 168 248 88 248 36 236 Z"/>
+  <path fill="none" stroke="#c9a227" stroke-width="3"
+    d="M 88 168 L 128 188 L 168 168"/>
+  <path fill="#2a2418" d="M 118 188 h 20 v 28 h -20 z"/>
+  <path fill="url(#maka-gold)" stroke="#2a2418" stroke-width="2"
+    d="M 124 196 l 4 7 8 1 -6 6 1 8 -7 -4 -7 4 1 -8 -6 -6 8 -1z"/>
+
+  <!-- Neck -->
+  <rect x="112" y="168" width="32" height="24" rx="6" fill="#f5e8dc" stroke="#2a2418" stroke-width="3"/>
+
+  <!-- Hair back -->
+  <path fill="url(#maka-hair)" stroke="#2a2418" stroke-width="4" stroke-linejoin="round"
+    d="M 62 118 C 58 72 88 44 128 44 C 168 44 198 72 194 118 C 200 132 204 148 198 162 C 182 152 168 146 128 146 C 88 146 74 152 58 162 C 52 148 56 132 62 118 Z"/>
+
+  <!-- Face -->
+  <ellipse cx="128" cy="118" rx="58" ry="62" fill="#f5e8dc" stroke="#2a2418" stroke-width="4"/>
+
+  <!-- Bangs -->
+  <g clip-path="url(#maka-face-clip)">
+    <path fill="url(#maka-hair)" stroke="#2a2418" stroke-width="3" stroke-linejoin="round"
+      d="M 72 98 C 78 58 98 48 128 48 C 158 48 178 58 184 98 C 176 82 158 72 128 72 C 98 72 80 82 72 98 Z"/>
+    <path fill="url(#maka-hair)" stroke="#2a2418" stroke-width="3"
+      d="M 96 76 L 88 108 L 104 92 Z M 160 76 L 168 108 L 152 92 Z"/>
+  </g>
+
+  <!-- Side tufts -->
+  <path fill="url(#maka-hair)" stroke="#2a2418" stroke-width="3" stroke-linejoin="round"
+    d="M 68 108 C 52 124 50 148 58 168 L 72 158 C 66 142 68 124 76 112 Z"/>
+  <path fill="url(#maka-hair)" stroke="#2a2418" stroke-width="3" stroke-linejoin="round"
+    d="M 188 108 C 204 124 206 148 198 168 L 184 158 C 190 142 188 124 180 112 Z"/>
+
+  <!-- Determined ahoge -->
+  <path fill="none" stroke="#2a2418" stroke-width="3.5" stroke-linecap="round"
+    d="M 132 52 C 138 28 148 22 156 30"/>
+  <path fill="url(#maka-hair)" stroke="#2a2418" stroke-width="2.5"
+    d="M 148 26 C 152 18 158 16 162 22 C 156 24 152 28 148 26 Z"/>
+
+  <!-- Brows -->
+  <path fill="none" stroke="#2a2418" stroke-width="5" stroke-linecap="round"
+    d="M 92 104 L 112 98 M 164 104 L 144 98"/>
+
+  <!-- Eyes -->
+  <ellipse cx="102" cy="118" rx="11" ry="13" fill="#2a2418"/>
+  <ellipse cx="154" cy="118" rx="11" ry="13" fill="#2a2418"/>
+  <circle cx="106" cy="114" r="4" fill="#faf8f4"/>
+  <circle cx="158" cy="114" r="4" fill="#faf8f4"/>
+
+  <!-- Cheek flush -->
+  <ellipse cx="88" cy="132" rx="10" ry="6" fill="#c9a227" opacity="0.18"/>
+  <ellipse cx="168" cy="132" rx="10" ry="6" fill="#c9a227" opacity="0.18"/>
+
+  <!-- Mouth  small confident smile -->
+  <path fill="none" stroke="#2a2418" stroke-width="3.5" stroke-linecap="round"
+    d="M 112 142 Q 128 152 144 142"/>
+
+  <!-- Headset mic (streamer cue) -->
+  <path fill="none" stroke="#2a2418" stroke-width="3.5" stroke-linecap="round"
+    d="M 74 124 C 74 148 86 158 102 158"/>
+  <rect x="94" y="152" width="14" height="10" rx="3" fill="#2a2418"/>
+  <circle cx="101" cy="168" r="5" fill="#c9a227" stroke="#2a2418" stroke-width="2"/>
+</svg>
