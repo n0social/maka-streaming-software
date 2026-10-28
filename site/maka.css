@@ -357,6 +357,7 @@ svg {
   align-items: center;
   justify-content: center;
   padding: 1.5rem 0 2.5rem;
+  overflow: visible;
 }
 
 .hero-mvp__backdrop {
@@ -443,7 +444,7 @@ svg {
   text-transform: uppercase;
   width: fit-content;
   max-width: none;
-  padding-inline: clamp(0.08em, 0.35vw, 0.14em);
+  padding-inline: clamp(0.1em, 0.45vw, 0.18em);
   overflow: visible;
 }
 
@@ -456,6 +457,9 @@ svg {
   position: absolute;
   left: 0;
   top: 0.045em;
+  width: 100%;
+  padding-inline: 0.06em;
+  box-sizing: content-box;
   transform: translate(0.045em, 0);
   color: var(--white);
   text-shadow:
@@ -463,6 +467,9 @@ svg {
     0 2px 0 rgba(246, 243, 236, 0.95),
     0 0 40px rgba(255, 255, 255, 0.35);
   -webkit-text-stroke: 1px rgba(230, 223, 208, 0.65);
+  paint-order: stroke fill;
+  overflow: visible;
+  white-space: nowrap;
   z-index: 0;
   user-select: none;
 }
