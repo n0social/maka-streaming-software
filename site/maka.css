@@ -300,10 +300,10 @@ svg {
 @keyframes mascot-float {
   0%,
   100% {
-    transform: translateY(-48%);
+    transform: translateY(0);
   }
   50% {
-    transform: translateY(calc(-48% - 6px));
+    transform: translateY(-6px);
   }
 }
 
@@ -327,7 +327,7 @@ svg {
 }
 
 .site-shell--mvp {
-  max-width: 52rem;
+  max-width: min(62rem, 100%);
   padding-top: clamp(1.5rem, 4vw, 2.25rem);
   min-height: 100vh;
   display: flex;
@@ -396,7 +396,7 @@ svg {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 52rem;
+  max-width: min(62rem, 100%);
   margin: 0 auto;
   text-align: center;
   display: flex;
@@ -407,18 +407,21 @@ svg {
 
 .hero-mvp__brand-stage {
   position: relative;
-  display: flex;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(11rem, 0.92fr);
   align-items: center;
+  gap: clamp(0.35rem, 2.5vw, 2rem);
   width: 100%;
   min-height: clamp(10rem, 28vw, 16rem);
-  padding: 0 clamp(0.5rem, 3vw, 2rem);
+  padding: 0 clamp(0.25rem, 2vw, 1.25rem);
   overflow: visible;
 }
 
 .maka-wordmark {
   position: relative;
   z-index: 2;
+  grid-column: 1;
+  justify-self: end;
   margin: 0;
   font-family: var(--headline);
   font-weight: 900;
@@ -479,15 +482,15 @@ svg {
 }
 
 .hero-mvp__mascot-wrap {
-  position: absolute;
+  position: relative;
   z-index: 0;
-  right: clamp(-1.5rem, 8vw, 4.5rem);
-  top: 50%;
-  transform: translateY(-48%);
+  grid-column: 2;
+  justify-self: center;
+  align-self: center;
   margin: 0;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
   pointer-events: none;
   background: none;
   animation: mascot-float 5s ease-in-out infinite;
@@ -707,22 +710,35 @@ svg {
   }
 
   .hero-mvp__brand-stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     min-height: clamp(9rem, 38vw, 14rem);
     padding-right: 0;
+    gap: 0;
+  }
+
+  .maka-wordmark {
+    position: relative;
+    z-index: 2;
+    justify-self: center;
+    font-size: clamp(4.25rem, 20vw, 6.25rem);
   }
 
   .hero-mvp__mascot-wrap {
-    right: clamp(-2.5rem, -2vw, -0.5rem);
+    position: absolute;
+    inset: 0;
+    grid-column: auto;
+    justify-content: flex-end;
+    align-items: center;
+    padding-right: clamp(-2.5rem, -2vw, -0.5rem);
+    z-index: 0;
   }
 
   .hero-mvp__mascot {
     height: clamp(11rem, 42vw, 15rem);
     opacity: 0.82;
     transform: scale(0.98);
-  }
-
-  .maka-wordmark {
-    font-size: clamp(4.25rem, 20vw, 6.25rem);
   }
 
   .hero-mvp__actions {
