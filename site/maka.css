@@ -300,10 +300,10 @@ svg {
 @keyframes mascot-float {
   0%,
   100% {
-    transform: translateY(0);
+    transform: translateY(-48%);
   }
   50% {
-    transform: translateY(-6px);
+    transform: translateY(calc(-48% - 6px));
   }
 }
 
@@ -405,18 +405,20 @@ svg {
   gap: 2.25rem;
 }
 
-.hero-mvp__brand-row {
+.hero-mvp__brand-stage {
+  position: relative;
   display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  align-items: center;
   justify-content: center;
-  gap: clamp(0.75rem, 3vw, 1.75rem);
+  align-items: center;
   width: 100%;
+  min-height: clamp(10rem, 28vw, 16rem);
+  padding: 0 clamp(0.5rem, 3vw, 2rem);
+  overflow: visible;
 }
 
 .maka-wordmark {
   position: relative;
+  z-index: 2;
   margin: 0;
   font-family: var(--headline);
   font-weight: 900;
@@ -425,6 +427,8 @@ svg {
   line-height: 0.88;
   letter-spacing: -0.04em;
   text-transform: uppercase;
+  width: fit-content;
+  max-width: 100%;
 }
 
 .maka-wordmark__back,
@@ -448,7 +452,7 @@ svg {
 
 .maka-wordmark__front {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   color: var(--gold);
   text-shadow: 0 4px 24px rgba(201, 162, 39, 0.35);
 }
@@ -475,14 +479,18 @@ svg {
 }
 
 .hero-mvp__mascot-wrap {
-  position: relative;
-  z-index: 2;
-  flex-shrink: 0;
+  position: absolute;
+  z-index: 0;
+  right: clamp(-1.5rem, 8vw, 4.5rem);
+  top: 50%;
+  transform: translateY(-48%);
   margin: 0;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
+  pointer-events: none;
   background: none;
+  animation: mascot-float 5s ease-in-out infinite;
 }
 
 .hero-mvp__actions {
@@ -516,17 +524,18 @@ svg {
 
 .hero-mvp__mascot {
   position: relative;
-  z-index: 2;
+  z-index: 0;
   display: block;
   width: auto;
   max-width: none;
-  height: clamp(12.5rem, 24vw, 17.5rem);
-  min-height: 10rem;
-  max-height: 17.5rem;
-  opacity: 1;
+  height: clamp(14rem, 32vw, 22rem);
+  min-height: 11rem;
+  max-height: 22rem;
+  opacity: 0.88;
   object-fit: contain;
-  animation: mascot-float 5s ease-in-out infinite;
-  filter: drop-shadow(0 10px 22px rgba(26, 20, 8, 0.14));
+  transform: scale(1.06);
+  transform-origin: center right;
+  filter: drop-shadow(0 10px 22px rgba(26, 20, 8, 0.12));
 }
 
 .eyebrow--center {
@@ -697,8 +706,19 @@ svg {
     padding-bottom: 2rem;
   }
 
-  .hero-mvp__brand-row {
-    flex-direction: column;
+  .hero-mvp__brand-stage {
+    min-height: clamp(9rem, 38vw, 14rem);
+    padding-right: 0;
+  }
+
+  .hero-mvp__mascot-wrap {
+    right: clamp(-2.5rem, -2vw, -0.5rem);
+  }
+
+  .hero-mvp__mascot {
+    height: clamp(11rem, 42vw, 15rem);
+    opacity: 0.82;
+    transform: scale(0.98);
   }
 
   .maka-wordmark {
@@ -748,7 +768,7 @@ svg {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero-mvp__mascot {
+  .hero-mvp__mascot-wrap {
     animation: none;
   }
 
