@@ -24,8 +24,8 @@ Supporting tints: skin `#f5e8dc`, hair gradient `#f0e2c4` → `#c9a227`.
 
 ## Usage on site
 
-- Hero: `/assets/mascot/maka-mascot.svg` on `site/index.html`
-- Corner: same path on download, stream, and preview pages (`.mascot-corner`)
+- Hero: `/assets/mascot/maka-mascot.png` — full anime illustration (1024×1024 RGBA, background removed for cream hero). Source raster from commit `e4f4fa0`; do not replace with SVG/chibi export for the home hero.
+- Corner: `/assets/mascot/maka-mascot.svg` on download, stream, and preview pages (`.mascot-corner`)
 - Legacy URL: `/maka-mascot.svg` (mirrored on deploy)
 
 ## Favicon
