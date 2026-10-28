@@ -455,16 +455,10 @@ svg {
 .maka-wordmark__front .maka-letter-split {
   color: transparent;
   background: linear-gradient(
-<<<<<<< Updated upstream
-    18deg,
-    var(--champagne) 0%,
-    var(--white) 44%,
-=======
-    158deg,
+    20deg,
     var(--white) 0%,
     var(--champagne) 44%,
     var(--champagne) 48%,
->>>>>>> Stashed changes
     var(--gold-light) 52%,
     var(--gold) 100%
   );
