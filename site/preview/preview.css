@@ -36,6 +36,19 @@
   background: var(--panel);
 }
 
+.studio-mock-brand {
+  gap: 0.45rem;
+}
+
+.studio-mock-mascot {
+  width: 2rem;
+  height: auto;
+  margin-left: 0.15rem;
+  flex-shrink: 0;
+  opacity: 0.92;
+  filter: drop-shadow(0 2px 6px rgba(201, 162, 39, 0.28));
+}
+
 .studio-mock-top .tabs {
   display: flex;
   gap: 0.35rem;

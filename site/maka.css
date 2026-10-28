@@ -336,6 +336,11 @@ svg {
   z-index: 1;
 }
 
+.site-header--mvp {
+  justify-content: flex-start;
+  margin-bottom: 0.75rem;
+}
+
 .site-footer--center {
   text-align: center;
 }
