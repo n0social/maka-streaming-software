@@ -413,6 +413,7 @@ svg {
   flex-direction: column;
   align-items: center;
   gap: 2.25rem;
+  overflow: visible;
 }
 
 .hero-mvp__brand-stage {
@@ -420,12 +421,12 @@ svg {
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 100vw;
+  width: 100%;
   max-width: 100vw;
   margin-left: calc(50% - 50vw);
   margin-right: calc(50% - 50vw);
   min-height: clamp(10rem, 28vw, 16rem);
-  padding: 0 clamp(0.25rem, 2vw, 1.25rem);
+  padding: 0 clamp(0.75rem, 3.5vw, 1.75rem);
   overflow: visible;
 }
 
@@ -441,7 +442,9 @@ svg {
   letter-spacing: -0.04em;
   text-transform: uppercase;
   width: fit-content;
-  max-width: 100%;
+  max-width: none;
+  padding-inline: clamp(0.08em, 0.35vw, 0.14em);
+  overflow: visible;
 }
 
 .maka-wordmark__back,
@@ -451,8 +454,9 @@ svg {
 
 .maka-wordmark__back {
   position: absolute;
-  left: 0.045em;
+  left: 0;
   top: 0.045em;
+  transform: translate(0.045em, 0);
   color: var(--white);
   text-shadow:
     0 0 0 var(--champagne),
@@ -466,12 +470,6 @@ svg {
 .maka-wordmark__front {
   position: relative;
   z-index: 2;
-  color: var(--gold);
-  text-shadow: 0 4px 24px rgba(201, 162, 39, 0.35);
-}
-
-.maka-wordmark__front .maka-letter-split {
-  color: transparent;
   background: linear-gradient(
     158deg,
     var(--white) 0%,
@@ -483,12 +481,8 @@ svg {
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  text-shadow: none;
+  color: transparent;
   filter: drop-shadow(0 4px 20px rgba(201, 162, 39, 0.28));
-}
-
-.maka-wordmark__back .maka-letter-split {
-  color: var(--white);
 }
 
 .hero-mvp__mascot-wrap {
@@ -724,7 +718,7 @@ svg {
     flex-direction: column;
     align-items: center;
     min-height: clamp(9rem, 38vw, 14rem);
-    padding-right: 0;
+    padding-inline: clamp(0.65rem, 4vw, 1.25rem);
     gap: 0;
   }
 
