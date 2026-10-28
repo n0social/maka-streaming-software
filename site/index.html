@@ -38,34 +38,36 @@
   <body class="page-home-mvp">
     <div class="site-shell site-shell--mvp">
       <header class="site-header site-header--mvp">
+        <a class="site-logo" href="/">
+          <span class="site-logo-mark" aria-hidden="true">M</span>
+          <span class="site-logo-text">Maka</span>
+        </a>
         <nav class="site-nav site-nav--compact" aria-label="Site">
           <a href="/stream/">Stream</a>
           <a href="/preview/">App preview</a>
           <a href="/download.html">Download</a>
-          <a href="https://github.com/n0social/maka-streaming-software">GitHub</a>
         </nav>
       </header>
 
       <main class="hero-mvp">
-        <div class="hero-mvp__flare" aria-hidden="true">
+        <div class="hero-mvp__backdrop" aria-hidden="true">
           <span class="hero-mvp__orb hero-mvp__orb--1"></span>
           <span class="hero-mvp__orb hero-mvp__orb--2"></span>
+          <span class="hero-mvp__grid"></span>
         </div>
 
         <div class="hero-mvp__inner">
-          <img
-            class="hero-mvp__mascot"
-            src="/assets/mascot/maka-mascot.png"
-            alt=""
-            width="120"
-            height="120"
-            decoding="async"
-          />
-
-          <a class="site-logo site-logo--hero" href="/">
-            <span class="site-logo-mark" aria-hidden="true">M</span>
-            <span class="site-logo-text">Maka</span>
-          </a>
+          <div class="hero-mvp__mascot-wrap">
+            <span class="hero-mvp__mascot-ring" aria-hidden="true"></span>
+            <img
+              class="hero-mvp__mascot"
+              src="/assets/mascot/maka-mascot.png"
+              alt=""
+              width="160"
+              height="160"
+              decoding="async"
+            />
+          </div>
 
           <p class="eyebrow eyebrow--center">tabcast.live · MVP</p>
           <h1 class="hero-title hero-title--center">Stream lighter on Windows</h1>
@@ -76,26 +78,39 @@
 
           <p class="social-proof">Windows · v0.2.4 · local relay</p>
 
-          <ul class="value-props">
-            <li>Game capture + RTMP in one installer</li>
-            <li>TabcastRelay on <code>127.0.0.1:38473</code></li>
-            <li>Browser try when you are not ready to install</li>
+          <ul class="value-props value-props--center">
+            <li>
+              <span class="value-props__icon" aria-hidden="true"></span>
+              Game capture + RTMP in one installer
+            </li>
+            <li>
+              <span class="value-props__icon" aria-hidden="true"></span>
+              TabcastRelay on <code>127.0.0.1:38473</code>
+            </li>
+            <li>
+              <span class="value-props__icon" aria-hidden="true"></span>
+              Browser try when you are not ready to install
+            </li>
           </ul>
 
-          <div class="cta-row cta-row--stack">
+          <div class="cta-card">
             <a
               class="btn btn-primary btn--hero"
               href="https://github.com/n0social/maka-streaming-software/releases/download/maka.streaming.v.01/Maka-Setup-0.2.4.exe"
               >Download latest build</a
             >
-            <a class="btn btn-secondary" href="/stream/">Go to stream</a>
-            <a class="btn btn-ghost" href="/preview/">App preview</a>
+            <div class="cta-row cta-row--secondary">
+              <a class="btn btn-outline" href="/stream/">Go to stream</a>
+              <a class="btn btn-outline" href="/preview/">App preview</a>
+            </div>
+            <p class="cta-card__micro">
+              <a href="/downloads/Maka-Setup-0.2.4.exe">Mirror</a>
+              <span class="cta-card__dot" aria-hidden="true">·</span>
+              <a href="https://github.com/n0social/maka-streaming-software">GitHub release</a>
+              <span class="cta-card__dot" aria-hidden="true">·</span>
+              <code>Maka-Setup-0.2.4.exe</code>
+            </p>
           </div>
-
-          <p class="fine-print fine-print--center">
-            <code>Maka-Setup-0.2.4.exe</code> · GitHub release primary ·
-            <a href="/download.html">mirror on this site</a>
-          </p>
 
           <p class="panel-note panel-note--center">
             Need the old relay + extension workflow?
