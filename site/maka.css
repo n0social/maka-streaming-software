@@ -322,7 +322,7 @@ svg {
 }
 
 .site-shell--mvp {
-  max-width: 42.5rem;
+  max-width: 52rem;
   padding-top: 1.25rem;
   min-height: 100vh;
   display: flex;
@@ -396,21 +396,98 @@ svg {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 42.5rem;
+  max-width: 52rem;
   margin: 0 auto;
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 2.25rem;
+}
+
+.hero-mvp__brand-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(0.75rem, 3vw, 1.75rem);
+}
+
+.maka-wordmark {
+  position: relative;
+  margin: 0;
+  font-family: var(--headline);
+  font-weight: 900;
+  font-style: italic;
+  font-size: clamp(4.5rem, 16vw, 9.5rem);
+  line-height: 0.88;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+}
+
+.maka-wordmark__back,
+.maka-wordmark__front {
+  display: block;
+}
+
+.maka-wordmark__back {
+  position: absolute;
+  left: 0.045em;
+  top: 0.045em;
+  color: var(--white);
+  text-shadow:
+    0 0 0 var(--champagne),
+    0 2px 0 rgba(246, 243, 236, 0.95),
+    0 0 40px rgba(255, 255, 255, 0.35);
+  -webkit-text-stroke: 1px rgba(230, 223, 208, 0.65);
+  z-index: 0;
+  user-select: none;
+}
+
+.maka-wordmark__front {
+  position: relative;
+  z-index: 1;
+  color: var(--gold);
+  text-shadow: 0 4px 24px rgba(201, 162, 39, 0.35);
 }
 
 .hero-mvp__mascot-wrap {
   position: relative;
-  width: clamp(7.5rem, 28vw, 10rem);
-  height: clamp(7.5rem, 28vw, 10rem);
-  margin: 0 auto 1.15rem;
+  flex-shrink: 0;
+  width: clamp(6.5rem, 22vw, 9.5rem);
+  height: clamp(6.5rem, 22vw, 9.5rem);
+  margin: 0;
   display: grid;
   place-items: center;
+}
+
+.hero-mvp__actions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0.65rem 0.75rem;
+  width: 100%;
+  max-width: 36rem;
+}
+
+.hero-mvp__btn {
+  flex: 1 1 7.5rem;
+  min-width: 7.5rem;
+  max-width: 11.5rem;
+  padding: 0.95rem 1.1rem;
+  font-size: 0.74rem;
+  letter-spacing: 0.07em;
+}
+
+.hero-mvp__btn--download {
+  box-shadow: 0 10px 28px rgba(201, 162, 39, 0.32);
+}
+
+.hero-mvp__btn--download:hover {
+  box-shadow: 0 14px 36px rgba(201, 162, 39, 0.4);
 }
 
 .hero-mvp__mascot-ring {
@@ -612,6 +689,25 @@ svg {
   .hero-mvp {
     padding-top: 0.5rem;
     padding-bottom: 2rem;
+  }
+
+  .hero-mvp__brand-row {
+    flex-direction: column;
+  }
+
+  .maka-wordmark {
+    font-size: clamp(3.75rem, 18vw, 5.5rem);
+  }
+
+  .hero-mvp__actions {
+    flex-direction: column;
+    align-items: stretch;
+    max-width: 18rem;
+  }
+
+  .hero-mvp__btn {
+    max-width: none;
+    width: 100%;
   }
 
   .hero-title--center {
