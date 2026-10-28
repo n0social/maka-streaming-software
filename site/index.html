@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Maka — cream-and-gold streaming studio for Windows. Try browser capture, preview the studio UI, or download the desktop app."
+      content="Maka — cream-and-gold streaming studio for Windows. Download the desktop app, try browser capture, or preview the studio UI."
     />
     <meta name="theme-color" content="#faf8f4" />
     <link rel="canonical" href="https://tabcast.live/" />
@@ -14,7 +14,7 @@
     <meta property="og:title" content="Maka — stream lighter" />
     <meta
       property="og:description"
-      content="Capture, layout, and go live with a local relay. Browser try, studio preview, or Windows download."
+      content="Download Maka for Windows — local relay, browser try, or studio preview."
     />
     <meta property="og:url" content="https://tabcast.live/" />
     <meta property="og:image" content="https://tabcast.live/marketing/feature-graphic-1024x500.png" />
@@ -22,7 +22,7 @@
     <meta name="twitter:title" content="Maka — stream lighter" />
     <meta
       name="twitter:description"
-      content="Try browser capture, preview the redesigned studio, or download Maka for Windows."
+      content="Download Maka for Windows. Try browser capture or preview the redesigned studio."
     />
     <meta name="twitter:image" content="https://tabcast.live/marketing/feature-graphic-1024x500.png" />
     <title>Maka — stream lighter</title>
@@ -35,13 +35,9 @@
     />
     <link rel="stylesheet" href="/maka.css" />
   </head>
-  <body>
-    <div class="site-shell">
-      <header class="site-header">
-        <a class="site-logo" href="/">
-          <span class="site-logo-mark" aria-hidden="true">M</span>
-          <span class="site-logo-text">Maka</span>
-        </a>
+  <body class="page-home-mvp">
+    <div class="site-shell site-shell--mvp">
+      <header class="site-header site-header--mvp">
         <nav class="site-nav site-nav--compact" aria-label="Site">
           <a href="/stream/">Stream</a>
           <a href="/preview/">App preview</a>
@@ -50,35 +46,65 @@
         </nav>
       </header>
 
-      <main>
-        <p class="eyebrow">tabcast.live · MVP</p>
-        <h1 class="hero-title">Maka</h1>
-        <p class="hero-lead">
-          A cream-and-gold streaming studio for capture, scenes, and go-live — with a local relay that
-          keeps keys on your machine. Start in the browser for a one-session try, or install the full
-          Windows app for game capture and RTMP.
-        </p>
-
-        <div class="cta-row">
-          <a class="btn btn-primary" href="/stream/">Go to stream</a>
-          <a class="btn btn-secondary" href="/preview/">App preview</a>
-          <a class="btn btn-ghost" href="/download.html">Download latest build</a>
+      <main class="hero-mvp">
+        <div class="hero-mvp__flare" aria-hidden="true">
+          <span class="hero-mvp__orb hero-mvp__orb--1"></span>
+          <span class="hero-mvp__orb hero-mvp__orb--2"></span>
         </div>
-        <p class="fine-print">
-          Desktop build <code>Maka-Setup-0.2.4.exe</code> · GitHub release primary · mirror on this site
-        </p>
 
-        <p class="panel-note">
-          Need the old relay + extension workflow?
-          <a href="/legacy.html">Legacy setup instructions</a>.
-        </p>
+        <div class="hero-mvp__inner">
+          <img
+            class="hero-mvp__mascot"
+            src="/assets/mascot/maka-mascot.png"
+            alt=""
+            width="120"
+            height="120"
+            decoding="async"
+          />
+
+          <a class="site-logo site-logo--hero" href="/">
+            <span class="site-logo-mark" aria-hidden="true">M</span>
+            <span class="site-logo-text">Maka</span>
+          </a>
+
+          <p class="eyebrow eyebrow--center">tabcast.live · MVP</p>
+          <h1 class="hero-title hero-title--center">Stream lighter on Windows</h1>
+          <p class="hero-lead hero-lead--center">
+            Cream-and-gold studio for capture, scenes, and go-live — with a local relay that keeps stream
+            keys on your machine.
+          </p>
+
+          <p class="social-proof">Windows · v0.2.4 · local relay</p>
+
+          <ul class="value-props">
+            <li>Game capture + RTMP in one installer</li>
+            <li>TabcastRelay on <code>127.0.0.1:38473</code></li>
+            <li>Browser try when you are not ready to install</li>
+          </ul>
+
+          <div class="cta-row cta-row--stack">
+            <a
+              class="btn btn-primary btn--hero"
+              href="https://github.com/n0social/maka-streaming-software/releases/download/maka.streaming.v.01/Maka-Setup-0.2.4.exe"
+              >Download latest build</a
+            >
+            <a class="btn btn-secondary" href="/stream/">Go to stream</a>
+            <a class="btn btn-ghost" href="/preview/">App preview</a>
+          </div>
+
+          <p class="fine-print fine-print--center">
+            <code>Maka-Setup-0.2.4.exe</code> · GitHub release primary ·
+            <a href="/download.html">mirror on this site</a>
+          </p>
+
+          <p class="panel-note panel-note--center">
+            Need the old relay + extension workflow?
+            <a href="/legacy.html">Legacy setup instructions</a>.
+          </p>
+        </div>
       </main>
 
-      <footer class="site-footer">Maka · MIT · Harbor Works Digital</footer>
-    </div>
-
-    <div class="mascot-corner" aria-hidden="true">
-      <img src="/assets/mascot/maka-mascot.svg" alt="" width="52" height="52" />
+      <footer class="site-footer site-footer--center">Maka · MIT · Harbor Works Digital</footer>
     </div>
   </body>
 </html>

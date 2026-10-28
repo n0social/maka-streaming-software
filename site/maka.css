@@ -266,9 +266,222 @@ svg {
   line-height: 1.55;
 }
 
+/* MVP home — centered hero, download-first */
+.page-home-mvp {
+  background-image:
+    radial-gradient(ellipse 70% 50% at 50% -5%, rgba(201, 162, 39, 0.16), transparent 58%),
+    radial-gradient(ellipse 55% 40% at 100% 40%, rgba(224, 179, 58, 0.08), transparent 50%),
+    radial-gradient(ellipse 45% 35% at 0% 60%, rgba(201, 162, 39, 0.06), transparent 45%);
+}
+
+.site-shell--mvp {
+  max-width: 46rem;
+  padding-top: 1.25rem;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.site-header--mvp {
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
+.site-footer--center {
+  text-align: center;
+}
+
+.hero-mvp {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 0 2.5rem;
+}
+
+.hero-mvp__flare {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hero-mvp__orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40px);
+  opacity: 0.55;
+}
+
+.hero-mvp__orb--1 {
+  width: min(22rem, 70vw);
+  height: min(22rem, 70vw);
+  top: 8%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, rgba(224, 179, 58, 0.35), transparent 70%);
+}
+
+.hero-mvp__orb--2 {
+  width: 14rem;
+  height: 14rem;
+  bottom: 12%;
+  right: 5%;
+  background: radial-gradient(circle, rgba(201, 162, 39, 0.22), transparent 68%);
+}
+
+.hero-mvp__inner {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 42rem;
+  margin: 0 auto;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.hero-mvp__mascot {
+  width: clamp(5.5rem, 18vw, 7.5rem);
+  height: auto;
+  margin: 0 auto 0.85rem;
+  filter: drop-shadow(0 10px 28px rgba(201, 162, 39, 0.35));
+}
+
+.site-logo--hero {
+  justify-content: center;
+  margin-bottom: 0.35rem;
+}
+
+.site-logo--hero .site-logo-mark {
+  width: 2.5rem;
+  height: 2.5rem;
+  font-size: 1.15rem;
+}
+
+.site-logo--hero .site-logo-text {
+  font-size: 1.35rem;
+}
+
+.eyebrow--center {
+  text-align: center;
+}
+
+.hero-title--center {
+  max-width: none;
+  text-align: center;
+  margin-bottom: 0.75rem;
+}
+
+.hero-lead--center {
+  max-width: 36rem;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+  margin-bottom: 1.1rem;
+}
+
+.social-proof {
+  margin: 0 0 1.15rem;
+  font-family: var(--headline);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold-dark);
+}
+
+.value-props {
+  list-style: none;
+  margin: 0 0 1.65rem;
+  padding: 0;
+  max-width: 28rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  font-size: 0.9375rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.value-props li {
+  position: relative;
+  padding-left: 1.35rem;
+  text-align: left;
+}
+
+.value-props li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--gold-light), var(--gold));
+  box-shadow: 0 0 0 2px rgba(201, 162, 39, 0.2);
+}
+
+.value-props code {
+  font-size: 0.85em;
+  color: var(--text);
+}
+
+.cta-row--stack {
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  max-width: 22rem;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+
+.cta-row--stack .btn {
+  width: 100%;
+}
+
+.btn--hero {
+  padding: 1rem 1.5rem;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  box-shadow: 0 12px 32px rgba(201, 162, 39, 0.38);
+}
+
+.fine-print--center {
+  text-align: center;
+  max-width: 32rem;
+}
+
+.panel-note--center {
+  text-align: center;
+  max-width: 36rem;
+  width: 100%;
+}
+
 @media (max-width: 640px) {
   .site-nav--compact {
     display: none;
+  }
+
+  .page-home-mvp .site-nav--compact {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .site-header--mvp {
+    margin-bottom: 0.25rem;
+  }
+
+  .hero-mvp {
+    padding-top: 0.75rem;
+  }
+
+  .value-props {
+    font-size: 0.875rem;
   }
 
   .mascot-corner {
