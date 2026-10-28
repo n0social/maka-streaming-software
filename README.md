@@ -2,6 +2,8 @@
 
 **Free Windows streaming software for gamers and creators who want a resource-light OBS alternative.**
 
+Studio branding uses an **original fan-inspired anime streamer mascot** (blonde pigtails, gamer gear) in `site/assets/mascot/` — not official *Soul Eater* or third-party franchise art.
+
 ![Maka studio with a live game stream in the program monitor](docs/readme-hero.png)
 
 Maka is **free streaming software** for Windows: a desktop **Electron studio** for game capture, scenes, and **Go Live** without wiring up OBS first. A local **TabcastRelay** on `127.0.0.1:38473` takes WHIP from the app, encodes with FFmpeg, and pushes **RTMP** to Twitch, YouTube, or a custom RTMP endpoint. Stream keys stay in relay RAM — not written to disk by the UI.
