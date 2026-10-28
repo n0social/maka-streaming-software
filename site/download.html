@@ -5,189 +5,100 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Download Maka free streaming software for Windows—a free streaming software obs alternative with a resource-light studio and bundled local relay for game capture and RTMP streaming."
+      content="Download Maka for Windows — cream-and-gold streaming studio with bundled local WHIP relay."
     />
-    <link rel="canonical" href="https://tabcast.live.skydav.work/download.html" />
+    <meta name="theme-color" content="#faf8f4" />
+    <link rel="canonical" href="https://tabcast.live/download.html" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Maka" />
-    <meta property="og:title" content="Download Maka — free streaming software for Windows" />
-    <meta property="og:description" content="Download the Maka Windows installer with bundled local relay for game capture and RTMP streaming to Twitch or YouTube." />
-    <meta property="og:url" content="https://tabcast.live.skydav.work/download.html" />
-    <meta property="og:image" content="https://tabcast.live.skydav.work/marketing/store/feature-graphic-1024x500.png" />
+    <meta property="og:title" content="Download Maka" />
+    <meta
+      property="og:description"
+      content="Windows installer with local relay. GitHub release primary, mirror on tabcast.live."
+    />
+    <meta property="og:url" content="https://tabcast.live/download.html" />
+    <meta property="og:image" content="https://tabcast.live/marketing/download-now.png" />
     <meta name="twitter:card" content="summary_large_image" />
-    <title>Download Maka — free streaming software</title>
-    <link rel="icon" type="image/png" href="/logo.png" />
+    <title>Download Maka</title>
+    <link rel="icon" type="image/png" href="/marketing/favicon-32.png" sizes="32x32" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Instrument+Sans:wght@500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=League+Spartan:ital,wght@0,700;0,800;0,900;1,800;1,900&display=swap"
       rel="stylesheet"
     />
+    <link rel="stylesheet" href="/maka.css" />
     <style>
-      :root {
-        color-scheme: dark;
-        --bg0: #070708;
-        --bg1: #121214;
-        --ink: #f4f4f5;
-        --muted: #a1a1aa;
-        --line: #2a2a2e;
-        --amber: #e9a802;
-        --amber-ink: #17140a;
-      }
-      * {
-        box-sizing: border-box;
-      }
-      body {
-        margin: 0;
-        min-height: 100vh;
-        font-family: "IBM Plex Sans", system-ui, sans-serif;
-        color: var(--ink);
-        background:
-          radial-gradient(900px 480px at 12% -10%, rgba(233, 168, 2, 0.18), transparent 55%),
-          radial-gradient(700px 420px at 90% 10%, rgba(80, 80, 90, 0.25), transparent 50%),
-          linear-gradient(180deg, #0b0b0d, var(--bg0) 40%);
-      }
-      main {
+      .download-main {
         max-width: 40rem;
-        margin: 0 auto;
-        padding: 4.5rem 1.5rem 3rem;
       }
-      .brand {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        margin-bottom: 2.5rem;
-      }
-      .brand img {
-        width: 40px;
-        height: 40px;
-        border-radius: 0.4rem;
-        object-fit: contain;
-      }
-      .brand span {
-        font-family: "Instrument Sans", "IBM Plex Sans", sans-serif;
-        font-weight: 700;
-        letter-spacing: -0.02em;
-        font-size: 1.35rem;
-      }
-      h1 {
-        font-family: "Instrument Sans", "IBM Plex Sans", sans-serif;
-        font-size: clamp(2rem, 5vw, 2.75rem);
-        line-height: 1.1;
-        letter-spacing: -0.03em;
+      .download-main h1 {
         margin: 0 0 0.85rem;
+        font-family: var(--headline);
+        font-weight: 900;
+        font-style: italic;
+        font-size: clamp(2rem, 5vw, 2.75rem);
+        letter-spacing: -0.03em;
       }
-      .lead {
-        margin: 0 0 2rem;
-        color: var(--muted);
-        font-size: 1.05rem;
-        line-height: 1.55;
-        max-width: 34rem;
-      }
-      .actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-        margin-bottom: 2.25rem;
-      }
-      a.btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        text-decoration: none;
-        border-radius: 0.55rem;
-        padding: 0.85rem 1.2rem;
-        font-weight: 600;
-        font-size: 0.95rem;
-      }
-      a.btn-primary {
-        background: var(--amber);
-        color: var(--amber-ink);
-      }
-      a.btn-primary:hover {
-        filter: brightness(1.05);
-      }
-      a.btn-ghost {
-        border: 1px solid var(--line);
-        color: var(--ink);
-        background: rgba(255, 255, 255, 0.03);
-      }
-      a.btn-ghost:hover {
-        border-color: #3f3f46;
-        background: rgba(255, 255, 255, 0.06);
-      }
-      .meta {
-        border-top: 1px solid var(--line);
+      .meta-block {
+        margin-top: 2rem;
         padding-top: 1.25rem;
-        color: var(--muted);
-        font-size: 0.875rem;
-        line-height: 1.6;
-      }
-      .meta code {
-        font-family: ui-monospace, "Cascadia Code", monospace;
-        font-size: 0.8rem;
-        color: #d4d4d8;
-      }
-      .note {
-        margin-top: 1.5rem;
-        padding: 1rem 1.1rem;
-        border: 1px solid var(--line);
-        border-radius: 0.65rem;
-        background: var(--bg1);
-        color: var(--muted);
-        font-size: 0.875rem;
-        line-height: 1.55;
-      }
-      .mascot-corner {
-        position: fixed;
-        right: 1rem;
-        bottom: 1rem;
-        width: 3.25rem;
-        height: 3.25rem;
-        pointer-events: none;
-        opacity: 0.92;
-        filter: drop-shadow(0 4px 16px rgba(233, 168, 2, 0.35));
-        z-index: 40;
-      }
-      .mascot-corner img {
-        width: 100%;
-        height: 100%;
+        border-top: 1px solid var(--line);
       }
     </style>
   </head>
   <body>
-    <main>
-      <div class="brand">
-        <img src="/logo.png" alt="Maka logo" width="40" height="40" />
-        <span>Maka</span>
-      </div>
-      <h1>Download Maka</h1>
-      <p class="lead">
-        Windows studio app with Chromium browse + local WHIP relay. Capture, lay out camera, and go
-        live without juggling a separate relay install.
-      </p>
-      <div class="actions">
-        <a
-          class="btn btn-primary"
-          href="https://github.com/n0social/maka-streaming-software/releases/download/maka.streaming.v.01/Maka-Setup-0.2.4.exe"
-          >Download for Windows (GitHub)</a
-        >
-        <a class="btn btn-ghost" href="/downloads/Maka-Setup-0.2.4.exe">Mirror on this server</a>
-        <a class="btn btn-ghost" href="/downloads/TabcastRelay.exe">Relay only (.exe)</a>
-        <a class="btn btn-ghost" href="https://github.com/n0social/maka-streaming-software">Source on GitHub</a>
-      </div>
-      <div class="meta">
-        <div>Version <code>0.2.4</code> · Windows x64 installer (NSIS)</div>
-        <div>Includes the bundled local relay · unsigned build (SmartScreen may warn)</div>
-      </div>
-      <p class="note">
-        After install, launch <strong>Maka</strong>, open Studio, verify the relay, then
-        Go Live. Stream keys stay on your machine and are sent only to the local relay.
-      </p>
-    </main>
+    <div class="site-shell download-main">
+      <header class="site-header">
+        <a class="site-logo" href="/">
+          <span class="site-logo-mark" aria-hidden="true">M</span>
+          <span class="site-logo-text">Maka</span>
+        </a>
+        <nav class="site-nav site-nav--compact">
+          <a href="/stream/">Stream</a>
+          <a href="/preview/">App preview</a>
+          <a href="/">Home</a>
+        </nav>
+      </header>
+
+      <main>
+        <p class="eyebrow">Windows · v0.2.4</p>
+        <h1>Download Maka</h1>
+        <p class="hero-lead">
+          Desktop studio with game capture, cream-and-gold layout, and TabcastRelay on
+          <code>127.0.0.1:38473</code> — WHIP in, RTMP to your platforms. Stream keys stay local.
+        </p>
+
+        <div class="cta-row">
+          <a
+            class="btn btn-primary"
+            href="https://github.com/n0social/maka-streaming-software/releases/download/maka.streaming.v.01/Maka-Setup-0.2.4.exe"
+            >Download (GitHub)</a
+          >
+          <a class="btn btn-secondary" href="/downloads/Maka-Setup-0.2.4.exe">Mirror on tabcast.live</a>
+        </div>
+        <div class="cta-row">
+          <a class="btn btn-ghost" href="/downloads/TabcastRelay.exe">Relay only (.exe)</a>
+          <a class="btn btn-ghost" href="https://github.com/n0social/maka-streaming-software">Source</a>
+        </div>
+
+        <div class="meta-block fine-print">
+          <p><code>Maka-Setup-0.2.4.exe</code> · x64 NSIS · ~190 MB · unsigned (SmartScreen may warn)</p>
+          <p>Includes bundled relay · prefer GitHub for checksums and release notes</p>
+        </div>
+
+        <p class="panel-note">
+          After install, open Studio, verify relay health, add keys, then Go Live. Try the
+          <a href="/stream/">browser capture preview</a> or explore the
+          <a href="/preview/">studio mockup</a> first.
+        </p>
+      </main>
+
+      <footer class="site-footer">Maka · MIT · Harbor Works Digital</footer>
+    </div>
+
     <div class="mascot-corner" aria-hidden="true">
-      <img src="/assets/mascot/maka-mascot.png" alt="" width="52" height="52" />
+      <img src="/assets/mascot/maka-mascot.svg" alt="" width="52" height="52" />
     </div>
   </body>
 </html>

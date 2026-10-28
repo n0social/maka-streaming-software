@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://tabcast.live.skydav.work/sitemap.xml
+Sitemap: https://tabcast.live/sitemap.xml
