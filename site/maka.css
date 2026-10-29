@@ -1,4 +1,4 @@
-/* MAKA_CSS_BUILD=dc6d036 — bump ?v= on /maka.css in site/**/*.html when this file changes */
+/* MAKA_CSS_BUILD=dc6d037 — bump ?v= on /maka.css in site/**/*.html when this file changes */
 /* Maka marketing site — cream / Mikado Yellow tokens (matches Electron studio redesign) */
 :root {
   color-scheme: light;
@@ -302,10 +302,10 @@ svg {
 @keyframes mascot-float {
   0%,
   100% {
-    transform: scale(1.06) translateY(0);
+    transform: translateY(-50%) scale(1.06);
   }
   50% {
-    transform: scale(1.06) translateY(-6px);
+    transform: translateY(calc(-50% - 6px)) scale(1.06);
   }
 }
 
@@ -421,10 +421,9 @@ svg {
 
 .hero-mvp__brand-stage {
   position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
+  display: grid;
+  place-items: center;
+  width: 100vw;
   max-width: 100vw;
   margin-left: calc(50% - 50vw);
   margin-right: calc(50% - 50vw);
@@ -437,7 +436,10 @@ svg {
 .maka-wordmark {
   position: relative;
   z-index: 2;
-  margin: 0 auto;
+  grid-area: 1 / 1;
+  justify-self: center;
+  align-self: center;
+  margin: 0;
   font-family: var(--headline);
   font-weight: 900;
   font-style: italic;
@@ -446,9 +448,10 @@ svg {
   letter-spacing: -0.04em;
   text-transform: uppercase;
   width: fit-content;
-  max-width: none;
+  max-width: min(96vw, 100%);
   padding-inline: clamp(0.1em, 0.45vw, 0.18em);
   overflow: visible;
+  text-align: center;
 }
 
 .maka-wordmark__back,
@@ -480,20 +483,26 @@ svg {
 .maka-wordmark__front {
   position: relative;
   z-index: 2;
-  /* ~35° upward split: top cream/white, bottom Mikado Yellow (#ffc40c) */
-  background: linear-gradient(
-    35deg,
-    var(--white) 0%,
-    var(--champagne) 38%,
-    var(--champagne) 46%,
-    var(--gold-light) 49%,
-    var(--gold) 52%,
-    var(--gold) 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
+  color: var(--gold);
+}
+
+@supports (-webkit-background-clip: text) or (background-clip: text) {
+  .maka-wordmark__front {
+    /* ~35° upward split: top cream/white, bottom Mikado Yellow (#ffc40c) */
+    background-image: linear-gradient(
+      35deg,
+      var(--white) 0%,
+      var(--champagne) 38%,
+      var(--champagne) 46%,
+      var(--gold-light) 49%,
+      var(--gold) 52%,
+      var(--gold) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
 }
 
 /* Holographic foil on cream/white upper split (35deg) — MTG/YGO diamond foil shimmer */
@@ -505,6 +514,7 @@ svg {
   z-index: 3;
   pointer-events: none;
   font: inherit;
+  font-style: italic;
   letter-spacing: inherit;
   text-transform: inherit;
   padding-inline: inherit;
@@ -571,17 +581,20 @@ svg {
 }
 
 .hero-mvp__mascot-wrap {
-  position: absolute;
+  grid-area: 1 / 1;
+  justify-self: center;
+  align-self: center;
+  position: relative;
   z-index: 1;
-  top: 50%;
-  left: clamp(58%, 62vw, 68%);
+  width: 0;
+  height: 0;
   margin: 0;
   display: flex;
   align-items: center;
   justify-content: flex-start;
   pointer-events: none;
   background: none;
-  transform: translateY(-50%);
+  overflow: visible;
 }
 
 .hero-mvp__actions {
@@ -723,7 +736,9 @@ svg {
 }
 
 .hero-mvp__mascot {
-  position: relative;
+  position: absolute;
+  left: clamp(7.5rem, 20vw, 13rem);
+  top: 50%;
   z-index: 0;
   display: block;
   width: auto;
@@ -733,7 +748,7 @@ svg {
   max-height: 22rem;
   opacity: 0.88;
   object-fit: contain;
-  transform: scale(1.06);
+  transform: translateY(-50%) scale(1.06);
   transform-origin: center right;
   animation: mascot-float 5s ease-in-out infinite;
   filter: drop-shadow(0 10px 22px rgba(26, 20, 8, 0.12));
@@ -908,12 +923,14 @@ svg {
   }
 
   .hero-mvp__brand-stage {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    display: grid;
+    place-items: center;
+    width: 100vw;
+    max-width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
     min-height: clamp(9rem, 38vw, 14rem);
     padding-inline: clamp(0.65rem, 4vw, 1.25rem);
-    gap: 0;
   }
 
   .maka-wordmark {
