@@ -24,6 +24,8 @@ import { recordDiagnostic } from './diagnostics'
 const execFileAsync = promisify(execFile)
 
 const RELAY_MIN_BYTES = 200_000_000
+/** Public download name first, then the name shipped inside older installers. */
+const RELAY_EXE_NAMES = ['MAKArelay.exe', 'TabcastRelay.exe'] as const
 const POLL_MS = 1500
 const MAX_AUTO_RESTARTS = MAX_LIVE_RETRY_ATTEMPTS
 
@@ -94,26 +96,26 @@ async function relaySha256Error(exe: string): Promise<string | null> {
 
 export type { RelaySnapshot }
 
-function vendorRelayPath(): string {
-  return join(vendorDir(), 'TabcastRelay.exe')
+function relayExeCandidates(): string[] {
+  const bundled = RELAY_EXE_NAMES.map((name) => join(vendorDir(), name))
+  const localApp = process.env.LOCALAPPDATA
+  const installed: string[] = []
+  if (localApp) {
+    for (const rootName of ['TabcastRelay', 'MAKArelay']) {
+      for (const name of RELAY_EXE_NAMES) {
+        installed.push(join(localApp, rootName, 'v0.1.0', name))
+        installed.push(join(localApp, rootName, name))
+      }
+    }
+  }
+  return [...bundled, ...installed]
 }
 
 function resolveRelayExe(): string {
-  const preferred = vendorRelayPath()
-  if (!relayIntegrityError(preferred)) return preferred
-
-  const localApp = process.env.LOCALAPPDATA
-  if (localApp) {
-    const candidates = [
-      join(localApp, 'TabcastRelay', 'v0.1.0', 'TabcastRelay.exe'),
-      join(localApp, 'TabcastRelay', 'TabcastRelay.exe'),
-    ]
-    for (const candidate of candidates) {
-      if (!relayIntegrityError(candidate)) return candidate
-    }
+  for (const candidate of relayExeCandidates()) {
+    if (!relayIntegrityError(candidate)) return candidate
   }
-
-  return preferred
+  return join(vendorDir(), RELAY_EXE_NAMES[0])
 }
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -169,7 +171,7 @@ async function killOrphanRelayTrays(): Promise<void> {
         '-Command',
         [
           "Get-CimInstance Win32_Process -Filter \"Name='powershell.exe' OR Name='pwsh.exe'\" -ErrorAction SilentlyContinue |",
-          "Where-Object { $_.CommandLine -match 'TabcastRelay.*tray\\.ps1' } |",
+          "Where-Object { $_.CommandLine -match '(TabcastRelay|MAKArelay).*tray\\.ps1' } |",
           'ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }',
         ].join(' '),
       ],
@@ -214,7 +216,7 @@ export type OrphanRelayReport = {
   portConflict: boolean
 }
 
-/** TabcastRelay.exe processes not owned by this app's relay child. */
+/** Relay processes not owned by this app's relay child. */
 export async function detectOrphanRelayProcesses(
   ownedPid: number | null,
 ): Promise<OrphanRelayReport> {
@@ -227,28 +229,30 @@ export async function detectOrphanRelayProcesses(
   }
   if (process.platform !== 'win32') return empty
 
-  let orphanPids: number[] = []
-  try {
-    const { stdout } = await execFileAsync(
-      'tasklist',
-      ['/FI', 'IMAGENAME eq TabcastRelay.exe', '/FO', 'CSV', '/NH'],
-      { windowsHide: true, timeout: 8000 },
-    )
-    const pids = stdout
-      .split(/\r?\n/)
-      .map((line) => {
-        const match = line.match(/"TabcastRelay\.exe","(\d+)"/i)
-        return match ? Number.parseInt(match[1], 10) : null
-      })
-      .filter((pid): pid is number => pid !== null && Number.isFinite(pid))
-
-    orphanPids = ownedPid ? pids.filter((pid) => pid !== ownedPid) : pids
-    empty.totalCount = pids.length
-    empty.orphanPids = orphanPids
-    empty.orphanCount = orphanPids.length
-  } catch {
-    // tasklist unavailable
+  const pids: number[] = []
+  for (const image of RELAY_EXE_NAMES) {
+    try {
+      const { stdout } = await execFileAsync(
+        'tasklist',
+        ['/FI', `IMAGENAME eq ${image}`, '/FO', 'CSV', '/NH'],
+        { windowsHide: true, timeout: 8000 },
+      )
+      const pattern = new RegExp(`"${image.replaceAll('.', '\\.')}","(\\d+)"`, 'i')
+      for (const line of stdout.split(/\r?\n/)) {
+        const match = line.match(pattern)
+        if (!match) continue
+        const pid = Number.parseInt(match[1], 10)
+        if (Number.isFinite(pid)) pids.push(pid)
+      }
+    } catch {
+      // tasklist unavailable
+    }
   }
+
+  const orphanPids = ownedPid ? pids.filter((pid) => pid !== ownedPid) : pids
+  empty.totalCount = pids.length
+  empty.orphanPids = orphanPids
+  empty.orphanCount = orphanPids.length
 
   try {
     const { stdout } = await execFileAsync(
@@ -280,7 +284,7 @@ type DirectRelayLaunch = {
   mode: 'direct' | 'launcher'
 }
 
-/** Prefer installed Node relay (no tray). Fall back to TabcastRelay.exe for first extract. */
+/** Prefer the unpacked Node relay. The single-file launcher still extracts under TabcastRelay. */
 function resolveLaunch(): DirectRelayLaunch {
   const localApp = process.env.LOCALAPPDATA
   if (localApp) {
@@ -333,7 +337,7 @@ async function terminateAllRelays(owned: ChildProcess | null): Promise<void> {
   }
 
   await killOrphanRelayTrays()
-  await killProcessImage('TabcastRelay.exe')
+  for (const image of RELAY_EXE_NAMES) await killProcessImage(image)
   await killListenersOnPort(RELAY_DEFAULT_PORT)
   await killOrphanRelayTrays()
 
@@ -345,7 +349,7 @@ async function terminateAllRelays(owned: ChildProcess | null): Promise<void> {
     }
     await postRelayStop()
     await killOrphanRelayTrays()
-    await killProcessImage('TabcastRelay.exe')
+    for (const image of RELAY_EXE_NAMES) await killProcessImage(image)
     await killListenersOnPort(RELAY_DEFAULT_PORT)
     await sleep(350)
   }

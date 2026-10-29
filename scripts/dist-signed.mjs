@@ -42,12 +42,14 @@ if (!certOk) {
   process.exit(0)
 }
 
-const relayPath = join(root, 'vendor', 'relay', 'TabcastRelay.exe')
-if (existsSync(relayPath)) {
+const relayPath = ['MAKArelay.exe', 'TabcastRelay.exe']
+  .map((name) => join(root, 'vendor', 'relay', name))
+  .find((path) => existsSync(path))
+if (relayPath) {
   console.log('Signing relay before packaging…')
   run('node', ['scripts/sign-windows.mjs', relayPath])
 } else {
-  console.warn('vendor/relay/TabcastRelay.exe missing — run npm run fetch:relay first')
+  console.warn('vendor/relay/MAKArelay.exe missing — run npm run fetch:relay first')
 }
 
 console.log('Building signed installer (electron-builder uses CSC_* )…')

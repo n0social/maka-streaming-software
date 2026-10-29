@@ -11,7 +11,10 @@ import { fileURLToPath } from 'node:url'
 
 const offline = process.argv.includes('--offline')
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const exe = join(root, 'vendor', 'relay', 'TabcastRelay.exe')
+const exe =
+  ['MAKArelay.exe', 'TabcastRelay.exe']
+    .map((name) => join(root, 'vendor', 'relay', name))
+    .find((path) => existsSync(path)) ?? join(root, 'vendor', 'relay', 'MAKArelay.exe')
 const manifestPath = join(root, 'vendor', 'relay', 'relay-manifest.json')
 
 function readExpectedSize() {

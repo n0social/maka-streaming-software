@@ -943,7 +943,7 @@ function registerIpc(): void {
         orphan.orphanCount === 0 && !orphan.portConflict
           ? orphan.totalCount
             ? `${orphan.totalCount} relay process(es), none orphaned`
-            : 'no stray TabcastRelay.exe'
+            : 'no stray relay executable'
           : [
               orphan.orphanCount ? `${orphan.orphanCount} orphan PID(s): ${orphan.orphanPids.join(', ')}` : null,
               orphan.portConflict ? `port ${38473} held by PID ${orphan.portListenerPid}` : null,

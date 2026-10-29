@@ -92,14 +92,18 @@ export function hasSigningCert() {
 export function collectDistArtifacts() {
   const out = []
   const distDir = join(root, 'dist-installer')
-  const relayVendor = join(root, 'vendor', 'relay', 'TabcastRelay.exe')
-  if (existsSync(relayVendor)) out.push(relayVendor)
+  for (const name of ['MAKArelay.exe', 'TabcastRelay.exe']) {
+    const relayVendor = join(root, 'vendor', 'relay', name)
+    if (existsSync(relayVendor)) out.push(relayVendor)
+  }
 
   const unpacked = join(distDir, 'win-unpacked', 'Maka.exe')
   if (existsSync(unpacked)) out.push(unpacked)
 
-  const relayBundled = join(distDir, 'win-unpacked', 'resources', 'relay', 'TabcastRelay.exe')
-  if (existsSync(relayBundled)) out.push(relayBundled)
+  for (const name of ['MAKArelay.exe', 'TabcastRelay.exe']) {
+    const relayBundled = join(distDir, 'win-unpacked', 'resources', 'relay', name)
+    if (existsSync(relayBundled)) out.push(relayBundled)
+  }
 
   if (existsSync(distDir)) {
     for (const name of readdirSync(distDir)) {
