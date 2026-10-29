@@ -37,6 +37,18 @@ ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
 
 Expected: `skydav` and `/opt/tabcast/web/index.html`. Nonzero exit or “Permission denied” means fix keys/secrets before deploy.
 
+### Console one-liner (no private key in Cursor secrets)
+
+If you deploy from a Cloud Agent without `SKYDAV_SSH_PRIVATE_KEY_B64`, the agent can generate an **ephemeral** key on the VM and print a droplet-console snippet:
+
+```bash
+bash scripts/skydav-print-console-snippet.sh
+```
+
+Paste the printed line into **DigitalOcean → Droplet (104.131.164.94) → Access → Launch Droplet Console** as **root**. That appends the agent’s **public** key to `/root/.ssh/authorized_keys`. Then the agent runs `bash scripts/skydav-deploy-site.sh`.
+
+Re-run the print script on a **new** agent VM (each run gets a new key unless the same VM is reused).
+
 ## Deploy to origin (104.131.164.94)
 
 From repo root, on a machine with SSH to the droplet:
