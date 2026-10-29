@@ -1,14 +1,14 @@
 ﻿{
-    "arch":  "x64",
-    "downloadPath":  "/downloads/TabcastBrowser-Setup-0.2.0.exe",
-    "platform":  "win32",
-    "version":  "0.2.0",
-    "includesRelay":  true,
-    "artifact":  "TabcastBrowser-Setup-0.2.0.exe",
-    "sha256":  "143d380229267fa568fd3bd96e6d2eb330b8c6705de2a69ffdf4a9ce909da31e",
-    "signed": false,
-    "signing": null,
-    "size":  189723278,
-    "productName":  "Maka",
-    "releasedAt":  "2026-08-23T14:55:11.8351346Z"
+  "arch": "x64",
+  "downloadPath": "/downloads/Maka-Setup-0.2.5.exe",
+  "platform": "win32",
+  "version": "0.2.5",
+  "includesRelay": true,
+  "artifact": "Maka-Setup-0.2.5.exe",
+  "sha256": "d9793de495e67077244e4ee02135acd292745abba19e6c13856d3b0b8f030eee",
+  "signed": false,
+  "signing": null,
+  "size": 190354152,
+  "productName": "Maka",
+  "releasedAt": "2026-10-29T15:38:49.323Z"
 }

@@ -9,7 +9,7 @@ import {
 } from 'electron'
 import { existsSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { RelayManager, detectOrphanRelayProcesses } from './relay'
+import { RelayManager, detectOrphanRelayProcesses, RELAY_INSTALL_DIRS } from './relay'
 import { BrowseTabsManager, PINNED_PRESETS, normalizeBrowseUrl } from './browse-tabs'
 import { AddonHost } from './addon-host'
 import { AddonRuntime } from './addon-runtime'
@@ -137,17 +137,15 @@ function allowCapturePermissions(): void {
 function neutralizeInstalledRelayConfig(): void {
   const localApp = process.env.LOCALAPPDATA
   if (!localApp) return
-  const dir = join(localApp, 'TabcastRelay', 'v0.1.0')
-  const configPath = join(dir, 'relay-config.json')
-  try {
-    mkdirSync(dir, { recursive: true })
-    writeFileSync(
-      configPath,
-      JSON.stringify({ streamUrl: 'http://127.0.0.1:38473/whip' }, null, 2) + '\n',
-      'utf8',
-    )
-  } catch {
-    // non-fatal
+  const body = JSON.stringify({ streamUrl: 'http://127.0.0.1:38473/whip' }, null, 2) + '\n'
+  for (const rootName of RELAY_INSTALL_DIRS) {
+    const dir = join(localApp, rootName, 'v0.1.0')
+    try {
+      mkdirSync(dir, { recursive: true })
+      writeFileSync(join(dir, 'relay-config.json'), body, 'utf8')
+    } catch {
+      // non-fatal
+    }
   }
 }
 
@@ -554,7 +552,7 @@ function registerIpc(): void {
   })
 
   ipcMain.handle('shell:open-home', () => {
-    void shell.openExternal('https://tabcast.live')
+    void shell.openExternal('https://makalive.stream')
   })
 
   ipcMain.handle('settings:get', (event) => {
@@ -943,7 +941,7 @@ function registerIpc(): void {
         orphan.orphanCount === 0 && !orphan.portConflict
           ? orphan.totalCount
             ? `${orphan.totalCount} relay process(es), none orphaned`
-            : 'no stray TabcastRelay.exe'
+            : 'no stray relay executable'
           : [
               orphan.orphanCount ? `${orphan.orphanCount} orphan PID(s): ${orphan.orphanPids.join(', ')}` : null,
               orphan.portConflict ? `port ${38473} held by PID ${orphan.portListenerPid}` : null,

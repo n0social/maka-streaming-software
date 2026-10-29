@@ -1,104 +1,163 @@
 <!doctype html>
-<html lang="en" theme="prestige">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <base href="https://makalive.stream/" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Maka web studio — browser-based capture with the local relay."
+      content="Try Maka in your browser — webcam and screen share preview with optional WHIP to a local MAKA.relay."
     />
-    <meta name="theme-color" content="#0A0E14" />
+    <meta name="theme-color" content="#faf8f4" />
+    <link rel="canonical" href="https://makalive.stream/stream/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Maka" />
+    <meta property="og:title" content="Maka — browser stream try" />
+    <meta
+      property="og:description"
+      content="One-session browser capture. Full RTMP uses MAKA.relay on localhost:38473."
+    />
+    <meta property="og:url" content="https://makalive.stream/stream/" />
+    <meta property="og:image" content="https://makalive.stream/marketing/screenshot-desktop-1280x800.png" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self' 'wasm-unsafe-eval' https://pagead2.googlesyndication.com https://www.googletagservices.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self' blob: https:; connect-src 'self' https: http://127.0.0.1:38473 http://127.0.0.1:38474 http://127.0.0.1:38475 http://127.0.0.1:38476 http://127.0.0.1:38477 http://localhost:38473 http://localhost:38474 http://localhost:38475 http://localhost:38476 http://localhost:38477; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com; worker-src 'self' blob:"
+      content="default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://makalive.stream; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:38473 http://localhost:38473"
     />
-    <title>Maka Web Studio</title>
-    <link rel="icon" type="image/png" href="/marketing/favicon-32.png" />
+    <title>Maka — browser stream</title>
+    <link rel="icon" type="image/png" href="/marketing/favicon-32.png?v=maka-m" sizes="32x32" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=League+Spartan:ital,wght@0,700;0,800;0,900;1,800;1,900&display=swap"
       rel="stylesheet"
     />
-    <script
-      async
-      src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4592416964615162"
-      crossorigin="anonymous"
-    ></script>
-    <script type="module" crossorigin src="/assets/index-Bc05P7jZ.js"></script>
+    <link
+      rel="preload"
+      as="style"
+      href="https://makalive.stream/maka.css?v=dc6d038"
+    />
+    <link
+      rel="stylesheet"
+      href="https://makalive.stream/maka.css?v=dc6d038"
+    />
+    <link rel="stylesheet" href="/stream/stream.css" />
   </head>
   <body>
-    <noscript>
-      <main
-        style="
-          min-height: 100vh;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 1rem;
-          padding: 2rem;
-          text-align: center;
-          background: #0a0e14;
-          color: #f2f4f6;
-          font-family: 'IBM Plex Sans', system-ui, sans-serif;
-        "
-      >
-        <h1 style="font-size: 1.25rem; font-weight: 600">Maka requires JavaScript</h1>
-        <p style="max-width: 24rem; font-size: 0.875rem; color: #939da8">
-          Enable JavaScript in your browser to use Maka Web Studio.
-        </p>
-        <p style="font-size: 0.875rem">
-          <a href="/legacy.html" style="color: #2af5ff">Relay setup instructions</a>
-        </p>
-      </main>
-    </noscript>
-    <div id="root">
-      <main
-        id="tabcast-boot-placeholder"
-        style="
-          min-height: 100vh;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 0.75rem;
-          padding: 2rem;
-          text-align: center;
-          background: #0a0e14;
-          color: #f2f4f6;
-          font-family: 'IBM Plex Sans', system-ui, sans-serif;
-        "
-      >
-        <img
-          src="/marketing/icons/icon-128.png"
-          alt=""
-          width="40"
-          height="40"
-          style="border-radius: 0.35rem; object-fit: contain"
-        />
-        <p style="font-size: 0.75rem; letter-spacing: 0.3em; text-transform: uppercase; color: #939da8">
-          Maka Web Studio
-        </p>
-        <p style="font-size: 0.875rem; color: #939da8">Loading…</p>
-        <p style="font-size: 0.78rem; color: #939da8; max-width: 20rem">
-          Legacy relay workflow —
-          <a href="/legacy.html" style="color: #2af5ff">setup help</a> ·
-          <a href="/" style="color: #2af5ff">Try Maka</a>
-        </p>
-      </main>
+    <div class="stream-app site-shell--full">
+      <header class="stream-top stream-top--minimal">
+        <div class="stream-status" aria-live="polite">
+          <span class="status-dot" id="relay-status-dot" data-state="warn"></span>
+          <span id="relay-status-text">Checking relay…</span>
+        </div>
+      </header>
+
+      <div class="stream-main">
+        <div class="stream-stage-wrap">
+          <div class="program-frame">
+            <span class="program-label">Program</span>
+            <canvas id="program-canvas" class="program-canvas" aria-label="Program preview"></canvas>
+            <p class="program-empty" id="program-empty">
+              Add webcam or share your screen to build a layout.<br />
+              Screen fills the frame; webcam appears as a gold picture-in-picture.
+            </p>
+          </div>
+        </div>
+
+        <aside class="stream-sidebar" aria-label="Stream controls">
+          <div class="stream-block">
+            <h2>Sources</h2>
+            <p>Capture stays in your browser until you publish to a local relay.</p>
+            <div class="stream-actions">
+              <button type="button" class="btn btn-secondary" id="btn-webcam">Add webcam</button>
+              <button type="button" class="btn btn-secondary" id="btn-screen">Share screen</button>
+              <button type="button" class="btn btn-secondary" id="btn-mic">Add microphone</button>
+            </div>
+          </div>
+
+          <div class="stream-block">
+            <h2>Relay</h2>
+            <p id="relay-version-line">Connect to MAKA.relay on <code>127.0.0.1:38473</code>.</p>
+            <p class="stream-hint">
+              Dev without MAKArelay.exe: run <code>npm run web:relay</code> (see
+              <a href="https://github.com/n0social/maka-streaming-software/blob/main/docs/web-relay.md">web-relay docs</a>).
+            </p>
+            <label class="stream-field">
+              <span>Encode profile</span>
+              <select id="cfg-profile">
+                <option value="720p30">720p30</option>
+                <option value="720p60">720p60</option>
+                <option value="1080p30">1080p30</option>
+                <option value="1080p60">1080p60</option>
+                <option value="2k60">2k60</option>
+                <option value="4k60">4k60</option>
+              </select>
+            </label>
+            <label class="stream-field">
+              <span>Twitch stream key (optional, RAM only)</span>
+              <input id="cfg-twitch-key" type="password" autocomplete="off" placeholder="live_…" />
+            </label>
+            <label class="stream-field">
+              <span>YouTube stream key (optional)</span>
+              <input id="cfg-youtube-key" type="password" autocomplete="off" placeholder="xxxx-xxxx-…" />
+            </label>
+            <div class="stream-actions">
+              <button type="button" class="btn btn-secondary" id="btn-relay-refresh">Check relay</button>
+              <button type="button" class="btn btn-secondary" id="btn-config">Apply config</button>
+              <button type="button" class="btn btn-ghost" id="btn-verify">Verify keys</button>
+            </div>
+            <pre class="stream-status-json" id="relay-status-json" aria-live="polite"></pre>
+          </div>
+
+          <div class="stream-block">
+            <h2>Go live</h2>
+            <p>
+              WHIP to <code>127.0.0.1:38473</code> when MAKA.relay is running. Without it, preview
+              only — no RTMP from this page alone.
+            </p>
+            <div class="stream-actions">
+              <button type="button" class="btn btn-primary" id="btn-start">Start stream</button>
+              <button type="button" class="btn btn-ghost" id="btn-stop" disabled>Stop stream</button>
+            </div>
+          </div>
+
+          <div class="stream-block">
+            <h2>Log</h2>
+            <pre class="stream-log" id="stream-log"></pre>
+          </div>
+        </aside>
+      </div>
+
+      <footer class="stream-footer">
+        <span>Encode + platform keys → desktop Maka or MAKA.relay</span>
+        <span>
+          <a href="/studio-web/">Studio web</a> · <a href="/download.html">Download</a> ·
+          <a href="/preview/">Studio preview</a> ·
+          <a href="/">Home</a>
+        </span>
+      </footer>
     </div>
-    <script id="tabcast-boot-timeout">
-      (function () {
-        var BOOT_MS = 12000;
-        window.setTimeout(function () {
-          var root = document.getElementById("root");
-          var placeholder = document.getElementById("tabcast-boot-placeholder");
-          if (!placeholder || !root || !root.contains(placeholder)) return;
-          if (root.childElementCount > 1) return;
-          window.location.replace("/404.html?reason=boot");
-        }, BOOT_MS);
-      })();
-    </script>
+
+    <div class="modal-backdrop" id="relay-modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal">
+        <h2 id="modal-title">Relay required for go-live</h2>
+        <p>
+          This page previews capture in the browser. RTMP encoding runs in
+          <strong>MAKA.relay</strong> on your PC (port 38473). For local testing without downloading
+          MAKArelay.exe, run <code>npm run dev:web-studio</code> from the repo — then apply config and go
+          live here.
+        </p>
+        <div class="modal-actions">
+          <a class="btn btn-primary" href="/download.html">Download Maka</a>
+          <a class="btn btn-secondary" href="https://github.com/n0social/maka-streaming-software/blob/main/docs/web-relay.md">Web relay docs</a>
+          <button type="button" class="btn btn-ghost" id="modal-close">Keep previewing</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="mascot-corner" aria-hidden="true">
+      <img src="/assets/mascot/maka-mascot.svg" alt="" width="52" height="52" />
+    </div>
+
+    <script src="/stream/stream.js" defer></script>
   </body>
 </html>

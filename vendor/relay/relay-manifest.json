@@ -1,6 +1,6 @@
 ﻿{
   "version": "0.1.0",
-  "artifact": "TabcastRelay.exe",
+  "artifact": "MAKArelay.exe",
   "port": 38473,
   "streamUrl": "http://127.0.0.1:38473/whip",
   "size": 394267438,
