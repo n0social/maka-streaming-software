@@ -18,7 +18,7 @@ Authenticode signing reduces SmartScreen warnings and helps enterprise allow-lis
 
 | Artifact | When | Tool |
 |----------|------|------|
-| `TabcastRelay.exe` (vendor + bundled) | Before `electron-builder` | `scripts/sign-windows.mjs` |
+| `MAKArelay.exe` (vendor + bundled) | Before `electron-builder` | `scripts/sign-windows.mjs` |
 | `Maka.exe` | During `electron-builder` | electron-builder + `@electron/windows-sign` |
 | `Maka-Setup-*.exe` (NSIS) | During `electron-builder` | electron-builder |
 | Optional: unpacked outputs | After build (`--all`) | `scripts/sign-windows.mjs` |
@@ -46,18 +46,18 @@ Create a local env file (never commit). Example `.env.signing.local`:
 
 ```bash
 # Path to your .pfx OR base64-encoded pfx (electron-builder accepts both)
-CSC_LINK=C:\certs\tabcast-code-sign.pfx
+CSC_LINK=C:\certs\maka-code-sign.pfx
 CSC_KEY_PASSWORD=your-pfx-password
 
 # Optional overrides
-TABCAST_TIMESTAMP_URL=http://timestamp.digicert.com
-TABCAST_SIGNING_REQUIRED=1
+MAKA_TIMESTAMP_URL=http://timestamp.digicert.com
+MAKA_SIGNING_REQUIRED=1
 ```
 
 PowerShell for current session:
 
 ```powershell
-$env:CSC_LINK = "C:\certs\tabcast-code-sign.pfx"
+$env:CSC_LINK = "C:\certs\maka-code-sign.pfx"
 $env:CSC_KEY_PASSWORD = "your-password"
 ```
 
@@ -73,7 +73,7 @@ npm run dist:signed
 
 This runs:
 
-1. Sign `vendor/relay/TabcastRelay.exe` (if present)
+1. Sign `vendor/relay/MAKArelay.exe` (if present)
 2. `typecheck` → `build` → `verify:offline` → `electron-builder`
 3. Verify signatures on relay + main exe + NSIS installer
 
@@ -87,7 +87,7 @@ npm run dist
 
 ```bash
 node scripts/sign-windows.mjs --verify dist-installer/Maka-Setup-0.2.0.exe
-node scripts/sign-windows.mjs --verify vendor/relay/TabcastRelay.exe
+node scripts/sign-windows.mjs --verify vendor/relay/MAKArelay.exe
 ```
 
 ---
@@ -102,7 +102,7 @@ In `package.json` → `build.win`:
 
 electron-builder reads `CSC_LINK` / `CSC_KEY_PASSWORD` automatically. No cert → build completes unsigned (with optional warning).
 
-Set `TABCAST_SIGNING_REQUIRED=1` to **fail** `dist:signed` when no certificate is configured.
+Set `MAKA_SIGNING_REQUIRED=1` to **fail** `dist:signed` when no certificate is configured.
 
 ---
 
@@ -121,7 +121,7 @@ Job step (after `npm run dist:signed`):
 env:
   CSC_LINK: ${{ secrets.CSC_LINK }}
   CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-  TABCAST_SIGNING_REQUIRED: "1"
+  MAKA_SIGNING_REQUIRED: "1"
 run: npm run dist:signed
 ```
 
@@ -156,7 +156,7 @@ Run `node scripts/update-browser-manifest.mjs` (added with signing scripts) to r
 | `No certificates were found` | Wrong PFX password or expired cert |
 | SmartScreen still warns | New cert — reputation builds with download volume; EV helps |
 | Relay unsigned in installer | Run `npm run sign:relay` before `dist`, or use `dist:signed` |
-| Build fails with signing error | Unset `TABCAST_SIGNING_REQUIRED` for local unsigned builds |
+| Build fails with signing error | Unset `MAKA_SIGNING_REQUIRED` for local unsigned builds |
 
 ---
 

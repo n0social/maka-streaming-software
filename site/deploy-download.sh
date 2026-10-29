@@ -29,8 +29,10 @@ systemctl reload nginx
 echo "--- verify ---"
 ls -lah /opt/tabcast/web/downloads/
 ls -lah /opt/tabcast/web/index.html /opt/tabcast/web/download.html
-curl -sk -o /dev/null -w "home:%{http_code}\n" https://127.0.0.1/ -H "Host: tabcast.live.skydav.work"
-curl -sk -o /dev/null -w "download:%{http_code}\n" https://127.0.0.1/download.html -H "Host: tabcast.live.skydav.work"
-curl -sk -o /dev/null -w "setup:%{http_code}\n" https://127.0.0.1/downloads/Maka-Setup-0.2.5.exe -H "Host: tabcast.live.skydav.work"
-curl -sk https://127.0.0.1/ -H "Host: tabcast.live.skydav.work" | head -n 8
+curl -sk -o /dev/null -w "home:%{http_code}\n" https://127.0.0.1/ -H "Host: makalive.stream"
+curl -sk -o /dev/null -w "download:%{http_code}\n" https://127.0.0.1/download.html -H "Host: makalive.stream"
+curl -sk -o /dev/null -w "setup:%{http_code}\n" https://127.0.0.1/downloads/Maka-Setup-0.2.5.exe -H "Host: makalive.stream"
+curl -sk https://127.0.0.1/ -H "Host: makalive.stream" | head -n 8
+# Previous origin hostname remains a nginx server_name.
+curl -sk -o /dev/null -w "legacy-home:%{http_code}\n" https://127.0.0.1/ -H "Host: tabcast.live.skydav.work"
 echo DONE

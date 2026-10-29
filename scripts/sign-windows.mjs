@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Windows Authenticode signing helper for Maka + TabcastRelay.
+ * Windows Authenticode signing helper for Maka and MAKArelay.exe.
  *
  * Usage:
  *   node scripts/sign-windows.mjs <file.exe> [file2.exe ...]
@@ -10,7 +10,7 @@
  * Env:
  *   CSC_LINK / WIN_CSC_LINK     Path to .pfx or base64 pfx
  *   CSC_KEY_PASSWORD / WIN_CSC_KEY_PASSWORD
- *   TABCAST_TIMESTAMP_URL       Default http://timestamp.digicert.com
+ *   MAKA_TIMESTAMP_URL          Default http://timestamp.digicert.com
  */
 import {
   existsSync,
@@ -26,7 +26,10 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const timestampUrl = process.env.TABCAST_TIMESTAMP_URL || 'http://timestamp.digicert.com'
+const timestampUrl =
+  process.env.MAKA_TIMESTAMP_URL ||
+  process.env.TABCAST_TIMESTAMP_URL ||
+  'http://timestamp.digicert.com'
 
 function findSigntool() {
   if (process.platform !== 'win32') return null
@@ -65,7 +68,7 @@ function readCertConfig() {
 
   if (!existsSync(link)) {
     try {
-      tempDir = mkdtempSync(join(tmpdir(), 'tabcast-pfx-'))
+      tempDir = mkdtempSync(join(tmpdir(), 'maka-pfx-'))
       pfxPath = join(tempDir, 'cert.pfx')
       writeFileSync(pfxPath, Buffer.from(link, 'base64'))
     } catch {

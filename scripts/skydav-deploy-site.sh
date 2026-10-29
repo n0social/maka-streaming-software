@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Deploy Tabcast static site to origin tabcast.live.skydav.work (104.131.164.94).
+# Deploy the Maka static site to https://makalive.stream (droplet 104.131.164.94).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -7,7 +7,7 @@ SITE="${ROOT}/site"
 HOST_ALIAS="${SKYDAV_SSH_HOST_ALIAS:-skydav-droplet}"
 REMOTE_SRC="${SKYDAV_REMOTE_SITE_SRC:-/opt/tabcast/site-src}"
 WEB_ROOT="${SKYDAV_WEB_ROOT:-/opt/tabcast/web}"
-SITE_HOST="${SKYDAV_SITE_HOST:-tabcast.live.skydav.work}"
+SITE_HOST="${SKYDAV_SITE_HOST:-makalive.stream}"
 
 bash "${ROOT}/scripts/cloud-skydav-ssh-bootstrap.sh"
 

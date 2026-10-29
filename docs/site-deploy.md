@@ -1,13 +1,17 @@
-# Tabcast / Maka static site deploy
+# Maka static site deploy
 
 Consolidated runbook for marketing HTML, `maka.css`, downloads, `/stream/`, and `/preview/`.
+
+Public site: **[https://makalive.stream](https://makalive.stream)**.
 
 ## Architecture
 
 | Layer | Host | Role |
 | --- | --- | --- |
-| **Public apex** | `tabcast.live`, `www.tabcast.live` (Caddy on **45.77.x**) | TLS + redirect to origin; **must preserve `{uri}`** |
-| **Origin** | `tabcast.live.skydav.work` on DO droplet **`104.131.164.94`** | nginx serves **`/opt/tabcast/web`** |
+| **Public site** | `makalive.stream`, `www.makalive.stream` | nginx on the origin droplet |
+| **Origin files** | DO droplet **`104.131.164.94`** | nginx serves **`/opt/tabcast/web`** |
+
+The previous origin hostname stays in `server_name` inside `site/nginx/tabcast.live.skydav.work.conf` so old links keep resolving. Do not drop it from that file. User-facing pages and this runbook send people to https://makalive.stream.
 
 Deploy target user: **`root@104.131.164.94`** (hostname `skydav`).
 
@@ -60,7 +64,7 @@ rsync -avz --delete \
 ssh root@104.131.164.94 'WEB_ROOT=/opt/tabcast/web bash /opt/tabcast/site-src/deploy-site.sh'
 ```
 
-`site/deploy-site.sh` copies assets into `/opt/tabcast/web`, installs nginx site + cache snippet, reloads nginx. Default CSS cache bust: **`CSS_BUILD=dc6d036`** (override with env if needed).
+`site/deploy-site.sh` copies assets into `/opt/tabcast/web`, installs nginx site + cache snippet, reloads nginx. Default CSS cache bust: **`CSS_BUILD=dc6d038`** (override with env if needed).
 
 From a Cloud Agent with `SKYDAV_SSH_PRIVATE_KEY_B64` configured:
 
@@ -70,63 +74,35 @@ bash scripts/skydav-deploy-site.sh
 
 ## Branch / repo state (studio redesign)
 
-On **`cursor/studio-redesign-continue-dc6d`**:
+Wordmark and foil live in **`site/maka.css`**. Do not strip the holographic foil or the cream/gold wordmark when editing the site.
 
-- Wordmark: **35°** cream/Mikado Yellow split + holographic foil in **`site/maka.css`** (build **`dc6d035`**)
-- HTML uses absolute stylesheet URLs to **`https://tabcast.live.skydav.work/maka.css?v=dc6d035`**
-- Home has critical inline CSS fallback if external CSS fails; wordmark colors/foil are **only** in `maka.css` (commit `a4eee92`)
-- Apex CSS breakage when Caddy strips paths: mitigated in repo by absolute origin URLs + inline fallback; **still broken for relative `/maka.css` on www** until Caddy is fixed
+- HTML uses absolute stylesheet URLs to **`https://makalive.stream/maka.css?v=dc6d038`**
+- Home has critical inline CSS fallback if external CSS fails; wordmark colors/foil are in `maka.css`
+- If an older front proxy strips the request path, `/maka.css` can be served as HTML and the hero looks unstyled. Absolute stylesheet URLs on makalive.stream avoid that
 
-Key commits: **`e4cc8e2`** (Caddy/path/nginx), **`a4eee92`** (wordmark 35° + foil).
+Handoff summary: **`docs/agent-handoff-maka.md`**.
 
-Handoff summary: **`docs/agent-handoff-tabcast.md`**.
+## Older public hostnames — preserve `{uri}`
 
-## Caddy on 45.77.x (tabcast.live / www) — preserve `{uri}`
-
-**Root cause of “black Arial MAKA”:** apex/www redirects that send every path to `https://tabcast.live.skydav.work/` (homepage only). Browsers then load **`index.html` as the stylesheet** when `/maka.css` (or cached relative URL) hits Caddy (MIME mismatch → stylesheet discarded → unstyled hero).
-
-Required Caddy v2 redirect (path **and** query preserved):
+If a front proxy still accepts the previous apex names, redirects must keep the path **and** query, and the target is the public site:
 
 ```caddy
+# previous apex names, kept so old links resolve
 tabcast.live, www.tabcast.live {
-	redir https://tabcast.live.skydav.work{uri} permanent
+	redir https://makalive.stream{uri} permanent
 }
 ```
 
-Avoid `handle_path` or a single target URL without `{uri}`.
-
-After editing on the **45.77.x** host:
-
-```bash
-caddy validate --config /etc/caddy/Caddyfile
-systemctl reload caddy
-```
+Avoid `handle_path` or a single target URL without `{uri}`. A redirect to the homepage only makes browsers load `index.html` as the stylesheet.
 
 ## Live verification (curl)
 
-**Origin CSS (should pass after deploy):**
+**Public CSS (should pass after deploy):**
 
 ```bash
-curl -sI 'https://tabcast.live.skydav.work/maka.css?v=dc6d036' | grep -iE '^(HTTP|content-type)'
+curl -sI 'https://makalive.stream/maka.css?v=dc6d038' | grep -iE '^(HTTP|content-type)'
 # HTTP/1.1 200 OK
 # Content-Type: text/css
-```
-
-**Apex redirect must preserve path (often failing until Caddy fix):**
-
-```bash
-curl -sI 'https://www.tabcast.live/maka.css?v=TEST' | grep -i location
-# WANT: location: https://tabcast.live.skydav.work/maka.css?v=TEST
-# BAD:  location: https://tabcast.live.skydav.work/
-```
-
-As of last agent check, www still returned the **BAD** location (path stripped). Re-run after Caddy reload.
-
-**Homepage redirect chain:**
-
-```bash
-curl -sI 'https://tabcast.live/' | grep -i location
-# Typically redirects to www, then Caddy → origin
 ```
 
 ## nginx on origin
@@ -135,6 +111,9 @@ curl -sI 'https://tabcast.live/' | grep -i location
 
 - `/etc/nginx/sites-available/tabcast.live.skydav.work` (from `site/nginx/tabcast.live.skydav.work.conf`)
 - `/etc/nginx/snippets/tabcast-site-cache.conf` (from `site/tabcast-site-cache.conf`) — exact `/maka.css` handling, `text/css`, no SPA fallback for CSS
+- `/etc/nginx/snippets/tabcast-downloads.conf` (from `site/tabcast-downloads.conf`)
+
+`server_name` in that site file includes `makalive.stream`, `www.makalive.stream`, and the previous origin hostname.
 
 ## Cache bust
 

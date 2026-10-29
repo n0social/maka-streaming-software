@@ -1,14 +1,14 @@
-# Tabcast Browser — Level 2: Production Readiness
+# Maka — Level 2: Production Readiness
 
 **Version baseline:** 0.2.0  
 **Last reviewed:** 2026-08-28  
-**Scope:** Error pass, security hardening, and roadmap to ship Tabcast Browser beyond the v0.2 early release.
+**Scope:** Error pass, security hardening, and roadmap to ship Maka beyond the v0.2 early release.
 
 ---
 
 ## Executive summary
 
-Tabcast Browser is a functional Windows desktop app (Chromium studio + local WHIP relay) for **streamers who want a self-contained capture and go-live stack**. It is **not yet production-ready** for broad public distribution without addressing code signing, auto-update, onboarding, and several UX/reliability gaps documented below.
+Maka is a functional Windows desktop app (Chromium studio + local WHIP relay) for **streamers who want a self-contained capture and go-live stack**. It is **not yet production-ready** for broad public distribution without addressing code signing, auto-update, onboarding, and several UX/reliability gaps documented below.
 
 This document captures what was hardened in the latest pass, what still fails or risks failure, and a prioritized path to a trustworthy v1.0.
 
@@ -101,7 +101,7 @@ Run full verify with relay running: `npm run verify` (no `--offline`).
 | Sandboxed webview runtime | `tabcast-addon://` protocol + per-addon webview in sidebar |
 | `tabcast.addons` bridge | Preload API: toast, fetch, settings, openExternal, onLiveEvent |
 | Live event broadcast | `app.ready`, `live.start`, `live.end` pushed to runtime webviews |
-| Hello Tabcast sample | Marketplace installable demo with UI panel |
+| Hello Maka sample | Marketplace installable demo with UI panel |
 
 ### Open bugs / error risks (remaining)
 
@@ -136,7 +136,7 @@ Run full verify with relay running: `npm run verify` (no `--offline`).
 | Main window `sandbox: false` | Higher renderer compromise blast radius | Enable sandbox when preload surface allows; audit node APIs |
 | No IPC sender validation | Any frame could invoke handlers | Check `event.sender` against known webContents IDs |
 | Broad default-session media permissions | All frames on default session get capture | Scope permissions to studio webContents only |
-| `neutralizeInstalledRelayConfig()` on boot | Overwrites `%LOCALAPPDATA%\TabcastRelay\...\relay-config.json` | Make opt-in or version-gated; document for IT |
+| `neutralizeInstalledRelayConfig()` on boot | Overwrites the local relay `relay-config.json` beside the encoder install | Make opt-in or version-gated; document for IT |
 | Port 38473 kill via PowerShell | Could kill unrelated listener | PID-file or relay-owned lock instead of port sweep |
 | Stream keys in renderer DOM | Keys in memory in UI process | OS keychain / relay-only key entry for v1 |
 | Google search fallback in browse | Sends classroom queries to Google | Optional: restrict to allowlisted domains only |
@@ -146,7 +146,7 @@ Run full verify with relay running: `npm run verify` (no `--offline`).
 
 ## Production blockers (P0)
 
-These must ship before calling Tabcast Browser “production ready” for general download.
+These must ship before calling Maka “production ready” for general download.
 
 ## Production blockers (P0) — tackle in order
 
@@ -219,7 +219,7 @@ Ship in the first post-0.2 minor (0.2.x or 0.3.0).
 ### Site & release hygiene
 
 - Single deploy script; **`browser-manifest.json`** drives version/SHA on landing page.
-- “Try our browser” CTA → latest GitHub Release (already partially on tabcast.live).
+- “Try our browser” CTA → latest GitHub Release (already partially on [makalive.stream](https://makalive.stream)).
 
 ---
 
@@ -302,7 +302,7 @@ Ship in the first post-0.2 minor (0.2.x or 0.3.0).
 ## Test plan (before next public build)
 
 - [ ] Fresh install on clean Windows 11 VM (unsigned warning documented).
-- [ ] Relay start/stop/restart × 10; no orphan `TabcastRelay.exe` after quit.
+- [ ] Relay start/stop/restart × 10; no orphan MAKA.relay process after quit.
 - [ ] Browse: blocked host redirect denied; Twitch/YT Studio load; chat pop-out.
 - [ ] Go Live 720p and 1080p; profile persists after restart (**after 0.2.1 fix**).
 - [ ] Settings save/load; invalid JSON in userData recovered gracefully.

@@ -5,7 +5,7 @@ set -euo pipefail
 
 KEY="${HOME}/.ssh/id_ed25519_skydav"
 if [[ ! -f "${KEY}.pub" ]]; then
-  ssh-keygen -t ed25519 -f "${KEY}" -N "" -C "cursor-cloud-tabcast-$(date +%Y%m%d)"
+  ssh-keygen -t ed25519 -f "${KEY}" -N "" -C "cursor-cloud-maka-$(date +%Y%m%d)"
 fi
 
 PUB="$(tr -d '\n' < "${KEY}.pub")"

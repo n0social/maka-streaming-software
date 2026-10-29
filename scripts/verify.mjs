@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Offline verification for Tabcast Browser + local relay.
+ * Offline verification for Maka and the local MAKA.relay binary.
  * Usage: node scripts/verify.mjs [--offline]
  *
  * --offline  Skip live relay HTTP checks (build + binary only).

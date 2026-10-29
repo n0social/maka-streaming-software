@@ -552,7 +552,7 @@ function registerIpc(): void {
   })
 
   ipcMain.handle('shell:open-home', () => {
-    void shell.openExternal('https://tabcast.live')
+    void shell.openExternal('https://makalive.stream')
   })
 
   ipcMain.handle('settings:get', (event) => {

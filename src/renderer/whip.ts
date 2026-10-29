@@ -186,7 +186,7 @@ function preferH264VideoCodecs(pc: RTCPeerConnection): void {
 }
 
 /**
- * Publishes capture tracks to a WHIP endpoint (Tabcast Relay).
+ * Publishes capture tracks to a WHIP endpoint (MAKA.relay).
  * ICE is gathered before the offer is POSTed (WHIP trickle-less).
  */
 export async function publishWhip(

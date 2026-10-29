@@ -1,6 +1,6 @@
 # Relay binary (large)
 
-Place `TabcastRelay.exe` here via:
+Place `MAKArelay.exe` here via:
 
 ```bash
 npm run fetch:relay

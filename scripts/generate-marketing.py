@@ -275,7 +275,7 @@ def main() -> None:
         print("Done.")
         return
 
-    print("Generating Tabcast marketing package…")
+    print("Generating Maka marketing package…")
     icon_sizes = [16, 32, 48, 72, 96, 128, 192, 256, 512, 1024]
     export_icons(draw_icon(1024))
 
