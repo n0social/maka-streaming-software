@@ -15,6 +15,10 @@ The previous origin hostname stays in `server_name` inside `site/nginx/tabcast.l
 
 Deploy target user: **`root@104.131.164.94`** (hostname `skydav`).
 
+### Swap (low RAM)
+
+The droplet has ~1 GiB RAM and portfolio PM2/nginx on the same VM. Swap is file-backed on `/` (not LVM): **`/swapfile`** and **`/swapfile2`** are 2 GiB each; **`/swapfile3`** is 4 GiB (8 GiB total). Entries in **`/etc/fstab`** use `UUID=… none swap sw 0 0` so swap survives reboot. **`vm.swappiness=10`** is already set (prefer keeping pages in RAM). To inspect: `swapon --show`, `free -h`. To add space safely, create a new file (`fallocate -l 4G /swapfileN`, `chmod 600`, `mkswap`, `swapon`) rather than resizing an active swapfile.
+
 ## Cloud Agent environment
 
 Repository file **`.cursor/environment.json`** runs `.cursor/cloud-agent-install.sh` on environment build:
