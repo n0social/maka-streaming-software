@@ -1,4 +1,4 @@
-/* MAKA_CSS_BUILD=dc6d011 — bump ?v= on /maka.css in site/**/*.html when this file changes */
+/* MAKA_CSS_BUILD=dc6d035 — bump ?v= on /maka.css in site/**/*.html when this file changes */
 /* Maka marketing site — cream / Mikado Yellow tokens (matches Electron studio redesign) */
 :root {
   color-scheme: light;
@@ -480,22 +480,23 @@ svg {
 .maka-wordmark__front {
   position: relative;
   z-index: 2;
+  /* ~35° upward split: top cream/white, bottom Mikado Yellow (#ffc40c) */
   background: linear-gradient(
-    158deg,
+    35deg,
     var(--white) 0%,
-    var(--champagne) 44%,
-    var(--champagne) 48%,
-    var(--gold-light) 52%,
+    var(--champagne) 38%,
+    var(--champagne) 46%,
+    var(--gold-light) 49%,
+    var(--gold) 52%,
     var(--gold) 100%
   );
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
-  filter: drop-shadow(0 4px 20px rgba(255, 196, 12, 0.28));
 }
 
-/* Holographic foil on cream/white upper split (158deg) — collectible-card shimmer */
+/* Holographic foil on cream/white upper split (35deg) — MTG/YGO diamond foil shimmer */
 .maka-wordmark::before {
   content: "MAKA";
   position: absolute;
@@ -552,18 +553,18 @@ svg {
   -webkit-text-fill-color: transparent;
   color: transparent;
   -webkit-mask-image: linear-gradient(
-    158deg,
+    35deg,
     #000 0%,
-    #000 43%,
-    rgba(0, 0, 0, 0.75) 47%,
-    transparent 51%
+    #000 42%,
+    rgba(0, 0, 0, 0.8) 46%,
+    transparent 50%
   );
   mask-image: linear-gradient(
-    158deg,
+    35deg,
     #000 0%,
-    #000 43%,
-    rgba(0, 0, 0, 0.75) 47%,
-    transparent 51%
+    #000 42%,
+    rgba(0, 0, 0, 0.8) 46%,
+    transparent 50%
   );
   animation: maka-wordmark-foil 9s ease-in-out infinite;
 }
