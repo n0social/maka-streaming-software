@@ -4,7 +4,7 @@
 
 ![Maka studio with a live game stream in the program monitor](docs/readme-hero.png)
 
-Maka is **free streaming software** for Windows: a desktop **Electron studio** for game capture, scenes, and **Go Live** without wiring up OBS first. A local **MAKA.relay** (`MAKArelay.exe`) on `127.0.0.1:38473` takes WHIP from the app, encodes with FFmpeg, and pushes **RTMP** to Twitch, YouTube, or a custom RTMP endpoint. Stream keys stay in relay RAM — not written to disk by the UI.
+Maka is **free streaming software** for Windows: a desktop **Electron studio** for game capture, scenes, and **Go Live** without wiring up OBS first. A local **MAKA.relay** (`MAKArelay.exe`) on `127.0.0.1:38473` takes WHIP from the app, encodes with FFmpeg, and pushes **RTMP** to Twitch, YouTube, or a custom RTMP endpoint. The app looks in `%LOCALAPPDATA%\MAKArelay` first and still reads the older encoder folder because the current binary extracts there. Stream keys stay in relay RAM — not written to disk by the UI.
 
 **Website:** [makalive.stream](https://makalive.stream)
 
@@ -20,10 +20,12 @@ The current **unsigned** Windows installer on GitHub is **v0.2.5**. Installed co
 
 **0.2.5**
 
-- The encoder is named **MAKA.relay** (`MAKArelay.exe`).
-- The app looks in `%LOCALAPPDATA%\MAKArelay` first.
+- The encoder is **MAKA.relay** (`MAKArelay.exe`).
+- The app looks in `%LOCALAPPDATA%\MAKArelay` first and still reads the older encoder folder because the current binary extracts there.
 - The site is [https://makalive.stream](https://makalive.stream).
-- Installer **Maka-Setup-0.2.5.exe** is published (tag **v0.2.5**).
+- Installer **[Maka-Setup-0.2.5.exe](https://github.com/n0social/maka-streaming-software/releases/download/v0.2.5/Maka-Setup-0.2.5.exe)** is published (tag **v0.2.5**).
+
+The marketing site hero is the MAKA wordmark.
 
 ### Option A — Download (Windows)
 
