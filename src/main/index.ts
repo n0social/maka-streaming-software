@@ -291,7 +291,7 @@ function openChatPopout(url?: string): void {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
-      partition: 'persist:tabcast-browse',
+      partition: 'persist:maka-browse',
     },
   })
 
@@ -1052,7 +1052,7 @@ function registerIpc(): void {
         orphan.orphanCount === 0 && !orphan.portConflict
           ? orphan.totalCount
             ? `${orphan.totalCount} relay process(es), none orphaned`
-            : 'no stray TabcastRelay.exe'
+            : 'no stray relay process'
           : [
               orphan.orphanCount ? `${orphan.orphanCount} orphan PID(s): ${orphan.orphanPids.join(', ')}` : null,
               orphan.portConflict ? `port ${38473} held by PID ${orphan.portListenerPid}` : null,

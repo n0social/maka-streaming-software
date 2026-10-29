@@ -1,6 +1,6 @@
 {
   "name": "tabcast-browser",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "private": false,
   "description": "Maka gaming streaming service — free streaming software and a free streaming software obs alternative for resource-light capture (Electron studio + local WHIP/RTMP relay).",
   "author": "n0social",
@@ -40,7 +40,8 @@
     "electron-builder": "^26.0.12",
     "electron-vite": "^4.0.0",
     "typescript": "^5.8.3",
-    "vite": "^7.0.6"
+    "vite": "^7.0.6",
+    "werift": "^0.25.2"
   },
   "dependencies": {
     "electron-updater": "^6.6.2",

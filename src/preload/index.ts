@@ -165,7 +165,7 @@ export type VerifyReport = {
   diagnostics: DiagEvent[]
 }
 
-export type TabcastBridge = {
+export type MakaBridge = {
   getRelay: () => Promise<RelaySnapshot>
   startRelay: () => Promise<RelaySnapshot>
   stopRelay: () => Promise<RelaySnapshot>
@@ -270,7 +270,7 @@ export type TabcastBridge = {
   getPhoneWebRtcIceServers: () => Promise<PhoneIceServer[]>
 }
 
-const api: TabcastBridge = {
+const api: MakaBridge = {
   getRelay: () => ipcRenderer.invoke('relay:get'),
   startRelay: () => ipcRenderer.invoke('relay:start'),
   stopRelay: () => ipcRenderer.invoke('relay:stop'),
@@ -399,4 +399,4 @@ const api: TabcastBridge = {
   getPhoneWebRtcIceServers: () => ipcRenderer.invoke('phone-pair:ice-servers'),
 }
 
-contextBridge.exposeInMainWorld('tabcast', api)
+contextBridge.exposeInMainWorld('maka', api)

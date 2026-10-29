@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { app } from 'electron'
 import { validateManifest } from '../shared/addon-api'
+import { canonicalAddonId } from '../shared/addon-ids'
 import type { CatalogEntry } from '../shared/addon-types'
 import { MARKETPLACE_CATALOG } from '../shared/marketplace-catalog'
 import { recordDiagnostic } from './diagnostics'
@@ -67,10 +68,14 @@ function parseRemoteEntries(raw: unknown): CatalogEntry[] {
       if (!Object.keys(files).length) files = undefined
     }
 
+    const manifest = {
+      ...validated.manifest,
+      id: canonicalAddonId(validated.manifest.id),
+    }
     out.push({
-      catalogId: entry.catalogId.slice(0, 128),
+      catalogId: canonicalAddonId(entry.catalogId.slice(0, 128)),
       featured: Boolean(entry.featured),
-      manifest: validated.manifest,
+      manifest,
       files,
     })
   }

@@ -10,15 +10,15 @@ Maka is **free streaming software** for Windows—a **free streaming software ob
 
 ---
 
-## Get Maka (v0.2.5 installer)
+## Get Maka (v0.2.6 installer)
 
-The current **unsigned** Windows installer on GitHub is **v0.2.5**. Installed copies of **v0.2.4** check this release for an update. The build includes the **phone camera/mic add-on** (QR pairing, independent camera and mic, 60-second rejoin, STUN and optional TURN) and **live stream recovery** (a bad stream key stops the stream immediately, network blips retry longer, WHIP stall watchdog, backup RTMP ingest).
+The current **unsigned** Windows installer on GitHub is **v0.2.6**. Installed copies of **v0.2.4** and **v0.2.5** check this release for an update. The build includes the **phone camera/mic add-on** (QR pairing, independent camera and mic, 60-second rejoin, STUN and optional TURN) and **live stream recovery** (a bad stream key stops the stream immediately, network blips retry longer, WHIP stall watchdog, backup RTMP ingest).
 
-`git checkout v0.2.5` matches the published installer.
+`git checkout v0.2.6` matches the published installer.
 
 ### Option A — Download (Windows)
 
-1. Download **[Maka-Setup-0.2.5.exe](https://github.com/n0social/maka-streaming-software/releases/download/v0.2.5/Maka-Setup-0.2.5.exe)** from the [v0.2.5 release](https://github.com/n0social/maka-streaming-software/releases/tag/v0.2.5).
+1. Download **[Maka-Setup-0.2.6.exe](https://github.com/n0social/maka-streaming-software/releases/download/v0.2.6/Maka-Setup-0.2.6.exe)** from the [v0.2.6 release](https://github.com/n0social/maka-streaming-software/releases/tag/v0.2.6).
 2. Run the installer on **Windows 10 or 11** (x64).
 3. **Windows SmartScreen** may warn because the build is **unsigned** — that is expected until code signing is in place.
 
@@ -33,7 +33,13 @@ npm run fetch:relay
 npm run dev
 ```
 
-On Windows, `npm run dist` produces the NSIS installer. Use **`v0.2.5`** if you need a tree that exactly matches the published installer above.
+On Windows, `npm run dist` produces the NSIS installer. Use **`v0.2.6`** if you need a tree that exactly matches the published installer above.
+
+---
+
+## Recent updates
+
+- **v0.2.6** — Addon protocol rename: preload exposes **`window.maka`**, manifests are **`maka-addon.json`**, sandbox pages load from **`maka-addon://`**, browse session uses **`persist:maka-browse`**, and catalog ids use **`com.maka.*`** (with migration from **`com.tabcast.*`**, including **`com.tabcast.phone-cam`** → **`com.maka.phone-cam`**). Relay paths and **`TabcastRelay.exe`** / **`TABCAST_*`** encoder env vars are unchanged; the app may also set **`MAKA_*`**.
 
 ---
 
@@ -49,11 +55,11 @@ On Windows, `npm run dist` produces the NSIS installer. Use **`v0.2.5`** if you 
 
 ## Phone camera & mic
 
-In **v0.2.5**: optional add-on — pair your phone via **QR code**, use the phone as an independent camera and/or mic, **60s rejoin** if the connection drops, with **STUN** and optional **TURN**.
+In **v0.2.4**: optional add-on — pair your phone via **QR code**, use the phone as an independent camera and/or mic, **60s rejoin** if the connection drops, with **STUN** and optional **TURN**.
 
 ---
 
-## Live stream recovery (v0.2.5)
+## Live stream recovery (v0.2.4)
 
 Automatic reconnect with a **fatal-vs-blip** retry policy (ingest/key errors stop immediately; network blips retry longer), a **WHIP outbound video stall** watchdog, and optional **backup RTMP ingest** failover when primary ingest fails.
 
@@ -75,7 +81,7 @@ Automatic reconnect with a **fatal-vs-blip** retry policy (ingest/key errors sto
 [Display / window / webcam / mic / optional phone]
         │  capture APIs
         ▼
-[Maka Studio UI]  ──WHIP──►  [TabcastRelay :38473]  ──RTMP──►  Twitch / YouTube / Custom
+[Maka Studio UI]  ──WHIP──►  [MAKArelay :38473]  ──RTMP──►  Twitch / YouTube / Custom
 [Browse tabs / chat]
 ```
 
@@ -104,7 +110,7 @@ Automatic reconnect with a **fatal-vs-blip** retry policy (ingest/key errors sto
 
 ## SmartScreen & trust
 
-The v0.2.5 installer is **unsigned**. SmartScreen may block or warn on first run. Only download from the official GitHub release linked above.
+The v0.2.6 installer is **unsigned**. SmartScreen may block or warn on first run. Only download from the official GitHub release linked above.
 
 ---
 

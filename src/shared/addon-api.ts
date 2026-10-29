@@ -5,7 +5,7 @@ export const ADDON_API_VERSION = 1
 
 const ADDON_ID_RE = /^[a-zA-Z0-9][a-zA-Z0-9._-]{2,127}$/
 
-/** Permissions an addon may request in tabcast-addon.json. */
+/** Permissions an addon may request in maka-addon.json. */
 export const ADDON_PERMISSIONS = [
   'ui.toast',
   'ui.external',

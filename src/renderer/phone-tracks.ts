@@ -1,4 +1,4 @@
-import type { TabcastBridge } from '../preload/index'
+import type { MakaBridge } from '../preload/index'
 import type { PhoneIceServer } from '../shared/phone-ice-servers'
 import {
   PHONE_CAM_STREAM_ID,
@@ -84,7 +84,7 @@ function bindTrack(track: MediaStreamTrack, kind: 'video' | 'audio'): void {
 }
 
 async function handleOffer(
-  tabcast: TabcastBridge,
+  maka: MakaBridge,
   offer: PhoneWebRtcSessionDescription,
   iceServers: PhoneIceServer[],
 ): Promise<void> {
@@ -121,7 +121,7 @@ async function handleOffer(
   const local = peer.localDescription
   if (!local) throw new Error('Missing local WebRTC answer')
 
-  await tabcast.submitPhoneWebrtcAnswer({ type: 'answer', sdp: local.sdp })
+  await maka.submitPhoneWebrtcAnswer({ type: 'answer', sdp: local.sdp })
 }
 
 export function getPhoneTracksSnapshot(): PhoneTracksSnapshot {
@@ -151,21 +151,21 @@ export function subscribePhoneTracks(listener: Listener): () => void {
   return () => listeners.delete(listener)
 }
 
-export function initPhoneTracks(tabcast: TabcastBridge): void {
-  tabcast.onPhoneWebrtcOffer((offer) => {
-    void tabcast
+export function initPhoneTracks(maka: MakaBridge): void {
+  maka.onPhoneWebrtcOffer((offer) => {
+    void maka
       .getPhoneWebRtcIceServers()
-      .then((iceServers) => handleOffer(tabcast, offer, iceServers))
+      .then((iceServers) => handleOffer(maka, offer, iceServers))
       .catch(() => {
         resetWebrtc()
       })
   })
 
-  tabcast.onPhoneWebrtcReset(() => {
+  maka.onPhoneWebrtcReset(() => {
     resetWebrtc()
   })
 
-  tabcast.onPhonePairUpdate((snap) => {
+  maka.onPhonePairUpdate((snap) => {
     pairStatus = snap.status
     if (snap.status === 'connected') {
       emit()
@@ -179,7 +179,7 @@ export function initPhoneTracks(tabcast: TabcastBridge): void {
     resetWebrtc()
   })
 
-  void tabcast.getPhonePair().then((snap) => {
+  void maka.getPhonePair().then((snap) => {
     pairStatus = snap.status
     emit()
   })

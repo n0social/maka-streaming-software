@@ -1,4 +1,4 @@
-/** Shared constants matching the local Tabcast relay contract (localhost only). */
+/** Shared constants matching the local Maka relay contract (localhost only). */
 
 import {
   DEFAULT_ENCODE_PROFILE,

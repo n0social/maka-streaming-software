@@ -1,14 +1,14 @@
-# Tabcast Browser — Level 2: Production Readiness
+# Maka — Level 2: Production Readiness
 
 **Version baseline:** 0.2.0  
 **Last reviewed:** 2026-08-28  
-**Scope:** Error pass, security hardening, and roadmap to ship Tabcast Browser beyond the v0.2 early release.
+**Scope:** Error pass, security hardening, and roadmap to ship Maka beyond the v0.2 early release.
 
 ---
 
 ## Executive summary
 
-Tabcast Browser is a functional Windows desktop app (Chromium studio + local WHIP relay) for **streamers who want a self-contained capture and go-live stack**. It is **not yet production-ready** for broad public distribution without addressing code signing, auto-update, onboarding, and several UX/reliability gaps documented below.
+Maka is a functional Windows desktop app (Chromium studio + local WHIP relay) for **streamers who want a self-contained capture and go-live stack**. It is **not yet production-ready** for broad public distribution without addressing code signing, auto-update, onboarding, and several UX/reliability gaps documented below.
 
 This document captures what was hardened in the latest pass, what still fails or risks failure, and a prioritized path to a trustworthy v1.0.
 
@@ -98,10 +98,10 @@ Run full verify with relay running: `npm run verify` (no `--offline`).
 
 | Item | Change |
 |------|--------|
-| Sandboxed webview runtime | `tabcast-addon://` protocol + per-addon webview in sidebar |
-| `tabcast.addons` bridge | Preload API: toast, fetch, settings, openExternal, onLiveEvent |
+| Sandboxed webview runtime | `maka-addon://` protocol + per-addon webview in sidebar |
+| `maka.addons` bridge | Preload API: toast, fetch, settings, openExternal, onLiveEvent |
 | Live event broadcast | `app.ready`, `live.start`, `live.end` pushed to runtime webviews |
-| Hello Tabcast sample | Marketplace installable demo with UI panel |
+| Hello Maka sample | Marketplace installable demo with UI panel |
 
 ### Open bugs / error risks (remaining)
 
@@ -146,7 +146,7 @@ Run full verify with relay running: `npm run verify` (no `--offline`).
 
 ## Production blockers (P0)
 
-These must ship before calling Tabcast Browser “production ready” for general download.
+These must ship before calling Maka “production ready” for general download.
 
 ## Production blockers (P0) — tackle in order
 

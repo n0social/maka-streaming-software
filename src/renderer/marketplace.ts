@@ -1,4 +1,4 @@
-import type { MarketplaceItem, TabcastBridge } from '../preload/index'
+import type { MarketplaceItem, MakaBridge } from '../preload/index'
 
 function escapeHtml(value: string): string {
   return value
@@ -24,7 +24,7 @@ type MarketplaceUi = {
   onToast: (message: string, isError?: boolean) => void
 }
 
-export function initMarketplace(api: TabcastBridge, ui: MarketplaceUi): void {
+export function initMarketplace(api: MakaBridge, ui: MarketplaceUi): void {
   if (!ui.list || !ui.dialog) {
     console.error('initMarketplace: #marketplace-list or #marketplace-dialog is missing from the DOM')
     return
@@ -59,7 +59,7 @@ function setCatalogLoading(ui: MarketplaceUi, message: string): void {
   if (ui.preview) ui.preview.textContent = message
 }
 
-async function renderCatalog(api: TabcastBridge, ui: MarketplaceUi): Promise<void> {
+async function renderCatalog(api: MakaBridge, ui: MarketplaceUi): Promise<void> {
   setCatalogLoading(ui, 'Loading catalog…')
   const items = await api.listMarketplace()
   paintCatalogSurfaces(ui, items, api)
@@ -71,7 +71,7 @@ function orderMarketplaceItems(items: MarketplaceItem[]): MarketplaceItem[] {
   return [...featured, ...rest]
 }
 
-function paintCatalogSurfaces(ui: MarketplaceUi, items: MarketplaceItem[], api: TabcastBridge): void {
+function paintCatalogSurfaces(ui: MarketplaceUi, items: MarketplaceItem[], api: MakaBridge): void {
   paintList(ui.list, items, api, ui, { variant: 'full', sections: true })
   if (ui.preview) {
     paintList(ui.preview, items, api, ui, { variant: 'compact', sections: false })
@@ -81,7 +81,7 @@ function paintCatalogSurfaces(ui: MarketplaceUi, items: MarketplaceItem[], api: 
 function paintList(
   root: HTMLElement,
   items: MarketplaceItem[],
-  api: TabcastBridge,
+  api: MakaBridge,
   ui: MarketplaceUi,
   options: PaintListOptions,
 ): void {
@@ -113,7 +113,7 @@ function appendSection(
   root: HTMLElement,
   title: string,
   items: MarketplaceItem[],
-  api: TabcastBridge,
+  api: MakaBridge,
   ui: MarketplaceUi,
   variant: ListVariant,
 ): void {
@@ -128,7 +128,7 @@ function appendSection(
 
 function renderCard(
   item: MarketplaceItem,
-  api: TabcastBridge,
+  api: MakaBridge,
   ui: MarketplaceUi,
   variant: ListVariant,
 ): HTMLElement {

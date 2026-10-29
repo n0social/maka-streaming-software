@@ -1,6 +1,6 @@
 # Release WIP audit (studio redesign)
 
-**Storage cleanup (2026-10-25):** Deleted published releases `v0.2.0` (Tabcast Browser 0.2.0) and `v0.2.2` (0.2.2) — the two oldest by publish date. Draft `v0.2.4-redesign-wip` and releases `v0.2.3` / `0.2.3.1-redesign` were left intact.
+**Storage cleanup (2026-10-25):** Deleted published releases `v0.2.0` (Maka 0.2.0) and `v0.2.2` (0.2.2) — the two oldest by publish date. Draft `v0.2.4-redesign-wip` and releases `v0.2.3` / `0.2.3.1-redesign` were left intact.
 
 ## Release handoff
 
@@ -77,7 +77,7 @@ Existing: `settings:set` / `settings:get` now include `streamDestinations` (`des
 | --- | --- |
 | `npm run typecheck` | Pass |
 | `npm run verify:offline` | Pass except `relay-binary` (no Windows `TabcastRelay.exe` on Linux CI VM) |
-| `npm run verify:addons` | **Release gate** — marketplace manifests + hello/phone bundles + `addons/_samples/hello-tabcast`; see `docs/addon-validation-report.md` |
+| `npm run verify:addons` | **Release gate** — marketplace manifests + hello/phone bundles + `addons/_samples/hello-maka`; see `docs/addon-validation-report.md` |
 | `npm run build` | Run before tag (Electron bundle) |
 
 Manual smoke on Linux VM: build only; full Electron preview/WHIP not exercised without relay binary and display capture.

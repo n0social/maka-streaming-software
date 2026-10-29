@@ -130,36 +130,36 @@ for (const manifest of loadStaticCatalogManifests()) {
   record(id, actionIssues.length === 0, actionIssues.join('; ') || 'catalog manifest')
 }
 
-const helloDir = join(root, 'addons', '_samples', 'hello-tabcast')
-const helloManifestPath = join(helloDir, 'tabcast-addon.json')
+const helloDir = join(root, 'addons', '_samples', 'hello-maka')
+const helloManifestPath = join(helloDir, 'maka-addon.json')
 if (existsSync(helloManifestPath)) {
   const raw = JSON.parse(readFileSync(helloManifestPath, 'utf8'))
   const v = validateManifest(raw)
   const entry = raw.entry || 'index.html'
   const entryOk = existsSync(join(helloDir, entry))
   record(
-    'com.example.hello-tabcast (sample)',
+    'com.example.hello-maka (sample)',
     v.ok && entryOk,
-    v.ok ? `tabcast-addon.json + ${entry}` : v.error,
+    v.ok ? `maka-addon.json + ${entry}` : v.error,
   )
 } else {
-  record('com.example.hello-tabcast (sample)', false, 'missing tabcast-addon.json')
+  record('com.example.hello-maka (sample)', false, 'missing maka-addon.json')
 }
 
-const helloBundle = join(root, 'src', 'shared', 'hello-tabcast-files.ts')
+const helloBundle = join(root, 'src', 'shared', 'hello-maka-files.ts')
 const phoneBundle = join(root, 'src', 'shared', 'phone-cam-files.ts')
 if (existsSync(helloBundle)) {
   const src = readFileSync(helloBundle, 'utf8')
   record(
-    'com.example.hello-tabcast (bundle)',
+    'com.example.hello-maka (bundle)',
     src.includes("'index.html':") && src.includes("'index.js':"),
-    'hello-tabcast-files.ts exports index.html + index.js',
+    'hello-maka-files.ts exports index.html + index.js',
   )
 }
 if (existsSync(phoneBundle)) {
   const src = readFileSync(phoneBundle, 'utf8')
   record(
-    'com.tabcast.phone-cam (bundle)',
+    'com.maka.phone-cam (bundle)',
     src.includes("'index.html':") && src.includes('qrcode.bundle.js'),
     'phone-cam-files.ts exports panel + QR bundle',
   )

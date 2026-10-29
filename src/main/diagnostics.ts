@@ -21,7 +21,7 @@ const listeners = new Set<(event: DiagEvent) => void>()
 let seq = 0
 
 function logFilePath(): string {
-  return join(app.getPath('userData'), 'logs', 'tabcast-diagnostics.log')
+  return join(app.getPath('userData'), 'logs', 'maka-diagnostics.log')
 }
 
 function ensureLogDir(): void {
@@ -104,7 +104,7 @@ export function exportDiagnosticsBundle(): string {
   const out = join(
     app.getPath('userData'),
     'logs',
-    `tabcast-diagnostics-${Date.now()}.json`,
+    `maka-diagnostics-${Date.now()}.json`,
   )
   const payload = {
     exportedAt: new Date().toISOString(),

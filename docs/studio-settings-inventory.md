@@ -55,7 +55,7 @@ Unchanged — tab list and active tab; not in Settings mode.
 
 ## Relay `POST /config` matrix
 
-| Setting | App (`buildRelayConfigRequest`) | TabcastRelay v0.1.0 | Gap |
+| Setting | App (`buildRelayConfigRequest`) | local relay v0.1.0 | Gap |
 | --- | --- | --- | --- |
 | `bitrateProfile` | `profile`, `bitrateMbps` | `profile` only | Full presets + video bitrate in newer relay |
 | `streamTitle` / `streamCategory` | `/config` + UI | Ignored | Platform metadata APIs |
