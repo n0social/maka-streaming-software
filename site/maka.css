@@ -419,7 +419,7 @@ svg {
   overflow: visible;
 }
 
-/* Locked hero: word min(94vw, 52rem); yellow clip 0,0.56 → 1,0.18; foil and shine above that line; buttons margin-top clamp(5.5rem, 14vh, 9rem); mascot sits to the right of the letters. */
+/* Locked hero: word min(94vw, 52rem); yellow clip 0,0.60 → 1,0.22; foil and shine above that line; buttons margin-top clamp(5.5rem, 14vh, 9rem); mascot sits to the right of the letters. */
 .hero-mvp__brand-stage {
   position: relative;
   display: grid;
