@@ -67,30 +67,67 @@ def hero_bg(w: int, h: int) -> Image.Image:
     return im
 
 
+# Favicon tile: brighter cream → Mikado, matching the hero. The M is League Spartan
+# Black, sheared to the same synthetic italic the wordmark uses (the family has no italic file).
+CREAM_BRIGHT = (255, 248, 228)
+MIKADO = (255, 196, 12)
+INK = (26, 20, 8)
+MAKA_FONT = ROOT / "scripts" / "fonts" / "LeagueSpartan-900.ttf"
+ITALIC_SHEAR = 0.25
+
+
+def maka_font(size: int) -> ImageFont.FreeTypeFont:
+    return ImageFont.truetype(str(MAKA_FONT), size)
+
+
+def slant_italic(layer: Image.Image, shear: float = ITALIC_SHEAR) -> Image.Image:
+    width, height = layer.size
+    pad = int(abs(shear) * height) + 4
+    canvas = Image.new("RGBA", (width + pad, height), (0, 0, 0, 0))
+    canvas.paste(layer, (0, 0), layer)
+    slanted = canvas.transform(
+        canvas.size,
+        Image.Transform.AFFINE,
+        (1, shear, -shear * (height - 1), 0, 1, 0),
+        resample=Image.Resampling.BICUBIC,
+    )
+    box = slanted.split()[-1].getbbox()
+    return slanted.crop(box) if box else slanted
+
+
 def draw_icon(size: int) -> Image.Image:
     im = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     d = ImageDraw.Draw(im)
     pad = max(2, size // 16)
     radius = max(4, size // 5)
-    # Pin tile with gradient approximation
+    inner = size - 2 * pad
     for y in range(pad, size - pad):
         for x in range(pad, size - pad):
-            t = (x - pad) / max(1, size - 2 * pad)
-            r = int(SILVER[0] * (1 - t) + GOLD[0] * t)
-            g = int(SILVER[1] * (1 - t) + GOLD[1] * t)
-            b = int(SILVER[2] * (1 - t) + GOLD[2] * t)
-            if (x - pad) ** 2 + (y - pad) ** 2 < (size - 2 * pad) ** 2:
+            if (x - pad) ** 2 + (y - pad) ** 2 < inner ** 2:
+                t = (x - pad) / max(1, inner)
+                r = int(CREAM_BRIGHT[0] * (1 - t) + MIKADO[0] * t)
+                g = int(CREAM_BRIGHT[1] * (1 - t) + MIKADO[1] * t)
+                b = int(CREAM_BRIGHT[2] * (1 - t) + MIKADO[2] * t)
                 im.putpixel((x, y), (r, g, b, 255))
-    d.rounded_rectangle([pad, pad, size - pad, size - pad], radius=radius, outline=(255, 255, 255, 40))
-    f = font(bold=True, size=max(10, int(size * 0.52)))
-    text = "T"
-    bbox = d.textbbox((0, 0), text, font=f)
+    d.rounded_rectangle(
+        [pad, pad, size - pad - 1, size - pad - 1],
+        radius=radius,
+        outline=(255, 255, 255, 90),
+    )
+    face = maka_font(max(10, int(size * 0.62)))
+    bbox = d.textbbox((0, 0), "M", font=face)
     tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
-    d.text(
-        ((size - tw) // 2 - bbox[0], (size - th) // 2 - bbox[1] - size // 32),
-        text,
-        font=f,
-        fill=BG,
+    layer = Image.new("RGBA", (tw + 8, th + 8), (0, 0, 0, 0))
+    ImageDraw.Draw(layer).text(
+        (-bbox[0] + 4, -bbox[1] + 4),
+        "M",
+        font=face,
+        fill=INK + (255,),
+    )
+    glyph = slant_italic(layer)
+    im.alpha_composite(
+        glyph,
+        ((size - glyph.size[0]) // 2, (size - glyph.size[1]) // 2 - size // 48),
     )
     return im
 
@@ -213,15 +250,34 @@ def write_ico(path: Path, sizes: list[int]) -> None:
     path.write_bytes(header + entries + payload)
 
 
-def main() -> None:
-    print("Generating Tabcast marketing package…")
+def export_icons(master: Image.Image) -> None:
     icon_sizes = [16, 32, 48, 72, 96, 128, 192, 256, 512, 1024]
-    master = draw_icon(1024)
     for s in icon_sizes:
         save_png(master.resize((s, s), Image.Resampling.LANCZOS), ICONS / f"icon-{s}.png")
         save_png(master.resize((s, s), Image.Resampling.LANCZOS), SITE / "icons" / f"icon-{s}.png")
-
     write_ico(OUT / "icons" / "icon.ico", [16, 32, 48, 64, 128, 256])
+    save_png(master.resize((512, 512), Image.Resampling.LANCZOS), SITE / "icons" / "icon-512.png")
+    save_png(master.resize((192, 192), Image.Resampling.LANCZOS), SITE / "apple-touch-icon.png")
+    save_png(master.resize((32, 32), Image.Resampling.LANCZOS), SITE / "favicon-32.png")
+    for s in [16, 24, 32, 48, 64, 128, 256]:
+        save_png(master.resize((s, s), Image.Resampling.LANCZOS), RESOURCES / f"icon-{s}.png")
+    save_png(master.resize((16, 16), Image.Resampling.LANCZOS), RESOURCES / "tray.png")
+    save_png(master.resize((32, 32), Image.Resampling.LANCZOS), RESOURCES / "tray@2x.png")
+    write_ico(RESOURCES / "icon.ico", [16, 24, 32, 48, 64, 128, 256])
+
+
+def main() -> None:
+    import sys
+
+    if "--icons-only" in sys.argv:
+        print("Generating Maka M icons…")
+        export_icons(draw_icon(1024))
+        print("Done.")
+        return
+
+    print("Generating Tabcast marketing package…")
+    icon_sizes = [16, 32, 48, 72, 96, 128, 192, 256, 512, 1024]
+    export_icons(draw_icon(1024))
 
     save_png(draw_feature_graphic(), STORE / "feature-graphic-1024x500.png")
     save_png(draw_phone_screenshot(), STORE / "screenshot-phone-1080x1920.png")
@@ -243,15 +299,6 @@ def main() -> None:
         dst.write_bytes(src.read_bytes())
 
     save_png(draw_download_badge("DOWNLOAD NOW"), SITE / "download-now.png")
-    save_png(master.resize((512, 512), Image.Resampling.LANCZOS), SITE / "icons" / "icon-512.png")
-    save_png(master.resize((192, 192), Image.Resampling.LANCZOS), SITE / "apple-touch-icon.png")
-    save_png(master.resize((32, 32), Image.Resampling.LANCZOS), SITE / "favicon-32.png")
-
-    for s in [16, 24, 32, 48, 64, 128, 256]:
-        save_png(master.resize((s, s), Image.Resampling.LANCZOS), RESOURCES / f"icon-{s}.png")
-    save_png(master.resize((16, 16), Image.Resampling.LANCZOS), RESOURCES / "tray.png")
-    save_png(master.resize((32, 32), Image.Resampling.LANCZOS), RESOURCES / "tray@2x.png")
-    write_ico(RESOURCES / "icon.ico", [16, 24, 32, 48, 64, 128, 256])
 
     manifest = {
         "product": "Maka",

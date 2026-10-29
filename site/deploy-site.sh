@@ -68,7 +68,10 @@ curl -sk -o /dev/null -w "marketing:%{http_code}\n" "https://127.0.0.1/marketing
 curl -sk -o /dev/null -w "setup:%{http_code}\n" "https://127.0.0.1/downloads/Maka-Setup-0.2.4.exe" -H "Host: ${SITE_HOST}"
 
 css_ct="$(curl -skI "https://127.0.0.1/maka.css?v=${CSS_BUILD}" -H "Host: ${SITE_HOST}" | awk -F': ' 'tolower($1)=="content-type"{print $2}' | tr -d '\r')"
-css_head="$(curl -sk "https://127.0.0.1/maka.css?v=${CSS_BUILD}" -H "Host: ${SITE_HOST}" | head -c 40)"
+css_tmp="$(mktemp)"
+curl -sk -o "${css_tmp}" "https://127.0.0.1/maka.css?v=${CSS_BUILD}" -H "Host: ${SITE_HOST}"
+css_head="$(head -c 40 "${css_tmp}")"
+rm -f "${css_tmp}"
 echo "maka.css content-type:${css_ct}"
 echo "maka.css head:${css_head}"
 if [[ "${css_ct}" != *"text/css"* ]] || [[ "${css_head}" != "/* MAKA_CSS_BUILD=${CSS_BUILD}"* ]]; then
