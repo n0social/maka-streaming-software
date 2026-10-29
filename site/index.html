@@ -34,9 +34,116 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=League+Spartan:ital,wght@0,700;0,800;0,900;1,800;1,900&display=swap"
       rel="stylesheet"
     />
+    <style>
+      /* Critical home MVP — keeps cream/gold hero readable if external maka.css fails (Caddy path-stripping, cache) */
+      :root {
+        color-scheme: light;
+        --gold: #ffc40c;
+        --gold-light: #ffd633;
+        --gold-dark: #c99800;
+        --champagne: #f6f3ec;
+        --bg: #faf8f4;
+        --panel: #ffffff;
+        --line: #e6dfd0;
+        --text: #1a1408;
+        --muted: #6b6256;
+        --headline: "League Spartan", system-ui, sans-serif;
+        --body: "Inter", "Segoe UI", system-ui, sans-serif;
+      }
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        font-family: var(--body);
+        color: var(--text);
+        background: var(--bg);
+      }
+      .page-home-mvp {
+        background-color: var(--bg);
+      }
+      .site-shell--mvp {
+        max-width: min(62rem, 100%);
+        margin: 0 auto;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        padding: 1.5rem 1.25rem 2rem;
+      }
+      .hero-mvp {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .hero-mvp__inner {
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2rem;
+        width: 100%;
+      }
+      .maka-wordmark {
+        margin: 0;
+        font-family: var(--headline);
+        font-weight: 900;
+        font-style: italic;
+        font-size: clamp(3.5rem, 16vw, 9rem);
+        line-height: 0.9;
+        letter-spacing: -0.04em;
+        text-transform: uppercase;
+        color: var(--gold-dark);
+      }
+      .maka-wordmark__front {
+        background: linear-gradient(158deg, #fff 0%, var(--champagne) 45%, var(--gold-light) 55%, var(--gold) 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .hero-mvp__actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.65rem;
+        max-width: 36rem;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.85rem 1.1rem;
+        border-radius: 999px;
+        font-family: var(--headline);
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        text-decoration: none;
+        border: 1px solid transparent;
+      }
+      .btn-outline {
+        background: var(--panel);
+        border-color: rgba(255, 196, 12, 0.35);
+        color: var(--text);
+      }
+      .btn-primary {
+        background: linear-gradient(100deg, var(--gold-light), var(--gold));
+        color: var(--text);
+      }
+      .site-footer--center {
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.78rem;
+      }
+    </style>
+    <link
+      rel="preload"
+      as="style"
+      href="https://tabcast.live.skydav.work/maka.css?v=dc6d011"
+    />
     <link
       rel="stylesheet"
-      href="https://tabcast.live.skydav.work/maka.css?v=dc6d010"
+      href="https://tabcast.live.skydav.work/maka.css?v=dc6d011"
     />
   </head>
   <body class="page-home-mvp">
