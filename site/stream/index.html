@@ -75,6 +75,40 @@
           </div>
 
           <div class="stream-block">
+            <h2>Relay</h2>
+            <p id="relay-version-line">Connect to MAKA.relay on <code>127.0.0.1:38473</code>.</p>
+            <p class="stream-hint">
+              Dev without MAKArelay.exe: run <code>npm run web:relay</code> (see
+              <a href="https://github.com/n0social/maka-streaming-software/blob/main/docs/web-relay.md">web-relay docs</a>).
+            </p>
+            <label class="stream-field">
+              <span>Encode profile</span>
+              <select id="cfg-profile">
+                <option value="720p30">720p30</option>
+                <option value="720p60">720p60</option>
+                <option value="1080p30">1080p30</option>
+                <option value="1080p60">1080p60</option>
+                <option value="2k60">2k60</option>
+                <option value="4k60">4k60</option>
+              </select>
+            </label>
+            <label class="stream-field">
+              <span>Twitch stream key (optional, RAM only)</span>
+              <input id="cfg-twitch-key" type="password" autocomplete="off" placeholder="live_…" />
+            </label>
+            <label class="stream-field">
+              <span>YouTube stream key (optional)</span>
+              <input id="cfg-youtube-key" type="password" autocomplete="off" placeholder="xxxx-xxxx-…" />
+            </label>
+            <div class="stream-actions">
+              <button type="button" class="btn btn-secondary" id="btn-relay-refresh">Check relay</button>
+              <button type="button" class="btn btn-secondary" id="btn-config">Apply config</button>
+              <button type="button" class="btn btn-ghost" id="btn-verify">Verify keys</button>
+            </div>
+            <pre class="stream-status-json" id="relay-status-json" aria-live="polite"></pre>
+          </div>
+
+          <div class="stream-block">
             <h2>Go live</h2>
             <p>
               WHIP to <code>127.0.0.1:38473</code> when MAKA.relay is running. Without it, preview
@@ -96,7 +130,8 @@
       <footer class="stream-footer">
         <span>Encode + platform keys → desktop Maka or MAKA.relay</span>
         <span>
-          <a href="/download.html">Download</a> · <a href="/preview/">Studio preview</a> ·
+          <a href="/studio-web/">Studio web</a> · <a href="/download.html">Download</a> ·
+          <a href="/preview/">Studio preview</a> ·
           <a href="/">Home</a>
         </span>
       </footer>
@@ -107,11 +142,13 @@
         <h2 id="modal-title">Relay required for go-live</h2>
         <p>
           This page previews capture in the browser. RTMP encoding runs in
-          <strong>MAKA.relay</strong> on your PC (port 38473). Install Maka, verify the relay, add
-          stream keys in the app — then WHIP from here or use the full studio.
+          <strong>MAKA.relay</strong> on your PC (port 38473). For local testing without downloading
+          MAKArelay.exe, run <code>npm run dev:web-studio</code> from the repo — then apply config and go
+          live here.
         </p>
         <div class="modal-actions">
           <a class="btn btn-primary" href="/download.html">Download Maka</a>
+          <a class="btn btn-secondary" href="https://github.com/n0social/maka-streaming-software/blob/main/docs/web-relay.md">Web relay docs</a>
           <button type="button" class="btn btn-ghost" id="modal-close">Keep previewing</button>
         </div>
       </div>

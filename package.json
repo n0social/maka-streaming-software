@@ -29,7 +29,11 @@
     "dist:ci": "npm run typecheck && npm run build && node scripts/verify.mjs --offline && electron-builder --win nsis --publish always",
     "sign:relay": "node scripts/sign-windows.mjs vendor/relay/MAKArelay.exe",
     "sign:verify": "node scripts/sign-windows.mjs --verify --all",
-    "release:manifest": "node scripts/update-browser-manifest.mjs"
+    "release:manifest": "node scripts/update-browser-manifest.mjs",
+    "web:relay": "node scripts/web-relay-dev.mjs",
+    "dev:web-studio": "node scripts/web-studio-dev.mjs --with-relay",
+    "dev:web-studio:site": "node scripts/web-studio-dev.mjs",
+    "test:web-relay": "node scripts/web-relay-smoke.test.mjs --spawn"
   },
   "devDependencies": {
     "@types/node": "^22.15.29",
@@ -38,7 +42,8 @@
     "electron-builder": "^26.0.12",
     "electron-vite": "^4.0.0",
     "typescript": "^5.8.3",
-    "vite": "^7.0.6"
+    "vite": "^7.0.6",
+    "werift": "^0.25.2"
   },
   "dependencies": {
     "electron-updater": "^6.6.2",

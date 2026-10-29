@@ -1,32 +1,48 @@
 (function () {
   const RELAY_BASE = 'http://127.0.0.1:38473';
-  const RELAY_HEALTH = `${RELAY_BASE}/health`;
-  const RELAY_WHIP = `${RELAY_BASE}/whip`;
+  const PATHS = {
+    health: '/health',
+    status: '/status',
+    config: '/config',
+    verify: '/config/verify',
+    stop: '/stop',
+    scene: '/scene',
+    whip: '/whip',
+  };
 
   const TRACK_IDS = { gameplay: 'gameplay', webcam: 'webcam', mic: 'mic' };
+  const STATUS_POLL_MS = 2000;
 
   const els = {
     canvas: document.getElementById('program-canvas'),
     empty: document.getElementById('program-empty'),
     statusDot: document.getElementById('relay-status-dot'),
     statusText: document.getElementById('relay-status-text'),
+    statusJson: document.getElementById('relay-status-json'),
+    relayVersionLine: document.getElementById('relay-version-line'),
     log: document.getElementById('stream-log'),
     btnWebcam: document.getElementById('btn-webcam'),
     btnScreen: document.getElementById('btn-screen'),
     btnMic: document.getElementById('btn-mic'),
     btnStart: document.getElementById('btn-start'),
     btnStop: document.getElementById('btn-stop'),
+    btnRelayRefresh: document.getElementById('btn-relay-refresh'),
+    btnConfig: document.getElementById('btn-config'),
+    btnVerify: document.getElementById('btn-verify'),
+    cfgProfile: document.getElementById('cfg-profile'),
+    cfgTwitchKey: document.getElementById('cfg-twitch-key'),
+    cfgYoutubeKey: document.getElementById('cfg-youtube-key'),
     modal: document.getElementById('relay-modal'),
     modalClose: document.getElementById('modal-close'),
   };
 
   const ctx = els.canvas.getContext('2d');
-  let raf = 0;
   let screenStream = null;
   let webcamStream = null;
   let micStream = null;
   let whipPublisher = null;
-  let relayReady = false;
+  let relayHealth = null;
+  let statusPollTimer = 0;
 
   function log(line) {
     const ts = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -37,6 +53,157 @@
   function setRelayStatus(state, text) {
     els.statusDot.dataset.state = state;
     els.statusText.textContent = text;
+  }
+
+  function authHeaders() {
+    if (!relayHealth?.relayToken) return {};
+    return { Authorization: `Bearer ${relayHealth.relayToken}` };
+  }
+
+  async function relayFetch(path, init) {
+    return fetch(`${RELAY_BASE}${path}`, {
+      ...init,
+      mode: 'cors',
+      cache: 'no-store',
+      headers: {
+        Accept: 'application/json',
+        ...authHeaders(),
+        ...(init?.headers ?? {}),
+      },
+    });
+  }
+
+  function renderStatusJson(data) {
+    els.statusJson.textContent = data ? JSON.stringify(data, null, 2) : '';
+  }
+
+  async function probeRelay() {
+    try {
+      const res = await fetch(`${RELAY_BASE}${PATHS.health}`, { method: 'GET', mode: 'cors', cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      relayHealth = await res.json();
+      if (!relayHealth?.ok) throw new Error('health ok=false');
+      const version = relayHealth.version ?? '?';
+      const mock = String(version).includes('mock');
+      setRelayStatus('ok', mock ? `Dev relay v${version}` : `MAKA.relay v${version}`);
+      els.relayVersionLine.textContent = `Connected — ${mock ? 'mock' : 'MAKA.relay'} v${version} · WHIP ${PATHS.whip}`;
+      log(`Relay health OK (v${version}).`);
+      await refreshRelayStatus();
+      startStatusPoll();
+      return true;
+    } catch {
+      relayHealth = null;
+      stopStatusPoll();
+      renderStatusJson(null);
+      setRelayStatus('warn', 'Relay not detected');
+      els.relayVersionLine.textContent = 'No relay on 127.0.0.1:38473 — run npm run web:relay or install Maka.';
+      log('No relay on 127.0.0.1:38473.');
+      return false;
+    }
+  }
+
+  async function refreshRelayStatus() {
+    if (!relayHealth?.relayToken) return null;
+    try {
+      const res = await relayFetch(PATHS.status);
+      if (!res.ok) return null;
+      const status = await res.json();
+      renderStatusJson(status);
+      if (status.status === 'live') setRelayStatus('live', 'Live — relay encoding');
+      else if (status.status === 'error') setRelayStatus('warn', status.error || 'Relay error');
+      return status;
+    } catch {
+      return null;
+    }
+  }
+
+  function startStatusPoll() {
+    stopStatusPoll();
+    statusPollTimer = window.setInterval(() => void refreshRelayStatus(), STATUS_POLL_MS);
+  }
+
+  function stopStatusPoll() {
+    if (statusPollTimer) {
+      clearInterval(statusPollTimer);
+      statusPollTimer = 0;
+    }
+  }
+
+  function buildConfigBody() {
+    const body = { profile: els.cfgProfile.value || '720p30' };
+    const twitch = els.cfgTwitchKey.value.trim();
+    const youtube = els.cfgYoutubeKey.value.trim();
+    if (twitch) body.twitchKey = twitch;
+    if (youtube) body.youtubeKey = youtube;
+    return body;
+  }
+
+  async function postRelayConfig() {
+    if (!relayHealth) throw new Error('Relay not connected');
+    const res = await relayFetch(PATHS.config, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(buildConfigBody()),
+    });
+    if (!res.ok) {
+      const detail = (await res.text().catch(() => '')).trim();
+      throw new Error(`Config failed (${res.status})${detail ? `: ${detail}` : ''}`);
+    }
+    log('POST /config applied (keys stay in relay RAM).');
+    await refreshRelayStatus();
+  }
+
+  async function verifyRelayConfig() {
+    if (!relayHealth) throw new Error('Relay not connected');
+    const res = await relayFetch(PATHS.verify, { method: 'POST' });
+    if (!res.ok) throw new Error(`Verify HTTP ${res.status}`);
+    const data = await res.json();
+    log(data.ok ? 'Verify OK — ' + (data.message || '') : 'Verify failed — ' + (data.message || ''));
+    return data;
+  }
+
+  async function postRelayStop() {
+    await relayFetch(PATHS.stop, { method: 'POST' }).catch(() => undefined);
+  }
+
+  async function postSceneLayout() {
+    if (!relayHealth) return;
+    const w = els.canvas.width || 1280;
+    const h = els.canvas.height || 720;
+    const layout = {
+      canvas: { width: w, height: h },
+      sources: [
+        {
+          id: 'gameplay',
+          type: 'video',
+          label: 'Gameplay',
+          x: 0,
+          y: 0,
+          width: w,
+          height: h,
+          zIndex: 0,
+        },
+      ],
+    };
+    if (webcamStream) {
+      const pipW = Math.round(w * 0.22);
+      const pipH = Math.round(pipW * (9 / 16));
+      layout.sources.push({
+        id: 'webcam',
+        type: 'video',
+        label: 'Webcam',
+        x: w - pipW - 24,
+        y: h - pipH - 24,
+        width: pipW,
+        height: pipH,
+        zIndex: 2,
+      });
+    }
+    await relayFetch(PATHS.scene, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(layout),
+    }).catch(() => undefined);
   }
 
   function resizeCanvas() {
@@ -94,7 +261,7 @@
     }
 
     els.empty.hidden = Boolean(main);
-    raf = requestAnimationFrame(drawFrame);
+    requestAnimationFrame(drawFrame);
   }
 
   function stopStream(stream) {
@@ -104,19 +271,6 @@
     if (v) {
       v.srcObject = null;
       videoEls.delete(stream);
-    }
-  }
-
-  async function probeRelay() {
-    try {
-      const res = await fetch(RELAY_HEALTH, { method: 'GET', mode: 'cors', cache: 'no-store' });
-      relayReady = res.ok;
-      setRelayStatus(relayReady ? 'ok' : 'warn', relayReady ? 'Relay on localhost:38473' : 'Relay not responding');
-      if (relayReady) log('Relay health OK — WHIP publish available.');
-    } catch {
-      relayReady = false;
-      setRelayStatus('warn', 'Relay not detected');
-      log('No relay on 127.0.0.1:38473 (install desktop app or MAKA.relay).');
     }
   }
 
@@ -166,9 +320,10 @@
       pc.close();
       throw new Error('Empty WHIP offer');
     }
-    const response = await fetch(RELAY_WHIP, {
+    const response = await fetch(`${RELAY_BASE}${PATHS.whip}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/sdp' },
+      mode: 'cors',
+      headers: { 'Content-Type': 'application/sdp', ...authHeaders() },
       body: sdp,
     });
     if (!response.ok) {
@@ -178,7 +333,7 @@
     }
     const answer = await response.text();
     const location = response.headers.get('Location');
-    const resourceUrl = location ? new URL(location, RELAY_WHIP).href : null;
+    const resourceUrl = location ? new URL(location, `${RELAY_BASE}${PATHS.whip}`).href : null;
     await pc.setRemoteDescription({ type: 'answer', sdp: answer });
     return {
       pc,
@@ -186,7 +341,7 @@
       async close() {
         if (resourceUrl) {
           try {
-            await fetch(resourceUrl, { method: 'DELETE' });
+            await fetch(resourceUrl, { method: 'DELETE', headers: authHeaders() });
           } catch {
             /* ignore */
           }
@@ -227,35 +382,45 @@
       log('Add webcam or screen share first.');
       return;
     }
-    await probeRelay();
-    if (!relayReady) {
+    const ok = relayHealth ? true : await probeRelay();
+    if (!ok) {
       els.modal.hidden = false;
       return;
     }
     try {
+      await postRelayConfig();
+      await postSceneLayout();
       log('Publishing WHIP to localhost relay…');
       whipPublisher = await publishWhip(buildPublishSources());
       whipPublisher.pc.onconnectionstatechange = () => {
         log(`WHIP connection: ${whipPublisher.pc.connectionState}`);
-        if (whipPublisher.pc.connectionState === 'connected') setRelayStatus('live', 'Live via relay');
+        if (whipPublisher.pc.connectionState === 'connected') {
+          setRelayStatus('live', 'Live via relay');
+          void refreshRelayStatus();
+        }
       };
       setRelayStatus('live', 'Live via relay');
-      log('WHIP active. Set RTMP keys in desktop Maka or relay /config.');
+      log('WHIP active — check relay /status for pipeline state.');
       updateButtons();
+      await refreshRelayStatus();
     } catch (err) {
       whipPublisher = null;
-      log(`WHIP failed: ${err instanceof Error ? err.message : err}`);
+      log(`Go live failed: ${err instanceof Error ? err.message : err}`);
       els.modal.hidden = false;
       updateButtons();
     }
   }
 
   async function onStop() {
-    if (!whipPublisher) return;
-    await whipPublisher.close().catch(() => undefined);
-    whipPublisher = null;
-    setRelayStatus(relayReady ? 'ok' : 'warn', relayReady ? 'Relay on localhost:38473' : 'Relay not detected');
+    if (whipPublisher) {
+      await whipPublisher.close().catch(() => undefined);
+      whipPublisher = null;
+    }
+    await postRelayStop();
+    if (relayHealth) setRelayStatus('ok', `Relay v${relayHealth.version}`);
+    await refreshRelayStatus();
     updateButtons();
+    log('Stream stopped.');
   }
 
   els.btnWebcam.addEventListener('click', async () => {
@@ -300,6 +465,13 @@
 
   els.btnStart.addEventListener('click', () => void onStart());
   els.btnStop.addEventListener('click', () => void onStop());
+  els.btnRelayRefresh.addEventListener('click', () => void probeRelay());
+  els.btnConfig.addEventListener('click', () => {
+    void postRelayConfig().catch((err) => log(err instanceof Error ? err.message : String(err)));
+  });
+  els.btnVerify.addEventListener('click', () => {
+    void verifyRelayConfig().catch((err) => log(err instanceof Error ? err.message : String(err)));
+  });
   els.modalClose.addEventListener('click', () => {
     els.modal.hidden = true;
   });
@@ -311,5 +483,5 @@
   drawFrame();
   void probeRelay();
   updateButtons();
-  log('Browser MVP — preview locally; relay encodes to RTMP.');
+  log('Web studio — connect relay → configure → go live (see docs/web-relay.md).');
 })();

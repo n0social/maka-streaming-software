@@ -46,6 +46,16 @@ npm run dev
 
 On Windows, `npm run dist` produces the NSIS installer. Use tag **`v0.2.5`** if you need a tree that exactly matches the published installer above.
 
+### Browser pipeline test (no MAKArelay.exe download)
+
+To exercise **WHIP → localhost relay → mock RTMP** in Chrome without the ~400 MB encoder binary, see **[docs/web-relay.md](docs/web-relay.md)**:
+
+```bash
+npm run dev:web-studio   # mock relay :38473 + static site :8765 → /stream/
+```
+
+Production preview: [makalive.stream/stream/](https://makalive.stream/stream/).
+
 ---
 
 ## What it does
