@@ -109,8 +109,9 @@
       }
       .maka-wordmark__svg {
         display: block;
-        width: min(92vw, 14em);
+        width: min(76vw, 40rem);
         height: auto;
+        margin: 0 auto;
         overflow: visible;
       }
       .maka-wordmark__svg text {
@@ -122,8 +123,11 @@
       .maka-svg-back {
         fill: #ffffff;
       }
-      .maka-svg-front {
+      .maka-svg-yellow {
         fill: #ffc40c;
+      }
+      .maka-svg-foil {
+        fill: #f6f3ec;
       }
       .hero-mvp__actions {
         display: flex;
@@ -191,28 +195,24 @@
               />
             </div>
             <h1 class="maka-wordmark" aria-label="MAKA">
-              <svg class="maka-wordmark__svg" viewBox="0 0 980 240" role="img" aria-hidden="true">
+              <svg class="maka-wordmark__svg" viewBox="0 0 1000 280" role="img" aria-hidden="true">
                 <defs>
-                  <linearGradient id="maka-split" gradientUnits="userSpaceOnUse" x1="40" y1="210" x2="940" y2="10">
-                    <stop offset="0%" stop-color="#ffffff" />
-                    <stop offset="40%" stop-color="#f6f3ec" />
-                    <stop offset="47%" stop-color="#fff6d0" />
-                    <stop offset="52%" stop-color="#ffc40c" />
-                    <stop offset="100%" stop-color="#ffc40c" />
-                  </linearGradient>
-                  <pattern id="maka-foil" width="16" height="16" patternUnits="userSpaceOnUse" patternTransform="rotate(35)">
-                    <rect width="16" height="16" fill="#ffffff" />
-                    <path d="M0 16 L16 0" stroke="#7eb6ff" stroke-width="1.4" />
-                    <path d="M0 8 L16 -8" stroke="#ff8ec8" stroke-width="1.1" />
-                    <path d="M8 16 L24 0" stroke="#ffe56a" stroke-width="0.8" />
-                  </pattern>
-                  <clipPath id="maka-foil-top">
-                    <polygon points="0,0 980,0 980,108 0,148" />
+                  <clipPath id="maka-yellow-half" clipPathUnits="objectBoundingBox">
+                    <polygon points="0,0.92 1,0.08 1,1.2 0,1.2" />
                   </clipPath>
+                  <clipPath id="maka-foil-half" clipPathUnits="objectBoundingBox">
+                    <polygon points="0,-0.2 1,-0.2 1,0.08 0,0.92" />
+                  </clipPath>
+                  <linearGradient id="maka-foil" gradientUnits="objectBoundingBox" x1="0" y1="0" x2="1" y2="0.35">
+                    <stop offset="0%" stop-color="#ffffff" />
+                    <stop offset="40%" stop-color="#f7f1ff" />
+                    <stop offset="70%" stop-color="#eef6ff" />
+                    <stop offset="100%" stop-color="#fff8e8" />
+                  </linearGradient>
                 </defs>
-                <text class="maka-svg-back" x="36" y="188">MAKA</text>
-                <text class="maka-svg-front" x="18" y="176" fill="url(#maka-split)">MAKA</text>
-                <text class="maka-svg-foil" x="18" y="176" fill="url(#maka-foil)" clip-path="url(#maka-foil-top)">MAKA</text>
+                <text class="maka-svg-back" x="512" y="214" text-anchor="middle">MAKA</text>
+                <text class="maka-svg-yellow" x="500" y="202" text-anchor="middle" clip-path="url(#maka-yellow-half)">MAKA</text>
+                <text class="maka-svg-foil" x="500" y="202" text-anchor="middle" clip-path="url(#maka-foil-half)">MAKA</text>
               </svg>
             </h1>
           </div>

@@ -456,8 +456,9 @@ svg {
 
 .maka-wordmark__svg {
   display: block;
-  width: min(92vw, 16em);
+  width: min(76vw, 40rem);
   height: auto;
+  margin: 0 auto;
   overflow: visible;
   font-family: var(--headline);
 }
@@ -477,8 +478,8 @@ svg {
   paint-order: stroke fill;
 }
 
-.maka-svg-front {
-  fill: url(#maka-split);
+.maka-svg-yellow {
+  fill: #ffc40c;
 }
 
 .maka-svg-foil {
