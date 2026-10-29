@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
-import { join, dirname } from 'node:path'
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs'
+import { join, dirname, extname } from 'node:path'
 import { shell } from 'electron'
 import {
   addonFolderName,
@@ -265,7 +265,7 @@ export class AddonHost {
     const dir = join(addonsInstallDir(), folder)
     mkdirSync(dir, { recursive: true })
     writeFileSync(
-      join(dir, 'maka-addon.json'),
+      join(dir, ADDON_MANIFEST),
       `${JSON.stringify(validated.manifest, null, 2)}\n`,
       'utf8',
     )
@@ -488,8 +488,6 @@ export class AddonHost {
 
   private registerBuiltin(manifest: AddonManifest): void {
     this.manifests.set(manifest.id, manifest)
-    const legacy = legacyAddonId(manifest.id)
-    if (legacy) this.manifests.set(legacy, manifest)
   }
 
   /** Rename legacy on-disk addon folders/manifests to the v0.2.6 layout. */
@@ -506,8 +504,8 @@ export class AddonHost {
 
     for (const folder of entries) {
       const addonDir = join(root, folder)
-      const legacyManifest = join(addonDir, 'tabcast-addon.json')
-      const currentManifest = join(addonDir, 'maka-addon.json')
+      const legacyManifest = join(addonDir, LEGACY_ADDON_MANIFEST)
+      const currentManifest = join(addonDir, ADDON_MANIFEST)
       if (existsSync(legacyManifest) && !existsSync(currentManifest)) {
         try {
           renameSync(legacyManifest, currentManifest)
@@ -527,12 +525,15 @@ export class AddonHost {
         const raw = JSON.parse(readFileSync(manifestPath, 'utf8')) as Record<string, unknown>
         if (typeof raw.id !== 'string') continue
         const nextId = canonicalAddonId(raw.id)
-        if (nextId === raw.id && manifestPath === currentManifest) continue
-        raw.id = nextId
-        writeFileSync(manifestPath, `${JSON.stringify(raw, null, 2)}\n`, 'utf8')
-        if (manifestPath !== currentManifest && existsSync(manifestPath)) {
-          renameSync(manifestPath, currentManifest)
+        if (nextId !== raw.id || manifestPath !== currentManifest) {
+          raw.id = nextId
+          writeFileSync(manifestPath, `${JSON.stringify(raw, null, 2)}\n`, 'utf8')
+          if (manifestPath !== currentManifest && existsSync(manifestPath)) {
+            renameSync(manifestPath, currentManifest)
+          }
+          recordDiagnostic('info', 'addons.migrate', `Mapped ${String(raw.id)} in ${folder}`)
         }
+        rewriteLegacyAddonSources(addonDir)
       } catch (err) {
         recordDiagnostic('warn', 'addons.migrate', `Could not migrate ${folder}`, err)
       }
@@ -551,7 +552,7 @@ export class AddonHost {
     }
 
     for (const folder of entries) {
-      const manifestPath = ['maka-addon.json', 'tabcast-addon.json']
+      const manifestPath = [ADDON_MANIFEST, LEGACY_ADDON_MANIFEST]
         .map((name) => join(dir, folder, name))
         .find((p) => existsSync(p))
       if (!manifestPath) continue
@@ -563,16 +564,50 @@ export class AddonHost {
           continue
         }
         if (validated.manifest.builtin) continue
+        const id = canonicalAddonId(validated.manifest.id)
+        if (folder !== addonFolderName(id) && existsSync(join(dir, addonFolderName(id)))) continue
         const manifest: AddonManifest = {
           ...validated.manifest,
           id: canonicalAddonId(validated.manifest.id),
         }
         this.manifests.set(manifest.id, manifest)
-        const legacy = legacyAddonId(manifest.id)
-        if (legacy) this.manifests.set(legacy, manifest)
       } catch (err) {
         recordDiagnostic('warn', 'addons.load', `Invalid manifest: ${folder}`, err)
       }
     }
+  }
+}
+
+const ADDON_SOURCE_EXT = new Set(['.html', '.js', '.mjs', '.cjs', '.css'])
+
+/** Installed addon pages from 0.2.5 call window.tabcast. Point them at window.maka. */
+function rewriteLegacyAddonSources(folderPath: string): void {
+  let names: string[] = []
+  try {
+    names = readdirSync(folderPath)
+  } catch {
+    return
+  }
+  for (const name of names) {
+    if (name === 'settings.json' || name === ADDON_MANIFEST || name === LEGACY_ADDON_MANIFEST) continue
+    const path = join(folderPath, name)
+    let st
+    try {
+      st = statSync(path)
+    } catch {
+      continue
+    }
+    if (st.isDirectory()) {
+      rewriteLegacyAddonSources(path)
+      continue
+    }
+    if (!ADDON_SOURCE_EXT.has(extname(name).toLowerCase())) continue
+    const text = readFileSync(path, 'utf8')
+    if (!text.includes('tabcast')) continue
+    const next = text
+      .replaceAll('window.tabcast', 'window.maka')
+      .replaceAll('tabcast-addon://', 'maka-addon://')
+      .replaceAll('tabcast.addons', 'maka.addons')
+    if (next !== text) writeFileSync(path, next, 'utf8')
   }
 }
