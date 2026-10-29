@@ -1,13 +1,13 @@
 :root {
   color-scheme: light;
 
-  /* White and gold */
+  /* White and Mikado Yellow */
   --white: #ffffff;
   --silver: #e6dfd0;
   --silver-dim: #6b6256;
-  --gold: #c9a227;
-  --gold-light: #e0b33a;
-  --gold-dark: #a8861c;
+  --gold: #ffc40c;
+  --gold-light: #ffd633;
+  --gold-dark: #c99800;
   --champagne: #f6f3ec;
 
   --bg: #faf8f4;
@@ -17,9 +17,9 @@
   --text: #1a1408;
   --muted: #6b6256;
 
-  --accent: #c9a227;
-  --ready: #c9a227;
-  --live: #c9a227;
+  --accent: #ffc40c;
+  --ready: #ffc40c;
+  --live: #ffc40c;
   --bad: #9a3b3b;
   --warn: #8a5a12;
   --off: #a39888;
@@ -159,7 +159,7 @@ body[data-mode='settings'] .topbar .go-live {
 
 body[data-mode='settings'] .topbar #btn-settings {
   display: inline-flex !important;
-  border-color: #c9a227;
+  border-color: #ffc40c;
   background: rgba(201, 162, 39, 0.12);
 }
 
@@ -229,7 +229,7 @@ body[data-mode='settings'] #brand-tag {
 
 .settings-tab.active {
   background: #ffffff;
-  border-color: #c9a227;
+  border-color: #ffc40c;
   font-weight: 600;
 }
 
@@ -354,7 +354,7 @@ body[data-mode='settings'] #brand-tag {
   font-weight: 700;
   letter-spacing: 0.28em;
   text-transform: uppercase;
-  color: #c9a227;
+  color: #ffc40c;
   white-space: nowrap;
 }
 
@@ -373,7 +373,7 @@ body[data-mode='settings'] #brand-tag {
   width: 1.45rem;
   height: 1.45rem;
   border-radius: 0.45rem;
-  background: #c9a227;
+  background: #ffc40c;
   box-shadow: 0 0 0 1px #e6dfd0;
   flex-shrink: 0;
 }
@@ -399,7 +399,7 @@ body[data-mode='settings'] #brand-tag {
 }
 
 .tab.active {
-  background: #c9a227;
+  background: #ffc40c;
   color: #1a1408;
   border-color: transparent;
   box-shadow: none;
@@ -468,7 +468,7 @@ body[data-mode='settings'] #brand-tag {
 .go-live {
   appearance: none;
   border: 0;
-  background: #c9a227;
+  background: #ffc40c;
   color: #1a1408;
   font-family: var(--font-headline);
   font-weight: 800;
@@ -537,7 +537,7 @@ body[data-mode='settings'] #brand-tag {
 .btn-block:hover,
 .sidebar button:hover {
   background: #f6f3ec;
-  border-color: #c9a227;
+  border-color: #ffc40c;
 }
 
 .nav-controls button {
@@ -567,7 +567,7 @@ body[data-mode='settings'] #brand-tag {
 .select:focus,
 .key-input:focus {
   outline: none;
-  border-color: #c9a227;
+  border-color: #ffc40c;
   box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.28);
 }
 
@@ -1098,12 +1098,12 @@ body[data-mode='settings'] #brand-tag {
 }
 
 .platform-chip[data-state='armed'] {
-  border-color: #c9a227;
+  border-color: #ffc40c;
   color: #1a1408;
 }
 
 .platform-chip[data-state='live'] {
-  border-color: #c9a227;
+  border-color: #ffc40c;
   color: #1a1408;
   background: rgba(201, 162, 39, 0.16);
 }
@@ -1129,7 +1129,7 @@ body[data-mode='settings'] #brand-tag {
   font-size: 0.82rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #c9a227;
+  color: #ffc40c;
 }
 
 .addon-actions {
@@ -1169,7 +1169,7 @@ body[data-mode='settings'] #brand-tag {
 }
 
 .source-card.active {
-  border-color: #c9a227;
+  border-color: #ffc40c;
   box-shadow: 0 0 0 1px rgba(201, 162, 39, 0.28), inset 0 0 24px rgba(201, 162, 39, 0.06);
 }
 
@@ -1332,7 +1332,7 @@ dd {
   font-size: 0.58rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  background: #c9a227;
+  background: #ffc40c;
   color: #1a1408;
   border-radius: 999px;
   padding: 0.14rem 0.38rem;
@@ -1346,7 +1346,7 @@ dd {
   z-index: 3;
   width: 35%;
   aspect-ratio: 16 / 9;
-  border: 2px solid #c9a227;
+  border: 2px solid #ffc40c;
   border-radius: 0.65rem;
   overflow: hidden;
   background: #000;
@@ -1372,7 +1372,7 @@ dd {
   font-size: 0.58rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  background: #c9a227;
+  background: #ffc40c;
   color: #1a1408;
   border-radius: 999px;
   padding: 0.14rem 0.38rem;
@@ -1470,7 +1470,7 @@ dd {
   font-style: italic;
   font-size: 1.15rem;
   color: #1a1408;
-  background: #c9a227;
+  background: #ffc40c;
   box-shadow: 0 0 0 1px rgba(201, 162, 39, 0.35);
 }
 
@@ -1517,7 +1517,7 @@ dd {
 }
 
 .pip[data-on='1'] {
-  border-color: #c9a227;
+  border-color: #ffc40c;
   box-shadow: 0 0 0 1px rgba(201, 162, 39, 0.2);
 }
 
@@ -1570,7 +1570,7 @@ dd {
 
 .layers li[data-active='1'] {
   border-style: solid;
-  border-color: #c9a227;
+  border-color: #ffc40c;
   color: #1a1408;
   background: rgba(201, 162, 39, 0.12);
 }
@@ -1592,7 +1592,7 @@ dd {
 .meter-fill {
   height: 100%;
   width: 0%;
-  background: linear-gradient(90deg, #e0b33a, #c9a227);
+  background: linear-gradient(90deg, #ffd633, #ffc40c);
   transition: width 80ms linear;
 }
 
@@ -1683,7 +1683,7 @@ dd {
 
 .browse-tab.active {
   color: var(--text);
-  border-color: #c9a227;
+  border-color: #ffc40c;
   background: rgba(201, 162, 39, 0.14);
 }
 
@@ -1747,14 +1747,14 @@ dd {
 
 button:hover,
 .tab:hover {
-  border-color: #c9a227;
+  border-color: #ffc40c;
 }
 
 .go-live:hover:not(:disabled),
 .tab.active:hover,
 #btn-refresh-sources:hover,
 #btn-settings-save:hover {
-  background: #e0b33a;
+  background: #ffd633;
   filter: none;
 }
 
@@ -1830,12 +1830,12 @@ button:hover,
 
 #btn-settings-save {
   border: 0;
-  background: #c9a227;
+  background: #ffc40c;
   color: #1a1408;
 }
 
 #btn-settings-save:hover {
-  background: #e0b33a;
+  background: #ffd633;
   filter: none;
 }
 
@@ -2265,7 +2265,7 @@ body:not([data-mode='settings']) .settings-view {
 }
 
 .stream-controls-stack [data-vcam='1'] {
-  border-color: #c9a227;
+  border-color: #ffc40c;
   box-shadow: inset 0 0 0 1px rgba(201, 162, 39, 0.35);
 }
 
@@ -2318,7 +2318,7 @@ body:not([data-mode='settings']) .settings-view {
 }
 
 .program-stats-platform-sep {
-  color: #c9a227;
+  color: #ffc40c;
   font-weight: 600;
   opacity: 0.85;
   user-select: none;
@@ -2352,7 +2352,7 @@ body:not([data-mode='settings']) .settings-view {
 }
 
 .program-stats-health[data-state='ok'] .dot {
-  background: #c9a227;
+  background: #ffc40c;
   box-shadow: 0 0 6px rgba(201, 162, 39, 0.35);
 }
 
@@ -2392,12 +2392,12 @@ body:not([data-mode='settings']) .settings-view {
 }
 
 .platform-chip-btn:hover {
-  border-color: #c9a227;
+  border-color: #ffc40c;
   color: #1a1408;
 }
 
 .platform-chip-btn:focus-visible {
-  outline: 2px solid #c9a227;
+  outline: 2px solid #ffc40c;
   outline-offset: 1px;
 }
 
@@ -2455,7 +2455,7 @@ body:not([data-mode='settings']) .settings-view {
 }
 
 .program-stats-select:focus-visible {
-  outline: 2px solid #c9a227;
+  outline: 2px solid #ffc40c;
   outline-offset: 1px;
 }
 
@@ -2496,7 +2496,7 @@ body:not([data-mode='settings']) .settings-view {
 
 .program-mode {
   margin-left: 0.35rem;
-  color: #c9a227;
+  color: #ffc40c;
   opacity: 1;
   font-weight: 800;
 }
@@ -2614,8 +2614,8 @@ body:not([data-mode='settings']) .settings-view {
     90deg,
     #3d9a5f 0%,
     #3d9a5f 60%,
-    #c9a227 60%,
-    #c9a227 85%,
+    #ffc40c 60%,
+    #ffc40c 85%,
     #c94a27 85%,
     #c94a27 100%
   );
@@ -2640,7 +2640,7 @@ body:not([data-mode='settings']) .settings-view {
 }
 
 .btn-primary {
-  background: #c9a227;
+  background: #ffc40c;
   color: #1a1408;
   border: none;
 }

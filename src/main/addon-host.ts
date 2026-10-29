@@ -433,7 +433,7 @@ export class AddonHost {
               {
                 title: '🔴 Now live',
                 description: content,
-                color: 0xc9a227,
+                color: 0xffc40c,
               },
             ],
           }

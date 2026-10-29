@@ -17,10 +17,10 @@ PNG exports live in `marketing/icons/` after running the script from the repo ro
 | Token | Hex | Usage |
 |-------|-----|--------|
 | Cream | `#faf8f4` | Blazer, highlights |
-| Gold | `#c9a227` | Trim, star, hair highlights, mic |
+| Mikado Yellow | `#ffc40c` | Trim, star, hair highlights, mic |
 | Ink | `#2a2418` | Outlines, eyes, hair line art |
 
-Supporting tints: skin `#f5e8dc`, hair gradient `#f0e2c4` → `#c9a227`.
+Supporting tints: skin `#f5e8dc`, hair gradient `#f0e2c4` → `#ffc40c`.
 
 ## Usage on site
 

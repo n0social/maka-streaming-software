@@ -87,7 +87,7 @@
       const pipH = Math.round(pipW * (9 / 16));
       const x = w - pipW - 16;
       const y = h - pipH - 16;
-      ctx.strokeStyle = '#c9a227';
+      ctx.strokeStyle = '#ffc40c';
       ctx.lineWidth = 3;
       ctx.strokeRect(x - 2, y - 2, pipW + 4, pipH + 4);
       drawVideo(webcamStream, x, y, pipW, pipH);

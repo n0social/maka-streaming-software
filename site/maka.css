@@ -1,12 +1,13 @@
-/* Maka marketing site — cream/gold tokens (matches Electron studio redesign) */
+/* Maka marketing site — cream / Mikado Yellow tokens (matches Electron studio redesign) */
 :root {
   color-scheme: light;
   --white: #ffffff;
   --silver: #e6dfd0;
   --silver-dim: #6b6256;
-  --gold: #c9a227;
-  --gold-light: #e0b33a;
-  --gold-dark: #a8861c;
+  /* Mikado Yellow (Japanese standard ~#FFC40C) — brand accent replacing legacy gold */
+  --gold: #ffc40c;
+  --gold-light: #ffd633;
+  --gold-dark: #c99800;
   --champagne: #f6f3ec;
   --bg: #faf8f4;
   --panel: #ffffff;
@@ -38,7 +39,7 @@ body {
   background-color: var(--bg);
   background-image: radial-gradient(
     ellipse 90% 55% at 15% -10%,
-    rgba(201, 162, 39, 0.12),
+    rgba(255, 196, 12, 0.12),
     transparent 55%
   );
   background-attachment: fixed;
@@ -146,7 +147,7 @@ svg {
   height: 3.25rem;
   pointer-events: none;
   opacity: 0.92;
-  filter: drop-shadow(0 4px 12px rgba(201, 162, 39, 0.35));
+  filter: drop-shadow(0 4px 12px rgba(255, 196, 12, 0.35));
   z-index: 40;
 }
 
@@ -228,7 +229,7 @@ svg {
 .btn-primary {
   background: linear-gradient(100deg, var(--gold-light), var(--gold));
   color: var(--text);
-  box-shadow: 0 8px 24px rgba(201, 162, 39, 0.28);
+  box-shadow: 0 8px 24px rgba(255, 196, 12, 0.28);
 }
 
 .btn-secondary {
@@ -253,7 +254,7 @@ svg {
   flex: 1;
   min-width: 0;
   background: var(--panel);
-  border-color: rgba(201, 162, 39, 0.35);
+  border-color: rgba(255, 196, 12, 0.35);
   color: var(--text);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
@@ -262,7 +263,7 @@ svg {
   border-color: var(--gold);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.6),
-    0 6px 18px rgba(201, 162, 39, 0.12);
+    0 6px 18px rgba(255, 196, 12, 0.12);
 }
 
 .fine-print {
@@ -322,8 +323,8 @@ svg {
   background-color: var(--bg);
   background-image:
     radial-gradient(ellipse 85% 55% at 50% 0%, rgba(224, 179, 58, 0.18), transparent 62%),
-    radial-gradient(ellipse 50% 45% at 100% 35%, rgba(201, 162, 39, 0.07), transparent 52%),
-    radial-gradient(ellipse 45% 40% at 0% 70%, rgba(201, 162, 39, 0.06), transparent 48%);
+    radial-gradient(ellipse 50% 45% at 100% 35%, rgba(255, 196, 12, 0.07), transparent 52%),
+    radial-gradient(ellipse 45% 40% at 0% 70%, rgba(255, 196, 12, 0.06), transparent 48%);
 }
 
 .page-home-mvp::before {
@@ -373,8 +374,8 @@ svg {
   inset: -20% -10%;
   opacity: 0.45;
   background-image:
-    linear-gradient(rgba(201, 162, 39, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(201, 162, 39, 0.06) 1px, transparent 1px);
+    linear-gradient(rgba(255, 196, 12, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 196, 12, 0.06) 1px, transparent 1px);
   background-size: 2.75rem 2.75rem;
   mask-image: radial-gradient(ellipse 70% 60% at 50% 35%, black 15%, transparent 72%);
 }
@@ -400,7 +401,7 @@ svg {
   height: 14rem;
   bottom: 12%;
   right: 5%;
-  background: radial-gradient(circle, rgba(201, 162, 39, 0.22), transparent 68%);
+  background: radial-gradient(circle, rgba(255, 196, 12, 0.22), transparent 68%);
 }
 
 .hero-mvp__inner {
@@ -489,7 +490,90 @@ svg {
   background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
-  filter: drop-shadow(0 4px 20px rgba(201, 162, 39, 0.28));
+  filter: drop-shadow(0 4px 20px rgba(255, 196, 12, 0.28));
+}
+
+/* Holographic foil on cream/white upper split (158deg) — collectible-card shimmer */
+.maka-wordmark::before {
+  content: "MAKA";
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  pointer-events: none;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  padding-inline: inherit;
+  box-sizing: border-box;
+  white-space: nowrap;
+  background-image:
+    repeating-linear-gradient(
+      125deg,
+      transparent 0,
+      transparent 5px,
+      rgba(255, 255, 255, 0.42) 5px,
+      rgba(255, 255, 255, 0.06) 6px,
+      transparent 7px,
+      transparent 11px
+    ),
+    repeating-linear-gradient(
+      55deg,
+      transparent 0,
+      transparent 7px,
+      rgba(170, 210, 255, 0.14) 7px,
+      rgba(255, 175, 215, 0.1) 8px,
+      transparent 9px,
+      transparent 14px
+    ),
+    conic-gradient(
+      from 205deg at 38% 28%,
+      rgba(255, 110, 190, 0.28),
+      rgba(110, 195, 255, 0.24),
+      rgba(255, 245, 170, 0.22),
+      rgba(160, 255, 210, 0.18),
+      rgba(255, 110, 190, 0.28)
+    ),
+    linear-gradient(
+      118deg,
+      rgba(255, 255, 255, 0.65) 0%,
+      rgba(255, 255, 255, 0.08) 42%,
+      transparent 58%
+    );
+  background-size: 13px 13px, 15px 15px, 210% 210%, 100% 100%;
+  background-position: 0 0, 0 0, var(--maka-foil-shift, 12%) 36%, 0 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  -webkit-mask-image: linear-gradient(
+    158deg,
+    #000 0%,
+    #000 43%,
+    rgba(0, 0, 0, 0.75) 47%,
+    transparent 51%
+  );
+  mask-image: linear-gradient(
+    158deg,
+    #000 0%,
+    #000 43%,
+    rgba(0, 0, 0, 0.75) 47%,
+    transparent 51%
+  );
+  animation: maka-wordmark-foil 9s ease-in-out infinite;
+}
+
+@keyframes maka-wordmark-foil {
+  0%,
+  100% {
+    background-position: 0 0, 0 0, 8% 34%, 0 0;
+    opacity: 0.82;
+  }
+
+  50% {
+    background-position: 5px 3px, -4px 5px, 42% 40%, 0 0;
+    opacity: 0.95;
+  }
 }
 
 .hero-mvp__mascot-wrap {
@@ -528,11 +612,11 @@ svg {
 }
 
 .hero-mvp__btn--download {
-  box-shadow: 0 10px 28px rgba(201, 162, 39, 0.32);
+  box-shadow: 0 10px 28px rgba(255, 196, 12, 0.32);
 }
 
 .hero-mvp__btn--download:hover {
-  box-shadow: 0 14px 36px rgba(201, 162, 39, 0.4);
+  box-shadow: 0 14px 36px rgba(255, 196, 12, 0.4);
 }
 
 .hero-mvp__mascot {
@@ -616,7 +700,7 @@ svg {
   margin-top: 0.15em;
   border-radius: 50%;
   background: linear-gradient(145deg, var(--gold-light), var(--gold));
-  box-shadow: 0 2px 6px rgba(201, 162, 39, 0.35);
+  box-shadow: 0 2px 6px rgba(255, 196, 12, 0.35);
   position: relative;
 }
 
@@ -696,11 +780,11 @@ svg {
   padding: 1.05rem 1.5rem;
   font-size: 0.82rem;
   letter-spacing: 0.08em;
-  box-shadow: 0 12px 32px rgba(201, 162, 39, 0.38);
+  box-shadow: 0 12px 32px rgba(255, 196, 12, 0.38);
 }
 
 .btn--hero:hover {
-  box-shadow: 0 16px 40px rgba(201, 162, 39, 0.42);
+  box-shadow: 0 16px 40px rgba(255, 196, 12, 0.42);
 }
 
 .panel-note--center {
@@ -799,6 +883,10 @@ svg {
 
 @media (prefers-reduced-motion: reduce) {
   .hero-mvp__mascot {
+    animation: none;
+  }
+
+  .maka-wordmark::before {
     animation: none;
   }
 
