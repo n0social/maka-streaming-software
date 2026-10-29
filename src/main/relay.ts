@@ -26,6 +26,8 @@ const execFileAsync = promisify(execFile)
 const RELAY_MIN_BYTES = 200_000_000
 /** Public download name first, then the name shipped inside older installers. */
 const RELAY_EXE_NAMES = ['MAKArelay.exe', 'TabcastRelay.exe'] as const
+/** New installs use MAKArelay. The current encoder still extracts into TabcastRelay. */
+export const RELAY_INSTALL_DIRS = ['MAKArelay', 'TabcastRelay'] as const
 const POLL_MS = 1500
 const MAX_AUTO_RESTARTS = MAX_LIVE_RETRY_ATTEMPTS
 
@@ -101,7 +103,7 @@ function relayExeCandidates(): string[] {
   const localApp = process.env.LOCALAPPDATA
   const installed: string[] = []
   if (localApp) {
-    for (const rootName of ['TabcastRelay', 'MAKArelay']) {
+    for (const rootName of RELAY_INSTALL_DIRS) {
       for (const name of RELAY_EXE_NAMES) {
         installed.push(join(localApp, rootName, 'v0.1.0', name))
         installed.push(join(localApp, rootName, name))
@@ -284,28 +286,30 @@ type DirectRelayLaunch = {
   mode: 'direct' | 'launcher'
 }
 
-/** Prefer the unpacked Node relay. The single-file launcher still extracts under TabcastRelay. */
+/** Prefer the unpacked Node relay under %LOCALAPPDATA%\MAKArelay, then the older TabcastRelay folder. */
 function resolveLaunch(): DirectRelayLaunch {
   const localApp = process.env.LOCALAPPDATA
   if (localApp) {
-    const root = join(localApp, 'TabcastRelay', 'v0.1.0')
-    const node = join(root, 'runtime', 'node.exe')
-    const entry = join(root, 'relay', 'dist', 'index.js')
-    const ffmpeg = join(root, 'ffmpeg', 'bin', 'ffmpeg.exe')
-    const relayRoot = join(root, 'relay')
-    if (existsSync(node) && existsSync(entry)) {
-      return {
-        command: node,
-        args: [entry],
-        cwd: relayRoot,
-        mode: 'direct',
-        env: {
-          ...process.env,
-          TABCAST_NO_OPEN: '1',
-          TABCAST_STREAM_URL: RELAY_WHIP_URL,
-          TABCAST_RELAY_ROOT: relayRoot,
-          FFMPEG_PATH: existsSync(ffmpeg) ? ffmpeg : (process.env.FFMPEG_PATH ?? ''),
-        },
+    for (const rootName of RELAY_INSTALL_DIRS) {
+      const root = join(localApp, rootName, 'v0.1.0')
+      const node = join(root, 'runtime', 'node.exe')
+      const entry = join(root, 'relay', 'dist', 'index.js')
+      const ffmpeg = join(root, 'ffmpeg', 'bin', 'ffmpeg.exe')
+      const relayRoot = join(root, 'relay')
+      if (existsSync(node) && existsSync(entry)) {
+        return {
+          command: node,
+          args: [entry],
+          cwd: relayRoot,
+          mode: 'direct',
+          env: {
+            ...process.env,
+            TABCAST_NO_OPEN: '1',
+            TABCAST_STREAM_URL: RELAY_WHIP_URL,
+            TABCAST_RELAY_ROOT: relayRoot,
+            FFMPEG_PATH: existsSync(ffmpeg) ? ffmpeg : (process.env.FFMPEG_PATH ?? ''),
+          },
+        }
       }
     }
   }
