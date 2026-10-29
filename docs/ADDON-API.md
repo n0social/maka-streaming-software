@@ -1,6 +1,6 @@
 # Maka Addon API v1
 
-Manifest: `tabcast-addon.json` in `%APPDATA%/Maka/addons/<folder>/`
+Manifest: `maka-addon.json` in `%APPDATA%/Maka/addons/<folder>/`
 
 ## API version
 
@@ -19,7 +19,7 @@ Manifest: `tabcast-addon.json` in `%APPDATA%/Maka/addons/<folder>/`
 | `relay.config.write` | Write relay config — user confirm required (future) |
 | `network.fetch` | HTTPS fetch from main process (sandboxed runtime + live hooks) |
 | `live.events` | Subscribe to go-live / end-live / app.ready |
-| `device.phone-pair` | LAN phone QR pairing (`com.tabcast.phone-cam` only): get/refresh/unpair + status updates |
+| `device.phone-pair` | LAN phone QR pairing (`com.maka.phone-cam` only): get/refresh/unpair + status updates |
 
 ## Declarative actions (v1)
 
@@ -35,24 +35,24 @@ Addons with `"entry": "index.html"` load in a **sandboxed webview** in the Addon
 
 ### Protocol
 
-Addon pages load from `tabcast-addon://<addon-id>/<file>` — served only from the installed addon folder (path traversal blocked).
+Addon pages load from `maka-addon://<addon-id>/<file>` — served only from the installed addon folder (path traversal blocked).
 
 ### Preload bridge
 
 Each webview uses `addon-bridge` preload exposing:
 
 ```javascript
-window.tabcast.addons.getInfo()       // → { id, name, version, apiVersion }
-window.tabcast.addons.toast(message)  // requires ui.toast
-window.tabcast.addons.fetch(url, init) // requires network.fetch, HTTPS only
-window.tabcast.addons.getSettings()
-window.tabcast.addons.setSettings(partial)
-window.tabcast.addons.openExternal(url) // requires ui.external
-window.tabcast.addons.onLiveEvent(handler) // requires live.events hook
-window.tabcast.addons.getPhonePair()       // requires device.phone-pair
-window.tabcast.addons.refreshPhonePair()   // requires device.phone-pair
-window.tabcast.addons.unpairPhone()        // requires device.phone-pair
-window.tabcast.addons.onPhonePairUpdate(handler) // requires device.phone-pair
+window.maka.addons.getInfo()       // → { id, name, version, apiVersion }
+window.maka.addons.toast(message)  // requires ui.toast
+window.maka.addons.fetch(url, init) // requires network.fetch, HTTPS only
+window.maka.addons.getSettings()
+window.maka.addons.setSettings(partial)
+window.maka.addons.openExternal(url) // requires ui.external
+window.maka.addons.onLiveEvent(handler) // requires live.events hook
+window.maka.addons.getPhonePair()       // requires device.phone-pair
+window.maka.addons.refreshPhonePair()   // requires device.phone-pair
+window.maka.addons.unpairPhone()        // requires device.phone-pair
+window.maka.addons.onPhonePairUpdate(handler) // requires device.phone-pair
 ```
 
 Pair URLs come from the main process; addons must not bind port `38474` themselves.

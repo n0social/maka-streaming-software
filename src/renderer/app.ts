@@ -3,7 +3,7 @@ import type {
   BrowseTabInfo,
   CaptureSource,
   DiagEvent,
-  TabcastBridge,
+  MakaBridge,
 } from '../preload/index'
 import type { RelaySnapshot } from '../shared/relay-snapshot'
 import type { StreamProfile, SceneLayout, RelayHealth } from '../shared/tabcast'
@@ -61,7 +61,7 @@ import './onboarding.css'
 
 declare global {
   interface Window {
-    tabcast: TabcastBridge
+    maka: MakaBridge
   }
 }
 
@@ -126,7 +126,7 @@ const programBrowser = document.getElementById('program-browser')!
 const programBrowserVideo = document.getElementById('program-browser-video') as HTMLVideoElement
 const brandTag = document.getElementById('brand-tag')
 
-const CUSTOM_RTM_ADDON_ID = 'com.tabcast.custom-rtmp'
+const CUSTOM_RTM_ADDON_ID = 'com.maka.custom-rtmp'
 
 let selectedSourceId: string | null = null
 let captureKind: 'desktop' | 'browse' | null = null
@@ -203,7 +203,7 @@ function applyMode(mode: AppMode): void {
   }
 
   if (mode === 'browse') {
-    void window.tabcast.listTabs().then(renderBrowseTabs)
+    void window.maka.listTabs().then(renderBrowseTabs)
   }
 }
 
@@ -224,12 +224,12 @@ function renderBrowseTabs(tabs: BrowseTabInfo[]): void {
       close.textContent = '×'
       close.addEventListener('click', (e) => {
         e.stopPropagation()
-        void window.tabcast.closeTab(tab.id).then(renderBrowseTabs)
+        void window.maka.closeTab(tab.id).then(renderBrowseTabs)
       })
       btn.appendChild(close)
     }
     btn.addEventListener('click', () => {
-      void window.tabcast.activateTab(tab.id).then(renderBrowseTabs)
+      void window.maka.activateTab(tab.id).then(renderBrowseTabs)
     })
     browseTabList.appendChild(btn)
   }
@@ -421,7 +421,7 @@ function updateProgramCamOverlay(): void {
 }
 
 async function pushSceneLayout(): Promise<void> {
-  const snapshot = await window.tabcast.getRelay()
+  const snapshot = await window.maka.getRelay()
   if (!snapshot.health) return
   const profile = selectedProfile()
   const layout = defaultSceneLayout({
@@ -645,7 +645,7 @@ function onWhipConnectionState(state: RTCPeerConnectionState): void {
     liveRecoveryReason = null
     setDestError(null)
     startWhipVideoWatchdogForPublisher()
-    void window.tabcast.getRelay().then(renderRelay)
+    void window.maka.getRelay().then(renderRelay)
     return
   }
   if (state === 'failed' || state === 'disconnected' || state === 'closed') {
@@ -706,7 +706,7 @@ async function runLiveRecovery(reason: string): Promise<void> {
   liveRecoveryReason = reason
   setDestError(null)
   destHint.textContent = liveReconnectStatusLine()
-  void window.tabcast.getRelay().then(renderRelay)
+  void window.maka.getRelay().then(renderRelay)
 
   sessionIngestTarget = nextIngestTargetAfterFailedRecovery(
     sessionIngestTarget,
@@ -725,15 +725,15 @@ async function runLiveRecovery(reason: string): Promise<void> {
       whipPublisher = null
     }
 
-    let snapshot = await window.tabcast.getRelay()
+    let snapshot = await window.maka.getRelay()
     if (!snapshot.health || snapshot.lifecycle === 'stopped' || snapshot.lifecycle === 'error') {
-      snapshot = await window.tabcast.startRelay()
+      snapshot = await window.maka.startRelay()
     }
 
     snapshot = await waitForRelayReady(
-      () => window.tabcast.getRelay(),
+      () => window.maka.getRelay(),
       async () => {
-        await window.tabcast.refreshRelay()
+        await window.maka.refreshRelay()
       },
     )
 
@@ -747,8 +747,8 @@ async function runLiveRecovery(reason: string): Promise<void> {
     }
 
     snapshot = await repostRelayConfigIfNeeded(snapshot)
-    await window.tabcast.refreshRelay()
-    snapshot = await window.tabcast.getRelay()
+    await window.maka.refreshRelay()
+    snapshot = await window.maka.getRelay()
     if (relayNeedsLiveBootstrap(snapshot)) {
       await pushSceneLayout()
     }
@@ -758,7 +758,7 @@ async function runLiveRecovery(reason: string): Promise<void> {
     }
 
     whipPublisher = await attachWhipPublisher(snapshot.health)
-    await window.tabcast.refreshRelay()
+    await window.maka.refreshRelay()
 
     if (runId !== liveReconnectRunId) return
 
@@ -787,7 +787,7 @@ async function runLiveRecovery(reason: string): Promise<void> {
   } finally {
     if (runId === liveReconnectRunId) {
       liveReconnecting = false
-      void window.tabcast.getRelay().then(renderRelay)
+      void window.maka.getRelay().then(renderRelay)
     }
   }
 }
@@ -804,7 +804,7 @@ function markLiveRecoveryExhausted(reason: string, detail?: string): void {
     `Live stream dropped (${label}).${extra} Use Retry connection or End Live.`,
   )
   mountRetryConnectionHint(false)
-  void window.tabcast.getRelay().then(renderRelay)
+  void window.maka.getRelay().then(renderRelay)
 }
 
 function markLiveRecoveryFatal(reason: string, detail?: string): void {
@@ -821,7 +821,7 @@ function markLiveRecoveryFatal(reason: string, detail?: string): void {
     : ' Use Retry connection or End Live.'
   setDestError(`Live stream stopped (${label}).${extra ? ` ${extra}` : ''}${keyHint}`)
   mountRetryConnectionHint(true)
-  void window.tabcast.getRelay().then(renderRelay)
+  void window.maka.getRelay().then(renderRelay)
 }
 
 function recoveryReasonFromSnapshot(snapshot: RelaySnapshot): string {
@@ -931,7 +931,7 @@ function syncEncodeProfileSelects(id: EncodeProfileId): void {
 function onEncodeProfileChanged(id: EncodeProfileId): void {
   syncEncodeProfileSelects(id)
   updateProgramStats()
-  void window.tabcast.setSettings({ bitrateProfile: id })
+  void window.maka.setSettings({ bitrateProfile: id })
   void pushSceneLayout().catch(() => undefined)
 }
 
@@ -985,7 +985,7 @@ function syncCustomRtmpBlock(show: boolean): void {
 }
 
 async function loadCustomRtmpSettings(): Promise<void> {
-  const settings = await window.tabcast.getAddonSettings(CUSTOM_RTM_ADDON_ID)
+  const settings = await window.maka.getAddonSettings(CUSTOM_RTM_ADDON_ID)
   if (settings.customRtmpUrl) customRtmpUrl.value = settings.customRtmpUrl
   if (settings.customRtmpKeyConfigured) {
     customRtmpKey.placeholder = 'Stream key saved'
@@ -998,7 +998,7 @@ async function loadCustomRtmpSettings(): Promise<void> {
 
 async function persistCustomRtmpSettings(): Promise<void> {
   if (destCustomBlock.hidden) return
-  await window.tabcast.setAddonSettings(CUSTOM_RTM_ADDON_ID, {
+  await window.maka.setAddonSettings(CUSTOM_RTM_ADDON_ID, {
     customRtmpUrl: customRtmpUrl.value.trim(),
     customRtmpKey: customRtmpKey.value.trim() || undefined,
     backupRtmpUrl: backupRtmpUrl.value.trim() || undefined,
@@ -1033,7 +1033,7 @@ async function selectDesktopSource(source: CaptureSource): Promise<void> {
     layerGame.textContent = `Gameplay — ${source.name}`
     syncLayerTracks()
     if (currentMode !== 'studio') {
-      await window.tabcast.setMode('studio')
+      await window.maka.setMode('studio')
     }
   } catch (err) {
     programVideo.srcObject = null
@@ -1107,7 +1107,7 @@ async function stopBrowserCapture(): Promise<void> {
   programBrowserVideo.srcObject = null
   layerBrowser.dataset.active = '0'
   layerBrowser.textContent = 'Search tab — off'
-  await window.tabcast.setBrowseCaptureActive(false)
+  await window.maka.setBrowseCaptureActive(false)
   updateProgramBrowserOverlay()
   syncLayerTracks()
 }
@@ -1117,7 +1117,7 @@ async function startBrowserCapture(): Promise<void> {
   stopStream(browserStream)
   browserStream = null
 
-  const target = await window.tabcast.getBrowseCaptureTarget()
+  const target = await window.maka.getBrowseCaptureTarget()
   if (!target) {
     layerBrowser.dataset.active = '0'
     layerBrowser.textContent = 'Search tab — no tab'
@@ -1172,13 +1172,13 @@ async function selectBrowseTabSource(): Promise<void> {
   await startBrowserCapture()
 
   if (browserStream && currentMode !== 'studio') {
-    await window.tabcast.setMode('studio')
+    await window.maka.setMode('studio')
   }
 }
 
 async function refreshSources(): Promise<void> {
   try {
-    const sources = await window.tabcast.listCaptureSources()
+    const sources = await window.maka.listCaptureSources()
     renderSources(sources)
   } catch (err) {
     sourceList.innerHTML = `<p class="hint">${escapeHtml(err instanceof Error ? err.message : 'Could not list sources')}</p>`
@@ -1533,7 +1533,7 @@ async function dispatchAddonLiveEvents(
   event: 'live.start' | 'live.end',
 ): Promise<void> {
   try {
-    const results = await window.tabcast.dispatchAddonLiveEvent(event, {
+    const results = await window.maka.dispatchAddonLiveEvent(event, {
       profile: selectedProfile(),
       platforms: {
         twitch: destTwitch.checked,
@@ -1596,9 +1596,9 @@ async function endLive(): Promise<void> {
       await whipPublisher.close()
       whipPublisher = null
     }
-    const snapshot = await window.tabcast.getRelay()
+    const snapshot = await window.maka.getRelay()
     await stopRelayStream(snapshot.health)
-    await window.tabcast.refreshRelay()
+    await window.maka.refreshRelay()
     await dispatchAddonLiveEvents('live.end')
   } catch (err) {
     setDestError(err instanceof Error ? err.message : String(err))
@@ -1642,9 +1642,9 @@ async function goLive(): Promise<void> {
       await persistCustomRtmpSettings()
     }
 
-    let snapshot = await window.tabcast.getRelay()
+    let snapshot = await window.maka.getRelay()
     if (snapshot.lifecycle === 'stopped' || snapshot.lifecycle === 'error') {
-      snapshot = await window.tabcast.startRelay()
+      snapshot = await window.maka.startRelay()
     }
     if (!snapshot.health) {
       throw new Error(snapshot.error ?? 'Relay is not ready. Start the relay first.')
@@ -1671,7 +1671,7 @@ async function goLive(): Promise<void> {
     sessionLiveIntent = true
 
     whipPublisher = await attachWhipPublisher(snapshot.health)
-    await window.tabcast.refreshRelay()
+    await window.maka.refreshRelay()
     await dispatchAddonLiveEvents('live.start')
     destHint.textContent = 'Live — keys stay in relay RAM. End Live to tear down WHIP.'
     btnGoLive.dataset.live = '1'
@@ -1718,9 +1718,9 @@ async function onVerifyKeys(): Promise<void> {
     })
     if (!keysOk.ok) throw new Error(keysOk.message)
 
-    let snapshot = await window.tabcast.getRelay()
+    let snapshot = await window.maka.getRelay()
     if (!snapshot.health) {
-      snapshot = await window.tabcast.startRelay()
+      snapshot = await window.maka.startRelay()
     }
     if (!snapshot.health) {
       throw new Error(snapshot.error ?? 'Relay is not ready.')
@@ -1753,23 +1753,23 @@ async function onVerifyKeys(): Promise<void> {
 for (const tab of document.querySelectorAll<HTMLButtonElement>('.tab')) {
   tab.addEventListener('click', () => {
     const mode = tab.dataset.tab as AppMode
-    void window.tabcast.setMode(mode)
+    void window.maka.setMode(mode)
   })
 }
 
 urlForm.addEventListener('submit', (event) => {
   event.preventDefault()
-  void window.tabcast.navigate(urlInput.value)
+  void window.maka.navigate(urlInput.value)
 })
 
 document.getElementById('btn-back')!.addEventListener('click', () => {
-  void window.tabcast.back()
+  void window.maka.back()
 })
 document.getElementById('btn-forward')!.addEventListener('click', () => {
-  void window.tabcast.forward()
+  void window.maka.forward()
 })
 document.getElementById('btn-reload')!.addEventListener('click', () => {
-  void window.tabcast.reload()
+  void window.maka.reload()
 })
 document.getElementById('btn-refresh-sources')!.addEventListener('click', () => {
   void refreshSources()
@@ -1778,45 +1778,45 @@ document.getElementById('btn-capture-browse')!.addEventListener('click', () => {
   void selectBrowseTabSource()
 })
 document.getElementById('btn-start-relay')!.addEventListener('click', () => {
-  void window.tabcast.startRelay()
+  void window.maka.startRelay()
 })
 document.getElementById('btn-stop-relay')!.addEventListener('click', () => {
-  void window.tabcast.stopRelay()
+  void window.maka.stopRelay()
 })
 document.getElementById('btn-reveal-relay')!.addEventListener('click', () => {
-  void window.tabcast.revealRelay()
+  void window.maka.revealRelay()
 })
 document.getElementById('btn-new-tab')!.addEventListener('click', () => {
-  void window.tabcast.newTab().then((t) => {
-    if (t) void window.tabcast.listTabs().then(renderBrowseTabs)
+  void window.maka.newTab().then((t) => {
+    if (t) void window.maka.listTabs().then(renderBrowseTabs)
   })
 })
 document.getElementById('btn-pin-twitch')!.addEventListener('click', () => {
-  void window.tabcast.openPinned('pin-twitch').then(renderBrowseTabs)
+  void window.maka.openPinned('pin-twitch').then(renderBrowseTabs)
 })
 document.getElementById('btn-pin-yt')!.addEventListener('click', () => {
-  void window.tabcast.openPinned('pin-yt-studio').then(renderBrowseTabs)
+  void window.maka.openPinned('pin-yt-studio').then(renderBrowseTabs)
 })
 document.getElementById('btn-pin-yt-chat')!.addEventListener('click', () => {
-  void window.tabcast.openPinned('pin-yt-chat').then(renderBrowseTabs)
+  void window.maka.openPinned('pin-yt-chat').then(renderBrowseTabs)
 })
 document.getElementById('btn-pin-chat')!.addEventListener('click', () => {
-  void window.tabcast.openPinned('pin-chat').then(renderBrowseTabs)
+  void window.maka.openPinned('pin-chat').then(renderBrowseTabs)
 })
 document.getElementById('btn-popout-chat')!.addEventListener('click', () => {
-  void window.tabcast.popoutChat()
+  void window.maka.popoutChat()
 })
 document.getElementById('btn-win-min')!.addEventListener('click', () => {
-  void window.tabcast.windowMinimize()
+  void window.maka.windowMinimize()
 })
 document.getElementById('btn-win-max')!.addEventListener('click', () => {
-  void window.tabcast.windowMaximize()
+  void window.maka.windowMaximize()
 })
 document.getElementById('btn-win-close')!.addEventListener('click', () => {
-  void window.tabcast.windowClose()
+  void window.maka.windowClose()
 })
 document.getElementById('btn-settings')!.addEventListener('click', async () => {
-  const s = await window.tabcast.getSettings()
+  const s = await window.maka.getSettings()
   ;(document.getElementById('set-tray-live') as HTMLInputElement).checked = s.minimizeToTrayWhileLive
   ;(document.getElementById('set-open-chat') as HTMLInputElement).checked = s.openChatOnBrowse
   ;(document.getElementById('set-lab-mode') as HTMLInputElement).checked = s.labMode
@@ -1826,7 +1826,7 @@ document.getElementById('btn-settings')!.addEventListener('click', async () => {
 document.getElementById('settings-form')!.addEventListener('submit', async (event) => {
   const submitter = (event as SubmitEvent).submitter as HTMLButtonElement | null
   if (submitter?.value === 'save') {
-    const next = await window.tabcast.setSettings({
+    const next = await window.maka.setSettings({
       minimizeToTrayWhileLive: (document.getElementById('set-tray-live') as HTMLInputElement)
         .checked,
       openChatOnBrowse: (document.getElementById('set-open-chat') as HTMLInputElement).checked,
@@ -1897,8 +1897,8 @@ studioSourceBrowser.addEventListener('click', () => {
 })
 
 async function renderAddonPanels(): Promise<void> {
-  const panels = await window.tabcast.listAddonPanels()
-  const preloadPath = await window.tabcast.getAddonPreloadPath()
+  const panels = await window.maka.listAddonPanels()
+  const preloadPath = await window.maka.getAddonPreloadPath()
   const hasCustomRtmp = panels.some((p) => p.addonId === CUSTOM_RTM_ADDON_ID)
   syncCustomRtmpBlock(hasCustomRtmp)
   if (hasCustomRtmp) {
@@ -1914,7 +1914,7 @@ async function renderAddonPanels(): Promise<void> {
 
   for (const panel of panels) {
     // Filter out Discord addon from UI
-    console.log('Checking panel:', panel.addonId); if (panel.addonId === 'com.tabcast.discord-now-live') { console.log('Filtering out Discord'); continue; }
+    console.log('Checking panel:', panel.addonId); if (panel.addonId === 'com.maka.discord-now-live') { console.log('Filtering out Discord'); continue; }
 
     const section = document.createElement('section')
     section.className = 'addon-panel'
@@ -1965,13 +1965,13 @@ async function renderAddonPanels(): Promise<void> {
 }
 
 async function runAddonAction(addonId: string, actionId: string): Promise<void> {
-  if (addonId === 'com.tabcast.discord-now-live' && actionId === 'configure-webhook') {
+  if (addonId === 'com.maka.discord-now-live' && actionId === 'configure-webhook') {
     const url = window.prompt(
       'Discord channel webhook URL (https://discord.com/api/webhooks/…)',
       '',
     )
     if (!url?.trim()) return
-    const res = await window.tabcast.setAddonSettings(addonId, { discordWebhookUrl: url.trim() })
+    const res = await window.maka.setAddonSettings(addonId, { discordWebhookUrl: url.trim() })
     destHint.textContent = res.message ?? (res.ok ? 'Webhook saved.' : 'Save failed.')
     if (!res.ok) setDestError(res.message ?? 'Could not save webhook')
     return
@@ -1981,7 +1981,7 @@ async function runAddonAction(addonId: string, actionId: string): Promise<void> 
     customRtmpUrl.value = KICK_RTMP_URL
     destCustom.checked = true
     syncDestinationInputs()
-    const res = await window.tabcast.setAddonSettings(addonId, { customRtmpUrl: KICK_RTMP_URL })
+    const res = await window.maka.setAddonSettings(addonId, { customRtmpUrl: KICK_RTMP_URL })
     destHint.textContent = res.ok
       ? 'Kick ingest URL set — paste your stream key in Destinations → Custom RTMP.'
       : (res.message ?? 'Could not save preset')
@@ -1997,7 +1997,7 @@ async function runAddonAction(addonId: string, actionId: string): Promise<void> 
     customRtmpKey.value = key.trim()
     destCustom.checked = true
     syncDestinationInputs()
-    const res = await window.tabcast.setAddonSettings(addonId, {
+    const res = await window.maka.setAddonSettings(addonId, {
       customRtmpUrl: url.trim(),
       customRtmpKey: key.trim(),
     })
@@ -2006,8 +2006,8 @@ async function runAddonAction(addonId: string, actionId: string): Promise<void> 
     return
   }
 
-  const snapshot = await window.tabcast.getRelay()
-  const result = await window.tabcast.runAddonAction(addonId, actionId, {
+  const snapshot = await window.maka.getRelay()
+  const result = await window.maka.runAddonAction(addonId, actionId, {
     profile: selectedProfile(),
     hasWebcam: hasLiveWebcamVideo() && layerEnabled.cam,
   })
@@ -2051,7 +2051,7 @@ async function teardownLiveSession(): Promise<void> {
       await whipPublisher.close().catch(() => undefined)
       whipPublisher = null
     }
-    const snapshot = await window.tabcast.getRelay()
+    const snapshot = await window.maka.getRelay()
     if (snapshot.health && snapshot.lifecycle === 'live') {
       await stopRelayStream(snapshot.health).catch(() => undefined)
     }
@@ -2062,7 +2062,7 @@ async function teardownLiveSession(): Promise<void> {
     stopStream(programStream)
     programStream = null
     captureKind = null
-    await window.tabcast.setBrowseCaptureActive(false)
+    await window.maka.setBrowseCaptureActive(false)
     stopStream(cameraStream)
     cameraStream = null
     stopStream(micStream)
@@ -2072,18 +2072,18 @@ async function teardownLiveSession(): Promise<void> {
   }
 }
 
-window.tabcast.onPrepareQuit(() => {
+window.maka.onPrepareQuit(() => {
   void teardownLiveSession().finally(() => {
-    window.tabcast.ackPrepareQuit()
+    window.maka.ackPrepareQuit()
   })
 })
 
-window.tabcast.onTabs((tabs) => {
+window.maka.onTabs((tabs) => {
   renderBrowseTabs(tabs)
   void refreshSources()
 })
 
-void window.tabcast.getSettings().then((s) => {
+void window.maka.getSettings().then((s) => {
   labMode = s.labMode
   const profile = normalizeEncodeProfileId(s.bitrateProfile)
   syncEncodeProfileSelects(profile)
@@ -2105,7 +2105,7 @@ function formatDiag(events: DiagEvent[]): string {
 }
 
 async function refreshDiagnostics(): Promise<void> {
-  const events = await window.tabcast.listDiagnostics()
+  const events = await window.maka.listDiagnostics()
   diagDrawer.textContent = formatDiag(events)
   diagDrawer.dataset.fail = events.some((e) => e.level === 'error' || e.level === 'fatal')
     ? '1'
@@ -2115,7 +2115,7 @@ async function refreshDiagnostics(): Promise<void> {
 async function runVerification(): Promise<void> {
   diagDrawer.hidden = false
   diagDrawer.textContent = 'Running verification…'
-  const report = await window.tabcast.verifySystem()
+  const report = await window.maka.verifySystem()
   const lines = report.checks.map((c) => `${c.ok ? 'OK ' : 'FAIL'}  ${c.name} — ${c.detail}`)
   lines.unshift(report.ok ? 'Verification PASSED' : 'Verification FAILED')
   lines.push('', 'Recent diagnostics:', formatDiag(report.diagnostics))
@@ -2126,7 +2126,7 @@ async function runVerification(): Promise<void> {
   }
 }
 
-window.tabcast.onDiagnostic((event) => {
+window.maka.onDiagnostic((event) => {
   if (event.level === 'error' || event.level === 'fatal') {
     diagDrawer.hidden = false
   }
@@ -2188,24 +2188,24 @@ micSelect.addEventListener('change', () => {
 })
 destTwitch.addEventListener('change', () => {
   syncDestinationInputs()
-  void window.tabcast.getRelay().then(renderPlatformStatus)
+  void window.maka.getRelay().then(renderPlatformStatus)
 })
 destYoutube.addEventListener('change', () => {
   syncDestinationInputs()
-  void window.tabcast.getRelay().then(renderPlatformStatus)
+  void window.maka.getRelay().then(renderPlatformStatus)
 })
 destCustom.addEventListener('change', () => {
   syncDestinationInputs()
-  void window.tabcast.getRelay().then(renderPlatformStatus)
+  void window.maka.getRelay().then(renderPlatformStatus)
 })
 twitchKey.addEventListener('input', () => {
-  void window.tabcast.getRelay().then(renderPlatformStatus)
+  void window.maka.getRelay().then(renderPlatformStatus)
 })
 youtubeKey.addEventListener('input', () => {
-  void window.tabcast.getRelay().then(renderPlatformStatus)
+  void window.maka.getRelay().then(renderPlatformStatus)
 })
 customRtmpKey.addEventListener('input', () => {
-  void window.tabcast.getRelay().then(renderPlatformStatus)
+  void window.maka.getRelay().then(renderPlatformStatus)
 })
 
 btnGoLive.addEventListener('click', () => {
@@ -2228,15 +2228,15 @@ window.addEventListener('keydown', (event) => {
   }
   if (event.ctrlKey && event.key.toLowerCase() === 'b') {
     event.preventDefault()
-    void window.tabcast.setMode(currentMode === 'browse' ? 'studio' : 'browse')
+    void window.maka.setMode(currentMode === 'browse' ? 'studio' : 'browse')
   }
 })
 
-window.tabcast.onMode(applyMode)
-window.tabcast.onNavigated((state) => {
+window.maka.onMode(applyMode)
+window.maka.onNavigated((state) => {
   urlInput.value = state.url
 })
-window.tabcast.onTitle((title) => {
+window.maka.onTitle((title) => {
   if (currentMode !== 'browse') return
   document.title = title ? `${title} · Maka — Search` : 'Maka — Search'
 })
@@ -2244,10 +2244,10 @@ window.tabcast.onTitle((title) => {
 syncDestinationInputs()
 syncProgramVideoSurface()
 updateStudioMixControls()
-void window.tabcast.getMode().then(applyMode)
-void window.tabcast.getRelay().then(renderRelay)
-window.tabcast.onRelayUpdate(handleRelayLiveRecovery)
-void window.tabcast.getBrowserState().then((state) => {
+void window.maka.getMode().then(applyMode)
+void window.maka.getRelay().then(renderRelay)
+window.maka.onRelayUpdate(handleRelayLiveRecovery)
+void window.maka.getBrowserState().then((state) => {
   if (state) urlInput.value = state.url
 })
 void refreshSources()
@@ -2256,7 +2256,7 @@ void refreshAvDevices().then(() => {
 })
 void renderAddonPanels()
 
-initPhoneTracks(window.tabcast)
+initPhoneTracks(window.maka)
 subscribePhoneTracks((snap) => {
   const hasVideo = phoneHasVideoTrack(snap)
   const hasAudio = phoneHasAudioTrack(snap)
@@ -2273,12 +2273,12 @@ subscribePhoneTracks((snap) => {
   phoneAudioWasLive = hasAudio
 })
 
-window.tabcast.onAddonStudioToast((message) => {
+window.maka.onAddonStudioToast((message) => {
   setDestError(null)
   destHint.textContent = message
 })
 
-initMarketplace(window.tabcast, {
+initMarketplace(window.maka, {
   dialog: document.getElementById('marketplace-dialog') as HTMLDialogElement,
   list: document.getElementById('marketplace-list')!,
   onRefreshPanels: () => {
@@ -2305,10 +2305,10 @@ const onboardingTour = new OnboardingTour(
   document.getElementById('onboarding-skip') as HTMLButtonElement,
   {
     onComplete: () => {
-      void window.tabcast.setSettings({ onboardingComplete: true })
+      void window.maka.setSettings({ onboardingComplete: true })
     },
     onSkip: () => {
-      void window.tabcast.setSettings({ onboardingComplete: true })
+      void window.maka.setSettings({ onboardingComplete: true })
     },
   },
 )
@@ -2332,14 +2332,14 @@ const setupWizard = new SetupWizard(
       if (setupTwitch.value.trim()) twitchKey.value = setupTwitch.value.trim()
       if (setupYoutube.value.trim()) youtubeKey.value = setupYoutube.value.trim()
       syncDestinationInputs()
-      void window.tabcast.setSettings({ setupWizardComplete: true }).then((s) => {
+      void window.maka.setSettings({ setupWizardComplete: true }).then((s) => {
         if (!s.onboardingComplete) {
           window.setTimeout(() => onboardingTour.start(), 400)
         }
       })
     },
     onSkip: () => {
-      void window.tabcast.setSettings({ setupWizardComplete: true })
+      void window.maka.setSettings({ setupWizardComplete: true })
     },
   },
 )
@@ -2355,7 +2355,7 @@ document.getElementById('btn-replay-setup')!.addEventListener('click', () => {
 })
 
 document.getElementById('btn-check-updates')!.addEventListener('click', () => {
-  void window.tabcast.checkForUpdates().then(renderUpdateBanner)
+  void window.maka.checkForUpdates().then(renderUpdateBanner)
 })
 
 const updateBanner = document.getElementById('update-banner')!
@@ -2407,13 +2407,13 @@ function renderUpdateBanner(status: import('../preload/index').UpdateStatus): vo
 }
 
 updateBannerAction.addEventListener('click', () => {
-  void window.tabcast.getUpdateStatus().then(async (status) => {
+  void window.maka.getUpdateStatus().then(async (status) => {
     if (status.state === 'downloaded') {
-      await window.tabcast.installUpdate()
+      await window.maka.installUpdate()
       return
     }
     if (status.state === 'available') {
-      await window.tabcast.downloadUpdate()
+      await window.maka.downloadUpdate()
     }
   })
 })
@@ -2423,10 +2423,10 @@ updateBannerDismiss.addEventListener('click', () => {
   updateBanner.classList.add('hidden')
 })
 
-window.tabcast.onUpdateStatus(renderUpdateBanner)
+window.maka.onUpdateStatus(renderUpdateBanner)
 
 
-void window.tabcast.getSettings().then((s) => {
+void window.maka.getSettings().then((s) => {
   if (!s.setupWizardComplete) {
     window.setTimeout(() => setupWizard.start(), 600)
   } else if (!s.onboardingComplete) {

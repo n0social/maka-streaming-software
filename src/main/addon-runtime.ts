@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import { join, normalize } from 'node:path'
 import { protocol, shell, type WebContents } from 'electron'
-import { addonFolderName, addonHasPermission } from '../shared/addon-api'
+import { addonHasPermission } from '../shared/addon-api'
 import {
   ADDON_PROTOCOL,
   addonEntryUrl,
@@ -13,7 +13,7 @@ import {
 import type { AddonManifest } from '../shared/addon-types'
 import type { PhonePairSnapshot } from '../shared/phone-pair'
 import { loadAddonSettings, saveAddonSettings } from './addon-settings'
-import { addonsInstallDir } from './addon-state'
+import { resolveAddonDir } from './addon-state'
 import { recordDiagnostic } from './diagnostics'
 import type { AddonHost } from './addon-host'
 
@@ -40,7 +40,7 @@ export class AddonRuntime {
           return
         }
 
-        const base = normalize(join(addonsInstallDir(), addonFolderName(addonId)))
+        const base = normalize(resolveAddonDir(addonId))
         const filePath = normalize(join(base, rel))
         if (!filePath.startsWith(base) || !existsSync(filePath)) {
           callback({ error: -2 })
@@ -61,7 +61,7 @@ export class AddonRuntime {
     const entry = manifest.entry.trim()
     if (!entry) return null
 
-    const base = join(addonsInstallDir(), addonFolderName(manifest.id))
+    const base = resolveAddonDir(manifest.id)
     let file = entry
     if (entry.endsWith('.js') && !existsSync(join(base, entry))) {
       file = 'index.html'

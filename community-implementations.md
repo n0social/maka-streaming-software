@@ -31,7 +31,7 @@ These stay in the main app, not marketplace addons:
 
 ## Phone camera
 
-LAN phone pairing (QR, mobile preview page on port `38474`) is an **optional marketplace addon** (`com.tabcast.phone-cam`), not a permanent left-sidebar block. The pair server runs only while that addon is installed **and** enabled.
+LAN phone pairing (QR, mobile preview page on port `38474`) is an **optional marketplace addon** (`com.maka.phone-cam`), not a permanent left-sidebar block. The pair server runs only while that addon is installed **and** enabled.
 
 ## Community ideas
 

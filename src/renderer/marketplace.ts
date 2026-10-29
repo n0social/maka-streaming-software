@@ -1,4 +1,4 @@
-import type { MarketplaceItem, TabcastBridge } from '../preload/index'
+import type { MarketplaceItem, MakaBridge } from '../preload/index'
 
 function escapeHtml(value: string): string {
   return value
@@ -15,7 +15,7 @@ type MarketplaceUi = {
   onToast: (message: string, isError?: boolean) => void
 }
 
-export function initMarketplace(api: TabcastBridge, ui: MarketplaceUi): void {
+export function initMarketplace(api: MakaBridge, ui: MarketplaceUi): void {
   document.getElementById('btn-open-marketplace')!.addEventListener('click', () => {
     void renderMarketplace(api, ui)
     ui.dialog.showModal()
@@ -36,7 +36,7 @@ export function initMarketplace(api: TabcastBridge, ui: MarketplaceUi): void {
   })
 }
 
-async function renderMarketplace(api: TabcastBridge, ui: MarketplaceUi): Promise<void> {
+async function renderMarketplace(api: MakaBridge, ui: MarketplaceUi): Promise<void> {
   ui.list.textContent = 'Loading catalog…'
   const items = await api.listMarketplace()
   ui.list.innerHTML = ''
@@ -61,7 +61,7 @@ function appendSection(
   root: HTMLElement,
   title: string,
   items: MarketplaceItem[],
-  api: TabcastBridge,
+  api: MakaBridge,
   ui: MarketplaceUi,
 ): void {
   const heading = document.createElement('h3')
@@ -74,7 +74,7 @@ function appendSection(
   }
 }
 
-function renderCard(item: MarketplaceItem, api: TabcastBridge, ui: MarketplaceUi): HTMLElement {
+function renderCard(item: MarketplaceItem, api: MakaBridge, ui: MarketplaceUi): HTMLElement {
   const card = document.createElement('article')
   card.className = 'marketplace-card' + (item.featured ? ' featured' : '')
   card.dataset.catalogId = item.catalogId

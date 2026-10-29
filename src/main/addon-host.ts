@@ -20,6 +20,7 @@ import type {
   LiveEventName,
   MarketplaceItem,
 } from '../shared/addon-types'
+import { canonicalAddonId } from '../shared/addon-ids'
 import { SCENE_TEMPLATES } from '../shared/scene-templates'
 import type { StreamProfile } from '../shared/tabcast'
 import { loadAddonSettings, saveAddonSettings } from './addon-settings'
@@ -66,7 +67,7 @@ export class AddonHost {
     this.manifests.clear()
     this.state = loadAddonState()
     this.registerBuiltin({
-      id: 'tabcast.scene-templates',
+      id: 'maka.scene-templates',
       name: 'Scene templates',
       version: '1.0.0',
       apiVersion: 1,
@@ -85,13 +86,14 @@ export class AddonHost {
   }
 
   getManifest(addonId: string): AddonManifest | undefined {
-    return this.manifests.get(addonId)
+    return this.manifests.get(canonicalAddonId(addonId))
   }
 
   isAddonActive(addonId: string): boolean {
-    const manifest = this.manifests.get(addonId)
+    const id = canonicalAddonId(addonId)
+    const manifest = this.manifests.get(id)
     if (!manifest) return false
-    return isAddonEnabled(this.state, addonId, Boolean(manifest.builtin))
+    return isAddonEnabled(this.state, id, Boolean(manifest.builtin))
   }
 
   listMarketplace(): MarketplaceItem[] {
@@ -214,7 +216,7 @@ export class AddonHost {
   }
 
   runAction(addonId: string, actionId: string, ctx: ActionContext): AddonActionResult {
-    if (addonId === 'tabcast.scene-templates') {
+    if (addonId === 'maka.scene-templates') {
       return this.runSceneTemplate(actionId, ctx)
     }
 
@@ -255,7 +257,7 @@ export class AddonHost {
     const dir = join(addonsInstallDir(), folder)
     mkdirSync(dir, { recursive: true })
     writeFileSync(
-      join(dir, 'tabcast-addon.json'),
+      join(dir, 'maka-addon.json'),
       `${JSON.stringify(validated.manifest, null, 2)}\n`,
       'utf8',
     )
@@ -487,8 +489,10 @@ export class AddonHost {
     }
 
     for (const folder of entries) {
-      const manifestPath = join(dir, folder, 'tabcast-addon.json')
-      if (!existsSync(manifestPath)) continue
+      const manifestPath = ['maka-addon.json', 'tabcast-addon.json']
+        .map((name) => join(dir, folder, name))
+        .find((p) => existsSync(p))
+      if (!manifestPath) continue
       try {
         const raw = JSON.parse(readFileSync(manifestPath, 'utf8'))
         const validated = validateManifest(raw)
@@ -497,6 +501,7 @@ export class AddonHost {
           continue
         }
         if (validated.manifest.builtin) continue
+        validated.manifest.id = canonicalAddonId(validated.manifest.id)
         this.manifests.set(validated.manifest.id, validated.manifest)
       } catch (err) {
         recordDiagnostic('warn', 'addons.load', `Invalid manifest: ${folder}`, err)

@@ -1,9 +1,9 @@
 [
   {
-    "catalogId": "com.tabcast.discord-now-live",
+    "catalogId": "com.maka.discord-now-live",
     "featured": true,
     "manifest": {
-      "id": "com.tabcast.discord-now-live",
+      "id": "com.maka.discord-now-live",
       "name": "Discord Now Live",
       "version": "0.1.0",
       "apiVersion": 1,
@@ -52,10 +52,10 @@
     }
   },
   {
-    "catalogId": "com.tabcast.custom-rtmp",
+    "catalogId": "com.maka.custom-rtmp",
     "featured": true,
     "manifest": {
-      "id": "com.tabcast.custom-rtmp",
+      "id": "com.maka.custom-rtmp",
       "name": "Custom RTMP / Kick",
       "version": "0.1.0",
       "apiVersion": 1,
@@ -103,9 +103,9 @@
     }
   },
   {
-    "catalogId": "com.tabcast.lower-thirds",
+    "catalogId": "com.maka.lower-thirds",
     "manifest": {
-      "id": "com.tabcast.lower-thirds",
+      "id": "com.maka.lower-thirds",
       "name": "Lower thirds",
       "version": "0.1.0",
       "apiVersion": 1,

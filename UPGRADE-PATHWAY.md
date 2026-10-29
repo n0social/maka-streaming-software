@@ -34,7 +34,7 @@ Maka follows the same product shape as **VS Code**: a **stable core shell** with
 | VS Code | Maka |
 |---------|-----------------|
 | Editor + terminal + sidebar | Studio + Browse + relay + program monitor |
-| Extension API (`vscode.*`) | Addon API (`tabcast.addons.*`) |
+| Extension API (`vscode.*`) | Addon API (`maka.addons.*`) |
 | Activity bar / panels | Left sources · center stage · right scene/destinations/addons |
 | Extension marketplace | makalive.stream/addons (curated catalog) |
 | Built-in language support | Built-in capture, WHIP, Twitch/YouTube RTMP |
@@ -64,12 +64,12 @@ Maka does **not** ship every platform; the marketplace lets creators own niche d
 | Principle | Why |
 |-----------|-----|
 | **Sandboxed** | Addons run with limited IPC; no raw Node in community code |
-| **Declarative manifest** | `tabcast-addon.json` — id, permissions, entry, hooks |
+| **Declarative manifest** | `maka-addon.json` — id, permissions, entry, hooks |
 | **Capability-based permissions** | `browse.tabs`, `scene.overlay`, `relay.config`, `chat.read`, etc. |
 | **Versioned API** | `tabcast.addonApi v1` — breaking changes only on major app version |
 | **Local-first** | Addons ship as folders in `%APPDATA%/Maka/addons/` or `.maka-addon` zip |
 
-### Proposed manifest (`tabcast-addon.json`)
+### Proposed manifest (`maka-addon.json`)
 
 ```json
 {
@@ -97,7 +97,7 @@ Maka does **not** ship every platform; the marketplace lets creators own niche d
                             │ isolated world
 ┌───────────────────────────▼─────────────────────────────┐
 │  Addon iframe / Worker (user JS, CSP strict)             │
-│  tabcast.addons.* API                                    │
+│  maka.addons.* API                                    │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -108,7 +108,7 @@ Maka does **not** ship every platform; the marketplace lets creators own niche d
 | **A0** | Internal “dogfood” plugins (hardcoded modules using same hooks) | ✅ 0.2.2 (`AddonHost` + scene templates) |
 | **A1** | `AddonHost` + manifest loader + 3 permissions | ✅ 0.3 (`addon-api.ts`, declarative actions) |
 | **A2** | Addon marketplace folder + enable/disable UI in Settings | ✅ 0.3 (marketplace dialog + install) |
-| **A2.5** | Sandboxed webview runtime + `tabcast.addons` preload bridge | ✅ 0.3.6 |
+| **A2.5** | Sandboxed webview runtime + `maka.addons` preload bridge | ✅ 0.3.6 |
 | **A3** | Signed addon catalog (GitHub repo / makalive.stream/addons) | 1.0 |
 | **A4** | Creator SDK docs + CLI `maka-addon init` | 1.1 |
 
@@ -283,7 +283,7 @@ Beyond user addons, **built-in integrations** ship with the app and may share co
 0.2.2  ✅ Browse tab capture · scene templates · dual-dest chips · onboarding tour
 0.3.0  ✅ Addon API v1 (declarative) · marketplace catalog UI · install/enable
 0.3.5  ✅ live.start/end hooks · remote catalog feed · Discord webhook pattern
-0.3.6  ✅ Sandboxed addon iframe + tabcast.addons bridge + Hello Maka sample
+0.3.6  ✅ Sandboxed addon iframe + maka.addons bridge + Hello Maka sample
 0.4.0  Public creator SDK · community platform addons (Kick/custom RTMP)
 0.4.5  Instant replay buffer · audio routing improvements
 0.5.0  Addon marketplace (curated) · YouTube chat · Discord webhook integration

@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { app } from 'electron'
-import { addonFolderName, isValidAddonId } from '../shared/addon-api'
+import { isValidAddonId } from '../shared/addon-api'
+import { resolveAddonDir } from './addon-state'
 import { KICK_RTMP_URL } from '../shared/stream-keys'
 
 export type AddonSettings = {
@@ -24,7 +24,7 @@ const CUSTOM_RTMP_URL_RE = /^rtmps?:\/\/[a-zA-Z0-9.-]+(?::\d+)?(?:\/[\w./-]*)?$/
 const TURN_URL_RE = /^turns?:[^\s]+$/i
 
 function settingsPath(addonId: string): string {
-  const dir = join(app.getPath('userData'), 'addons', addonFolderName(addonId))
+  const dir = resolveAddonDir(addonId)
   mkdirSync(dir, { recursive: true })
   return join(dir, 'settings.json')
 }

@@ -261,7 +261,7 @@ function openChatPopout(url?: string): void {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
-      partition: 'persist:tabcast-browse',
+      partition: 'persist:maka-browse',
     },
   })
 
