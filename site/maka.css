@@ -430,6 +430,7 @@ svg {
   min-height: clamp(10rem, 28vw, 16rem);
   padding: 0 clamp(0.75rem, 3.5vw, 1.75rem);
   overflow: visible;
+  isolation: isolate;
 }
 
 .maka-wordmark {
@@ -507,6 +508,9 @@ svg {
   padding-inline: inherit;
   box-sizing: border-box;
   white-space: nowrap;
+  width: max-content;
+  max-width: 100%;
+  line-height: inherit;
   background-image:
     repeating-linear-gradient(
       125deg,
@@ -578,7 +582,7 @@ svg {
 
 .hero-mvp__mascot-wrap {
   position: absolute;
-  z-index: 0;
+  z-index: 1;
   top: 50%;
   left: clamp(58%, 62vw, 68%);
   margin: 0;
@@ -609,6 +613,115 @@ svg {
   padding: 0.95rem 1.1rem;
   font-size: 0.74rem;
   letter-spacing: 0.07em;
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+}
+
+/* Manga focus lines — burst on hover, then subtle drift (hero CTAs only) */
+.hero-mvp__btn::before,
+.hero-mvp__btn::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 220%;
+  height: 220%;
+  margin: 0;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.35);
+  transition: opacity 0.15s ease;
+  z-index: -1;
+  border-radius: 50%;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100% 100%;
+}
+
+.hero-mvp__btn::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-50 -50 100 100'%3E%3Cg fill='none' stroke='%231a1408' stroke-width='1.15' stroke-linecap='round' opacity='0.55'%3E%3Cpath d='M0 -46 L0 -18'/%3E%3Cpath d='M0 18 L0 46'/%3E%3Cpath d='M-46 0 L-18 0'/%3E%3Cpath d='M18 0 L46 0'/%3E%3Cpath d='M-33 -33 L-13 -13'/%3E%3Cpath d='M13 13 L33 33'/%3E%3Cpath d='M33 -33 L13 -13'/%3E%3Cpath d='M-13 13 L-33 33'/%3E%3Cpath d='M0 -38 L4 -22 L-4 -22 Z'/%3E%3Cpath d='M0 38 L4 22 L-4 22 Z'/%3E%3Cpath d='M-38 0 L-22 4 L-22 -4 Z'/%3E%3Cpath d='M38 0 L22 4 L22 -4 Z'/%3E%3C/g%3E%3Cg fill='none' stroke='%23ffc40c' stroke-width='0.85' stroke-linecap='round' opacity='0.7'%3E%3Cpath d='M0 -34 L0 -8'/%3E%3Cpath d='M0 8 L0 34'/%3E%3Cpath d='M-34 0 L-8 0'/%3E%3Cpath d='M8 0 L34 0'/%3E%3Cpath d='M-24 -24 L-8 -8'/%3E%3Cpath d='M8 8 L24 24'/%3E%3Cpath d='M24 -24 L8 -8'/%3E%3Cpath d='M-8 8 L-24 24'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+.hero-mvp__btn::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-50 -50 100 100'%3E%3Cg fill='none' stroke='%231a1408' stroke-width='0.65' stroke-linecap='round' opacity='0.35'%3E%3Cpath d='M-6 -44 L-2 -20 L2 -28'/%3E%3Cpath d='M6 44 L2 20 L-2 28'/%3E%3Cpath d='M-44 -6 L-20 -2 L-28 2'/%3E%3Cpath d='M44 6 L20 2 L28 -2'/%3E%3Cpath d='M-40 12 L-18 8'/%3E%3Cpath d='M40 -12 L18 -8'/%3E%3Cpath d='M12 40 L8 18'/%3E%3Cpath d='M-12 -40 L-8 -18'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+.hero-mvp__btn:hover::before,
+.hero-mvp__btn:focus-visible::before,
+.hero-mvp__btn:hover::after,
+.hero-mvp__btn:focus-visible::after {
+  opacity: 1;
+}
+
+.hero-mvp__btn:hover::before,
+.hero-mvp__btn:focus-visible::before {
+  animation: hero-btn-manga-burst 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards,
+    hero-btn-manga-flow 2.8s ease-in-out 0.42s infinite;
+}
+
+.hero-mvp__btn:hover::after,
+.hero-mvp__btn:focus-visible::after {
+  animation: hero-btn-manga-burst-alt 0.48s cubic-bezier(0.22, 1, 0.36, 1) forwards,
+    hero-btn-manga-flow-alt 3.2s ease-in-out 0.48s infinite;
+}
+
+@keyframes hero-btn-manga-burst {
+  0% {
+    transform: translate(-50%, -50%) scale(0.2);
+    opacity: 0;
+  }
+
+  35% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(-50%, -50%) scale(1.05);
+    opacity: 0.92;
+  }
+}
+
+@keyframes hero-btn-manga-burst-alt {
+  0% {
+    transform: translate(-50%, -50%) scale(0.15) rotate(-6deg);
+    opacity: 0;
+  }
+
+  40% {
+    opacity: 0.85;
+  }
+
+  100% {
+    transform: translate(-50%, -50%) scale(1.12) rotate(4deg);
+    opacity: 0.75;
+  }
+}
+
+@keyframes hero-btn-manga-flow {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1.02) rotate(0deg);
+    opacity: 0.88;
+  }
+
+  50% {
+    transform: translate(-50%, -50%) scale(1.08) rotate(2deg);
+    opacity: 0.72;
+  }
+}
+
+@keyframes hero-btn-manga-flow-alt {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1.06) rotate(3deg);
+    opacity: 0.65;
+  }
+
+  50% {
+    transform: translate(-50%, -50%) scale(1.01) rotate(-2deg);
+    opacity: 0.8;
+  }
 }
 
 .hero-mvp__btn--download {
@@ -829,7 +942,7 @@ svg {
     justify-content: flex-end;
     align-items: center;
     padding-right: clamp(-3.5rem, -6vw, -1.25rem);
-    z-index: 0;
+    z-index: 1;
   }
 
   .hero-mvp__mascot {
@@ -888,6 +1001,20 @@ svg {
 
   .maka-wordmark::before {
     animation: none;
+  }
+
+  .hero-mvp__btn::before,
+  .hero-mvp__btn::after {
+    animation: none !important;
+    transition: none;
+  }
+
+  .hero-mvp__btn:hover::before,
+  .hero-mvp__btn:focus-visible::before,
+  .hero-mvp__btn:hover::after,
+  .hero-mvp__btn:focus-visible::after {
+    opacity: 0.55;
+    transform: translate(-50%, -50%) scale(1);
   }
 
   .btn:hover {
