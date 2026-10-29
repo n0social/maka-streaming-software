@@ -10,15 +10,15 @@ Maka is **free streaming software** for Windows: a desktop **Electron studio** f
 
 ---
 
-## Get Maka (v0.2.4 installer)
+## Get Maka (v0.2.5 installer)
 
-The current **unsigned** Windows installer on GitHub is **v0.2.4**. Recent builds include the **phone camera/mic add-on** (QR pairing, independent camera and mic, 60-second rejoin, STUN and optional TURN) and **live stream recovery** (a bad stream key stops the stream immediately, network blips retry longer, WHIP stall watchdog, backup RTMP ingest).
+The current **unsigned** Windows installer on GitHub is **v0.2.5**. Installed copies of v0.2.4 check that release for an update. It includes the **phone camera/mic add-on** (QR pairing, independent camera and mic, 60-second rejoin, STUN and optional TURN) and **live stream recovery** (a bad stream key stops the stream immediately, network blips retry longer, WHIP stall watchdog, backup RTMP ingest).
 
-`main` may be a few documentation commits ahead of the tag. The download and `git checkout maka.streaming.v.01` match the published installer; building `main` is the same app plus any commits made after the tag.
+`git checkout v0.2.5` matches the published installer.
 
 ### Option A — Download (Windows)
 
-1. Download **[Maka-Setup-0.2.4.exe](https://github.com/n0social/maka-streaming-software/releases/download/maka.streaming.v.01/Maka-Setup-0.2.4.exe)** from the [maka.streaming.v.01 release](https://github.com/n0social/maka-streaming-software/releases/tag/maka.streaming.v.01) (installer **v0.2.4**).
+1. Download **[Maka-Setup-0.2.5.exe](https://github.com/n0social/maka-streaming-software/releases/download/v0.2.5/Maka-Setup-0.2.5.exe)** from the [v0.2.5 release](https://github.com/n0social/maka-streaming-software/releases/tag/v0.2.5).
 2. Run the installer on **Windows 10 or 11** (x64).
 3. **Windows SmartScreen** may warn because the build is **unsigned** — that is expected until code signing is in place.
 
@@ -104,7 +104,7 @@ Automatic reconnect with a **fatal-vs-blip** retry policy (ingest/key errors sto
 
 ## SmartScreen & trust
 
-The v0.2.4 installer is **unsigned**. SmartScreen may block or warn on first run. Only download from the official GitHub release linked above.
+The v0.2.5 installer is **unsigned**. SmartScreen may block or warn on first run. Only download from the official GitHub release linked above.
 
 ---
 
