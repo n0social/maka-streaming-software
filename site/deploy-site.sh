@@ -1,11 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
-# HTML links: /maka.css?v=412fa09 (grep site for maka.css — bump ?v= when maka.css changes).
-# Optional nginx: site/tabcast-site-cache.conf → snippets + include in server block.
+# HTML links: https://tabcast.live.skydav.work/maka.css?v=dc6d010 (absolute origin avoids apex redirect stripping /maka.css).
+# nginx: site/tabcast-site-cache.conf + site/nginx/tabcast.live.skydav.work.conf
 
 WEB_ROOT="${WEB_ROOT:-/opt/tabcast/web}"
 SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
+SITE_HOST="${SITE_HOST:-tabcast.live.skydav.work}"
+CSS_BUILD="${CSS_BUILD:-dc6d010}"
 
 echo "Publishing Maka site from ${SRC_DIR}…"
 
@@ -49,14 +51,32 @@ if [ -f "${SRC_DIR}/tabcast-site-cache.conf" ]; then
   cp "${SRC_DIR}/tabcast-site-cache.conf" /etc/nginx/snippets/tabcast-site-cache.conf
 fi
 
+if [ -f "${SRC_DIR}/nginx/tabcast.live.skydav.work.conf" ]; then
+  cp "${SRC_DIR}/nginx/tabcast.live.skydav.work.conf" /etc/nginx/sites-available/tabcast.live.skydav.work
+  ln -sf /etc/nginx/sites-available/tabcast.live.skydav.work /etc/nginx/sites-enabled/tabcast.live.skydav.work
+fi
+
 nginx -t
 systemctl reload nginx
 
 echo "--- verify ---"
-curl -sk -o /dev/null -w "home:%{http_code}\n" https://127.0.0.1/ -H "Host: tabcast.live.skydav.work"
-curl -sk -o /dev/null -w "preview:%{http_code}\n" https://127.0.0.1/preview/ -H "Host: tabcast.live.skydav.work"
-curl -sk -o /dev/null -w "legacy:%{http_code}\n" https://127.0.0.1/legacy.html -H "Host: tabcast.live.skydav.work"
-curl -sk -o /dev/null -w "stream:%{http_code}\n" https://127.0.0.1/stream/ -H "Host: tabcast.live.skydav.work"
-curl -sk -o /dev/null -w "marketing:%{http_code}\n" https://127.0.0.1/marketing/download-now.png -H "Host: tabcast.live.skydav.work"
-curl -sk -o /dev/null -w "setup:%{http_code}\n" https://127.0.0.1/downloads/Maka-Setup-0.2.4.exe -H "Host: tabcast.live.skydav.work"
+curl -sk -o /dev/null -w "home:%{http_code}\n" "https://127.0.0.1/" -H "Host: ${SITE_HOST}"
+curl -sk -o /dev/null -w "preview:%{http_code}\n" "https://127.0.0.1/preview/" -H "Host: ${SITE_HOST}"
+curl -sk -o /dev/null -w "legacy:%{http_code}\n" "https://127.0.0.1/legacy.html" -H "Host: ${SITE_HOST}"
+curl -sk -o /dev/null -w "stream:%{http_code}\n" "https://127.0.0.1/stream/" -H "Host: ${SITE_HOST}"
+curl -sk -o /dev/null -w "marketing:%{http_code}\n" "https://127.0.0.1/marketing/download-now.png" -H "Host: ${SITE_HOST}"
+curl -sk -o /dev/null -w "setup:%{http_code}\n" "https://127.0.0.1/downloads/Maka-Setup-0.2.4.exe" -H "Host: ${SITE_HOST}"
+
+css_ct="$(curl -skI "https://127.0.0.1/maka.css?v=${CSS_BUILD}" -H "Host: ${SITE_HOST}" | awk -F': ' 'tolower($1)=="content-type"{print $2}' | tr -d '\r')"
+css_head="$(curl -sk "https://127.0.0.1/maka.css?v=${CSS_BUILD}" -H "Host: ${SITE_HOST}" | head -c 40)"
+echo "maka.css content-type:${css_ct}"
+echo "maka.css head:${css_head}"
+if [[ "${css_ct}" != *"text/css"* ]] || [[ "${css_head}" != "/* MAKA_CSS_BUILD=${CSS_BUILD}"* ]]; then
+  echo "FAIL: maka.css not served as stylesheet" >&2
+  exit 1
+fi
+
+html_link="$(curl -sk "https://127.0.0.1/" -H "Host: ${SITE_HOST}" | grep -o 'maka.css?v=[^"]*' | head -1)"
+echo "index stylesheet link:${html_link}"
+
 echo DONE
