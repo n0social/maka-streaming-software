@@ -48,9 +48,13 @@ rsync -avz --delete \
 ssh root@104.131.164.94 'WEB_ROOT=/opt/tabcast/web bash /opt/tabcast/site-src/deploy-site.sh'
 ```
 
-`site/deploy-site.sh` copies assets into `/opt/tabcast/web`, installs nginx site + cache snippet, reloads nginx. Default CSS cache bust: **`CSS_BUILD=dc6d035`** (override with env if needed).
+`site/deploy-site.sh` copies assets into `/opt/tabcast/web`, installs nginx site + cache snippet, reloads nginx. Default CSS cache bust: **`CSS_BUILD=dc6d036`** (override with env if needed).
 
-Alternative: copy `site/` into `/opt/tabcast/site-src` on the server and run the same `deploy-site.sh` there.
+From a Cloud Agent with `SKYDAV_SSH_PRIVATE_KEY_B64` configured:
+
+```bash
+bash scripts/skydav-deploy-site.sh
+```
 
 ## Branch / repo state (studio redesign)
 
@@ -91,7 +95,7 @@ systemctl reload caddy
 **Origin CSS (should pass after deploy):**
 
 ```bash
-curl -sI 'https://tabcast.live.skydav.work/maka.css?v=dc6d035' | grep -iE '^(HTTP|content-type)'
+curl -sI 'https://tabcast.live.skydav.work/maka.css?v=dc6d036' | grep -iE '^(HTTP|content-type)'
 # HTTP/1.1 200 OK
 # Content-Type: text/css
 ```

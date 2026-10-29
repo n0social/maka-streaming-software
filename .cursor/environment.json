@@ -1,0 +1,5 @@
+{
+  "name": "Maka / Tabcast (site deploy SSH)",
+  "install": "bash .cursor/cloud-agent-install.sh 2>/dev/null || (command -v npm >/dev/null && npm ci || true)",
+  "start": "bash scripts/cloud-skydav-ssh-bootstrap.sh"
+}
