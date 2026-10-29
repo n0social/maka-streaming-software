@@ -1,5 +1,16 @@
 (function () {
-  const RELAY_BASE = 'http://127.0.0.1:38473';
+  function resolveRelayBase() {
+    const params = new URLSearchParams(window.location.search);
+    const relayParam = params.get('relay');
+    if (relayParam) return relayParam.replace(/\/$/, '');
+    const host = window.location.hostname;
+    if (host === 'makalive.stream' || host === 'www.makalive.stream') {
+      return `${window.location.origin}/relay`;
+    }
+    return 'http://127.0.0.1:38473';
+  }
+
+  const RELAY_BASE = resolveRelayBase();
   const PATHS = {
     health: '/health',
     status: '/status',
@@ -96,8 +107,8 @@
       stopStatusPoll();
       renderStatusJson(null);
       setRelayStatus('warn', 'Relay not detected');
-      els.relayVersionLine.textContent = 'No relay on 127.0.0.1:38473 — run npm run web:relay or install Maka.';
-      log('No relay on 127.0.0.1:38473.');
+      els.relayVersionLine.textContent = `No relay at ${RELAY_BASE} — run npm run web:relay or install Maka.`;
+      log(`No relay at ${RELAY_BASE}.`);
       return false;
     }
   }
