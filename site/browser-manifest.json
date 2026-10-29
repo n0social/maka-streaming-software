@@ -5,10 +5,10 @@
   "version": "0.2.5",
   "includesRelay": true,
   "artifact": "Maka-Setup-0.2.5.exe",
-  "sha256": null,
+  "sha256": "d9793de495e67077244e4ee02135acd292745abba19e6c13856d3b0b8f030eee",
   "signed": false,
   "signing": null,
-  "size": null,
+  "size": 190354152,
   "productName": "Maka",
-  "releasedAt": "2026-10-25T22:33:42Z"
+  "releasedAt": "2026-10-29T15:38:49.323Z"
 }
