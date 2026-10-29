@@ -4,7 +4,7 @@
 
 The public site is **[https://makalive.stream](https://makalive.stream)**. Visitors sometimes saw an unstyled hero (“black Arial MAKA”) when a front proxy dropped the request path, so `/maka.css` became a redirect to the homepage. Browsers then treated `index.html` as CSS and discarded it.
 
-Site **source of truth** for HTML/CSS is this repo under `site/`. **Origin** nginx on **`104.131.164.94`** serves `/opt/tabcast/web`. Stylesheet links in HTML point at `https://makalive.stream/maka.css`.
+Site **source of truth** for HTML/CSS is this repo under `site/`. **Origin** nginx on **`104.131.164.94`** serves `/opt/maka/web`. Stylesheet links in HTML point at `https://makalive.stream/maka.css`.
 
 ## Fixes already in repo
 
@@ -18,16 +18,16 @@ Keep the foil and wordmark in `site/maka.css`. Current CSS query is **`dc6d038`*
 
 ## SSH / deploy
 
-- Droplet: **`root@104.131.164.94`**, hostname `skydav`, web root **`/opt/tabcast/web`**
+- Droplet: **`root@104.131.164.94`**, hostname `skydav`, web root **`/opt/maka/web`**
 - Public URL: **https://makalive.stream**
-- Deploy: rsync `site/` → `/opt/tabcast/site-src/`, run `deploy-site.sh` (full commands in `docs/site-deploy.md`)
+- Deploy: rsync `site/` → `/opt/maka/site-src/`, run `deploy-site.sh` (full commands in `docs/site-deploy.md`)
 - nginx `server_name` still includes the previous origin hostname next to `makalive.stream`. Leave that name in the nginx file.
 - Cloud agents: `.cursor/environment.json` installs `openssh-client`, `npm ci`, and `known_hosts` for the droplet. **SSH private key** must come from Cursor Cloud Agent secrets / authorized key on the droplet — never commit keys.
 
 Verify SSH (no password prompt):
 
 ```bash
-ssh -o BatchMode=yes root@104.131.164.94 'hostname && ls /opt/tabcast/web/index.html'
+ssh -o BatchMode=yes root@104.131.164.94 'hostname && ls /opt/maka/web/index.html'
 ```
 
 ## Read first

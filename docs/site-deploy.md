@@ -9,7 +9,7 @@ Public site: **[https://makalive.stream](https://makalive.stream)**.
 | Layer | Host | Role |
 | --- | --- | --- |
 | **Public site** | `makalive.stream`, `www.makalive.stream` | nginx on the origin droplet |
-| **Origin files** | DO droplet **`104.131.164.94`** | nginx serves **`/opt/tabcast/web`** |
+| **Origin files** | DO droplet **`104.131.164.94`** | nginx serves **`/opt/maka/web`** |
 
 The previous origin hostname stays in `server_name` inside `site/nginx/tabcast.live.skydav.work.conf` so old links keep resolving. Do not drop it from that file. User-facing pages and this runbook send people to https://makalive.stream.
 
@@ -26,8 +26,8 @@ Repository file **`.cursor/environment.json`** runs `.cursor/cloud-agent-install
 **Secrets:** Do **not** commit private SSH keys. The droplet must trust the Cloud Agent’s key (Cursor Cloud Agent secrets / dashboard SSH key, or `authorized_keys` on the droplet). Agents deploy with:
 
 ```bash
-rsync … root@104.131.164.94:/opt/tabcast/site-src/
-ssh root@104.131.164.94 'WEB_ROOT=/opt/tabcast/web bash /opt/tabcast/site-src/deploy-site.sh'
+rsync … root@104.131.164.94:/opt/maka/site-src/
+ssh root@104.131.164.94 'WEB_ROOT=/opt/maka/web bash /opt/maka/site-src/deploy-site.sh'
 ```
 
 ### SSH smoke test (BatchMode)
@@ -36,10 +36,10 @@ From any machine (or Cloud Agent) with the key loaded:
 
 ```bash
 ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
-  root@104.131.164.94 'hostname && ls /opt/tabcast/web/index.html'
+  root@104.131.164.94 'hostname && ls /opt/maka/web/index.html'
 ```
 
-Expected: `skydav` and `/opt/tabcast/web/index.html`. Nonzero exit or “Permission denied” means fix keys/secrets before deploy.
+Expected: `skydav` and `/opt/maka/web/index.html`. Nonzero exit or “Permission denied” means fix keys/secrets before deploy.
 
 ### Console one-liner (no private key in Cursor secrets)
 
@@ -60,11 +60,11 @@ From repo root, on a machine with SSH to the droplet:
 ```bash
 rsync -avz --delete \
   --exclude '.git' \
-  ./site/ root@104.131.164.94:/opt/tabcast/site-src/
-ssh root@104.131.164.94 'WEB_ROOT=/opt/tabcast/web bash /opt/tabcast/site-src/deploy-site.sh'
+  ./site/ root@104.131.164.94:/opt/maka/site-src/
+ssh root@104.131.164.94 'WEB_ROOT=/opt/maka/web bash /opt/maka/site-src/deploy-site.sh'
 ```
 
-`site/deploy-site.sh` copies assets into `/opt/tabcast/web`, installs nginx site + cache snippet, reloads nginx. Default CSS cache bust: **`CSS_BUILD=dc6d038`** (override with env if needed).
+`site/deploy-site.sh` copies assets into `/opt/maka/web`, installs nginx site + cache snippet, reloads nginx. Default CSS cache bust: **`CSS_BUILD=dc6d038`** (override with env if needed).
 
 From a Cloud Agent with `SKYDAV_SSH_PRIVATE_KEY_B64` configured:
 
@@ -110,8 +110,8 @@ curl -sI 'https://makalive.stream/maka.css?v=dc6d038' | grep -iE '^(HTTP|content
 `site/deploy-site.sh` installs:
 
 - `/etc/nginx/sites-available/tabcast.live.skydav.work` (from `site/nginx/tabcast.live.skydav.work.conf`)
-- `/etc/nginx/snippets/tabcast-site-cache.conf` (from `site/tabcast-site-cache.conf`) — exact `/maka.css` handling, `text/css`, no SPA fallback for CSS
-- `/etc/nginx/snippets/tabcast-downloads.conf` (from `site/tabcast-downloads.conf`)
+- `/etc/nginx/snippets/maka-site-cache.conf` (from `site/maka-site-cache.conf`) — exact `/maka.css` handling, `text/css`, no SPA fallback for CSS
+- `/etc/nginx/snippets/maka-downloads.conf` (from `site/maka-downloads.conf`)
 
 `server_name` in that site file includes `makalive.stream`, `www.makalive.stream`, and the previous origin hostname.
 

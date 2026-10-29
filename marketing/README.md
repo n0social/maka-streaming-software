@@ -45,7 +45,7 @@ CREW Neon Four on Court Black — cyan `#2AF5FF`, pink `#FF2AD4`, lime `#C6FF2A`
 
 ## Production host (DigitalOcean)
 
-The public site is **[https://makalive.stream](https://makalive.stream)**. Files deploy to **`/opt/tabcast/web`** on the same droplet as **`skydav.work`** (portfolio Next.js). Repo does not store DO API keys or SSH keys — deploy is manual from your machine.
+The public site is **[https://makalive.stream](https://makalive.stream)**. Files deploy to **`/opt/maka/web`** on the same droplet as **`skydav.work`** (portfolio Next.js). Repo does not store DO API keys or SSH keys — deploy is manual from your machine.
 
 | Host | Role |
 |------|------|
@@ -56,12 +56,12 @@ The public site is **[https://makalive.stream](https://makalive.stream)**. Files
 **Check RAM and disk** (run with your SSH key):
 
 ```bash
-ssh root@104.131.164.94 'free -h; df -h; du -sh /opt/tabcast/web /var/www 2>/dev/null'
+ssh root@104.131.164.94 'free -h; df -h; du -sh /opt/maka/web /var/www 2>/dev/null'
 ```
 
 Typical headroom: static site + Next portfolio fits a **2 GB / 50 GB** droplet; add disk for each mirrored installer (~190 MB) and `MAKArelay.exe` (~400 MB). The encoder on the server is for **download only** — live encoding still runs on the streamer’s PC (`127.0.0.1:38473`).
 
-If **`/downloads/Maka-Setup-0.2.5.exe`** returns HTML instead of an `.exe`, upload the file to `/tmp/tabcast-upload/` and run **`deploy-download.sh`** (see below), or point users at the [v0.2.5 GitHub Release](https://github.com/n0social/maka-streaming-software/releases/tag/v0.2.5) until the mirror is updated.
+If **`/downloads/Maka-Setup-0.2.5.exe`** returns HTML instead of an `.exe`, upload the file to `/tmp/maka-upload/` and run **`deploy-download.sh`** (see below), or point users at the [v0.2.5 GitHub Release](https://github.com/n0social/maka-streaming-software/releases/tag/v0.2.5) until the mirror is updated.
 
 ## Deploy site
 

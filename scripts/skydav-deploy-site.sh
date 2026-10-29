@@ -5,8 +5,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SITE="${ROOT}/site"
 HOST_ALIAS="${SKYDAV_SSH_HOST_ALIAS:-skydav-droplet}"
-REMOTE_SRC="${SKYDAV_REMOTE_SITE_SRC:-/opt/tabcast/site-src}"
-WEB_ROOT="${SKYDAV_WEB_ROOT:-/opt/tabcast/web}"
+REMOTE_SRC="${SKYDAV_REMOTE_SITE_SRC:-/opt/maka/site-src}"
+WEB_ROOT="${SKYDAV_WEB_ROOT:-/opt/maka/web}"
 SITE_HOST="${SKYDAV_SITE_HOST:-makalive.stream}"
 
 bash "${ROOT}/scripts/cloud-skydav-ssh-bootstrap.sh"
