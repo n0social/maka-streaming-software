@@ -1,6 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
+# HTML links: /maka.css?v=412fa09 (grep site for maka.css — bump ?v= when maka.css changes).
+# Optional nginx: site/tabcast-site-cache.conf → snippets + include in server block.
+
 WEB_ROOT="${WEB_ROOT:-/opt/tabcast/web}"
 SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
 
@@ -40,6 +43,10 @@ chmod 644 "${WEB_ROOT}/index.html" "${WEB_ROOT}/legacy.html" "${WEB_ROOT}/downlo
 
 if [ -f "${SRC_DIR}/tabcast-downloads.conf" ]; then
   cp "${SRC_DIR}/tabcast-downloads.conf" /etc/nginx/snippets/tabcast-downloads.conf
+fi
+
+if [ -f "${SRC_DIR}/tabcast-site-cache.conf" ]; then
+  cp "${SRC_DIR}/tabcast-site-cache.conf" /etc/nginx/snippets/tabcast-site-cache.conf
 fi
 
 nginx -t
