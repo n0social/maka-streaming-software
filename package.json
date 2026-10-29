@@ -1,6 +1,6 @@
 {
   "name": "tabcast-browser",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "private": false,
   "description": "Maka gaming streaming service — free streaming software and a free streaming software obs alternative for resource-light capture (Electron studio + local WHIP/RTMP relay).",
   "author": "n0social",
@@ -29,7 +29,7 @@
     "dist:dir": "npm run build && electron-builder --win dir",
     "dist:signed": "node scripts/dist-signed.mjs",
     "dist:ci": "npm run typecheck && npm run build && node scripts/verify.mjs --offline && electron-builder --win nsis --publish always",
-    "sign:relay": "node scripts/sign-windows.mjs vendor/relay/TabcastRelay.exe",
+    "sign:relay": "node scripts/sign-windows.mjs vendor/relay/MAKArelay.exe",
     "sign:verify": "node scripts/sign-windows.mjs --verify --all",
     "release:manifest": "node scripts/update-browser-manifest.mjs"
   },
@@ -65,6 +65,7 @@
         "from": "vendor/relay",
         "to": "relay",
         "filter": [
+          "MAKArelay.exe",
           "TabcastRelay.exe",
           "relay-manifest.json"
         ]
