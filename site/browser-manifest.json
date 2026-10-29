@@ -1,14 +1,14 @@
 ﻿{
   "arch": "x64",
-  "downloadPath": "/downloads/Maka-Setup-0.2.5.exe",
+  "downloadPath": "/downloads/Maka-Setup-0.2.6.exe",
   "platform": "win32",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "includesRelay": true,
-  "artifact": "Maka-Setup-0.2.5.exe",
-  "sha256": "d9793de495e67077244e4ee02135acd292745abba19e6c13856d3b0b8f030eee",
+  "artifact": "Maka-Setup-0.2.6.exe",
+  "sha256": "8436ebddb16a652dc866163f8e271880a794147fce46f8193f0e0a84ddc596ee",
   "signed": false,
   "signing": null,
-  "size": 190354152,
+  "size": 190355235,
   "productName": "Maka",
-  "releasedAt": "2026-10-29T15:38:49.323Z"
+  "releasedAt": "2026-10-29T16:12:51.751Z"
 }
