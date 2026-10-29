@@ -107,36 +107,23 @@
         width: fit-content;
         text-align: center;
       }
-      .maka-wordmark__back,
-      .maka-wordmark__front {
+      .maka-wordmark__svg {
         display: block;
+        width: min(92vw, 14em);
+        height: auto;
+        overflow: visible;
       }
-      .maka-wordmark__back {
-        position: absolute;
-        left: 0;
-        top: 0.045em;
-        color: #ffffff;
-        white-space: nowrap;
-        user-select: none;
-        z-index: 0;
+      .maka-wordmark__svg text {
+        font-family: var(--headline);
+        font-weight: 900;
+        font-style: italic;
+        font-size: 188px;
       }
-      .maka-wordmark__front {
-        position: relative;
-        z-index: 2;
-        color: var(--gold);
-        background-image: linear-gradient(
-          35deg,
-          #ffffff 0%,
-          var(--champagne) 38%,
-          var(--champagne) 46%,
-          var(--gold-light) 49%,
-          var(--gold) 52%,
-          var(--gold) 100%
-        );
-        -webkit-background-clip: text;
-        background-clip: text;
-        -webkit-text-fill-color: transparent;
-        color: transparent;
+      .maka-svg-back {
+        fill: #ffffff;
+      }
+      .maka-svg-front {
+        fill: #ffc40c;
       }
       .hero-mvp__actions {
         display: flex;
@@ -174,11 +161,11 @@
         font-size: 0.78rem;
       }
     </style>
-    <link rel="preload" as="style" href="/maka.css?v=dc6d037" />
-    <link rel="stylesheet" href="/maka.css?v=dc6d037" />
+    <link rel="preload" as="style" href="/maka.css?v=dc6d038" />
+    <link rel="stylesheet" href="/maka.css?v=dc6d038" />
     <link
       rel="stylesheet"
-      href="https://tabcast.live.skydav.work/maka.css?v=dc6d037"
+      href="https://tabcast.live.skydav.work/maka.css?v=dc6d038"
     />
   </head>
   <body class="page-home-mvp">
@@ -204,8 +191,29 @@
               />
             </div>
             <h1 class="maka-wordmark" aria-label="MAKA">
-              <span class="maka-wordmark__back" aria-hidden="true">MAKA</span>
-              <span class="maka-wordmark__front">MAKA</span>
+              <svg class="maka-wordmark__svg" viewBox="0 0 980 240" role="img" aria-hidden="true">
+                <defs>
+                  <linearGradient id="maka-split" gradientUnits="userSpaceOnUse" x1="40" y1="210" x2="940" y2="10">
+                    <stop offset="0%" stop-color="#ffffff" />
+                    <stop offset="40%" stop-color="#f6f3ec" />
+                    <stop offset="47%" stop-color="#fff6d0" />
+                    <stop offset="52%" stop-color="#ffc40c" />
+                    <stop offset="100%" stop-color="#ffc40c" />
+                  </linearGradient>
+                  <pattern id="maka-foil" width="16" height="16" patternUnits="userSpaceOnUse" patternTransform="rotate(35)">
+                    <rect width="16" height="16" fill="#ffffff" />
+                    <path d="M0 16 L16 0" stroke="#7eb6ff" stroke-width="1.4" />
+                    <path d="M0 8 L16 -8" stroke="#ff8ec8" stroke-width="1.1" />
+                    <path d="M8 16 L24 0" stroke="#ffe56a" stroke-width="0.8" />
+                  </pattern>
+                  <clipPath id="maka-foil-top">
+                    <polygon points="0,0 980,0 980,108 0,148" />
+                  </clipPath>
+                </defs>
+                <text class="maka-svg-back" x="36" y="188">MAKA</text>
+                <text class="maka-svg-front" x="18" y="176" fill="url(#maka-split)">MAKA</text>
+                <text class="maka-svg-foil" x="18" y="176" fill="url(#maka-foil)" clip-path="url(#maka-foil-top)">MAKA</text>
+              </svg>
             </h1>
           </div>
 

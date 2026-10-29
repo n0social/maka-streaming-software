@@ -1,4 +1,4 @@
-/* MAKA_CSS_BUILD=dc6d037 — bump ?v= on /maka.css in site/**/*.html when this file changes */
+/* MAKA_CSS_BUILD=dc6d038 — bump ?v= on /maka.css in site/**/*.html when this file changes */
 /* Maka marketing site — cream / Mikado Yellow tokens (matches Electron studio redesign) */
 :root {
   color-scheme: light;
@@ -454,130 +454,35 @@ svg {
   text-align: center;
 }
 
-.maka-wordmark__back,
-.maka-wordmark__front {
+.maka-wordmark__svg {
   display: block;
-}
-
-.maka-wordmark__back {
-  position: absolute;
-  left: 0;
-  top: 0.045em;
-  width: 100%;
-  padding-inline: 0.06em;
-  box-sizing: content-box;
-  transform: translate(0.045em, 0);
-  color: var(--white);
-  text-shadow:
-    0 0 0 var(--champagne),
-    0 2px 0 rgba(246, 243, 236, 0.95),
-    0 0 40px rgba(255, 255, 255, 0.35);
-  -webkit-text-stroke: 1px rgba(230, 223, 208, 0.65);
-  paint-order: stroke fill;
+  width: min(92vw, 16em);
+  height: auto;
   overflow: visible;
-  white-space: nowrap;
-  z-index: 0;
-  user-select: none;
+  font-family: var(--headline);
 }
 
-.maka-wordmark__front {
-  position: relative;
-  z-index: 2;
-  color: var(--gold);
-}
-
-@supports (-webkit-background-clip: text) or (background-clip: text) {
-  .maka-wordmark__front {
-    /* ~35° upward split: top cream/white, bottom Mikado Yellow (#ffc40c) */
-    background-image: linear-gradient(
-      35deg,
-      var(--white) 0%,
-      var(--champagne) 38%,
-      var(--champagne) 46%,
-      var(--gold-light) 49%,
-      var(--gold) 52%,
-      var(--gold) 100%
-    );
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    color: transparent;
-  }
-}
-
-/* Holographic foil on cream/white upper split (35deg) — MTG/YGO diamond foil shimmer */
-.maka-wordmark::before {
-  content: "MAKA";
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: 3;
-  pointer-events: none;
-  font: inherit;
+.maka-wordmark__svg text {
+  font-family: var(--headline);
+  font-weight: 900;
   font-style: italic;
-  letter-spacing: inherit;
-  text-transform: inherit;
-  padding-inline: inherit;
-  box-sizing: border-box;
-  white-space: nowrap;
-  width: max-content;
-  max-width: 100%;
-  line-height: inherit;
-  background-image:
-    repeating-linear-gradient(
-      125deg,
-      transparent 0,
-      transparent 5px,
-      rgba(255, 255, 255, 0.42) 5px,
-      rgba(255, 255, 255, 0.06) 6px,
-      transparent 7px,
-      transparent 11px
-    ),
-    repeating-linear-gradient(
-      55deg,
-      transparent 0,
-      transparent 7px,
-      rgba(170, 210, 255, 0.14) 7px,
-      rgba(255, 175, 215, 0.1) 8px,
-      transparent 9px,
-      transparent 14px
-    ),
-    conic-gradient(
-      from 205deg at 38% 28%,
-      rgba(255, 110, 190, 0.28),
-      rgba(110, 195, 255, 0.24),
-      rgba(255, 245, 170, 0.22),
-      rgba(160, 255, 210, 0.18),
-      rgba(255, 110, 190, 0.28)
-    ),
-    linear-gradient(
-      118deg,
-      rgba(255, 255, 255, 0.65) 0%,
-      rgba(255, 255, 255, 0.08) 42%,
-      transparent 58%
-    );
-  background-size: 13px 13px, 15px 15px, 210% 210%, 100% 100%;
-  background-position: 0 0, 0 0, var(--maka-foil-shift, 12%) 36%, 0 0;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
-  /* Upper-half foil only — clip-path avoids mask+text-clip fighting in Chrome (invisible foil) */
-  clip-path: polygon(0 0, 100% 0, 100% 41%, 0 55%);
-  animation: maka-wordmark-foil 9s ease-in-out infinite;
+  font-size: 188px;
+  letter-spacing: -0.04em;
 }
 
-@keyframes maka-wordmark-foil {
-  0%,
-  100% {
-    background-position: 0 0, 0 0, 8% 34%, 0 0;
-    opacity: 0.82;
-  }
+.maka-svg-back {
+  fill: #ffffff;
+  stroke: #e6dfd0;
+  stroke-width: 2px;
+  paint-order: stroke fill;
+}
 
-  50% {
-    background-position: 5px 3px, -4px 5px, 42% 40%, 0 0;
-    opacity: 0.95;
-  }
+.maka-svg-front {
+  fill: url(#maka-split);
+}
+
+.maka-svg-foil {
+  fill: url(#maka-foil);
 }
 
 .hero-mvp__mascot-wrap {
@@ -1003,10 +908,6 @@ svg {
 
 @media (prefers-reduced-motion: reduce) {
   .hero-mvp__mascot {
-    animation: none;
-  }
-
-  .maka-wordmark::before {
     animation: none;
   }
 
