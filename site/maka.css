@@ -302,10 +302,10 @@ svg {
 @keyframes mascot-float {
   0%,
   100% {
-    transform: translateY(-50%) scale(1.06);
+    transform: translateY(0);
   }
   50% {
-    transform: translateY(calc(-50% - 6px)) scale(1.06);
+    transform: translateY(-6px);
   }
 }
 
@@ -419,6 +419,7 @@ svg {
   overflow: visible;
 }
 
+/* Locked hero: word min(94vw, 52rem); yellow clip 0,0.56 → 1,0.18; foil and shine above that line; buttons margin-top clamp(5.5rem, 14vh, 9rem); mascot sits to the right of the letters. */
 .hero-mvp__brand-stage {
   position: relative;
   display: grid;
@@ -492,17 +493,15 @@ svg {
 }
 
 .hero-mvp__mascot-wrap {
-  grid-area: 1 / 1;
-  justify-self: center;
-  align-self: center;
-  position: relative;
-  z-index: 1;
-  width: 0;
-  height: 0;
+  position: absolute;
+  left: calc(50% + 12.5rem);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 4;
+  width: auto;
+  height: auto;
   margin: 0;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
+  display: block;
   pointer-events: none;
   background: none;
   overflow: visible;
@@ -652,20 +651,17 @@ svg {
 }
 
 .hero-mvp__mascot {
-  position: absolute;
-  left: clamp(7.5rem, 20vw, 13rem);
-  top: 50%;
-  z-index: 0;
+  position: relative;
+  left: auto;
+  top: auto;
+  z-index: 4;
   display: block;
   width: auto;
   max-width: none;
-  height: clamp(14rem, 32vw, 22rem);
-  min-height: 11rem;
-  max-height: 22rem;
-  opacity: 0.88;
+  height: clamp(16rem, 34vw, 23rem);
+  opacity: 0.92;
   object-fit: contain;
-  transform: translateY(-50%) scale(1.06);
-  transform-origin: center right;
+  transform: none;
   animation: mascot-float 5s ease-in-out infinite;
   filter: drop-shadow(0 10px 22px rgba(26, 20, 8, 0.12));
 }
@@ -858,20 +854,18 @@ svg {
 
   .hero-mvp__mascot-wrap {
     position: absolute;
-    inset: 0;
     left: auto;
-    top: 0;
-    transform: none;
-    justify-content: flex-end;
-    align-items: center;
-    padding-right: clamp(-3.5rem, -6vw, -1.25rem);
-    z-index: 1;
+    right: 0;
+    top: 50%;
+    transform: translateY(-42%);
+    width: auto;
+    height: auto;
+    z-index: 4;
   }
 
   .hero-mvp__mascot {
     height: clamp(11rem, 42vw, 15rem);
-    opacity: 0.82;
-    transform: scale(0.98);
+    opacity: 0.9;
     animation: mascot-float-mobile 5s ease-in-out infinite;
   }
 
