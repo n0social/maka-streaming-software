@@ -419,7 +419,7 @@ svg {
   overflow: visible;
 }
 
-/* Locked hero: word min(94vw, 52rem); yellow clip 0,0.60 → 1,0.22; foil and shine above that line; buttons margin-top clamp(7rem, 16vh, 10.5rem); mascot left calc(50% + 9.5rem), z-index 6. */
+/* Locked hero: word min(94vw, 52rem); yellow clip 0,0.60 → 1,0.22; foil and shine above that line; buttons margin-top clamp(7.5rem, 18vh, 11rem); mascot left calc(50% + 12.5rem). */
 .hero-mvp__brand-stage {
   position: relative;
   display: grid;
@@ -494,10 +494,10 @@ svg {
 
 .hero-mvp__mascot-wrap {
   position: absolute;
-  left: calc(50% + 9.5rem);
-  top: 46%;
+  left: calc(50% + 12.5rem);
+  top: 50%;
   transform: translateY(-50%);
-  z-index: 6;
+  z-index: 4;
   width: auto;
   height: auto;
   margin: 0;
@@ -516,7 +516,7 @@ svg {
   gap: 0.65rem 0.75rem;
   width: 100%;
   max-width: 36rem;
-  margin-top: clamp(7rem, 16vh, 10.5rem);
+  margin-top: clamp(7.5rem, 18vh, 11rem);
 }
 
 .hero-mvp__btn {
@@ -873,7 +873,7 @@ svg {
     flex-direction: column;
     align-items: stretch;
     max-width: 18rem;
-    margin-top: 4.5rem;
+    margin-top: 4rem;
   }
 
   .hero-mvp__btn {
