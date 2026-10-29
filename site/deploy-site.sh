@@ -2,9 +2,9 @@
 set -euo pipefail
 
 # Public stylesheets: https://makalive.stream/maka.css?v=dc6d038
-# nginx: site/tabcast-site-cache.conf + site/nginx/tabcast.live.skydav.work.conf
+# nginx: site/maka-site-cache.conf + site/nginx/tabcast.live.skydav.work.conf
 
-WEB_ROOT="${WEB_ROOT:-/opt/tabcast/web}"
+WEB_ROOT="${WEB_ROOT:-/opt/maka/web}"
 SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
 SITE_HOST="${SITE_HOST:-makalive.stream}"
 CSS_BUILD="${CSS_BUILD:-dc6d038}"
@@ -43,12 +43,12 @@ chmod 644 "${WEB_ROOT}/index.html" "${WEB_ROOT}/legacy.html" "${WEB_ROOT}/downlo
   "${WEB_ROOT}/stream/index.html" "${WEB_ROOT}/stream/stream.css" "${WEB_ROOT}/stream/stream.js" \
   "${WEB_ROOT}/preview/index.html" "${WEB_ROOT}/preview/preview.css"
 
-if [ -f "${SRC_DIR}/tabcast-downloads.conf" ]; then
-  cp "${SRC_DIR}/tabcast-downloads.conf" /etc/nginx/snippets/tabcast-downloads.conf
+if [ -f "${SRC_DIR}/maka-downloads.conf" ]; then
+  cp "${SRC_DIR}/maka-downloads.conf" /etc/nginx/snippets/maka-downloads.conf
 fi
 
-if [ -f "${SRC_DIR}/tabcast-site-cache.conf" ]; then
-  cp "${SRC_DIR}/tabcast-site-cache.conf" /etc/nginx/snippets/tabcast-site-cache.conf
+if [ -f "${SRC_DIR}/maka-site-cache.conf" ]; then
+  cp "${SRC_DIR}/maka-site-cache.conf" /etc/nginx/snippets/maka-site-cache.conf
 fi
 
 if [ -f "${SRC_DIR}/nginx/tabcast.live.skydav.work.conf" ]; then
