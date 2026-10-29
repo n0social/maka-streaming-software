@@ -486,6 +486,11 @@ svg {
   fill: url(#maka-foil);
 }
 
+.maka-svg-shine {
+  fill: url(#maka-shine);
+  mix-blend-mode: screen;
+}
+
 .hero-mvp__mascot-wrap {
   grid-area: 1 / 1;
   justify-self: center;
