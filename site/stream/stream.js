@@ -116,7 +116,7 @@
     } catch {
       relayReady = false;
       setRelayStatus('warn', 'Relay not detected');
-      log('No relay on 127.0.0.1:38473 (install desktop app or TabcastRelay.exe).');
+      log('No relay on 127.0.0.1:38473 (install desktop app or MAKA.relay).');
     }
   }
 
