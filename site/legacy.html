@@ -9,7 +9,7 @@
     />
     <meta name="theme-color" content="#0A0E14" />
     <title>Maka — Legacy Web Studio Workflow</title>
-    <link rel="icon" type="image/png" href="/marketing/favicon-32.png" sizes="32x32" />
+    <link rel="icon" type="image/png" href="/marketing/favicon-32.png?v=maka-m" sizes="32x32" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -163,6 +163,22 @@
       .note a {
         color: var(--gold-light);
       }
+      .mascot-corner {
+        position: fixed;
+        right: 1rem;
+        bottom: 1rem;
+        width: 3.25rem;
+        height: 3.25rem;
+        pointer-events: none;
+        opacity: 0.9;
+        filter: drop-shadow(0 4px 14px rgba(212, 175, 55, 0.45));
+        z-index: 40;
+      }
+      .mascot-corner img {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
     </style>
   </head>
   <body>
@@ -179,7 +195,7 @@
       <ol class="steps">
         <li>
           <strong>Step 1 — Relay</strong>
-          <p>Download and run <code>TabcastRelay.exe</code>. It listens on <code>127.0.0.1:38473</code>.</p>
+          <p>Download and run <strong>MAKA.relay</strong> (<code>MAKArelay.exe</code>). It listens on <code>127.0.0.1:38473</code>.</p>
         </li>
         <li>
           <strong>Step 2 — Web studio</strong>
@@ -192,15 +208,18 @@
       </ol>
 
       <div class="actions">
-        <a class="btn btn-primary" href="/downloads/TabcastRelay.exe">Download relay (.exe)</a>
+        <a class="btn btn-primary" href="/downloads/MAKArelay.exe">MAKA.relay</a>
         <a class="btn btn-ghost" href="/stream/">Open Web Studio</a>
       </div>
 
       <p class="note">
         Recommended for existing users on the extension + relay stack. New installs should prefer
-        <a href="/downloads/TabcastBrowser-Setup-0.2.0.exe">Maka 0.2.0</a>, which bundles
+        <a href="https://github.com/n0social/maka-streaming-software/releases/download/v0.2.6/Maka-Setup-0.2.6.exe">Maka 0.2.6</a>, which bundles
         the relay and removes the separate browser tab setup.
       </p>
+    </div>
+    <div class="mascot-corner" aria-hidden="true">
+      <img src="/assets/mascot/maka-mascot.svg" alt="" width="52" height="52" />
     </div>
   </body>
 </html>

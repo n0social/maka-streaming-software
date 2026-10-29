@@ -1,4 +1,4 @@
-/** Hello Tabcast — minimal sandboxed addon using tabcast.addons API. */
+/** Hello Maka — minimal sandboxed addon using tabcast.addons API. */
 ;(async () => {
   const status = document.getElementById('status')
   const meta = document.getElementById('meta')

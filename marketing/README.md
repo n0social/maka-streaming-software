@@ -37,7 +37,7 @@ python scripts/generate-marketing.py
 
 ## Site copies (`site/marketing/`)
 
-Same assets copied for deployment to `tabcast.live.skydav.work/marketing/`.
+Same assets copied for deployment to [makalive.stream/marketing/](https://makalive.stream/marketing/).
 
 ## Design language
 
@@ -45,12 +45,12 @@ CREW Neon Four on Court Black — cyan `#2AF5FF`, pink `#FF2AD4`, lime `#C6FF2A`
 
 ## Production host (DigitalOcean)
 
-Maka static site and **`tabcast.live.skydav.work`** deploy to **`/opt/tabcast/web`** on the same droplet as **`skydav.work`** (portfolio Next.js). Repo does not store DO API keys or SSH keys — deploy is manual from your machine.
+The public site is **[https://makalive.stream](https://makalive.stream)**. Files deploy to **`/opt/tabcast/web`** on the same droplet as **`skydav.work`** (portfolio Next.js). Repo does not store DO API keys or SSH keys — deploy is manual from your machine.
 
 | Host | Role |
 |------|------|
-| `104.131.164.94` | nginx + static Tabcast tree + portfolio app |
-| `tabcast.live.skydav.work` | Maka landing, downloads, legacy `/stream/` |
+| `104.131.164.94` | nginx + Maka static site + portfolio app |
+| [makalive.stream](https://makalive.stream) | Maka landing, downloads, legacy `/stream/` |
 | `skydav.work` | Portfolio (not in this repo) |
 
 **Check RAM and disk** (run with your SSH key):
@@ -59,9 +59,9 @@ Maka static site and **`tabcast.live.skydav.work`** deploy to **`/opt/tabcast/we
 ssh root@104.131.164.94 'free -h; df -h; du -sh /opt/tabcast/web /var/www 2>/dev/null'
 ```
 
-Typical headroom: static site + Next portfolio fits a **2 GB / 50 GB** droplet; add disk for each mirrored installer (~190 MB) and `TabcastRelay.exe` (~400 MB). TabcastRelay on the server is for **download only** — live encoding still runs on the streamer’s PC (`127.0.0.1:38473`) unless you build a server-side product later.
+Typical headroom: static site + Next portfolio fits a **2 GB / 50 GB** droplet; add disk for each mirrored installer (~190 MB) and `MAKArelay.exe` (~400 MB). The encoder on the server is for **download only** — live encoding still runs on the streamer’s PC (`127.0.0.1:38473`).
 
-If **`/downloads/Maka-Setup-0.2.4.exe`** returns HTML instead of an `.exe`, upload the file to `/tmp/tabcast-upload/` and run **`deploy-download.sh`** (see below), or point users at [GitHub Releases](https://github.com/n0social/maka-streaming-software/releases/tag/maka.streaming.v.01) until the mirror is updated.
+If **`/downloads/Maka-Setup-0.2.5.exe`** returns HTML instead of an `.exe`, upload the file to `/tmp/tabcast-upload/` and run **`deploy-download.sh`** (see below), or point users at the [v0.2.5 GitHub Release](https://github.com/n0social/maka-streaming-software/releases/tag/v0.2.5) until the mirror is updated.
 
 ## Deploy site
 
@@ -75,4 +75,5 @@ Publishes:
 - `/legacy.html` — Relay + web studio workflow
 - `/stream/` — Legacy SPA web studio
 - `/marketing/*` — Icons, feature graphic, download badges
-- `/downloads/TabcastBrowser-Setup-0.2.0.exe` — Browser installer (upload separately if missing)
+- `/downloads/MAKArelay.exe` — encoder download (`MAKArelay.exe`)
+- `/downloads/Maka-Setup-0.2.5.exe` — current Windows installer

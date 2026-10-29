@@ -1,0 +1,7 @@
+{
+  "name": "tabcast-browser (skydav deploy)",
+  "user": "ubuntu",
+  "install": "npm ci",
+  "start": "bash scripts/cloud-skydav-ssh-bootstrap.sh",
+  "repositoryDependencies": []
+}

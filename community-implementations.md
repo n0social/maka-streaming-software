@@ -1,6 +1,6 @@
 # Community implementations & marketplace
 
-Short design note for agents extending Maka (Tabcast Browser).
+Short design note for agents extending Maka.
 
 ## Marketplace (developer-curated)
 

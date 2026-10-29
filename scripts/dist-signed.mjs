@@ -12,7 +12,8 @@ import { spawnSync } from 'node:child_process'
 import { collectDistArtifacts, hasSigningCert } from './sign-windows.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const signingRequired = process.env.TABCAST_SIGNING_REQUIRED === '1'
+const signingRequired =
+  process.env.MAKA_SIGNING_REQUIRED === '1' || process.env.TABCAST_SIGNING_REQUIRED === '1'
 
 function run(cmd, args) {
   const result = spawnSync(cmd, args, {
@@ -27,7 +28,7 @@ function run(cmd, args) {
 
 const certOk = hasSigningCert()
 if (signingRequired && !certOk) {
-  console.error('TABCAST_SIGNING_REQUIRED=1 but CSC_LINK is not set. See docs/CODE-SIGNING.md')
+  console.error('MAKA_SIGNING_REQUIRED=1 but CSC_LINK is not set. See docs/CODE-SIGNING.md')
   process.exit(1)
 }
 
@@ -37,17 +38,21 @@ if (!certOk) {
   run('npm', ['run', 'build'])
   run('node', ['scripts/verify.mjs', '--offline'])
   const publishArgs =
-    process.env.GH_TOKEN || process.env.TABCAST_PUBLISH === '1' ? ['--publish', 'always'] : []
+    process.env.GH_TOKEN || process.env.MAKA_PUBLISH === '1' || process.env.TABCAST_PUBLISH === '1'
+      ? ['--publish', 'always']
+      : []
   run('npx', ['electron-builder', '--win', 'nsis', ...publishArgs])
   process.exit(0)
 }
 
-const relayPath = join(root, 'vendor', 'relay', 'TabcastRelay.exe')
-if (existsSync(relayPath)) {
+const relayPath = ['MAKArelay.exe', 'TabcastRelay.exe']
+  .map((name) => join(root, 'vendor', 'relay', name))
+  .find((path) => existsSync(path))
+if (relayPath) {
   console.log('Signing relay before packaging…')
   run('node', ['scripts/sign-windows.mjs', relayPath])
 } else {
-  console.warn('vendor/relay/TabcastRelay.exe missing — run npm run fetch:relay first')
+  console.warn('vendor/relay/MAKArelay.exe missing — run npm run fetch:relay first')
 }
 
 console.log('Building signed installer (electron-builder uses CSC_* )…')

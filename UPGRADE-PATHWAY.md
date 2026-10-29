@@ -1,4 +1,4 @@
-# Tabcast Browser — Upgrade Pathway
+# Maka — Upgrade Pathway
 
 **Vision:** The streaming browser people *choose* — not because it replaces OBS, but because browsing, creating, and going live happen in one intentional surface with an ecosystem that grows with the community.
 
@@ -10,7 +10,7 @@
 
 Most streamers today juggle: a browser (Twitch, YouTube Studio, chat), OBS or a capture tool, a relay/encoder, and a dozen browser extensions that don't talk to each other.
 
-Tabcast Browser collapses that stack:
+Maka collapses that stack:
 
 ```
 Browse → Capture → Scene → Go Live → Chat → Grow
@@ -29,14 +29,14 @@ Browse → Capture → Scene → Go Live → Chat → Grow
 
 ## VS Code for streaming (core + extensions)
 
-Tabcast Browser follows the same product shape as **VS Code**: a **stable core shell** with **well-defined contribution points**, and a **marketplace** where specialists extend the product without forking it.
+Maka follows the same product shape as **VS Code**: a **stable core shell** with **well-defined contribution points**, and a **marketplace** where specialists extend the product without forking it.
 
-| VS Code | Tabcast Browser |
+| VS Code | Maka |
 |---------|-----------------|
 | Editor + terminal + sidebar | Studio + Browse + relay + program monitor |
 | Extension API (`vscode.*`) | Addon API (`tabcast.addons.*`) |
 | Activity bar / panels | Left sources · center stage · right scene/destinations/addons |
-| Extension marketplace | tabcast.live/addons (curated catalog) |
+| Extension marketplace | makalive.stream/addons (curated catalog) |
 | Built-in language support | Built-in capture, WHIP, Twitch/YouTube RTMP |
 
 **Core (never an addon):** local relay, WHIP publish, display/window/browse capture, scene layout contract, browse security model, go-live lifecycle.
@@ -51,7 +51,7 @@ Tabcast Browser follows the same product shape as **VS Code**: a **stable core s
 2. Register a Destinations panel row for a custom RTMP URL + stream key.
 3. On go-live, POST extended config to relay if/when the relay exposes multi-endpoint API — or shell out through a signed helper the addon ships.
 
-Tabcast does **not** ship every platform; the marketplace lets creators own niche destinations while the core stays maintainable.
+Maka does **not** ship every platform; the marketplace lets creators own niche destinations while the core stays maintainable.
 
 **Onboarding (shipped):** first-run grey-space tour with pointers at modes, sources, program, relay, destinations, addons, and Go Live. Replay from Settings.
 
@@ -67,7 +67,7 @@ Tabcast does **not** ship every platform; the marketplace lets creators own nich
 | **Declarative manifest** | `tabcast-addon.json` — id, permissions, entry, hooks |
 | **Capability-based permissions** | `browse.tabs`, `scene.overlay`, `relay.config`, `chat.read`, etc. |
 | **Versioned API** | `tabcast.addonApi v1` — breaking changes only on major app version |
-| **Local-first** | Addons ship as folders in `%APPDATA%/Tabcast Browser/addons/` or `.tabcast-addon` zip |
+| **Local-first** | Addons ship as folders in `%APPDATA%/Maka/addons/` or `.maka-addon` zip |
 
 ### Proposed manifest (`tabcast-addon.json`)
 
@@ -88,7 +88,7 @@ Tabcast does **not** ship every platform; the marketplace lets creators own nich
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  Tabcast Browser (main)                                  │
+│  Maka (main)                                             │
 │  ┌─────────────┐  ┌──────────────┐  ┌─────────────────┐ │
 │  │ AddonHost   │──│ Permission   │──│ IPC bridge      │ │
 │  │ (main)      │  │ gate         │  │ (preload slice) │ │
@@ -109,8 +109,8 @@ Tabcast does **not** ship every platform; the marketplace lets creators own nich
 | **A1** | `AddonHost` + manifest loader + 3 permissions | ✅ 0.3 (`addon-api.ts`, declarative actions) |
 | **A2** | Addon marketplace folder + enable/disable UI in Settings | ✅ 0.3 (marketplace dialog + install) |
 | **A2.5** | Sandboxed webview runtime + `tabcast.addons` preload bridge | ✅ 0.3.6 |
-| **A3** | Signed addon catalog (GitHub repo / tabcast.live/addons) | 1.0 |
-| **A4** | Creator SDK docs + CLI `tabcast-addon init` | 1.1 |
+| **A3** | Signed addon catalog (GitHub repo / makalive.stream/addons) | 1.0 |
+| **A4** | Creator SDK docs + CLI `maka-addon init` | 1.1 |
 
 ### Hook surface (what addons can attach to)
 
@@ -233,8 +233,8 @@ Beyond user addons, **built-in integrations** ship with the app and may share co
 
 ```
                     ┌──────────────┐
-                    │ Tabcast      │
-                    │ Browser      │
+                    │ Maka         │
+                    │ studio       │
                     └──────┬───────┘
            ┌───────────────┼───────────────┐
            ▼               ▼               ▼
@@ -247,8 +247,8 @@ Beyond user addons, **built-in integrations** ship with the app and may share co
            └───────┬───────┘
                    ▼
             ┌────────────┐
-            │ Tabcast    │
-            │ Relay      │
+            │ MAKA.relay │
+            │ encoder    │
             │ RTMP out   │
             └────────────┘
 ```
@@ -283,12 +283,12 @@ Beyond user addons, **built-in integrations** ship with the app and may share co
 0.2.2  ✅ Browse tab capture · scene templates · dual-dest chips · onboarding tour
 0.3.0  ✅ Addon API v1 (declarative) · marketplace catalog UI · install/enable
 0.3.5  ✅ live.start/end hooks · remote catalog feed · Discord webhook pattern
-0.3.6  ✅ Sandboxed addon iframe + tabcast.addons bridge + Hello Tabcast sample
+0.3.6  ✅ Sandboxed addon iframe + tabcast.addons bridge + Hello Maka sample
 0.4.0  Public creator SDK · community platform addons (Kick/custom RTMP)
 0.4.5  Instant replay buffer · audio routing improvements
 0.5.0  Addon marketplace (curated) · YouTube chat · Discord webhook integration
 1.0.0  Signed installer · auto-update · CI — GA
-1.1.0  Creator SDK · `tabcast-addon` CLI · community catalog on tabcast.live
+1.1.0  Creator SDK · `maka-addon` CLI · community catalog on makalive.stream
 1.2.0  Collaborative lab mode · multi-profile · restream fan-out
 2.0.0  “Ultimate” tier: mobile companion, cross-platform relay, plugin economy
 ```
