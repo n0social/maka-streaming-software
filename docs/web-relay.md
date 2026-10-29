@@ -94,6 +94,10 @@ Web studio (`site/stream/stream.js`) sends canvas-as-`gameplay`, optional webcam
 
 Use the **mock relay** for UI and WHIP pipeline testing. Use **MAKArelay.exe** (or the Maka desktop app) to validate real RTMP ingest.
 
+### Cloud gaming in the browser
+
+Services like **GeForce NOW**, Xbox Cloud Gaming, or other browser tabs can be the “gameplay” source: choose **Tab or window** in the stream UI (`getDisplayMedia`) and pick the cloud-gaming tab. The **mock relay** is enough to exercise config, scene layout, and the WHIP path end-to-end without sending RTMP. **Live** delivery to Twitch or YouTube still requires **MAKArelay.exe** (or another server-side encoder) because the dev mock only logs RTMP instead of pushing it. Tab capture may fail on DRM-protected video, and extra encode + capture latency is normal compared to a native desktop capture pipeline.
+
 ## Architecture
 
 ```mermaid
