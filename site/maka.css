@@ -512,7 +512,7 @@ svg {
   gap: 0.65rem 0.75rem;
   width: 100%;
   max-width: 36rem;
-  margin-top: clamp(1.25rem, 3.5vw, 2.25rem);
+  margin-top: clamp(5.5rem, 14vh, 9rem);
 }
 
 .hero-mvp__btn {
@@ -525,6 +525,11 @@ svg {
   position: relative;
   isolation: isolate;
   overflow: visible;
+}
+
+.hero-mvp__btn > span {
+  position: relative;
+  z-index: 1;
 }
 
 /* Manga focus lines — burst on hover, then subtle drift (hero CTAs only) */
@@ -541,7 +546,7 @@ svg {
   opacity: 0;
   transform: translate(-50%, -50%) scale(0.35);
   transition: opacity 0.15s ease;
-  z-index: -1;
+  z-index: 0;
   border-radius: 50%;
   background-repeat: no-repeat;
   background-position: center;
@@ -869,7 +874,7 @@ svg {
     flex-direction: column;
     align-items: stretch;
     max-width: 18rem;
-    margin-top: 1rem;
+    margin-top: 3.75rem;
   }
 
   .hero-mvp__btn {
