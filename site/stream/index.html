@@ -31,23 +31,75 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=League+Spartan:ital,wght@0,700;0,800;0,900;1,800;1,900&display=swap"
       rel="stylesheet"
     />
-    <link
-      rel="preload"
-      as="style"
-      href="https://makalive.stream/maka.css?v=dc6d038"
-    />
-    <link
-      rel="stylesheet"
-      href="https://makalive.stream/maka.css?v=dc6d038"
-    />
+    <link rel="preload" as="style" href="/maka.css?v=dc6d038" />
+    <link rel="stylesheet" href="/maka.css?v=dc6d038" />
     <link rel="stylesheet" href="/stream/stream.css" />
   </head>
-  <body>
+  <body class="page-home-mvp">
     <div class="stream-app site-shell--full">
-      <header class="stream-top stream-top--minimal">
-        <div class="stream-status" aria-live="polite">
-          <span class="status-dot" id="relay-status-dot" data-state="warn"></span>
-          <span id="relay-status-text">Checking relay…</span>
+      <header class="stream-header">
+        <div class="stream-header__backdrop" aria-hidden="true">
+          <span class="hero-mvp__orb hero-mvp__orb--1"></span>
+          <span class="hero-mvp__orb hero-mvp__orb--2"></span>
+          <span class="hero-mvp__grid"></span>
+        </div>
+
+        <div class="stream-header__inner">
+          <div class="hero-mvp__brand-stage stream-header__brand">
+            <div class="hero-mvp__mascot-wrap stream-header__mascot-wrap" aria-hidden="true">
+              <img
+                class="hero-mvp__mascot stream-header__mascot"
+                src="/assets/mascot/maka-mascot.png"
+                alt=""
+                width="1024"
+                height="1024"
+                decoding="async"
+              />
+            </div>
+            <a class="stream-header__wordmark-link" href="/" aria-label="MAKA home">
+              <h1 class="maka-wordmark" aria-label="MAKA">
+                <svg class="maka-wordmark__svg" viewBox="0 0 1000 280" role="img" aria-hidden="true">
+                  <defs>
+                    <clipPath id="maka-yellow-half" clipPathUnits="objectBoundingBox">
+                      <polygon points="0,0.60 1,0.22 1,1.2 0,1.2" />
+                    </clipPath>
+                    <clipPath id="maka-foil-half" clipPathUnits="objectBoundingBox">
+                      <polygon points="0,-0.2 1,-0.2 1,0.22 0,0.60" />
+                    </clipPath>
+                    <linearGradient id="maka-foil" gradientUnits="objectBoundingBox" x1="0" y1="0" x2="1" y2="0.45">
+                      <stop offset="0%" stop-color="#ffffff" />
+                      <stop offset="18%" stop-color="#c8f3ff" />
+                      <stop offset="40%" stop-color="#ffd6f2" />
+                      <stop offset="62%" stop-color="#fff3b0" />
+                      <stop offset="82%" stop-color="#e7fff6" />
+                      <stop offset="100%" stop-color="#ffffff" />
+                    </linearGradient>
+                    <linearGradient id="maka-shine" gradientUnits="objectBoundingBox" x1="0" y1="0" x2="1" y2="0.55">
+                      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9" />
+                      <stop offset="16%" stop-color="#ffffff" stop-opacity="0.25" />
+                      <stop offset="34%" stop-color="#ffffff" stop-opacity="1" />
+                      <stop offset="48%" stop-color="#fff6d0" stop-opacity="0.35" />
+                      <stop offset="64%" stop-color="#ffffff" stop-opacity="0.95" />
+                      <stop offset="80%" stop-color="#ffffff" stop-opacity="0.3" />
+                      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.85" />
+                    </linearGradient>
+                  </defs>
+                  <text class="maka-svg-back" x="512" y="214" text-anchor="middle">MAKA</text>
+                  <text class="maka-svg-yellow" x="500" y="202" text-anchor="middle" clip-path="url(#maka-yellow-half)">MAKA</text>
+                  <text class="maka-svg-foil" x="500" y="202" text-anchor="middle" clip-path="url(#maka-foil-half)">MAKA</text>
+                  <text class="maka-svg-shine" x="500" y="202" text-anchor="middle" clip-path="url(#maka-foil-half)">MAKA</text>
+                </svg>
+              </h1>
+            </a>
+          </div>
+
+          <div class="stream-header__meta">
+            <p class="stream-header__eyebrow">Browser stream try</p>
+            <div class="stream-status" aria-live="polite">
+              <span class="status-dot" id="relay-status-dot" data-state="warn"></span>
+              <span id="relay-status-text">Checking relay…</span>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -68,9 +120,9 @@
             <h2>Sources</h2>
             <p>Capture stays in your browser until you publish to a local relay.</p>
             <div class="stream-actions">
-              <button type="button" class="btn btn-secondary" id="btn-webcam">Add webcam</button>
-              <button type="button" class="btn btn-secondary" id="btn-screen">Share screen</button>
-              <button type="button" class="btn btn-secondary" id="btn-mic">Add microphone</button>
+              <button type="button" class="btn btn-outline" id="btn-webcam">Add webcam</button>
+              <button type="button" class="btn btn-outline" id="btn-screen">Share screen</button>
+              <button type="button" class="btn btn-outline" id="btn-mic">Add microphone</button>
             </div>
           </div>
 
@@ -101,8 +153,8 @@
               <input id="cfg-youtube-key" type="password" autocomplete="off" placeholder="xxxx-xxxx-…" />
             </label>
             <div class="stream-actions">
-              <button type="button" class="btn btn-secondary" id="btn-relay-refresh">Check relay</button>
-              <button type="button" class="btn btn-secondary" id="btn-config">Apply config</button>
+              <button type="button" class="btn btn-outline" id="btn-relay-refresh">Check relay</button>
+              <button type="button" class="btn btn-outline" id="btn-config">Apply config</button>
               <button type="button" class="btn btn-ghost" id="btn-verify">Verify keys</button>
             </div>
             <pre class="stream-status-json" id="relay-status-json" aria-live="polite"></pre>
@@ -115,7 +167,7 @@
               only — no RTMP from this page alone.
             </p>
             <div class="stream-actions">
-              <button type="button" class="btn btn-primary" id="btn-start">Start stream</button>
+              <button type="button" class="btn btn-primary hero-mvp__btn hero-mvp__btn--download" id="btn-start"><span>Start stream</span></button>
               <button type="button" class="btn btn-ghost" id="btn-stop" disabled>Stop stream</button>
             </div>
           </div>
@@ -147,15 +199,11 @@
           live here.
         </p>
         <div class="modal-actions">
-          <a class="btn btn-primary" href="/download.html">Download Maka</a>
+          <a class="btn btn-primary hero-mvp__btn hero-mvp__btn--download" href="/download.html"><span>Download Maka</span></a>
           <a class="btn btn-secondary" href="https://github.com/n0social/maka-streaming-software/blob/main/docs/web-relay.md">Web relay docs</a>
           <button type="button" class="btn btn-ghost" id="modal-close">Keep previewing</button>
         </div>
       </div>
-    </div>
-
-    <div class="mascot-corner" aria-hidden="true">
-      <img src="/assets/mascot/maka-mascot.svg" alt="" width="52" height="52" />
     </div>
 
     <script src="/stream/stream.js" defer></script>
