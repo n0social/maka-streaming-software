@@ -251,6 +251,10 @@ async function handleRequest(req, res) {
       return
     }
     relayConfig = { ...relayConfig, ...body }
+    if ('twitchKey' in body && !body.twitchKey) delete relayConfig.twitchKey
+    if ('youtubeKey' in body && !body.youtubeKey) delete relayConfig.youtubeKey
+    if ('customRtmpUrl' in body && !body.customRtmpUrl) delete relayConfig.customRtmpUrl
+    if ('customRtmpKey' in body && !body.customRtmpKey) delete relayConfig.customRtmpKey
     if (body.profile && !body.bitrateMbps) {
       const bitrates = {
         '720p30': 3,
