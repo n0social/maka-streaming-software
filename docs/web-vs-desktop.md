@@ -61,7 +61,7 @@ Direct comparison between the **Electron streaming studio** (`src/renderer/*`) a
 | Browse tabs / embedded browser | Full Chromium webview | — | ❌ |
 | Addons hooks (`live.start` / `live.end`) | Yes | — | ❌ |
 | Phone camera | WebRTC addon path | — | ❌ |
-| Key validation before go-live | `validateRelayStreamKeys` | Optional keys only (no required destination) | ⚠️ partial |
+| Key validation before go-live | `validateRelayStreamKeys` | Same validation on Start stream (debug pass) | ✅ |
 | Demo / lab mode | Settings checkbox | — | ❌ |
 
 ---
@@ -102,6 +102,16 @@ Both clients aim for this order:
 6. Stop: WHIP `DELETE` + `POST /stop`
 
 Desktop additionally runs relay lifecycle via Tabcast, live recovery, and WHIP video stall watchdog (`whip.ts`).
+
+---
+
+## Debug pass (stream9c3)
+
+- **Go-live:** `onStart` now runs `validateRelayStreamKeys` before `POST /config` (matches desktop `goLive()`).
+- **Scene layout:** Webcam PIP in `POST /scene` only when screen + webcam are both active (matches WHIP `webcam` track and desktop `defaultSceneLayout`).
+- **Custom RTMP:** Stricter URL/key checks aligned with `src/shared/stream-keys.ts` (both fields required when either is filled).
+- **Mock relay:** Default profile bitrates in `web-relay-dev.mjs` match `stream-encode-profiles.ts`.
+- **Smoke test:** Skips spawning dev relay when port 38473 is already up; covers `POST /scene` and `POST /stop`.
 
 ---
 

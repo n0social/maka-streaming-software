@@ -259,10 +259,10 @@ async function handleRequest(req, res) {
       const bitrates = {
         '720p30': 3,
         '720p60': 4.5,
-        '1080p30': 6,
-        '1080p60': 9,
-        '2k60': 12,
-        '4k60': 20,
+        '1080p30': 4.5,
+        '1080p60': 6,
+        '2k60': 10,
+        '4k60': 16,
       }
       relayConfig.bitrateMbps = bitrates[body.profile] ?? relayConfig.bitrateMbps
     }

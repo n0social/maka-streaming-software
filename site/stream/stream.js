@@ -77,11 +77,14 @@
       }
     }
     if (customEnabled && (customUrl || customKey)) {
-      if (!/^rtmps?:\/\//i.test(customUrl)) {
+      if (!customUrl || !customKey) {
+        return { ok: false, message: 'Custom RTMP needs an ingest URL and stream key.' };
+      }
+      if (!/^rtmps?:\/\/[a-zA-Z0-9.-]+(?::\d+)?(?:\/[\w./-]*)?$/i.test(customUrl)) {
         return { ok: false, message: 'Custom RTMP URL must start with rtmp:// or rtmps://' };
       }
-      if (customKey.length < 8) {
-        return { ok: false, message: 'Custom RTMP stream key must be at least 8 characters.' };
+      if (customKey.length < 8 || customKey.length > 256) {
+        return { ok: false, message: 'Custom RTMP stream key must be 8–256 characters.' };
       }
     }
     return { ok: true };
@@ -414,7 +417,7 @@
         },
       ],
     };
-    if (webcamStream) {
+    if (screenStream && webcamStream) {
       const pipW = Math.round(w * 0.22);
       const pipH = Math.round(pipW * (9 / 16));
       layout.sources.push({
@@ -640,14 +643,26 @@
     }
     try {
       setStreamError(null);
+      const { twitch, youtube, customUrl, customKey } = destinationInputsForConfig();
+      const keysOk = validateRelayStreamKeys({
+        twitchKey: twitch,
+        youtubeKey: youtube,
+        customRtmpUrl: customUrl,
+        customRtmpKey: customKey,
+        customEnabled: els.destCustom.checked,
+      });
+      if (!keysOk.ok) throw new Error(keysOk.message);
+
       await postRelayConfig();
       await postSceneLayout();
       log(`Publishing WHIP to ${RELAY_BASE}${PATHS.whip}…`);
       sessionLiveIntent = true;
-      whipPublisher = await publishWhip(buildPublishSources());
-      whipPublisher.pc.onconnectionstatechange = () => {
-        log(`WHIP connection: ${whipPublisher.pc.connectionState}`);
-        if (whipPublisher.pc.connectionState === 'connected') {
+      const publisher = await publishWhip(buildPublishSources());
+      whipPublisher = publisher;
+      publisher.pc.onconnectionstatechange = () => {
+        if (whipPublisher !== publisher) return;
+        log(`WHIP connection: ${publisher.pc.connectionState}`);
+        if (publisher.pc.connectionState === 'connected') {
           setRelayStatus('live', 'Live via relay');
           void refreshRelayStatus();
         }
