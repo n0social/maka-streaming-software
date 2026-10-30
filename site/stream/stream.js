@@ -24,6 +24,72 @@
   const TRACK_IDS = { gameplay: 'gameplay', webcam: 'webcam', mic: 'mic' };
   const STATUS_POLL_MS = 2000;
 
+  /** Mirrors `src/shared/stream-encode-profiles.ts` (static site has no bundler). */
+  const ENCODE_PROFILES = {
+    '720p30': { width: 1280, height: 720, fps: 30, bitrateMbps: 3 },
+    '720p60': { width: 1280, height: 720, fps: 60, bitrateMbps: 4.5 },
+    '1080p30': { width: 1920, height: 1080, fps: 30, bitrateMbps: 4.5 },
+    '1080p60': { width: 1920, height: 1080, fps: 60, bitrateMbps: 6 },
+    '2k60': { width: 2560, height: 1440, fps: 60, bitrateMbps: 10 },
+    '4k60': { width: 3840, height: 2160, fps: 60, bitrateMbps: 16 },
+  };
+
+  function normalizeProfile(id) {
+    if (id && Object.prototype.hasOwnProperty.call(ENCODE_PROFILES, id)) return id;
+    return '720p30';
+  }
+
+  function profileSpec(id) {
+    return ENCODE_PROFILES[normalizeProfile(id)];
+  }
+
+  /** Mirrors `src/shared/stream-keys.ts` (static site has no bundler). */
+  function normalizeStreamKey(raw) {
+    let key = String(raw ?? '').trim();
+    const fromRtmpUrl = key.match(/rtmps?:\/\/[^/]+\/app\/([^/?#\s]+)/i);
+    if (fromRtmpUrl?.[1]) return fromRtmpUrl[1];
+    const fromAppPath = key.match(/\/app\/([^/?#\s]+)/i);
+    if (fromAppPath?.[1]) return fromAppPath[1];
+    return key;
+  }
+
+  function validateRelayStreamKeys(input) {
+    const twitch = normalizeStreamKey(input.twitchKey ?? '');
+    const youtube = normalizeStreamKey(input.youtubeKey ?? '');
+    const customEnabled = Boolean(input.customEnabled);
+    const customUrl = (input.customRtmpUrl ?? '').trim();
+    const customKey = normalizeStreamKey(input.customRtmpKey ?? '');
+
+    if (!twitch && !youtube && !(customEnabled && customUrl && customKey)) {
+      return {
+        ok: false,
+        message: 'Enable at least one destination (Twitch, YouTube, or Custom RTMP).',
+      };
+    }
+    if (twitch) {
+      if (twitch.length < 15 || !/^live_[a-zA-Z0-9_]+$/.test(twitch)) {
+        return { ok: false, message: 'Twitch key must start with live_ (15+ characters).' };
+      }
+    }
+    if (youtube) {
+      if (youtube.length < 16 || !/^[a-z0-9-]{16,64}$/i.test(youtube)) {
+        return { ok: false, message: 'YouTube stream key must be 16–64 letters, numbers, or dashes.' };
+      }
+    }
+    if (customEnabled && (customUrl || customKey)) {
+      if (!customUrl || !customKey) {
+        return { ok: false, message: 'Custom RTMP needs an ingest URL and stream key.' };
+      }
+      if (!/^rtmps?:\/\/[a-zA-Z0-9.-]+(?::\d+)?(?:\/[\w./-]*)?$/i.test(customUrl)) {
+        return { ok: false, message: 'Custom RTMP URL must start with rtmp:// or rtmps://' };
+      }
+      if (customKey.length < 8 || customKey.length > 256) {
+        return { ok: false, message: 'Custom RTMP stream key must be 8–256 characters.' };
+      }
+    }
+    return { ok: true };
+  }
+
   const els = {
     canvas: document.getElementById('program-canvas'),
     empty: document.getElementById('program-empty'),
@@ -40,11 +106,20 @@
     btnRelayRefresh: document.getElementById('btn-relay-refresh'),
     btnConfig: document.getElementById('btn-config'),
     btnVerify: document.getElementById('btn-verify'),
+    btnAddScene: document.getElementById('btn-add-scene'),
+    sceneList: document.getElementById('scene-list'),
+    destTwitch: document.getElementById('dest-twitch'),
+    destYoutube: document.getElementById('dest-youtube'),
+    destCustom: document.getElementById('dest-custom'),
     cfgProfile: document.getElementById('cfg-profile'),
     cfgTwitchKey: document.getElementById('cfg-twitch-key'),
     cfgYoutubeKey: document.getElementById('cfg-youtube-key'),
+    cfgCustomRtmpUrl: document.getElementById('cfg-custom-rtmp-url'),
+    cfgCustomRtmpKey: document.getElementById('cfg-custom-rtmp-key'),
     modal: document.getElementById('relay-modal'),
     modalClose: document.getElementById('modal-close'),
+    streamError: document.getElementById('stream-error'),
+    streamStatsLine: document.getElementById('stream-stats-line'),
   };
 
   const ctx = els.canvas.getContext('2d');
@@ -54,11 +129,97 @@
   let whipPublisher = null;
   let relayHealth = null;
   let statusPollTimer = 0;
+  let sessionLiveIntent = false;
+
+  /** @type {{ id: string, name: string }[]} */
+  let scenes = [{ id: 'scene-1', name: 'Scene 1' }];
+  let activeSceneId = 'scene-1';
+
+  function activeSceneName() {
+    return scenes.find((s) => s.id === activeSceneId)?.name ?? 'Scene 1';
+  }
+
+  function renderSceneList() {
+    if (!els.sceneList) return;
+    els.sceneList.replaceChildren();
+    for (const scene of scenes) {
+      const li = document.createElement('li');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'stream-scene-item' + (scene.id === activeSceneId ? ' is-on' : '');
+      btn.textContent = scene.name;
+      btn.setAttribute('aria-current', scene.id === activeSceneId ? 'true' : 'false');
+      btn.addEventListener('click', () => {
+        void switchScene(scene.id);
+      });
+      li.appendChild(btn);
+      els.sceneList.appendChild(li);
+    }
+  }
+
+  async function switchScene(sceneId) {
+    if (!scenes.some((s) => s.id === sceneId)) return;
+    activeSceneId = sceneId;
+    renderSceneList();
+    log(`Active scene: ${activeSceneName()}.`);
+    if (relayHealth) {
+      await postSceneLayout();
+    }
+  }
+
+  function addScene() {
+    const n = scenes.length + 1;
+    const id = `scene-${n}`;
+    scenes.push({ id, name: `Scene ${n}` });
+    renderSceneList();
+    void switchScene(id);
+  }
+
+  function syncDestinationInputs() {
+    const twitchOn = els.destTwitch.checked;
+    const youtubeOn = els.destYoutube.checked;
+    const customOn = els.destCustom.checked;
+    els.cfgTwitchKey.disabled = !twitchOn;
+    els.cfgYoutubeKey.disabled = !youtubeOn;
+    els.cfgCustomRtmpUrl.disabled = !customOn;
+    els.cfgCustomRtmpKey.disabled = !customOn;
+  }
+
+  function destinationInputsForConfig() {
+    const twitch = els.destTwitch.checked ? normalizeStreamKey(els.cfgTwitchKey.value) : '';
+    const youtube = els.destYoutube.checked ? normalizeStreamKey(els.cfgYoutubeKey.value) : '';
+    const customUrl = els.destCustom.checked ? els.cfgCustomRtmpUrl.value.trim() : '';
+    const customKey = els.destCustom.checked ? normalizeStreamKey(els.cfgCustomRtmpKey.value) : '';
+    return { twitch, youtube, customUrl, customKey };
+  }
+
+  function setStreamError(message) {
+    if (!message) {
+      els.streamError.hidden = true;
+      els.streamError.textContent = '';
+      return;
+    }
+    els.streamError.hidden = false;
+    els.streamError.textContent = message;
+  }
+
+  function updateStatsLine(extra) {
+    const profile = normalizeProfile(els.cfgProfile.value);
+    const spec = profileSpec(profile);
+    const relayBit = relayHealth ? `relay ${RELAY_BASE}` : 'relay offline';
+    const line = `${spec.width}×${spec.height} @ ${spec.fps}fps · ${spec.bitrateMbps} Mbps · ${relayBit}`;
+    els.streamStatsLine.textContent = extra ? `${line} · ${extra}` : line;
+  }
 
   function log(line) {
     const ts = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     els.log.textContent = (els.log.textContent ? els.log.textContent + '\n' : '') + `[${ts}] ${line}`;
     els.log.scrollTop = els.log.scrollHeight;
+  }
+
+  function logError(line) {
+    log(line);
+    setStreamError(line);
   }
 
   function setRelayStatus(state, text) {
@@ -90,25 +251,34 @@
 
   async function probeRelay() {
     try {
-      const res = await fetch(`${RELAY_BASE}${PATHS.health}`, { method: 'GET', mode: 'cors', cache: 'no-store' });
+      const res = await fetch(`${RELAY_BASE}${PATHS.health}`, {
+        method: 'GET',
+        mode: 'cors',
+        cache: 'no-store',
+        headers: { Accept: 'application/json' },
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       relayHealth = await res.json();
       if (!relayHealth?.ok) throw new Error('health ok=false');
       const version = relayHealth.version ?? '?';
       const mock = String(version).includes('mock');
       setRelayStatus('ok', mock ? `Dev relay v${version}` : `MAKA.relay v${version}`);
-      els.relayVersionLine.textContent = `Connected — ${mock ? 'mock' : 'MAKA.relay'} v${version} · WHIP ${PATHS.whip}`;
-      log(`Relay health OK (v${version}).`);
+      els.relayVersionLine.textContent = `Connected — ${mock ? 'mock' : 'MAKA.relay'} v${version} · WHIP ${RELAY_BASE}${PATHS.whip}`;
+      setStreamError(null);
+      updateStatsLine();
+      log(`Relay health OK (v${version}) at ${RELAY_BASE}.`);
       await refreshRelayStatus();
       startStatusPoll();
       return true;
-    } catch {
+    } catch (err) {
       relayHealth = null;
       stopStatusPoll();
       renderStatusJson(null);
       setRelayStatus('warn', 'Relay not detected');
-      els.relayVersionLine.textContent = `No relay at ${RELAY_BASE} — run npm run web:relay or install Maka.`;
-      log(`No relay at ${RELAY_BASE}.`);
+      els.relayVersionLine.textContent = `No relay at ${RELAY_BASE} — run npm run web:relay or open /relay/health on staging.`;
+      updateStatsLine();
+      const detail = err instanceof Error ? err.message : String(err);
+      logError(`No relay at ${RELAY_BASE} (${detail}).`);
       return false;
     }
   }
@@ -120,8 +290,27 @@
       if (!res.ok) return null;
       const status = await res.json();
       renderStatusJson(status);
-      if (status.status === 'live') setRelayStatus('live', 'Live — relay encoding');
-      else if (status.status === 'error') setRelayStatus('warn', status.error || 'Relay error');
+      if (status.status === 'live') {
+        setRelayStatus('live', 'Live — relay encoding');
+        updateStatsLine('live');
+        setStreamError(null);
+      } else if (status.status === 'error') {
+        const msg = status.error || 'Relay error';
+        setRelayStatus('warn', msg);
+        logError(msg);
+      } else {
+        updateStatsLine(status.status || 'idle');
+      }
+
+      if (
+        sessionLiveIntent &&
+        whipPublisher &&
+        status.whipSessionActive === false &&
+        status.status !== 'live'
+      ) {
+        logError('Relay lost WHIP session (orphan). Stop and go live again to re-publish.');
+      }
+
       return status;
     } catch {
       return null;
@@ -141,11 +330,21 @@
   }
 
   function buildConfigBody() {
-    const body = { profile: els.cfgProfile.value || '720p30' };
-    const twitch = els.cfgTwitchKey.value.trim();
-    const youtube = els.cfgYoutubeKey.value.trim();
+    const profile = normalizeProfile(els.cfgProfile.value);
+    const spec = profileSpec(profile);
+    const body = { profile, bitrateMbps: spec.bitrateMbps };
+    const { twitch, youtube, customUrl, customKey } = destinationInputsForConfig();
     if (twitch) body.twitchKey = twitch;
+    else body.twitchKey = '';
     if (youtube) body.youtubeKey = youtube;
+    else body.youtubeKey = '';
+    if (customUrl && customKey) {
+      body.customRtmpUrl = customUrl;
+      body.customRtmpKey = customKey;
+    } else {
+      body.customRtmpUrl = '';
+      body.customRtmpKey = '';
+    }
     return body;
   }
 
@@ -161,15 +360,35 @@
       throw new Error(`Config failed (${res.status})${detail ? `: ${detail}` : ''}`);
     }
     log('POST /config applied (keys stay in relay RAM).');
+    setStreamError(null);
     await refreshRelayStatus();
   }
 
   async function verifyRelayConfig() {
     if (!relayHealth) throw new Error('Relay not connected');
+    const { twitch, youtube, customUrl, customKey } = destinationInputsForConfig();
+    const keysOk = validateRelayStreamKeys({
+      twitchKey: twitch,
+      youtubeKey: youtube,
+      customRtmpUrl: customUrl,
+      customRtmpKey: customKey,
+      customEnabled: els.destCustom.checked,
+    });
+    if (!keysOk.ok) throw new Error(keysOk.message);
+
+    await postRelayConfig();
+
     const res = await relayFetch(PATHS.verify, { method: 'POST' });
     if (!res.ok) throw new Error(`Verify HTTP ${res.status}`);
     const data = await res.json();
-    log(data.ok ? 'Verify OK — ' + (data.message || '') : 'Verify failed — ' + (data.message || ''));
+    const parts = [data.message || ''];
+    if (data.twitch && data.twitch.ok === false) parts.push('Twitch verify failed');
+    if (data.youtube && data.youtube.ok === false) parts.push('YouTube verify failed');
+    if (data.custom && data.custom.ok === false) parts.push('Custom RTMP verify failed');
+    const msg = data.ok ? 'Verify OK — ' + (data.message || '') : parts.filter(Boolean).join(' · ');
+    log(msg);
+    if (data.ok) setStreamError(null);
+    else setStreamError(msg);
     return data;
   }
 
@@ -179,15 +398,17 @@
 
   async function postSceneLayout() {
     if (!relayHealth) return;
-    const w = els.canvas.width || 1280;
-    const h = els.canvas.height || 720;
+    const profile = normalizeProfile(els.cfgProfile.value);
+    const spec = profileSpec(profile);
+    const w = spec.width;
+    const h = spec.height;
     const layout = {
       canvas: { width: w, height: h },
       sources: [
         {
           id: 'gameplay',
           type: 'video',
-          label: 'Gameplay',
+          label: activeSceneName(),
           x: 0,
           y: 0,
           width: w,
@@ -196,7 +417,7 @@
         },
       ],
     };
-    if (webcamStream) {
+    if (screenStream && webcamStream) {
       const pipW = Math.round(w * 0.22);
       const pipH = Math.round(pipW * (9 / 16));
       layout.sources.push({
@@ -214,7 +435,11 @@
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(layout),
-    }).catch(() => undefined);
+    })
+      .then((res) => {
+        if (res.ok) log(`POST /scene (${w}×${h}) — ${activeSceneName()}.`);
+      })
+      .catch(() => undefined);
   }
 
   function resizeCanvas() {
@@ -320,9 +545,27 @@
     add(sources.mic, TRACK_IDS.mic);
   }
 
+  function preferH264VideoCodecs(pc) {
+    const caps = RTCRtpSender.getCapabilities('video');
+    if (!caps) return;
+    const h264 = caps.codecs.filter((c) => c.mimeType.toLowerCase().includes('h264'));
+    const other = caps.codecs.filter((c) => !c.mimeType.toLowerCase().includes('h264'));
+    if (!h264.length) return;
+    const ordered = [...h264, ...other];
+    for (const transceiver of pc.getTransceivers()) {
+      if (transceiver.sender.track?.kind !== 'video') continue;
+      try {
+        transceiver.setCodecPreferences(ordered);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
   async function publishWhip(sources) {
     const pc = new RTCPeerConnection({ iceServers: [] });
     attachWhipSources(pc, sources);
+    preferH264VideoCodecs(pc);
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
     await waitForIce(pc, 5000);
@@ -399,13 +642,27 @@
       return;
     }
     try {
+      setStreamError(null);
+      const { twitch, youtube, customUrl, customKey } = destinationInputsForConfig();
+      const keysOk = validateRelayStreamKeys({
+        twitchKey: twitch,
+        youtubeKey: youtube,
+        customRtmpUrl: customUrl,
+        customRtmpKey: customKey,
+        customEnabled: els.destCustom.checked,
+      });
+      if (!keysOk.ok) throw new Error(keysOk.message);
+
       await postRelayConfig();
       await postSceneLayout();
-      log('Publishing WHIP to localhost relay…');
-      whipPublisher = await publishWhip(buildPublishSources());
-      whipPublisher.pc.onconnectionstatechange = () => {
-        log(`WHIP connection: ${whipPublisher.pc.connectionState}`);
-        if (whipPublisher.pc.connectionState === 'connected') {
+      log(`Publishing WHIP to ${RELAY_BASE}${PATHS.whip}…`);
+      sessionLiveIntent = true;
+      const publisher = await publishWhip(buildPublishSources());
+      whipPublisher = publisher;
+      publisher.pc.onconnectionstatechange = () => {
+        if (whipPublisher !== publisher) return;
+        log(`WHIP connection: ${publisher.pc.connectionState}`);
+        if (publisher.pc.connectionState === 'connected') {
           setRelayStatus('live', 'Live via relay');
           void refreshRelayStatus();
         }
@@ -415,14 +672,16 @@
       updateButtons();
       await refreshRelayStatus();
     } catch (err) {
+      sessionLiveIntent = false;
       whipPublisher = null;
-      log(`Go live failed: ${err instanceof Error ? err.message : err}`);
+      logError(`Go live failed: ${err instanceof Error ? err.message : err}`);
       els.modal.hidden = false;
       updateButtons();
     }
   }
 
   async function onStop() {
+    sessionLiveIntent = false;
     if (whipPublisher) {
       await whipPublisher.close().catch(() => undefined);
       whipPublisher = null;
@@ -478,11 +737,23 @@
   els.btnStop.addEventListener('click', () => void onStop());
   els.btnRelayRefresh.addEventListener('click', () => void probeRelay());
   els.btnConfig.addEventListener('click', () => {
-    void postRelayConfig().catch((err) => log(err instanceof Error ? err.message : String(err)));
+    void postRelayConfig().catch((err) => logError(err instanceof Error ? err.message : String(err)));
   });
   els.btnVerify.addEventListener('click', () => {
-    void verifyRelayConfig().catch((err) => log(err instanceof Error ? err.message : String(err)));
+    void verifyRelayConfig().catch((err) => logError(err instanceof Error ? err.message : String(err)));
   });
+  els.cfgProfile.addEventListener('change', () => {
+    updateStatsLine();
+    if (relayHealth) {
+      void postRelayConfig()
+        .then(() => postSceneLayout())
+        .catch((err) => log(err instanceof Error ? err.message : String(err)));
+    }
+  });
+  els.destTwitch.addEventListener('change', syncDestinationInputs);
+  els.destYoutube.addEventListener('change', syncDestinationInputs);
+  els.destCustom.addEventListener('change', syncDestinationInputs);
+  els.btnAddScene?.addEventListener('click', () => addScene());
   els.modalClose.addEventListener('click', () => {
     els.modal.hidden = true;
   });
@@ -491,6 +762,8 @@
   });
 
   window.addEventListener('resize', resizeCanvas);
+  syncDestinationInputs();
+  renderSceneList();
   drawFrame();
   void probeRelay();
   updateButtons();
