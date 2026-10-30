@@ -1,5 +1,28 @@
-/* STREAM_CSS_BUILD=9e0ef78 — bump ?v= on /stream/stream.css in site/stream/index.html when this file changes */
-/* Browser studio — typography + layout aligned with Electron app + /preview/ mock */
+/* STREAM_CSS_BUILD=stream9a1 — bump ?v= on /stream/stream.css in site/stream/index.html when this file changes */
+/* Browser studio — typography + layout aligned with Electron app (no marketing site chrome) */
+
+html,
+body,
+button,
+input,
+select,
+textarea,
+.stream-page .btn {
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif !important;
+}
+
+.stream-page h1,
+.stream-page h2,
+.stream-page .wordmark,
+.stream-page .brand-tag,
+.stream-page .stream-tab,
+.stream-page .stream-block-head,
+.stream-page .program-label,
+.stream-page .btn-primary,
+.stream-page .btn-outline {
+  font-family: "League Spartan", system-ui, sans-serif !important;
+}
+
 .stream-page {
   color-scheme: light;
   --headline: "League Spartan", system-ui, sans-serif;
@@ -55,36 +78,37 @@
   grid-area: top;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.55rem;
   padding: 0 0.75rem;
   border-bottom: 1px solid var(--line);
   background: var(--panel);
 }
 
-.stream-brand {
-  gap: 0.45rem;
-  min-width: 0;
+.stream-top-brand.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 9rem;
   flex-shrink: 0;
 }
 
-.stream-brand-lockup {
+.brand-lockup {
   display: flex;
   flex-direction: column;
   gap: 0.05rem;
   min-width: 0;
 }
 
-.stream-brand-wordmark {
-  font-family: var(--headline);
+.wordmark {
   font-weight: 900;
   font-style: italic;
   font-size: 1.05rem;
   letter-spacing: -0.02em;
   line-height: 1;
+  color: var(--text);
 }
 
-.stream-brand-tag {
-  font-family: var(--headline);
+.brand-tag {
   font-size: 0.52rem;
   font-weight: 700;
   letter-spacing: 0.28em;
@@ -93,10 +117,20 @@
   white-space: nowrap;
 }
 
+.mark {
+  width: 1.45rem;
+  height: 1.45rem;
+  border-radius: 0.45rem;
+  background: var(--gold);
+  box-shadow: 0 0 0 1px var(--line);
+  flex-shrink: 0;
+}
+
 .stream-tabs {
   display: flex;
   gap: 0.35rem;
-  margin-left: auto;
+  flex: 1;
+  justify-content: center;
 }
 
 .stream-tab {
@@ -342,6 +376,80 @@
 .stream-stats-bar__links a {
   color: var(--muted);
   text-decoration: none;
+}
+
+.stream-page a {
+  color: var(--gold-dark);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+}
+
+.stream-page a:hover {
+  color: var(--gold);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.8rem 1.25rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition:
+    filter 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.btn:hover {
+  filter: brightness(1.04);
+  transform: translateY(-2px);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn-primary {
+  background: linear-gradient(100deg, var(--gold-light), var(--gold));
+  color: var(--text);
+  box-shadow: 0 8px 24px rgba(255, 196, 12, 0.28);
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  padding: 0.65rem 1rem;
+}
+
+.btn-outline {
+  flex: 1;
+  min-width: 0;
+  background: var(--panel);
+  border-color: rgba(255, 196, 12, 0.35);
+  color: var(--text);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.btn-outline:hover {
+  border-color: var(--gold);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 6px 18px rgba(255, 196, 12, 0.12);
 }
 
 .stream-stats-bar__links a:hover {
