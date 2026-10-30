@@ -28,13 +28,13 @@ Direct comparison between the **Electron streaming studio** (`src/renderer/*`) a
 | Window controls | Min / max / close | — | ❌ N/A (web) |
 | Browse tab strip | Twitch, YT, chat pins | — | ❌ missing |
 | URL / nav row | Back, forward, reload, omnibox | — | ❌ missing |
-| Scene list | Multiple scenes, switch layout | — | ❌ missing |
+| Scene list | Multiple scenes, switch layout | Scenes column — Scene 1 + add scene; switch re-POSTs `/scene` at profile canvas size | ⚠️ partial (no per-scene source layouts) |
 | Sources list | Game capture, webcam, mic, layers | Add webcam / screen / mic buttons | ⚠️ partial (no game capture API; canvas compositor instead) |
 | Program monitor | Game + browser overlay + PIP | Canvas preview + gold PIP | ⚠️ partial (no browser overlay track) |
 | Program stats bar | Quality select, dropped, FPS, resolution | Footer hint line only | ⚠️ partial |
 | Audio mixer | Desktop / mic / game meters | — | ❌ missing |
 | Stream controls sidebar | Go live, recording, vcam (stubs) | Start / stop + relay config block | ⚠️ partial |
-| Stream info / destinations | Twitch / YT / custom RTMP toggles | Twitch + YT key fields (always sent if filled) | ⚠️ partial (no custom RTMP UI yet) |
+| Stream info / destinations | Twitch / YT / custom RTMP toggles | Twitch / YT / Custom RTMP toggles + key fields + verify | ✅ parity (web sidebar) |
 | Encode profile | `profile-select` + center quality dropdown | `cfg-profile` select | ✅ parity (presets match `ENCODE_PROFILES`) |
 | Settings dialog | Tray, chat, lab mode, startup, addons | — | ❌ missing |
 | Relay modal / errors | `relay-error`, `dest-error`, settings | Log panel + relay modal | ⚠️ partial (wire pass 1 adds error banner) |
@@ -50,9 +50,9 @@ Direct comparison between the **Electron streaming studio** (`src/renderer/*`) a
 | --- | --- | --- | --- |
 | Relay health probe | Tabcast / `pingRelayHealth` → `GET /health` | `probeRelay()` on load + refresh button | ✅ |
 | Auth on protected routes | `Authorization: Bearer {relayToken}` | Same in `authHeaders()` | ✅ |
-| `POST /config` | Profile + `bitrateMbps` + keys (+ custom RTMP) | Profile + keys; wire pass adds `bitrateMbps` | ⚠️ partial (custom RTMP UI pending) |
-| `POST /config/verify` | With destination toggles | Verify button | ✅ |
-| `POST /scene` | Profile-sized canvas + gameplay/webcam/browser | Canvas-sized layout; wire pass uses encode profile dimensions | ⚠️ partial |
+| `POST /config` | Profile + `bitrateMbps` + keys (+ custom RTMP) | Profile + `bitrateMbps` + enabled destination keys (matches `relay-client.ts`) | ✅ |
+| `POST /config/verify` | With destination toggles | Apply config, then verify (destination toggles) | ✅ |
+| `POST /scene` | Profile-sized canvas + gameplay/webcam/browser | Profile canvas + active scene label; switch/add re-POSTs layout | ⚠️ partial (same capture layout per scene) |
 | WHIP publish | Named streams, H.264 preference, ICE gather | Named streams, H.264 in wire pass | ⚠️ partial (no browser/desktop-audio tracks) |
 | WHIP teardown | `DELETE` Location + `POST /stop` | Same | ✅ |
 | Status poll | Tabcast snapshot + UI stats | 2s poll `GET /status` | ⚠️ partial (no dropped/FPS from relay in UI) |
@@ -102,6 +102,16 @@ Both clients aim for this order:
 6. Stop: WHIP `DELETE` + `POST /stop`
 
 Desktop additionally runs relay lifecycle via Tabcast, live recovery, and WHIP video stall watchdog (`whip.ts`).
+
+---
+
+## Pass 3 (planned — not in pass 2)
+
+| Item | Desktop | Web target |
+| --- | --- | --- |
+| Browse / Search tab | Full browser webview + WHIP browser track | Tab strip + embedded browse surface |
+| Audio mixer meters | Desktop / mic / game VU | Footer or left-column meters from capture analyser |
+| Full live recovery watchdog | `relayNeedsLiveBootstrap`, WHIP stall retry | Auto re-POST config/scene/WHIP when relay drops session mid-live |
 
 ---
 

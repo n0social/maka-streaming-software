@@ -1,4 +1,4 @@
-/* STREAM_CSS_BUILD=stream9b1 — bump ?v= on /stream/stream.css in site/stream/index.html when this file changes */
+/* STREAM_CSS_BUILD=stream9b2 — bump ?v= on /stream/stream.css in site/stream/index.html when this file changes */
 /* Browser studio — typography + layout aligned with Electron app (no marketing site chrome) */
 
 html,
@@ -325,6 +325,73 @@ textarea,
   border: 1px solid var(--line);
   background: var(--panel-2);
   color: var(--text);
+}
+
+.stream-field--key {
+  margin-top: -0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.stream-check {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.35rem 0 0.25rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.stream-check input {
+  accent-color: var(--gold-dark);
+}
+
+.stream-destinations {
+  margin-bottom: 0.35rem;
+}
+
+.stream-scene-list {
+  list-style: none;
+  margin: 0 0 0.55rem;
+  padding: 0;
+}
+
+.stream-scene-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.5rem;
+  margin-bottom: 0.25rem;
+  border-radius: 0.55rem;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  font-size: 0.78rem;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.stream-scene-item.is-on {
+  border-color: var(--gold);
+  box-shadow: inset 0 0 0 1px rgba(255, 196, 12, 0.2);
+}
+
+.stream-scene-add {
+  width: 100%;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .stream-status-json {

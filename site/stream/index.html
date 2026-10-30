@@ -31,7 +31,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=League+Spartan:ital,wght@0,700;0,800;0,900;1,700;1,800;1,900&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/stream/stream.css?v=stream9b1" />
+    <link rel="stylesheet" href="/stream/stream.css?v=stream9b2" />
   </head>
   <body class="stream-page">
     <div class="stream-studio">
@@ -52,7 +52,12 @@
         </div>
       </header>
 
-      <aside class="stream-sidebar stream-sidebar--left" aria-label="Sources">
+      <aside class="stream-sidebar stream-sidebar--left" aria-label="Scenes and sources">
+        <div class="stream-block">
+          <div class="stream-block-head"><span>Scenes</span></div>
+          <ul class="stream-scene-list" id="scene-list" role="list" aria-label="Scenes"></ul>
+          <button type="button" class="btn btn-outline stream-scene-add" id="btn-add-scene">Add scene</button>
+        </div>
         <div class="stream-block">
           <div class="stream-block-head"><span>Sources</span></div>
           <p>Capture stays in your browser until you publish WHIP to MAKA.relay.</p>
@@ -77,6 +82,45 @@
 
       <aside class="stream-sidebar stream-sidebar--right" aria-label="Relay and stream controls">
         <div class="stream-block">
+          <div class="stream-block-head"><span>Destinations</span></div>
+          <p class="stream-hint">Keys stay in relay RAM only. Enable a platform, paste keys, then verify or go live.</p>
+          <div class="stream-destinations" id="stream-destinations">
+            <label class="stream-check">
+              <input type="checkbox" id="dest-twitch" checked />
+              <span>Twitch</span>
+            </label>
+            <label class="stream-field stream-field--key">
+              <span class="sr-only">Twitch stream key</span>
+              <input id="cfg-twitch-key" type="password" autocomplete="off" spellcheck="false" placeholder="live_… Twitch stream key" />
+            </label>
+            <label class="stream-check">
+              <input type="checkbox" id="dest-youtube" />
+              <span>YouTube</span>
+            </label>
+            <label class="stream-field stream-field--key">
+              <span class="sr-only">YouTube stream key</span>
+              <input id="cfg-youtube-key" type="password" autocomplete="off" spellcheck="false" placeholder="YouTube stream key" disabled />
+            </label>
+            <label class="stream-check">
+              <input type="checkbox" id="dest-custom" />
+              <span>Custom RTMP</span>
+            </label>
+            <label class="stream-field stream-field--key">
+              <span class="sr-only">Custom RTMP ingest URL</span>
+              <input id="cfg-custom-rtmp-url" type="text" autocomplete="off" spellcheck="false" placeholder="rtmps://…/app" disabled />
+            </label>
+            <label class="stream-field stream-field--key">
+              <span class="sr-only">Custom RTMP stream key</span>
+              <input id="cfg-custom-rtmp-key" type="password" autocomplete="off" spellcheck="false" placeholder="Stream key" disabled />
+            </label>
+          </div>
+          <div class="stream-actions">
+            <button type="button" class="btn btn-outline" id="btn-config">Apply config</button>
+            <button type="button" class="btn btn-ghost" id="btn-verify">Verify keys</button>
+          </div>
+        </div>
+
+        <div class="stream-block">
           <div class="stream-block-head"><span>Relay</span></div>
           <p id="relay-version-line">Checking relay…</p>
           <p class="stream-hint">
@@ -97,18 +141,8 @@
               <option value="4k60">4k60</option>
             </select>
           </label>
-          <label class="stream-field">
-            <span>Twitch stream key (optional, RAM only)</span>
-            <input id="cfg-twitch-key" type="password" autocomplete="off" placeholder="live_…" />
-          </label>
-          <label class="stream-field">
-            <span>YouTube stream key (optional)</span>
-            <input id="cfg-youtube-key" type="password" autocomplete="off" placeholder="xxxx-xxxx-…" />
-          </label>
           <div class="stream-actions">
             <button type="button" class="btn btn-outline" id="btn-relay-refresh">Check relay</button>
-            <button type="button" class="btn btn-outline" id="btn-config">Apply config</button>
-            <button type="button" class="btn btn-ghost" id="btn-verify">Verify keys</button>
           </div>
           <pre class="stream-status-json" id="relay-status-json" aria-live="polite"></pre>
         </div>
@@ -152,6 +186,6 @@
       </div>
     </div>
 
-    <script src="/stream/stream.js?v=stream9b1" defer></script>
+    <script src="/stream/stream.js?v=stream9b2" defer></script>
   </body>
 </html>

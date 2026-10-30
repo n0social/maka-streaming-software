@@ -43,6 +43,50 @@
     return ENCODE_PROFILES[normalizeProfile(id)];
   }
 
+  /** Mirrors `src/shared/stream-keys.ts` (static site has no bundler). */
+  function normalizeStreamKey(raw) {
+    let key = String(raw ?? '').trim();
+    const fromRtmpUrl = key.match(/rtmps?:\/\/[^/]+\/app\/([^/?#\s]+)/i);
+    if (fromRtmpUrl?.[1]) return fromRtmpUrl[1];
+    const fromAppPath = key.match(/\/app\/([^/?#\s]+)/i);
+    if (fromAppPath?.[1]) return fromAppPath[1];
+    return key;
+  }
+
+  function validateRelayStreamKeys(input) {
+    const twitch = normalizeStreamKey(input.twitchKey ?? '');
+    const youtube = normalizeStreamKey(input.youtubeKey ?? '');
+    const customEnabled = Boolean(input.customEnabled);
+    const customUrl = (input.customRtmpUrl ?? '').trim();
+    const customKey = normalizeStreamKey(input.customRtmpKey ?? '');
+
+    if (!twitch && !youtube && !(customEnabled && customUrl && customKey)) {
+      return {
+        ok: false,
+        message: 'Enable at least one destination (Twitch, YouTube, or Custom RTMP).',
+      };
+    }
+    if (twitch) {
+      if (twitch.length < 15 || !/^live_[a-zA-Z0-9_]+$/.test(twitch)) {
+        return { ok: false, message: 'Twitch key must start with live_ (15+ characters).' };
+      }
+    }
+    if (youtube) {
+      if (youtube.length < 16 || !/^[a-z0-9-]{16,64}$/i.test(youtube)) {
+        return { ok: false, message: 'YouTube stream key must be 16–64 letters, numbers, or dashes.' };
+      }
+    }
+    if (customEnabled && (customUrl || customKey)) {
+      if (!/^rtmps?:\/\//i.test(customUrl)) {
+        return { ok: false, message: 'Custom RTMP URL must start with rtmp:// or rtmps://' };
+      }
+      if (customKey.length < 8) {
+        return { ok: false, message: 'Custom RTMP stream key must be at least 8 characters.' };
+      }
+    }
+    return { ok: true };
+  }
+
   const els = {
     canvas: document.getElementById('program-canvas'),
     empty: document.getElementById('program-empty'),
@@ -59,9 +103,16 @@
     btnRelayRefresh: document.getElementById('btn-relay-refresh'),
     btnConfig: document.getElementById('btn-config'),
     btnVerify: document.getElementById('btn-verify'),
+    btnAddScene: document.getElementById('btn-add-scene'),
+    sceneList: document.getElementById('scene-list'),
+    destTwitch: document.getElementById('dest-twitch'),
+    destYoutube: document.getElementById('dest-youtube'),
+    destCustom: document.getElementById('dest-custom'),
     cfgProfile: document.getElementById('cfg-profile'),
     cfgTwitchKey: document.getElementById('cfg-twitch-key'),
     cfgYoutubeKey: document.getElementById('cfg-youtube-key'),
+    cfgCustomRtmpUrl: document.getElementById('cfg-custom-rtmp-url'),
+    cfgCustomRtmpKey: document.getElementById('cfg-custom-rtmp-key'),
     modal: document.getElementById('relay-modal'),
     modalClose: document.getElementById('modal-close'),
     streamError: document.getElementById('stream-error'),
@@ -76,6 +127,68 @@
   let relayHealth = null;
   let statusPollTimer = 0;
   let sessionLiveIntent = false;
+
+  /** @type {{ id: string, name: string }[]} */
+  let scenes = [{ id: 'scene-1', name: 'Scene 1' }];
+  let activeSceneId = 'scene-1';
+
+  function activeSceneName() {
+    return scenes.find((s) => s.id === activeSceneId)?.name ?? 'Scene 1';
+  }
+
+  function renderSceneList() {
+    if (!els.sceneList) return;
+    els.sceneList.replaceChildren();
+    for (const scene of scenes) {
+      const li = document.createElement('li');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'stream-scene-item' + (scene.id === activeSceneId ? ' is-on' : '');
+      btn.textContent = scene.name;
+      btn.setAttribute('aria-current', scene.id === activeSceneId ? 'true' : 'false');
+      btn.addEventListener('click', () => {
+        void switchScene(scene.id);
+      });
+      li.appendChild(btn);
+      els.sceneList.appendChild(li);
+    }
+  }
+
+  async function switchScene(sceneId) {
+    if (!scenes.some((s) => s.id === sceneId)) return;
+    activeSceneId = sceneId;
+    renderSceneList();
+    log(`Active scene: ${activeSceneName()}.`);
+    if (relayHealth) {
+      await postSceneLayout();
+    }
+  }
+
+  function addScene() {
+    const n = scenes.length + 1;
+    const id = `scene-${n}`;
+    scenes.push({ id, name: `Scene ${n}` });
+    renderSceneList();
+    void switchScene(id);
+  }
+
+  function syncDestinationInputs() {
+    const twitchOn = els.destTwitch.checked;
+    const youtubeOn = els.destYoutube.checked;
+    const customOn = els.destCustom.checked;
+    els.cfgTwitchKey.disabled = !twitchOn;
+    els.cfgYoutubeKey.disabled = !youtubeOn;
+    els.cfgCustomRtmpUrl.disabled = !customOn;
+    els.cfgCustomRtmpKey.disabled = !customOn;
+  }
+
+  function destinationInputsForConfig() {
+    const twitch = els.destTwitch.checked ? normalizeStreamKey(els.cfgTwitchKey.value) : '';
+    const youtube = els.destYoutube.checked ? normalizeStreamKey(els.cfgYoutubeKey.value) : '';
+    const customUrl = els.destCustom.checked ? els.cfgCustomRtmpUrl.value.trim() : '';
+    const customKey = els.destCustom.checked ? normalizeStreamKey(els.cfgCustomRtmpKey.value) : '';
+    return { twitch, youtube, customUrl, customKey };
+  }
 
   function setStreamError(message) {
     if (!message) {
@@ -217,10 +330,18 @@
     const profile = normalizeProfile(els.cfgProfile.value);
     const spec = profileSpec(profile);
     const body = { profile, bitrateMbps: spec.bitrateMbps };
-    const twitch = els.cfgTwitchKey.value.trim();
-    const youtube = els.cfgYoutubeKey.value.trim();
+    const { twitch, youtube, customUrl, customKey } = destinationInputsForConfig();
     if (twitch) body.twitchKey = twitch;
+    else body.twitchKey = '';
     if (youtube) body.youtubeKey = youtube;
+    else body.youtubeKey = '';
+    if (customUrl && customKey) {
+      body.customRtmpUrl = customUrl;
+      body.customRtmpKey = customKey;
+    } else {
+      body.customRtmpUrl = '';
+      body.customRtmpKey = '';
+    }
     return body;
   }
 
@@ -242,10 +363,26 @@
 
   async function verifyRelayConfig() {
     if (!relayHealth) throw new Error('Relay not connected');
+    const { twitch, youtube, customUrl, customKey } = destinationInputsForConfig();
+    const keysOk = validateRelayStreamKeys({
+      twitchKey: twitch,
+      youtubeKey: youtube,
+      customRtmpUrl: customUrl,
+      customRtmpKey: customKey,
+      customEnabled: els.destCustom.checked,
+    });
+    if (!keysOk.ok) throw new Error(keysOk.message);
+
+    await postRelayConfig();
+
     const res = await relayFetch(PATHS.verify, { method: 'POST' });
     if (!res.ok) throw new Error(`Verify HTTP ${res.status}`);
     const data = await res.json();
-    const msg = data.ok ? 'Verify OK — ' + (data.message || '') : 'Verify failed — ' + (data.message || '');
+    const parts = [data.message || ''];
+    if (data.twitch && data.twitch.ok === false) parts.push('Twitch verify failed');
+    if (data.youtube && data.youtube.ok === false) parts.push('YouTube verify failed');
+    if (data.custom && data.custom.ok === false) parts.push('Custom RTMP verify failed');
+    const msg = data.ok ? 'Verify OK — ' + (data.message || '') : parts.filter(Boolean).join(' · ');
     log(msg);
     if (data.ok) setStreamError(null);
     else setStreamError(msg);
@@ -268,7 +405,7 @@
         {
           id: 'gameplay',
           type: 'video',
-          label: 'Gameplay',
+          label: activeSceneName(),
           x: 0,
           y: 0,
           width: w,
@@ -295,7 +432,11 @@
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(layout),
-    }).catch(() => undefined);
+    })
+      .then((res) => {
+        if (res.ok) log(`POST /scene (${w}×${h}) — ${activeSceneName()}.`);
+      })
+      .catch(() => undefined);
   }
 
   function resizeCanvas() {
@@ -589,9 +730,15 @@
   els.cfgProfile.addEventListener('change', () => {
     updateStatsLine();
     if (relayHealth) {
-      void postRelayConfig().catch((err) => log(err instanceof Error ? err.message : String(err)));
+      void postRelayConfig()
+        .then(() => postSceneLayout())
+        .catch((err) => log(err instanceof Error ? err.message : String(err)));
     }
   });
+  els.destTwitch.addEventListener('change', syncDestinationInputs);
+  els.destYoutube.addEventListener('change', syncDestinationInputs);
+  els.destCustom.addEventListener('change', syncDestinationInputs);
+  els.btnAddScene?.addEventListener('click', () => addScene());
   els.modalClose.addEventListener('click', () => {
     els.modal.hidden = true;
   });
@@ -600,6 +747,8 @@
   });
 
   window.addEventListener('resize', resizeCanvas);
+  syncDestinationInputs();
+  renderSceneList();
   drawFrame();
   void probeRelay();
   updateButtons();
