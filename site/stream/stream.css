@@ -1,4 +1,4 @@
-/* STREAM_CSS_BUILD=stream9a1 — bump ?v= on /stream/stream.css in site/stream/index.html when this file changes */
+/* STREAM_CSS_BUILD=stream9b1 — bump ?v= on /stream/stream.css in site/stream/index.html when this file changes */
 /* Browser studio — typography + layout aligned with Electron app (no marketing site chrome) */
 
 html,
@@ -291,6 +291,21 @@ textarea,
 
 .stream-hint {
   font-size: 0.78rem !important;
+}
+
+.stream-error {
+  margin: 0.35rem 0 0;
+  padding: 0.55rem 0.6rem;
+  border-radius: 0.45rem;
+  background: rgba(154, 59, 59, 0.1);
+  color: #9a3b3b;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.stream-error[hidden] {
+  display: none !important;
 }
 
 .stream-field {

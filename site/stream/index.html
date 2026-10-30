@@ -15,13 +15,13 @@
     <meta property="og:title" content="Maka — browser studio" />
     <meta
       property="og:description"
-      content="Browser capture preview. RTMP encoding uses MAKA.relay on localhost:38473."
+      content="Browser capture preview. RTMP encoding uses MAKA.relay (localhost or makalive.stream/relay on staging)."
     />
     <meta property="og:url" content="https://makalive.stream/stream/" />
     <meta property="og:image" content="https://makalive.stream/marketing/screenshot-desktop-1280x800.png" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:38473 http://localhost:38473"
+      content="default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://makalive.stream https://www.makalive.stream http://127.0.0.1:38473 http://localhost:38473"
     />
     <title>Maka — browser studio</title>
     <link rel="icon" type="image/png" href="/marketing/favicon-32.png?v=maka-m" sizes="32x32" />
@@ -31,7 +31,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=League+Spartan:ital,wght@0,700;0,800;0,900;1,700;1,800;1,900&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/stream/stream.css?v=stream9a1" />
+    <link rel="stylesheet" href="/stream/stream.css?v=stream9b1" />
   </head>
   <body class="stream-page">
     <div class="stream-studio">
@@ -55,7 +55,7 @@
       <aside class="stream-sidebar stream-sidebar--left" aria-label="Sources">
         <div class="stream-block">
           <div class="stream-block-head"><span>Sources</span></div>
-          <p>Capture stays in your browser until you publish to a local relay.</p>
+          <p>Capture stays in your browser until you publish WHIP to MAKA.relay.</p>
           <div class="stream-actions">
             <button type="button" class="btn btn-outline" id="btn-webcam">Add webcam</button>
             <button type="button" class="btn btn-outline" id="btn-screen">Share screen</button>
@@ -78,11 +78,14 @@
       <aside class="stream-sidebar stream-sidebar--right" aria-label="Relay and stream controls">
         <div class="stream-block">
           <div class="stream-block-head"><span>Relay</span></div>
-          <p id="relay-version-line">Connect to MAKA.relay on <code>127.0.0.1:38473</code>.</p>
+          <p id="relay-version-line">Checking relay…</p>
           <p class="stream-hint">
-            Dev without MAKArelay.exe: run <code>npm run web:relay</code> (see
+            On <strong>makalive.stream</strong> the staging relay is at
+            <a href="/relay/health"><code>/relay/</code></a>. Local dev: <code>npm run web:relay</code> on port
+            <code>38473</code> (
             <a href="https://github.com/n0social/maka-streaming-software/blob/main/docs/web-relay.md">web-relay docs</a>).
           </p>
+          <p class="stream-error" id="stream-error" hidden role="alert"></p>
           <label class="stream-field">
             <span>Encode profile</span>
             <select id="cfg-profile">
@@ -112,9 +115,9 @@
 
         <div class="stream-block">
           <div class="stream-block-head"><span>Go live</span></div>
-          <p>
-            WHIP to <code>127.0.0.1:38473</code> when MAKA.relay is running. Without it, preview only — no RTMP
-            from this page alone.
+          <p id="go-live-hint">
+            Applies config, scene layout, then WHIP to the connected relay. Preview works without a relay; RTMP needs
+            MAKA.relay.
           </p>
           <div class="stream-actions">
             <button type="button" class="btn btn-primary" id="btn-start">Start stream</button>
@@ -129,7 +132,7 @@
       </aside>
 
       <footer class="stream-stats-bar">
-        <span>Browser capture preview · RTMP via MAKA.relay on localhost</span>
+        <span id="stream-stats-line">Browser studio · checking relay…</span>
       </footer>
     </div>
 
@@ -137,9 +140,9 @@
       <div class="modal">
         <h2 id="modal-title">Relay required for go-live</h2>
         <p>
-          This page previews capture in the browser. RTMP encoding runs in
-          <strong>MAKA.relay</strong> on your PC (port 38473). For local testing without downloading MAKArelay.exe,
-          run <code>npm run dev:web-studio</code> from the repo — then apply config and go live here.
+          No relay responded at the configured base URL. On production, check
+          <a href="/relay/health"><code>/relay/health</code></a>. Locally, run
+          <code>npm run dev:web-studio</code> or install Maka with MAKA.relay on port 38473.
         </p>
         <div class="modal-actions">
           <a class="btn btn-primary" href="/download.html">Download Maka</a>
@@ -149,6 +152,6 @@
       </div>
     </div>
 
-    <script src="/stream/stream.js?v=stream9a1" defer></script>
+    <script src="/stream/stream.js?v=stream9b1" defer></script>
   </body>
 </html>
