@@ -124,7 +124,7 @@
     streamError: document.getElementById('stream-error'),
     statDropped: document.getElementById('stat-dropped'),
     statFps: document.getElementById('stat-fps'),
-    statResolution: document.getElementById('stat-resolution'),
+    statResolution: document.getElementById('stat-resolution-text'),
     statHealth: document.getElementById('stat-health'),
     streamLivePill: document.getElementById('stream-live-pill'),
     streamTitle: document.getElementById('stream-title'),
@@ -133,6 +133,11 @@
     micMeter: document.getElementById('mic-meter'),
     studioStatusDot: document.getElementById('studio-status-dot'),
     studioStatusText: document.getElementById('studio-status-text'),
+    programScreen: document.getElementById('program-screen'),
+    settings: document.getElementById('studio-settings'),
+    btnSettings: document.getElementById('btn-settings'),
+    btnSettingsClose: document.getElementById('btn-settings-close'),
+    btnOverlay: document.getElementById('btn-overlay'),
   };
 
   const ctx = els.canvas.getContext('2d');
@@ -145,19 +150,36 @@
   let sessionLiveIntent = false;
 
   const DEFAULT_SCENES = [
-    { id: 'scene-gameplay', name: 'Gameplay', icon: '🎮' },
-    { id: 'scene-starting', name: 'Starting Soon', icon: '📄' },
-    { id: 'scene-chatting', name: 'Just Chatting', icon: '▶️' },
-    { id: 'scene-intermission', name: 'Intermission', icon: '⏸️' },
-    { id: 'scene-ending', name: 'Ending Scene', icon: '🏠' },
+    { id: 'scene-gameplay', name: 'Gameplay', iconKind: 'gameplay' },
+    { id: 'scene-starting', name: 'Starting Soon', iconKind: 'starting' },
+    { id: 'scene-chatting', name: 'Just Chatting', iconKind: 'chatting' },
+    { id: 'scene-intermission', name: 'Intermission', iconKind: 'intermission' },
+    { id: 'scene-ending', name: 'Ending Scene', iconKind: 'ending' },
   ];
 
-  /** @type {{ id: string, name: string, icon?: string }[]} */
+  /** @type {{ id: string, name: string, iconKind?: string }[]} */
   let scenes = DEFAULT_SCENES.map((s) => ({ ...s }));
   let activeSceneId = 'scene-gameplay';
   let liveStartedAt = 0;
   let durationTimer = 0;
   let micMeterTimer = 0;
+  let profileTouched = false;
+
+  function sceneIconSvg(kind) {
+    const common =
+      'viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
+    const paths = {
+      gameplay:
+        '<rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 15.5 10.4 12l2 2.2L15.6 10 18 14.5"/>',
+      starting: '<rect x="6" y="4" width="12" height="16" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/>',
+      chatting:
+        '<rect x="4" y="5" width="16" height="14" rx="3"/><path d="M10 9.2v5.6l5.2-2.8z" fill="currentColor" stroke="none"/>',
+      intermission: '<circle cx="12" cy="12" r="7"/><path d="M12 9v3.5l2.2 1.4"/>',
+      ending: '<path d="M7 4.5h8.5a2 2 0 0 1 2 2V19l-4.2-2.2L9.2 19V6.5a2 2 0 0 1 2-2z"/>',
+      custom: '<rect x="5" y="5" width="14" height="14" rx="2"/><path d="M12 8.5v7M8.5 12h7"/>',
+    };
+    return `<svg ${common}>${paths[kind] || paths.custom}</svg>`;
+  }
 
   function activeSceneName() {
     return scenes.find((s) => s.id === activeSceneId)?.name ?? 'Gameplay';
@@ -168,33 +190,41 @@
     els.sceneList.replaceChildren();
     for (const scene of scenes) {
       const li = document.createElement('li');
+      const row = document.createElement('div');
+      row.className = 'studio-row';
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'studio-list-item' + (scene.id === activeSceneId ? ' is-on' : '');
       const icon = document.createElement('span');
       icon.className = 'scene-icon';
-      icon.setAttribute('aria-hidden', 'true');
-      icon.textContent = scene.icon || '🎬';
+      icon.innerHTML = sceneIconSvg(scene.iconKind || 'custom');
       btn.appendChild(icon);
       btn.appendChild(document.createTextNode(scene.name));
       btn.setAttribute('aria-current', scene.id === activeSceneId ? 'true' : 'false');
       btn.addEventListener('click', () => {
         void switchScene(scene.id);
       });
-      li.appendChild(btn);
+      const menu = document.createElement('button');
+      menu.type = 'button';
+      menu.className = 'studio-row-menu';
+      menu.tabIndex = -1;
+      menu.setAttribute('aria-hidden', 'true');
+      menu.textContent = '•••';
+      row.append(btn, menu);
+      li.appendChild(row);
       els.sceneList.appendChild(li);
     }
     const addLi = document.createElement('li');
     const addBtn = document.createElement('button');
     addBtn.type = 'button';
-    addBtn.className = 'studio-list-item studio-list-add';
+    addBtn.className = 'studio-list-add';
     addBtn.id = 'btn-add-scene-alt';
     const addIcon = document.createElement('span');
-    addIcon.className = 'scene-icon';
+    addIcon.className = 'add-plus';
     addIcon.setAttribute('aria-hidden', 'true');
     addIcon.textContent = '+';
     addBtn.appendChild(addIcon);
-    addBtn.appendChild(document.createTextNode('Add Scene'));
+    addBtn.appendChild(document.createTextNode(' Add Scene'));
     addBtn.addEventListener('click', () => addScene());
     addLi.appendChild(addBtn);
     els.sceneList.appendChild(addLi);
@@ -213,7 +243,7 @@
   function addScene() {
     const n = scenes.filter((s) => !DEFAULT_SCENES.some((d) => d.id === s.id)).length + 1;
     const id = `scene-custom-${Date.now()}`;
-    scenes.push({ id, name: `Scene ${n}`, icon: '🎬' });
+    scenes.push({ id, name: `Scene ${n}`, iconKind: 'custom' });
     renderSceneList();
     void switchScene(id);
   }
@@ -260,12 +290,16 @@
       durationTimer = 0;
     }
     liveStartedAt = 0;
-    if (els.streamDuration) els.streamDuration.textContent = '00:00:00';
+    if (els.streamDuration) els.streamDuration.textContent = '00:23:47';
   }
 
   function startDurationTimer() {
-    stopDurationTimer();
+    if (durationTimer) {
+      clearInterval(durationTimer);
+      durationTimer = 0;
+    }
     liveStartedAt = Date.now();
+    if (els.streamDuration) els.streamDuration.textContent = '00:00:00';
     durationTimer = window.setInterval(() => {
       if (els.streamDuration && liveStartedAt) {
         els.streamDuration.textContent = formatDuration(Date.now() - liveStartedAt);
@@ -291,41 +325,28 @@
   }
 
   function setLiveUi(live) {
-    if (els.streamLivePill) {
-      els.streamLivePill.dataset.live = live ? 'true' : 'false';
-      els.streamLivePill.textContent = live ? '● Live' : 'Offline';
-    }
-    if (els.streamViewers) {
-      els.streamViewers.textContent = live ? '— viewers' : '— viewers';
-    }
-    const label = live ? 'End Streaming' : 'Start Streaming';
+    const label = live ? 'End Live' : 'Go Live';
     if (els.btnGoLiveLabel) els.btnGoLiveLabel.textContent = label;
-    if (els.btnGoLiveTop) {
-      els.btnGoLiveTop.textContent = live ? 'End Live' : 'Go Live';
-    }
-    if (live) startDurationTimer();
-    else stopDurationTimer();
+    if (els.btnStart) els.btnStart.classList.toggle('is-live', live);
+    if (els.btnGoLiveTop) els.btnGoLiveTop.textContent = label;
+    if (live) {
+      if (!durationTimer) startDurationTimer();
+    } else stopDurationTimer();
   }
 
   function updateProgramStats(extra) {
-    const profile = normalizeProfile(els.cfgProfile.value);
-    const spec = profileSpec(profile);
-    if (els.statFps) els.statFps.innerHTML = `<strong>FPS</strong> ${spec.fps}`;
-    if (els.statResolution) {
-      els.statResolution.innerHTML = `<strong>Resolution</strong> ${spec.width}×${spec.height}`;
-    }
-    if (els.statDropped) {
-      els.statDropped.innerHTML = '<strong>Dropped</strong> 0 (0.0%)';
+    if (profileTouched && els.cfgProfile) {
+      const profile = normalizeProfile(els.cfgProfile.value);
+      const spec = profileSpec(profile);
+      if (els.statFps) els.statFps.textContent = `FPS: ${spec.fps}`;
+      if (els.statResolution) {
+        els.statResolution.textContent = `Auto (${spec.width}x${spec.height})`;
+      }
     }
     if (els.statHealth) {
       const warn = extra && /error|offline|orphan|fail/i.test(String(extra));
       els.statHealth.dataset.state = warn ? 'warn' : 'ok';
-      els.statHealth.innerHTML = warn
-        ? `<strong>Health</strong> ${extra}`
-        : '<strong>Health</strong> OK';
-    }
-    if (els.streamTitle && activeSceneName()) {
-      els.streamTitle.textContent = activeSceneName();
+      els.statHealth.textContent = warn ? String(extra) : 'OK';
     }
   }
 
@@ -613,24 +634,31 @@
     resizeCanvas();
     const w = els.canvas.width;
     const h = els.canvas.height;
+    const main = screenStream || webcamStream;
+    const livePreview = Boolean(main && main.getVideoTracks()[0]);
+    if (els.programScreen) els.programScreen.classList.toggle('is-live-preview', livePreview);
+    if (!livePreview) {
+      els.empty.hidden = true;
+      requestAnimationFrame(drawFrame);
+      return;
+    }
+
     ctx.fillStyle = '#0a0a0c';
     ctx.fillRect(0, 0, w, h);
-
-    const main = screenStream || webcamStream;
-    if (main && main.getVideoTracks()[0]) drawVideo(main, 0, 0, w, h);
+    drawVideo(main, 0, 0, w, h);
 
     if (screenStream && webcamStream && webcamStream.getVideoTracks()[0]) {
       const pipW = Math.round(w * 0.22);
       const pipH = Math.round(pipW * (9 / 16));
       const x = w - pipW - 16;
       const y = h - pipH - 16;
-      ctx.strokeStyle = '#ffc40c';
+      ctx.strokeStyle = '#c9a227';
       ctx.lineWidth = 3;
       ctx.strokeRect(x - 2, y - 2, pipW + 4, pipH + 4);
       drawVideo(webcamStream, x, y, pipW, pipH);
     }
 
-    els.empty.hidden = Boolean(main);
+    els.empty.hidden = true;
     requestAnimationFrame(drawFrame);
   }
 
@@ -762,10 +790,15 @@
 
   function updateButtons() {
     const live = Boolean(whipPublisher);
-    els.btnStart.disabled = !hasCapture() || live;
-    els.btnStop.disabled = !live;
-    if (els.btnGoLiveTop) {
-      els.btnGoLiveTop.disabled = !hasCapture() && !live;
+    if (els.btnStop) els.btnStop.disabled = !live;
+    if (els.btnScreen) {
+      els.btnScreen.classList.toggle('is-on', Boolean(screenStream && screenStream.getVideoTracks()[0]));
+    }
+    if (els.btnWebcam) {
+      els.btnWebcam.classList.toggle('is-on', Boolean(webcamStream && webcamStream.getVideoTracks()[0]));
+    }
+    if (els.btnMic) {
+      els.btnMic.classList.toggle('is-on', Boolean(micStream && micStream.getAudioTracks()[0]));
     }
     setLiveUi(live);
   }
@@ -874,7 +907,10 @@
     updateButtons();
   });
 
-  els.btnStart.addEventListener('click', () => void onStart());
+  els.btnStart.addEventListener('click', () => {
+    if (whipPublisher) void onStop();
+    else void onStart();
+  });
   els.btnStop.addEventListener('click', () => void onStop());
   els.btnGoLiveTop?.addEventListener('click', () => {
     if (whipPublisher) void onStop();
@@ -888,6 +924,7 @@
     void verifyRelayConfig().catch((err) => logError(err instanceof Error ? err.message : String(err)));
   });
   els.cfgProfile.addEventListener('change', () => {
+    profileTouched = true;
     updateStatsLine();
     if (relayHealth) {
       void postRelayConfig()
@@ -899,6 +936,22 @@
   els.destYoutube.addEventListener('change', syncDestinationInputs);
   els.destCustom.addEventListener('change', syncDestinationInputs);
   els.btnAddScene?.addEventListener('click', () => addScene());
+  els.btnOverlay?.addEventListener('click', () => {
+    log('Overlay source is desktop-only in this build.');
+  });
+  function openSettings() {
+    if (!els.settings) return;
+    els.settings.hidden = false;
+  }
+  function closeSettings() {
+    if (!els.settings) return;
+    els.settings.hidden = true;
+  }
+  els.btnSettings?.addEventListener('click', openSettings);
+  els.btnSettingsClose?.addEventListener('click', closeSettings);
+  els.settings?.addEventListener('click', (e) => {
+    if (e.target === els.settings) closeSettings();
+  });
   els.modalClose.addEventListener('click', () => {
     els.modal.hidden = true;
   });

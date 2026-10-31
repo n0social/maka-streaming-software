@@ -75,7 +75,7 @@ Direct comparison between the **Electron streaming studio** (`src/renderer/*`) a
 | Marketing `maka.css` | Not loaded in app window | Not loaded on `/stream/` (by design) | ✅ |
 | Preview mock | Loads `maka.css` + mascot | `/stream/` has no mascot/hero | ✅ |
 | Cream / gold tokens | `--bg`, `--gold`, program black stage | Same token set in `stream.css` | ✅ |
-| Center stats / mixer styling | Full `app.css` | Program stats + right-column mixer (stream9d4 layout) | ⚠️ partial |
+| Center stats / mixer styling | Full `app.css` | Program stats under the monitor + segmented mixer (stream9d5) | ⚠️ partial (stats are the mock readout until the encode profile is changed) |
 
 ---
 
@@ -105,11 +105,14 @@ Desktop additionally runs relay lifecycle via Tabcast, live recovery, and WHIP v
 
 ---
 
-## UI pass (stream9d4)
+## UI pass (stream9d5)
 
-- **`/stream/` layout** matches desktop mock: left scenes/sources, center program + stats bar, right mixer / controls / stream info (see `docs/readme-hero.png`).
-- **Brand** uses “Streaming studio” (not “Browser studio”); no marketing `maka.css` or mascot on `/stream/`.
-- **Stats bar** binds FPS and resolution from `cfg-profile`; dropped frames and health are demo/static unless relay errors surface in health text.
+- **`/stream/`** follows `docs/readme-hero.png`, not the earlier web chrome: title bar is the Maka Studio lockup, centered window title, help, settings gear, and decorative window controls.
+- **Scenes / sources** are cream rows with line icons and a ••• menu. Gameplay is the gold selected row. Add Scene sits under the list. “All systems nominal” is the left-column footer.
+- **Program** shows the mock frame until capture replaces it. The “Program • Live Output” label sits above the monitor. Stats under the program read Studio Mode, Dropped Frames, FPS, latency, and Auto resolution — not a full-window footer.
+- **Right column** is three cards: segmented horizontal mixer (Desktop Audio, Microphone, Game Audio) with a −30…0 dB scale, gold Go Live plus recording / virtual camera stubs, and the stream info card (thumbnail, title, category, red Live, viewers, duration).
+- **Destinations, encode profile, relay status, and the log** stay in the settings gear so they are not painted onto the mock. Go Live still runs the WHIP path.
+- Cache buster: `stream9d5`. `/stream/` HTML, CSS, and JS stay `Cache-Control: no-cache`.
 
 ---
 

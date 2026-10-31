@@ -25,6 +25,8 @@ mkdir -p "${WEB_ROOT}/stream"
 cp "${SRC_DIR}/stream/index.html" "${WEB_ROOT}/stream/index.html"
 cp "${SRC_DIR}/stream/stream.css" "${WEB_ROOT}/stream/stream.css"
 cp "${SRC_DIR}/stream/stream.js" "${WEB_ROOT}/stream/stream.js"
+cp "${SRC_DIR}/stream/program-poster.jpg" "${WEB_ROOT}/stream/program-poster.jpg"
+cp "${SRC_DIR}/stream/stream-thumb.jpg" "${WEB_ROOT}/stream/stream-thumb.jpg"
 
 mkdir -p "${WEB_ROOT}/preview"
 cp "${SRC_DIR}/preview/index.html" "${WEB_ROOT}/preview/index.html"
@@ -41,6 +43,7 @@ find "${WEB_ROOT}/marketing" -type f -exec chmod 644 {} \;
 chmod 644 "${WEB_ROOT}/index.html" "${WEB_ROOT}/legacy.html" "${WEB_ROOT}/download.html" \
   "${WEB_ROOT}/404.html" "${WEB_ROOT}/maka.css" "${WEB_ROOT}/maka-mascot.svg" "${WEB_ROOT}/robots.txt" "${WEB_ROOT}/sitemap.xml" \
   "${WEB_ROOT}/stream/index.html" "${WEB_ROOT}/stream/stream.css" "${WEB_ROOT}/stream/stream.js" \
+  "${WEB_ROOT}/stream/program-poster.jpg" "${WEB_ROOT}/stream/stream-thumb.jpg" \
   "${WEB_ROOT}/preview/index.html" "${WEB_ROOT}/preview/preview.css"
 
 if [ -f "${SRC_DIR}/maka-downloads.conf" ]; then
