@@ -4,8 +4,19 @@ import { setTimeout as sleep } from 'node:timers/promises'
 
 const base = process.env.RELAY_BASE ?? 'http://127.0.0.1:38473'
 
+async function relayReachable() {
+  try {
+    const healthRes = await fetch(`${base}/health`, { signal: AbortSignal.timeout(2500) })
+    if (!healthRes.ok) return false
+    const health = await healthRes.json()
+    return health.ok === true && Boolean(health.relayToken)
+  } catch {
+    return false
+  }
+}
+
 let child = null
-if (process.argv.includes('--spawn')) {
+if (process.argv.includes('--spawn') && !(await relayReachable())) {
   child = spawn(process.execPath, ['scripts/web-relay-dev.mjs'], { stdio: ['ignore', 'pipe', 'inherit'] })
   await sleep(800)
 }
@@ -39,6 +50,21 @@ try {
   const verify = await verifyRes.json()
   if (!verifyRes.ok || verify.ok !== true) throw new Error(`verify: ${JSON.stringify(verify)}`)
   console.log('OK verify')
+
+  const sceneRes = await fetch(`${base}/scene`, {
+    method: 'POST',
+    headers: { ...auth, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      canvas: { width: 1280, height: 720 },
+      sources: [{ id: 'gameplay', type: 'video', label: 'Scene 1', x: 0, y: 0, width: 1280, height: 720, zIndex: 0 }],
+    }),
+  })
+  if (!sceneRes.ok) throw new Error(`scene failed ${sceneRes.status}`)
+  console.log('OK scene')
+
+  const stopRes = await fetch(`${base}/stop`, { method: 'POST', headers: auth })
+  if (!stopRes.ok) throw new Error(`stop failed ${stopRes.status}`)
+  console.log('OK stop')
 
   console.log('web-relay-smoke: PASSED')
 } catch (err) {

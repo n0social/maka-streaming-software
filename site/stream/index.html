@@ -6,158 +6,280 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Try Maka in your browser — webcam and screen share preview with optional WHIP to a local MAKA.relay."
+      content="Maka streaming studio — browser capture with WHIP to MAKA.relay."
     />
     <meta name="theme-color" content="#faf8f4" />
     <link rel="canonical" href="https://makalive.stream/stream/" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Maka" />
-    <meta property="og:title" content="Maka — browser stream try" />
+    <meta property="og:title" content="Maka — streaming studio" />
     <meta
       property="og:description"
-      content="One-session browser capture. Full RTMP uses MAKA.relay on localhost:38473."
+      content="Web studio layout aligned with the Maka desktop app. RTMP encoding uses MAKA.relay."
     />
     <meta property="og:url" content="https://makalive.stream/stream/" />
     <meta property="og:image" content="https://makalive.stream/marketing/screenshot-desktop-1280x800.png" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://makalive.stream; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:38473 http://localhost:38473"
+      content="default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://makalive.stream https://www.makalive.stream http://127.0.0.1:38473 http://localhost:38473"
     />
-    <title>Maka — browser stream</title>
+    <title>Maka — streaming studio</title>
     <link rel="icon" type="image/png" href="/marketing/favicon-32.png?v=maka-m" sizes="32x32" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=League+Spartan:ital,wght@0,700;0,800;0,900;1,800;1,900&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=League+Spartan:ital,wght@0,700;0,800;0,900;1,700;1,800;1,900&display=swap"
       rel="stylesheet"
     />
-    <link
-      rel="preload"
-      as="style"
-      href="https://makalive.stream/maka.css?v=dc6d038"
-    />
-    <link
-      rel="stylesheet"
-      href="https://makalive.stream/maka.css?v=dc6d038"
-    />
-    <link rel="stylesheet" href="/stream/stream.css" />
+    <link rel="stylesheet" href="/stream/stream.css?v=stream9d4" />
   </head>
-  <body>
-    <div class="stream-app site-shell--full">
-      <header class="stream-top stream-top--minimal">
-        <div class="stream-status" aria-live="polite">
-          <span class="status-dot" id="relay-status-dot" data-state="warn"></span>
+  <body class="stream-page">
+    <div class="stream-studio">
+      <header class="stream-topbar">
+        <div class="brand stream-top-brand" aria-label="Maka streaming studio">
+          <span class="mark" aria-hidden="true"></span>
+          <div class="brand-lockup">
+            <strong class="wordmark">Maka</strong>
+            <span class="brand-tag">Streaming studio</span>
+          </div>
+          <span class="version" id="app-version-chip">Web</span>
+        </div>
+        <div class="stream-tabs tabs" role="tablist" aria-label="Studio mode">
+          <button type="button" class="stream-tab tab active" role="tab" aria-selected="true">Stream</button>
+          <button type="button" class="stream-tab tab tab-optional" role="tab" aria-selected="false" disabled title="Search browse mode is desktop-only for now">
+            Search
+          </button>
+        </div>
+        <div class="relay-chip stream-relay-chip" id="relay-chip" data-state="stopped" aria-live="polite">
+          <span class="dot status-dot" id="relay-status-dot" data-state="warn"></span>
           <span id="relay-status-text">Checking relay…</span>
+        </div>
+        <button type="button" class="go-live stream-go-live-top" id="btn-go-live-top">Go Live</button>
+        <div class="win-controls" aria-hidden="true">
+          <button type="button" tabindex="-1">─</button>
+          <button type="button" tabindex="-1">□</button>
+          <button type="button" tabindex="-1">×</button>
         </div>
       </header>
 
-      <div class="stream-main">
-        <div class="stream-stage-wrap">
-          <div class="program-frame">
-            <span class="program-label">Program</span>
+      <aside class="stream-sidebar stream-sidebar--left studio-sidebar" aria-label="Scenes and sources">
+        <div class="stream-block studio-block">
+          <header class="stream-block-head studio-block-head">
+            <h2>Scenes</h2>
+            <button type="button" class="studio-icon-btn" id="btn-add-scene" title="Add scene" aria-label="Add scene">+</button>
+          </header>
+          <ul class="studio-list stream-scene-list" id="scene-list" role="list" aria-label="Scenes"></ul>
+        </div>
+        <div class="stream-block studio-block">
+          <header class="stream-block-head studio-block-head">
+            <h2>Sources</h2>
+            <span class="studio-icon-btn studio-icon-btn--static" aria-hidden="true">+</span>
+          </header>
+          <ul class="studio-list" aria-label="Sources">
+            <li>
+              <button type="button" class="studio-list-item" id="btn-screen">
+                <span class="source-icon" aria-hidden="true">🎮</span>
+                Game Capture
+              </button>
+            </li>
+            <li>
+              <button type="button" class="studio-list-item" id="btn-webcam">
+                <span class="source-icon" aria-hidden="true">📹</span>
+                Webcam
+              </button>
+            </li>
+            <li>
+              <button type="button" class="studio-list-item" id="btn-mic">
+                <span class="source-icon" aria-hidden="true">🎙</span>
+                Microphone
+              </button>
+            </li>
+            <li>
+              <button type="button" class="studio-list-item is-disabled" disabled title="Browser overlay is desktop-only">
+                <span class="source-icon" aria-hidden="true">🌐</span>
+                Overlay
+              </button>
+            </li>
+          </ul>
+        </div>
+        <footer class="studio-footer">
+          <span class="studio-status-dot" id="studio-status-dot" data-state="ok" aria-hidden="true"></span>
+          <span id="studio-status-text">All systems nominal</span>
+        </footer>
+      </aside>
+
+      <main class="stream-stage stage" aria-label="Program">
+        <div class="program-column">
+          <div class="program-frame program">
+            <div class="program-label">
+              Program
+              <span class="program-mode">• Live Output</span>
+            </div>
             <canvas id="program-canvas" class="program-canvas" aria-label="Program preview"></canvas>
             <p class="program-empty" id="program-empty">
-              Add webcam or share your screen to build a layout.<br />
+              Select a display or window to start streaming.<br />
               Screen fills the frame; webcam appears as a gold picture-in-picture.
             </p>
           </div>
-        </div>
-
-        <aside class="stream-sidebar" aria-label="Stream controls">
-          <div class="stream-block">
-            <h2>Sources</h2>
-            <p>Capture stays in your browser until you publish to a local relay.</p>
-            <div class="stream-actions">
-              <button type="button" class="btn btn-secondary" id="btn-webcam">Add webcam</button>
-              <button type="button" class="btn btn-secondary" id="btn-screen">Share screen</button>
-              <button type="button" class="btn btn-secondary" id="btn-mic">Add microphone</button>
-            </div>
-          </div>
-
-          <div class="stream-block">
-            <h2>Relay</h2>
-            <p id="relay-version-line">Connect to MAKA.relay on <code>127.0.0.1:38473</code>.</p>
-            <p class="stream-hint">
-              Dev without MAKArelay.exe: run <code>npm run web:relay</code> (see
-              <a href="https://github.com/n0social/maka-streaming-software/blob/main/docs/web-relay.md">web-relay docs</a>).
-            </p>
-            <label class="stream-field">
-              <span>Encode profile</span>
-              <select id="cfg-profile">
-                <option value="720p30">720p30</option>
-                <option value="720p60">720p60</option>
-                <option value="1080p30">1080p30</option>
-                <option value="1080p60">1080p60</option>
-                <option value="2k60">2k60</option>
-                <option value="4k60">4k60</option>
+          <div class="program-stats" id="program-stats" aria-label="Program stream stats">
+            <label class="program-stats-field">
+              <span class="sr-only">Studio mode</span>
+              <select id="program-output-mode" class="program-stats-select" disabled title="Program is the live output feed">
+                <option value="program" selected>Studio Mode</option>
               </select>
             </label>
-            <label class="stream-field">
-              <span>Twitch stream key (optional, RAM only)</span>
-              <input id="cfg-twitch-key" type="password" autocomplete="off" placeholder="live_…" />
-            </label>
-            <label class="stream-field">
-              <span>YouTube stream key (optional)</span>
-              <input id="cfg-youtube-key" type="password" autocomplete="off" placeholder="xxxx-xxxx-…" />
-            </label>
-            <div class="stream-actions">
-              <button type="button" class="btn btn-secondary" id="btn-relay-refresh">Check relay</button>
-              <button type="button" class="btn btn-secondary" id="btn-config">Apply config</button>
-              <button type="button" class="btn btn-ghost" id="btn-verify">Verify keys</button>
+            <span class="program-stat" id="stat-dropped"><strong>Dropped</strong> 0 (0.0%)</span>
+            <span class="program-stat" id="stat-fps"><strong>FPS</strong> 30</span>
+            <span class="program-stat" id="stat-resolution"><strong>Resolution</strong> 1280×720</span>
+            <span class="program-stat program-stat-health" id="stat-health"><strong>Health</strong> OK</span>
+          </div>
+        </div>
+      </main>
+
+      <aside class="stream-sidebar stream-sidebar--right studio-sidebar studio-sidebar-right" aria-label="Mixer and stream controls">
+        <div class="stream-block studio-block studio-block-compact">
+          <h2 class="stream-block-title">Audio Mixer</h2>
+          <div class="audio-mixer" id="audio-mixer">
+            <div class="audio-channel is-dim" title="Desktop audio capture not yet implemented">
+              <span class="audio-channel-icon" aria-hidden="true">🔊</span>
+              <span class="audio-channel-name">Desktop Audio</span>
+              <div class="audio-meter-track" aria-hidden="true">
+                <div class="audio-meter" style="width: 12%"></div>
+              </div>
+              <button type="button" class="audio-channel-settings" disabled aria-label="Desktop audio settings">⚙</button>
             </div>
+            <div class="audio-channel" id="audio-mic-row">
+              <span class="audio-channel-icon" aria-hidden="true">🎙</span>
+              <span class="audio-channel-name">Microphone</span>
+              <div class="audio-meter-track" aria-hidden="true">
+                <div class="audio-meter" id="mic-meter" style="width: 18%"></div>
+              </div>
+              <button type="button" class="audio-channel-settings" disabled aria-label="Microphone settings">⚙</button>
+            </div>
+            <div class="audio-channel is-dim" title="Game audio capture not yet implemented">
+              <span class="audio-channel-icon" aria-hidden="true">🎮</span>
+              <span class="audio-channel-name">Game Audio</span>
+              <div class="audio-meter-track" aria-hidden="true">
+                <div class="audio-meter" style="width: 12%"></div>
+              </div>
+              <button type="button" class="audio-channel-settings" disabled aria-label="Game audio settings">⚙</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="stream-block studio-block studio-block-compact studio-block-controls">
+          <h2 class="stream-block-title">Stream Controls</h2>
+          <div class="stream-controls-stack">
+            <button type="button" class="btn btn-primary btn-block btn-go-live" id="btn-start">
+              <span class="btn-icon btn-icon-live" aria-hidden="true">((•))</span>
+              <span id="btn-go-live-label">Start Streaming</span>
+            </button>
+            <button type="button" class="btn btn-secondary btn-block" id="btn-stop" disabled>End Streaming</button>
+            <button type="button" class="btn btn-secondary btn-block" disabled title="Recording is not available in the web studio yet">
+              <span class="btn-icon" aria-hidden="true">●</span>
+              Start Recording
+            </button>
+            <button type="button" class="btn btn-secondary btn-block" disabled title="Virtual camera is not available in the web studio yet">
+              <span class="btn-icon" aria-hidden="true">▢</span>
+              Start Virtual Camera
+            </button>
+          </div>
+        </div>
+
+        <div class="stream-block studio-block studio-block-compact studio-block-stream-info">
+          <h2 class="stream-block-title">Stream Info</h2>
+          <div class="stream-info">
+            <div class="stream-preview">
+              <div class="stream-thumb" id="stream-thumb">
+                <div class="stream-thumb-placeholder">Preview</div>
+              </div>
+              <div class="stream-meta">
+                <div class="stream-title" id="stream-title">Untitled stream</div>
+                <div class="stream-category" id="stream-category">Just Chatting</div>
+                <div class="stream-status-row">
+                  <span class="stream-live-pill" id="stream-live-pill" data-live="false">Offline</span>
+                  <span class="stream-viewers" id="stream-viewers">— viewers</span>
+                  <span class="stream-duration" id="stream-duration">00:00:00</span>
+                </div>
+              </div>
+            </div>
+            <div class="stream-destinations" id="stream-destinations">
+              <label class="stream-check">
+                <input type="checkbox" id="dest-twitch" checked />
+                <span>Twitch</span>
+              </label>
+              <label class="stream-field stream-field--key">
+                <span class="sr-only">Twitch stream key</span>
+                <input id="cfg-twitch-key" type="password" autocomplete="off" spellcheck="false" placeholder="live_… Twitch stream key" />
+              </label>
+              <label class="stream-check">
+                <input type="checkbox" id="dest-youtube" />
+                <span>YouTube</span>
+              </label>
+              <label class="stream-field stream-field--key">
+                <span class="sr-only">YouTube stream key</span>
+                <input id="cfg-youtube-key" type="password" autocomplete="off" spellcheck="false" placeholder="YouTube stream key" disabled />
+              </label>
+              <label class="stream-check">
+                <input type="checkbox" id="dest-custom" />
+                <span>Custom RTMP</span>
+              </label>
+              <label class="stream-field stream-field--key">
+                <span class="sr-only">Custom RTMP ingest URL</span>
+                <input id="cfg-custom-rtmp-url" type="text" autocomplete="off" spellcheck="false" placeholder="rtmps://…/app" disabled />
+              </label>
+              <label class="stream-field stream-field--key">
+                <span class="sr-only">Custom RTMP stream key</span>
+                <input id="cfg-custom-rtmp-key" type="password" autocomplete="off" spellcheck="false" placeholder="Stream key" disabled />
+              </label>
+            </div>
+            <div class="stream-encode">
+              <label class="stream-field" for="cfg-profile">
+                <span>Encode profile</span>
+                <select id="cfg-profile">
+                  <option value="720p30">720p30</option>
+                  <option value="720p60">720p60</option>
+                  <option value="1080p30">1080p30</option>
+                  <option value="1080p60">1080p60</option>
+                  <option value="2k60">2k60</option>
+                  <option value="4k60">4k60</option>
+                </select>
+              </label>
+              <div class="stream-actions stream-actions--row">
+                <button type="button" class="btn btn-outline" id="btn-config">Apply config</button>
+                <button type="button" class="btn btn-ghost" id="btn-verify">Verify keys</button>
+              </div>
+            </div>
+            <p class="stream-hint" id="relay-version-line">Checking relay…</p>
+            <p class="stream-error" id="stream-error" hidden role="alert"></p>
+            <button type="button" class="btn btn-ghost btn-compact" id="btn-relay-refresh">Check relay</button>
             <pre class="stream-status-json" id="relay-status-json" aria-live="polite"></pre>
           </div>
+        </div>
 
-          <div class="stream-block">
-            <h2>Go live</h2>
-            <p>
-              WHIP to <code>127.0.0.1:38473</code> when MAKA.relay is running. Without it, preview
-              only — no RTMP from this page alone.
-            </p>
-            <div class="stream-actions">
-              <button type="button" class="btn btn-primary" id="btn-start">Start stream</button>
-              <button type="button" class="btn btn-ghost" id="btn-stop" disabled>Stop stream</button>
-            </div>
-          </div>
-
-          <div class="stream-block">
-            <h2>Log</h2>
-            <pre class="stream-log" id="stream-log"></pre>
-          </div>
-        </aside>
-      </div>
-
-      <footer class="stream-footer">
-        <span>Encode + platform keys → desktop Maka or MAKA.relay</span>
-        <span>
-          <a href="/studio-web/">Studio web</a> · <a href="/download.html">Download</a> ·
-          <a href="/preview/">Studio preview</a> ·
-          <a href="/">Home</a>
-        </span>
-      </footer>
+        <details class="stream-block stream-block--log">
+          <summary class="stream-block-head"><span>Log</span></summary>
+          <pre class="stream-log" id="stream-log"></pre>
+        </details>
+      </aside>
     </div>
 
     <div class="modal-backdrop" id="relay-modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div class="modal">
         <h2 id="modal-title">Relay required for go-live</h2>
         <p>
-          This page previews capture in the browser. RTMP encoding runs in
-          <strong>MAKA.relay</strong> on your PC (port 38473). For local testing without downloading
-          MAKArelay.exe, run <code>npm run dev:web-studio</code> from the repo — then apply config and go
-          live here.
+          No relay responded at the configured base URL. On production, check
+          <a href="/relay/health"><code>/relay/health</code></a>. Locally, run
+          <code>npm run dev:web-studio</code> or install Maka with MAKA.relay on port 38473.
         </p>
         <div class="modal-actions">
           <a class="btn btn-primary" href="/download.html">Download Maka</a>
-          <a class="btn btn-secondary" href="https://github.com/n0social/maka-streaming-software/blob/main/docs/web-relay.md">Web relay docs</a>
+          <a class="btn btn-outline" href="https://github.com/n0social/maka-streaming-software/blob/main/docs/web-relay.md">Web relay docs</a>
           <button type="button" class="btn btn-ghost" id="modal-close">Keep previewing</button>
         </div>
       </div>
     </div>
 
-    <div class="mascot-corner" aria-hidden="true">
-      <img src="/assets/mascot/maka-mascot.svg" alt="" width="52" height="52" />
-    </div>
-
-    <script src="/stream/stream.js" defer></script>
+    <script src="/stream/stream.js?v=stream9d4" defer></script>
   </body>
 </html>
