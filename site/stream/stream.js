@@ -222,8 +222,21 @@
     return `<svg ${common}>${paths[kind] || paths.custom}</svg>`;
   }
 
+  const SCENE_NAME_MAX = 60;
+  const TITLE_MAX = 140;
+  const CATEGORY_MAX = 80;
+
+  function sanitizeText(value, max) {
+    return String(value ?? '')
+      .replace(/[\u0000-\u001F\u007F]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, max);
+  }
+
   function activeSceneName() {
-    return scenes.find((s) => s.id === activeSceneId)?.name ?? 'Gameplay';
+    const raw = scenes.find((s) => s.id === activeSceneId)?.name ?? 'Gameplay';
+    return sanitizeText(raw, SCENE_NAME_MAX) || 'Gameplay';
   }
 
   function updateProgramLabel() {
@@ -232,8 +245,17 @@
 
   function readStorage(key) {
     try {
-      return JSON.parse(localStorage.getItem(key) || 'null');
+      const raw = localStorage.getItem(key);
+      if (raw == null || raw === '') return null;
+      const data = JSON.parse(raw);
+      if (!data || typeof data !== 'object') return null;
+      return data;
     } catch {
+      try {
+        localStorage.removeItem(key);
+      } catch {
+        /* private mode */
+      }
       return null;
     }
   }
@@ -251,10 +273,10 @@
     if (!data || !Array.isArray(data.scenes)) return;
     const next = data.scenes
       .filter((s) => s && typeof s.id === 'string' && typeof s.name === 'string' && s.name.trim())
-      .map((s) => ({
-        id: s.id,
-        name: s.name.trim(),
-        iconKind: typeof s.iconKind === 'string' ? s.iconKind : 'custom',
+      .map((s, index) => ({
+        id: sanitizeText(s.id, 80) || `scene-${index + 1}`,
+        name: sanitizeText(s.name, SCENE_NAME_MAX) || 'Scene',
+        iconKind: typeof s.iconKind === 'string' ? sanitizeText(s.iconKind, 32) || 'custom' : 'custom',
       }));
     if (!next.length) return;
     scenes = next;
@@ -573,10 +595,24 @@
     updateProgramStats(extra);
   }
 
+  function redact(text) {
+    let out = String(text ?? '');
+    const secrets = [
+      els.cfgTwitchKey && els.cfgTwitchKey.value,
+      els.cfgYoutubeKey && els.cfgYoutubeKey.value,
+      els.cfgCustomRtmpKey && els.cfgCustomRtmpKey.value,
+      relayHealth && relayHealth.relayToken,
+    ];
+    for (const secret of secrets) {
+      if (secret && String(secret).length >= 6) out = out.split(String(secret)).join('[redacted]');
+    }
+    return out.replace(/live_[a-zA-Z0-9_]{8,}/g, 'live_[redacted]');
+  }
+
   function log(line) {
     if (!els.log) return;
     const ts = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    els.log.textContent = (els.log.textContent ? els.log.textContent + '\n' : '') + `[${ts}] ${line}`;
+    els.log.textContent = (els.log.textContent ? els.log.textContent + '\n' : '') + `[${ts}] ${redact(line)}`;
     els.log.scrollTop = els.log.scrollHeight;
   }
 
@@ -616,8 +652,20 @@
     });
   }
 
+  function scrubSecrets(value) {
+    if (!value || typeof value !== 'object') return value;
+    if (Array.isArray(value)) return value.map((item) => scrubSecrets(item));
+    const out = {};
+    for (const key of Object.keys(value)) {
+      if (/key|token|secret|authorization|password/i.test(key)) out[key] = '[redacted]';
+      else out[key] = scrubSecrets(value[key]);
+    }
+    return out;
+  }
+
   function renderStatusJson(data) {
-    els.statusJson.textContent = data ? JSON.stringify(data, null, 2) : '';
+    if (!els.statusJson) return;
+    els.statusJson.textContent = data ? JSON.stringify(scrubSecrets(data), null, 2) : '';
   }
 
   async function probeRelay() {
@@ -701,8 +749,12 @@
   }
 
   function buildConfigBody() {
-    const profile = normalizeProfile(els.cfgProfile.value);
-    const spec = profileSpec(profile);
+    const profile = normalizeProfile(els.cfgProfile && els.cfgProfile.value);
+    if (!Object.prototype.hasOwnProperty.call(ENCODE_PROFILES, profile)) {
+      throw new Error('Unknown encode profile.');
+    }
+    if (els.cfgProfile && els.cfgProfile.value !== profile) els.cfgProfile.value = profile;
+    const spec = ENCODE_PROFILES[profile];
     const body = { profile, bitrateMbps: spec.bitrateMbps };
     const { twitch, youtube, customUrl, customKey } = destinationInputsForConfig();
     if (twitch) body.twitchKey = twitch;
@@ -939,9 +991,20 @@
     return Math.min(1, Math.max(0, n / 100));
   }
 
+  function ensureMixDestination(ctx) {
+    const dead =
+      !audio.mixDest || audio.mixDest.stream.getAudioTracks().every((track) => track.readyState === 'ended');
+    if (!dead) return audio.mixDest;
+    audio.mixDest = ctx.createMediaStreamDestination();
+    if (audio.desktopGain) audio.desktopGain.connect(audio.mixDest);
+    if (audio.micGain) audio.micGain.connect(audio.mixDest);
+    return audio.mixDest;
+  }
+
   function ensureAudioGraph() {
-    if (audio.ctx) {
+    if (audio.ctx && audio.ctx.state !== 'closed') {
       if (audio.ctx.state === 'suspended') void audio.ctx.resume();
+      ensureMixDestination(audio.ctx);
       return audio.ctx;
     }
     const ctx = new AudioContext();
@@ -952,14 +1015,58 @@
     audio.micAnalyser = ctx.createAnalyser();
     audio.desktopAnalyser.fftSize = 2048;
     audio.micAnalyser.fftSize = 2048;
-    audio.mixDest = ctx.createMediaStreamDestination();
     audio.desktopGain.connect(audio.desktopAnalyser);
     audio.micGain.connect(audio.micAnalyser);
-    audio.desktopGain.connect(audio.mixDest);
-    audio.micGain.connect(audio.mixDest);
+    ensureMixDestination(ctx);
     applyGains();
     startMeterLoop();
     return ctx;
+  }
+
+  function closeAudioIfIdle() {
+    if (sourceBusy.screen || sourceBusy.mic || sourceBusy.webcam) return;
+    if (audioLive(screenStream) || audioLive(micStream)) return;
+    if (whipPublisher) return;
+    if (recorder && recorder.state === 'recording') return;
+    if (meterTimer) {
+      clearInterval(meterTimer);
+      meterTimer = 0;
+    }
+    if (audio.ctx && audio.ctx.state !== 'closed') {
+      void audio.ctx.close().catch(() => undefined);
+    }
+    audio.ctx = null;
+    audio.desktopGain = null;
+    audio.micGain = null;
+    audio.desktopAnalyser = null;
+    audio.micAnalyser = null;
+    audio.mixDest = null;
+    audio.desktopSource = null;
+    audio.micSource = null;
+  }
+
+  function releasePublishTracks() {
+    const recording = recorder && recorder.state === 'recording';
+    if (!recording && canvasCapture) {
+      canvasCapture.getTracks().forEach((track) => {
+        try {
+          track.stop();
+        } catch {
+          /* already stopped */
+        }
+      });
+      canvasCapture = null;
+    }
+    if (audio.mixDest) {
+      audio.mixDest.stream.getTracks().forEach((track) => {
+        try {
+          track.stop();
+        } catch {
+          /* already stopped */
+        }
+      });
+      audio.mixDest = null;
+    }
   }
 
   // Fader value 100 is unity gain (0 dB on the mixer scale) and is the default.
@@ -1069,8 +1176,8 @@
 
   function mixedAudioStream() {
     if (!liveAudioTracks().length) return null;
-    ensureAudioGraph();
-    return audio.mixDest.stream;
+    const ctx = ensureAudioGraph();
+    return ensureMixDestination(ctx).stream;
   }
 
   function programCanvasStream() {
@@ -1330,9 +1437,11 @@
     whipPublisher = null;
     try {
       if (publisher) await publisher.close().catch(() => undefined);
+      releasePublishTracks();
       await postRelayStop();
       if (relayHealth) setRelayStatus('ok', `Relay v${relayHealth.version ?? '?'}`);
       await refreshRelayStatus();
+      closeAudioIfIdle();
       log('Stream stopped.');
     } finally {
       endingLive = false;
@@ -1341,10 +1450,11 @@
     }
   }
 
-  function releaseScreen() {
+  function releaseScreen(options) {
     detachDisplayAudio();
     stopStream(screenStream);
     screenStream = null;
+    if (!options || !options.keepAudio) closeAudioIfIdle();
   }
 
   function releaseWebcam() {
@@ -1352,11 +1462,12 @@
     webcamStream = null;
   }
 
-  function releaseMic() {
+  function releaseMic(options) {
     detachMicAudio();
     stopStream(micStream);
     micStream = null;
     setMeter(els.micMeter, 0);
+    if (!options || !options.keepAudio) closeAudioIfIdle();
   }
 
   function clearOverlay() {
@@ -1388,6 +1499,10 @@
     sourceBusy.webcam = true;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      if (!stream.getVideoTracks().some((track) => track.readyState === 'live')) {
+        stream.getTracks().forEach((track) => track.stop());
+        throw Object.assign(new Error('No video track'), { name: 'AbortError' });
+      }
       releaseWebcam();
       webcamStream = stream;
       const track = stream.getVideoTracks()[0];
@@ -1424,7 +1539,11 @@
     ensureAudioGraph();
     try {
       const stream = await captureDisplay();
-      releaseScreen();
+      if (!stream.getVideoTracks().some((track) => track.readyState === 'live')) {
+        stream.getTracks().forEach((track) => track.stop());
+        throw Object.assign(new Error('No video track'), { name: 'AbortError' });
+      }
+      releaseScreen({ keepAudio: true });
       screenStream = stream;
       const videoTrack = stream.getVideoTracks()[0];
       if (videoTrack) {
@@ -1466,7 +1585,11 @@
     ensureAudioGraph();
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      releaseMic();
+      if (!stream.getAudioTracks().some((track) => track.readyState === 'live')) {
+        stream.getTracks().forEach((track) => track.stop());
+        throw Object.assign(new Error('No audio track'), { name: 'AbortError' });
+      }
+      releaseMic({ keepAudio: true });
       micStream = stream;
       const track = stream.getAudioTracks()[0];
       if (track) {
@@ -1500,10 +1623,31 @@
 
   function recordingStream() {
     const canvasStream = programCanvasStream();
-    const tracks = canvasStream.getVideoTracks().filter((t) => t.readyState === 'live');
+    const tracks = canvasStream
+      .getVideoTracks()
+      .filter((t) => t.readyState === 'live')
+      .map((t) => t.clone());
     const mix = mixedAudioStream();
-    if (mix) tracks.push(...mix.getAudioTracks().filter((t) => t.readyState === 'live'));
+    if (mix) {
+      tracks.push(
+        ...mix
+          .getAudioTracks()
+          .filter((t) => t.readyState === 'live')
+          .map((t) => t.clone()),
+      );
+    }
     return new MediaStream(tracks);
+  }
+
+  function stopRecorderTracks() {
+    if (!recorder || !recorder.stream) return;
+    recorder.stream.getTracks().forEach((track) => {
+      try {
+        track.stop();
+      } catch {
+        /* already stopped */
+      }
+    });
   }
 
   function downloadRecording(blob) {
@@ -1569,6 +1713,8 @@
     };
     recorder.onstop = () => {
       recordBusy = false;
+      stopRecorderTracks();
+      closeAudioIfIdle();
       const type = (recorder && recorder.mimeType) || 'video/webm';
       const blob = new Blob(recordedChunks, { type });
       recordedChunks = [];
@@ -1583,6 +1729,8 @@
     };
     recorder.onerror = (event) => {
       recordBusy = false;
+      stopRecorderTracks();
+      closeAudioIfIdle();
       setRecordingUi(false);
       const detail = event && event.error && event.error.message ? event.error.message : 'Recording failed.';
       logError(detail);
@@ -1646,6 +1794,8 @@
   }
 
   function saveInfo() {
+    if (els.streamTitle) els.streamTitle.value = sanitizeText(els.streamTitle.value, TITLE_MAX);
+    if (els.streamCategory) els.streamCategory.value = sanitizeText(els.streamCategory.value, CATEGORY_MAX);
     writeStorage(STORAGE.info, {
       title: els.streamTitle && 'value' in els.streamTitle ? els.streamTitle.value : '',
       category: els.streamCategory && 'value' in els.streamCategory ? els.streamCategory.value : '',
@@ -1655,8 +1805,10 @@
   function loadInfo() {
     const data = readStorage(STORAGE.info);
     if (!data || typeof data !== 'object') return;
-    if (els.streamTitle && typeof data.title === 'string') els.streamTitle.value = data.title;
-    if (els.streamCategory && typeof data.category === 'string') els.streamCategory.value = data.category;
+    if (els.streamTitle && typeof data.title === 'string') els.streamTitle.value = sanitizeText(data.title, TITLE_MAX);
+    if (els.streamCategory && typeof data.category === 'string') {
+      els.streamCategory.value = sanitizeText(data.category, CATEGORY_MAX);
+    }
   }
 
   els.cfgProfile.addEventListener('change', () => {
