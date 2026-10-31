@@ -293,6 +293,7 @@
 
   function renderSceneList() {
     if (!els.sceneList) return;
+    closeSceneMenu();
     els.sceneList.replaceChildren();
     for (const scene of scenes) {
       const li = document.createElement('li');
@@ -313,9 +314,13 @@
       const menu = document.createElement('button');
       menu.type = 'button';
       menu.className = 'studio-row-menu';
-      menu.tabIndex = -1;
-      menu.setAttribute('aria-hidden', 'true');
+      menu.setAttribute('aria-haspopup', 'menu');
+      menu.setAttribute('aria-label', `Options for ${scene.name}`);
       menu.textContent = '•••';
+      menu.addEventListener('click', (event) => {
+        event.stopPropagation();
+        toggleSceneMenu(menu, scene.id);
+      });
       row.append(btn, menu);
       li.appendChild(row);
       els.sceneList.appendChild(li);
@@ -335,6 +340,80 @@
     addLi.appendChild(addBtn);
     els.sceneList.appendChild(addLi);
     updateProgramLabel();
+  }
+
+  let openSceneMenu = null;
+
+  function closeSceneMenu() {
+    if (openSceneMenu) {
+      openSceneMenu.remove();
+      openSceneMenu = null;
+    }
+  }
+
+  function toggleSceneMenu(anchor, sceneId) {
+    if (openSceneMenu && openSceneMenu.dataset.sceneId === sceneId) {
+      closeSceneMenu();
+      return;
+    }
+    closeSceneMenu();
+    const pop = document.createElement('div');
+    pop.className = 'studio-popover';
+    pop.dataset.sceneId = sceneId;
+    pop.setAttribute('role', 'menu');
+    const rename = document.createElement('button');
+    rename.type = 'button';
+    rename.textContent = 'Rename';
+    rename.addEventListener('click', () => {
+      closeSceneMenu();
+      renameScene(sceneId);
+    });
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.textContent = 'Delete';
+    del.disabled = scenes.length < 2;
+    del.title = scenes.length < 2 ? 'Keep at least one scene' : 'Delete this scene';
+    del.addEventListener('click', () => {
+      closeSceneMenu();
+      deleteScene(sceneId);
+    });
+    pop.append(rename, del);
+    anchor.parentElement.appendChild(pop);
+    openSceneMenu = pop;
+  }
+
+  function renameScene(sceneId) {
+    const scene = scenes.find((item) => item.id === sceneId);
+    if (!scene) return;
+    const entered = window.prompt('Scene name', scene.name);
+    if (entered == null) return;
+    const clean = sanitizeText(entered, SCENE_NAME_MAX);
+    if (!clean) return;
+    scene.name = clean;
+    saveScenes();
+    renderSceneList();
+    if (sceneId === activeSceneId) {
+      sceneDirty = true;
+      void flushScenePost().catch((err) => {
+        log(`Scene update failed: ${err instanceof Error ? err.message : err}`);
+      });
+    }
+  }
+
+  function deleteScene(sceneId) {
+    if (scenes.length < 2) return;
+    const index = scenes.findIndex((item) => item.id === sceneId);
+    if (index < 0) return;
+    const wasActive = activeSceneId === sceneId;
+    scenes.splice(index, 1);
+    closeSceneMenu();
+    if (!wasActive) {
+      saveScenes();
+      renderSceneList();
+      return;
+    }
+    const next = scenes[Math.min(index, scenes.length - 1)];
+    void switchScene(next.id);
   }
 
   async function switchScene(sceneId) {
@@ -450,10 +529,7 @@
   }
 
   function startDurationTimer() {
-    if (durationTimer) {
-      clearInterval(durationTimer);
-      durationTimer = 0;
-    }
+    if (durationTimer) return;
     liveStartedAt = Date.now();
     if (els.streamDuration) els.streamDuration.textContent = '00:00:00';
     durationTimer = window.setInterval(() => {
@@ -473,7 +549,6 @@
       els.streamLivePill.textContent = live ? 'Live' : 'Offline';
     }
     if (live) {
-      if (!durationTimer) startDurationTimer();
       startLiveStats();
     } else {
       stopDurationTimer();
@@ -1400,6 +1475,7 @@
         log(`WHIP connection: ${state}`);
         if (state === 'connected') {
           setRelayStatus('live', 'Live via relay');
+          startDurationTimer();
           void refreshRelayStatus();
           return;
         }
@@ -1408,6 +1484,7 @@
           void onStop();
         }
       };
+      if (publisher.pc.connectionState === 'connected') startDurationTimer();
       setRelayStatus('live', 'Live via relay');
       log('WHIP active — check relay /status for pipeline state.');
       await refreshRelayStatus();
@@ -1950,6 +2027,12 @@
   window.addEventListener('pageshow', () => {
     pageUnloading = false;
     updateButtons();
+  });
+
+  document.addEventListener('click', (event) => {
+    if (!openSceneMenu) return;
+    if (event.target.closest && event.target.closest('.studio-popover, .studio-row-menu')) return;
+    closeSceneMenu();
   });
 
   window.addEventListener('resize', resizeCanvas);
