@@ -28,12 +28,12 @@ Direct comparison between the **Electron streaming studio** (`src/renderer/*`) a
 | Window controls | Min / max / close | Decorative only (non-functional) | ⚠️ N/A (web) |
 | Browse tab strip | Twitch, YT, chat pins | — | ❌ missing |
 | URL / nav row | Back, forward, reload, omnibox | — | ❌ missing |
-| Scene list | Multiple scenes, switch layout | Default desktop scene names + add scene; switch re-POSTs `/scene` at profile canvas size | ⚠️ partial (no per-scene source layouts) |
-| Sources list | Game capture, webcam, mic, overlay | List rows (screen/webcam/mic wired; overlay stub) | ⚠️ partial (no game capture API; canvas compositor instead) |
-| Program monitor | Game + browser overlay + PIP | Canvas preview + gold PIP | ⚠️ partial (no browser overlay track) |
-| Program stats bar | Studio mode, dropped, FPS, resolution | Under program monitor; FPS/resolution from encode profile | ⚠️ partial (dropped/health mostly static) |
-| Audio mixer | Desktop / mic / game meters | Mixer UI with mic meter stub when mic active | ⚠️ partial (no desktop/game audio) |
-| Stream controls sidebar | Go live, recording, vcam (stubs) | Start/end + disabled recording/vcam stubs | ⚠️ partial |
+| Scene list | Multiple scenes, switch layout | Default scene names + add scene, saved in localStorage; active name is the program label and is sent on `POST /scene` | ⚠️ partial (no per-scene source layouts) |
+| Sources list | Game capture, webcam, mic, overlay | Game Capture (`getDisplayMedia`), webcam, mic; click again stops the track. Overlay is an image file drawn on the program canvas | ⚠️ partial (no OS game-capture API; canvas compositor) |
+| Program monitor | Game + browser overlay + PIP | White stage. Capture is letterboxed on white; webcam is the program or a gold PIP when both are on | ⚠️ partial (no browser-page overlay track) |
+| Program stats bar | Studio mode, dropped, FPS, resolution | Offline: zeros and the selected encode profile size. Live: video-track resolution, RTC FPS / dropped frames / RTT when the stats report them | ⚠️ partial (no relay-side encoder stats) |
+| Audio mixer | Desktop / mic / game meters | Faders set Web Audio gain. Desktop meter follows display-capture audio; mic meter follows `getUserMedia`. A second display-audio track, if the browser provides one, is the Game Audio bus. Otherwise that fader is tied to the desktop gain and the game meter stays at silence | ⚠️ partial (no separate game-audio device) |
+| Stream controls sidebar | Go live, recording, vcam | Go Live / End Live (WHIP), Start/Stop Recording (WebM download). Virtual camera is disabled: desktop app only | ⚠️ partial (vcam is desktop-only) |
 | Stream info / destinations | Twitch / YT / custom RTMP toggles | Stream info card + destinations + encode in right column | ✅ parity (web sidebar) |
 | Encode profile | `profile-select` + center quality dropdown | `cfg-profile` in stream info block | ✅ parity (presets match `ENCODE_PROFILES`) |
 | Settings dialog | Tray, chat, lab mode, startup, addons | — | ❌ missing |
@@ -52,8 +52,8 @@ Direct comparison between the **Electron streaming studio** (`src/renderer/*`) a
 | Auth on protected routes | `Authorization: Bearer {relayToken}` | Same in `authHeaders()` | ✅ |
 | `POST /config` | Profile + `bitrateMbps` + keys (+ custom RTMP) | Profile + `bitrateMbps` + enabled destination keys (matches `relay-client.ts`) | ✅ |
 | `POST /config/verify` | With destination toggles | Apply config, then verify (destination toggles) | ✅ |
-| `POST /scene` | Profile-sized canvas + gameplay/webcam/browser | Profile canvas + active scene label; switch/add re-POSTs layout | ⚠️ partial (same capture layout per scene) |
-| WHIP publish | Named streams, H.264 preference, ICE gather | Named streams, H.264 in wire pass | ⚠️ partial (no browser/desktop-audio tracks) |
+| `POST /scene` | Profile-sized canvas + gameplay/webcam/browser | Profile canvas + `name` and gameplay `label` set to the active scene; switch/add re-POSTs when the relay is up | ⚠️ partial (same capture layout per scene) |
+| WHIP publish | Named streams, H.264 preference, ICE gather | Named streams, H.264 preference. Mic id carries the mixed desktop + microphone bus after the faders | ⚠️ partial (no separate browser track) |
 | WHIP teardown | `DELETE` Location + `POST /stop` | Same | ✅ |
 | Status poll | Tabcast snapshot + UI stats | 2s poll `GET /status` | ⚠️ partial (no dropped/FPS from relay in UI) |
 | Orphan / relay restart detection | `relayNeedsLiveBootstrap`, live recovery | Wire pass: log + banner when WHIP session lost while live | ⚠️ partial |
@@ -74,8 +74,8 @@ Direct comparison between the **Electron streaming studio** (`src/renderer/*`) a
 | League Spartan (wordmark, headings, primary buttons) | Yes | Yes | ✅ |
 | Marketing `maka.css` | Not loaded in app window | Not loaded on `/stream/` (by design) | ✅ |
 | Preview mock | Loads `maka.css` + mascot | `/stream/` has no mascot/hero | ✅ |
-| Cream / gold tokens | `--bg`, `--gold`, program black stage | Same token set in `stream.css` | ✅ |
-| Center stats / mixer styling | Full `app.css` | Program stats under the monitor + segmented mixer (stream9d5) | ⚠️ partial (stats are the mock readout until the encode profile is changed) |
+| Cream / gold tokens | `--bg`, `--gold`, program black stage | Same token set in `stream.css`. Web program stage is white (`#ffffff`), including letterbox | ⚠️ partial (desktop stage stays black) |
+| Center stats / mixer styling | Full `app.css` | Program stats under the monitor + segmented mixer with real faders (stream9d6) | ⚠️ partial (meters are post-fader Web Audio levels) |
 
 ---
 
@@ -105,11 +105,33 @@ Desktop additionally runs relay lifecycle via Tabcast, live recovery, and WHIP v
 
 ---
 
+## Wired pass (stream9d6)
+
+The frozen mock, including the hero program image, is `MAKA_template/`. It is not a release. `/stream/` is the functional page.
+
+| Control | Web `/stream/` | Still desktop-only |
+| --- | --- | --- |
+| Scenes | Select Gameplay, Starting Soon, Just Chatting, Intermission, Ending Scene, or an added scene. The program label updates. The list is stored in `localStorage`. When `/relay/scene` is up, the active scene name is posted (`name` and the gameplay source `label`). | Per-scene source layouts, scene templates |
+| Game Capture | `getDisplayMedia` (screen, window, or tab, plus shared audio when the browser provides it). Click again to stop the tracks. | OS game-capture / process capture |
+| Webcam | `getUserMedia` video. Shown as the program, or as a PIP when a display capture is also on. Click again to stop. | Device picker beyond the browser prompt |
+| Microphone | `getUserMedia` audio. Drives the microphone meter. Click again to stop. | ASIO / exclusive-mode devices |
+| Overlay | Image file picker. The image is drawn on the program canvas. Click again to remove it. | Browser-source / URL overlay and the desktop browser track |
+| Audio mixer | Desktop, Microphone, and Game Audio faders set Web Audio gain for the publish/record mix. Meters use analyser levels and sit at silence with no track. If display capture has only one audio track, Game Audio uses that same desktop gain (no separate meter animation). | Separate game-audio device, monitoring, per-channel device pickers |
+| Go Live | Existing WHIP publish to the staging relay (`/relay/whip`, health, config, scene, stop). Button reads Go Live or End Live. End Live closes the peer connection. | Starting the relay process, multi-platform encode inside the app |
+| Start Recording | `MediaRecorder` on the program canvas (and the mixed audio bus when a track exists). Stop downloads a WebM. | Local recording path, remux, replay buffer |
+| Virtual camera | Disabled. The button says it is desktop-app only. | OS virtual camera |
+| Stream info | Title and category are editable and saved in `localStorage`. Viewers stay `—` (the relay does not report a count). Duration runs only while the WHIP session is up. | Platform metadata sync, real viewer counts |
+| Stats | Offline: dropped frames 0, FPS 0, 0 ms, and the selected encode profile resolution. Live: resolution from the video track; FPS, dropped frames, and RTT only when `RTCPeerConnection.getStats()` reports them. | Encoder process stats from the desktop relay UI |
+| Settings gear | Opens destinations, encode profile, and the relay log. Values are saved locally and sent on Apply and Go Live. | Tray, chat, lab mode, startup, addons |
+| Help, minimize, maximize, close | Decorative. They do not control the browser window. | Real window chrome |
+
+Cache buster: `stream9d6`.
+
 ## UI pass (stream9d5)
 
 - **`/stream/`** follows `docs/readme-hero.png`, not the earlier web chrome: title bar is the Maka Studio lockup, centered window title, help, settings gear, and decorative window controls.
 - **Scenes / sources** are cream rows with line icons and a ••• menu. Gameplay is the gold selected row. Add Scene sits under the list. “All systems nominal” is the left-column footer.
-- **Program** shows the mock frame until capture replaces it. The “Program • Live Output” label sits above the monitor. Stats under the program read Studio Mode, Dropped Frames, FPS, latency, and Auto resolution — not a full-window footer.
+- **Program** in stream9d5 showed the mock frame until capture replaced it. stream9d6 removes that poster from `/stream/` (it remains only in `MAKA_template/`). The scene name and “• Live Output” sit above the monitor. Stats under the program read Studio Mode, Dropped Frames, FPS, latency, and resolution.
 - **Right column** is three cards: segmented horizontal mixer (Desktop Audio, Microphone, Game Audio) with a −30…0 dB scale, gold Go Live plus recording / virtual camera stubs, and the stream info card (thumbnail, title, category, red Live, viewers, duration).
 - **Destinations, encode profile, relay status, and the log** stay in the settings gear so they are not painted onto the mock. Go Live still runs the WHIP path.
 - Cache buster: `stream9d5`. `/stream/` HTML, CSS, and JS stay `Cache-Control: no-cache`.

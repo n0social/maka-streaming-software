@@ -124,13 +124,23 @@
     streamError: document.getElementById('stream-error'),
     statDropped: document.getElementById('stat-dropped'),
     statFps: document.getElementById('stat-fps'),
+    statLatency: document.getElementById('stat-latency'),
     statResolution: document.getElementById('stat-resolution-text'),
     statHealth: document.getElementById('stat-health'),
     streamLivePill: document.getElementById('stream-live-pill'),
     streamTitle: document.getElementById('stream-title'),
+    streamCategory: document.getElementById('stream-category'),
     streamDuration: document.getElementById('stream-duration'),
-    streamViewers: document.getElementById('stream-viewers'),
+    streamViewers: document.getElementById('stream-viewers-count'),
     micMeter: document.getElementById('mic-meter'),
+    desktopMeter: document.getElementById('desktop-meter'),
+    gameMeter: document.getElementById('game-meter'),
+    faderDesktop: document.getElementById('fader-desktop'),
+    faderMic: document.getElementById('fader-mic'),
+    faderGame: document.getElementById('fader-game'),
+    programSceneName: document.getElementById('program-scene-name'),
+    btnRecord: document.getElementById('btn-record'),
+    overlayFile: document.getElementById('overlay-file'),
     studioStatusDot: document.getElementById('studio-status-dot'),
     studioStatusText: document.getElementById('studio-status-text'),
     programScreen: document.getElementById('program-screen'),
@@ -162,8 +172,35 @@
   let activeSceneId = 'scene-gameplay';
   let liveStartedAt = 0;
   let durationTimer = 0;
-  let micMeterTimer = 0;
-  let profileTouched = false;
+  let statsTimer = 0;
+  let meterTimer = 0;
+  let overlayImage = null;
+  let overlayUrl = '';
+  let recorder = null;
+  let recordedChunks = [];
+  let canvasCapture = null;
+
+  const STORAGE = {
+    scenes: 'maka.studio.scenes',
+    info: 'maka.studio.info',
+    setup: 'maka.studio.setup',
+    gains: 'maka.studio.gains',
+  };
+
+  const audio = {
+    ctx: null,
+    desktopGain: null,
+    micGain: null,
+    gameGain: null,
+    desktopAnalyser: null,
+    micAnalyser: null,
+    gameAnalyser: null,
+    mixDest: null,
+    desktopSource: null,
+    micSource: null,
+    gameSource: null,
+    separateGameTrack: false,
+  };
 
   function sceneIconSvg(kind) {
     const common =
@@ -183,6 +220,49 @@
 
   function activeSceneName() {
     return scenes.find((s) => s.id === activeSceneId)?.name ?? 'Gameplay';
+  }
+
+  function updateProgramLabel() {
+    if (els.programSceneName) els.programSceneName.textContent = activeSceneName();
+  }
+
+  function readStorage(key) {
+    try {
+      return JSON.parse(localStorage.getItem(key) || 'null');
+    } catch {
+      return null;
+    }
+  }
+
+  function writeStorage(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch {
+      /* private mode / quota */
+    }
+  }
+
+  function loadScenes() {
+    const data = readStorage(STORAGE.scenes);
+    if (!data || !Array.isArray(data.scenes)) return;
+    const next = data.scenes
+      .filter((s) => s && typeof s.id === 'string' && typeof s.name === 'string' && s.name.trim())
+      .map((s) => ({
+        id: s.id,
+        name: s.name.trim(),
+        iconKind: typeof s.iconKind === 'string' ? s.iconKind : 'custom',
+      }));
+    if (!next.length) return;
+    scenes = next;
+    if (typeof data.activeSceneId === 'string' && scenes.some((s) => s.id === data.activeSceneId)) {
+      activeSceneId = data.activeSceneId;
+    } else {
+      activeSceneId = scenes[0].id;
+    }
+  }
+
+  function saveScenes() {
+    writeStorage(STORAGE.scenes, { scenes, activeSceneId });
   }
 
   function renderSceneList() {
@@ -228,11 +308,13 @@
     addBtn.addEventListener('click', () => addScene());
     addLi.appendChild(addBtn);
     els.sceneList.appendChild(addLi);
+    updateProgramLabel();
   }
 
   async function switchScene(sceneId) {
     if (!scenes.some((s) => s.id === sceneId)) return;
     activeSceneId = sceneId;
+    saveScenes();
     renderSceneList();
     log(`Active scene: ${activeSceneName()}.`);
     if (relayHealth) {
@@ -244,6 +326,7 @@
     const n = scenes.filter((s) => !DEFAULT_SCENES.some((d) => d.id === s.id)).length + 1;
     const id = `scene-custom-${Date.now()}`;
     scenes.push({ id, name: `Scene ${n}`, iconKind: 'custom' });
+    saveScenes();
     renderSceneList();
     void switchScene(id);
   }
@@ -290,7 +373,7 @@
       durationTimer = 0;
     }
     liveStartedAt = 0;
-    if (els.streamDuration) els.streamDuration.textContent = '00:23:47';
+    if (els.streamDuration) els.streamDuration.textContent = '—';
   }
 
   function startDurationTimer() {
@@ -307,47 +390,126 @@
     }, 1000);
   }
 
-  function stopMicMeter() {
-    if (micMeterTimer) {
-      clearInterval(micMeterTimer);
-      micMeterTimer = 0;
-    }
-    if (els.micMeter) els.micMeter.style.width = micStream ? '22%' : '12%';
-  }
-
-  function startMicMeter() {
-    stopMicMeter();
-    if (!els.micMeter || !micStream) return;
-    micMeterTimer = window.setInterval(() => {
-      const level = 18 + Math.random() * 52;
-      els.micMeter.style.width = `${level}%`;
-    }, 350);
-  }
-
   function setLiveUi(live) {
     const label = live ? 'End Live' : 'Go Live';
     if (els.btnGoLiveLabel) els.btnGoLiveLabel.textContent = label;
     if (els.btnStart) els.btnStart.classList.toggle('is-live', live);
     if (els.btnGoLiveTop) els.btnGoLiveTop.textContent = label;
+    if (els.streamLivePill) {
+      els.streamLivePill.dataset.live = live ? 'true' : 'false';
+      els.streamLivePill.textContent = live ? 'Live' : 'Offline';
+    }
+    if (els.streamViewers) els.streamViewers.textContent = '—';
     if (live) {
       if (!durationTimer) startDurationTimer();
-    } else stopDurationTimer();
+      startLiveStats();
+    } else {
+      stopDurationTimer();
+      stopLiveStats();
+      showOfflineStats();
+    }
   }
 
-  function updateProgramStats(extra) {
-    if (profileTouched && els.cfgProfile) {
-      const profile = normalizeProfile(els.cfgProfile.value);
-      const spec = profileSpec(profile);
-      if (els.statFps) els.statFps.textContent = `FPS: ${spec.fps}`;
-      if (els.statResolution) {
-        els.statResolution.textContent = `Auto (${spec.width}x${spec.height})`;
+  function selectedProfileSpec() {
+    return profileSpec(normalizeProfile(els.cfgProfile && els.cfgProfile.value));
+  }
+
+  function showOfflineStats() {
+    const spec = selectedProfileSpec();
+    if (els.statDropped) els.statDropped.textContent = 'Dropped Frames: 0 (0.0%)';
+    if (els.statFps) els.statFps.textContent = 'FPS: 0';
+    if (els.statLatency) els.statLatency.textContent = '0 ms';
+    if (els.statResolution) els.statResolution.textContent = `${spec.width}×${spec.height}`;
+  }
+
+  function captureResolution() {
+    const track = (screenStream || webcamStream)?.getVideoTracks?.()[0];
+    if (!track || track.readyState !== 'live') return null;
+    const settings = typeof track.getSettings === 'function' ? track.getSettings() : {};
+    const width = Number(settings.width);
+    const height = Number(settings.height);
+    if (width > 0 && height > 0) return { width, height };
+    return null;
+  }
+
+  function applyResolutionText(width, height) {
+    if (!els.statResolution) return;
+    if (width > 0 && height > 0) {
+      els.statResolution.textContent = `${Math.round(width)}×${Math.round(height)}`;
+      return;
+    }
+    const spec = selectedProfileSpec();
+    els.statResolution.textContent = `${spec.width}×${spec.height}`;
+  }
+
+  async function readLiveStats() {
+    if (!whipPublisher?.pc) {
+      showOfflineStats();
+      return;
+    }
+    const sourceSize = captureResolution();
+    let fps = null;
+    let dropped = null;
+    let framesSent = null;
+    let width = sourceSize ? sourceSize.width : null;
+    let height = sourceSize ? sourceSize.height : null;
+    let rttMs = null;
+    try {
+      const report = await whipPublisher.pc.getStats();
+      report.forEach((stat) => {
+        if (!stat || typeof stat !== 'object') return;
+        const kind = stat.kind || stat.mediaType;
+        if ((stat.type === 'outbound-rtp' || stat.type === 'media-source' || stat.type === 'track') && kind === 'video') {
+          if (typeof stat.framesPerSecond === 'number') fps = stat.framesPerSecond;
+          if (typeof stat.framesDropped === 'number') dropped = stat.framesDropped;
+          if (typeof stat.framesSent === 'number') framesSent = stat.framesSent;
+          if (typeof stat.frameWidth === 'number' && stat.frameWidth > 0) width = stat.frameWidth;
+          if (typeof stat.frameHeight === 'number' && stat.frameHeight > 0) height = stat.frameHeight;
+          if (typeof stat.width === 'number' && stat.width > 0) width = stat.width;
+          if (typeof stat.height === 'number' && stat.height > 0) height = stat.height;
+        }
+        if (stat.type === 'remote-inbound-rtp' && kind === 'video' && typeof stat.roundTripTime === 'number') {
+          rttMs = Math.round(stat.roundTripTime * 1000);
+        }
+      });
+    } catch {
+      /* stats not available yet */
+    }
+    if (sourceSize) {
+      width = sourceSize.width;
+      height = sourceSize.height;
+    }
+    applyResolutionText(width, height);
+    if (els.statFps) els.statFps.textContent = typeof fps === 'number' ? `FPS: ${Math.round(fps)}` : 'FPS: —';
+    if (els.statDropped) {
+      if (typeof dropped === 'number') {
+        const sent = typeof framesSent === 'number' ? framesSent : 0;
+        const total = dropped + sent;
+        const pct = total > 0 ? (dropped / total) * 100 : 0;
+        els.statDropped.textContent = `Dropped Frames: ${Math.round(dropped)} (${pct.toFixed(1)}%)`;
+      } else {
+        els.statDropped.textContent = 'Dropped Frames: —';
       }
     }
-    if (els.statHealth) {
-      const warn = extra && /error|offline|orphan|fail/i.test(String(extra));
-      els.statHealth.dataset.state = warn ? 'warn' : 'ok';
-      els.statHealth.textContent = warn ? String(extra) : 'OK';
+    if (els.statLatency) els.statLatency.textContent = typeof rttMs === 'number' ? `${rttMs} ms` : '0 ms';
+  }
+
+  function startLiveStats() {
+    if (statsTimer) return;
+    void readLiveStats();
+    statsTimer = window.setInterval(() => void readLiveStats(), 1000);
+  }
+
+  function stopLiveStats() {
+    if (statsTimer) {
+      clearInterval(statsTimer);
+      statsTimer = 0;
     }
+  }
+
+  function updateProgramStats() {
+    if (whipPublisher) return;
+    showOfflineStats();
   }
 
   function updateStatsLine(extra) {
@@ -355,6 +517,7 @@
   }
 
   function log(line) {
+    if (!els.log) return;
     const ts = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     els.log.textContent = (els.log.textContent ? els.log.textContent + '\n' : '') + `[${ts}] ${line}`;
     els.log.scrollTop = els.log.scrollHeight;
@@ -557,13 +720,15 @@
     const spec = profileSpec(profile);
     const w = spec.width;
     const h = spec.height;
+    const sceneName = activeSceneName();
     const layout = {
+      name: sceneName,
       canvas: { width: w, height: h },
       sources: [
         {
           id: 'gameplay',
           type: 'video',
-          label: activeSceneName(),
+          label: sceneName,
           x: 0,
           y: 0,
           width: w,
@@ -608,57 +773,75 @@
   }
 
   const videoEls = new Map();
-  function drawVideo(stream, dx, dy, dw, dh) {
+  function drawVideo(stream, dx, dy, dw, dh, mode) {
     let video = videoEls.get(stream);
     if (!video) {
       video = document.createElement('video');
       video.srcObject = stream;
       video.muted = true;
       video.playsInline = true;
+      video.style.background = '#ffffff';
       videoEls.set(stream, video);
       video.play().catch(() => undefined);
     }
-    if (video.readyState >= 2) {
-      const vw = video.videoWidth || 16;
-      const vh = video.videoHeight || 9;
+    if (video.readyState < 2) return;
+    const vw = video.videoWidth || 16;
+    const vh = video.videoHeight || 9;
+    if (mode === 'cover') {
       const scale = Math.max(dw / vw, dh / vh);
       const sw = dw / scale;
       const sh = dh / scale;
       const sx = (vw - sw) / 2;
       const sy = (vh - sh) / 2;
       ctx.drawImage(video, sx, sy, sw, sh, dx, dy, dw, dh);
+      return;
     }
+    const scale = Math.min(dw / vw, dh / vh);
+    const tw = vw * scale;
+    const th = vh * scale;
+    ctx.drawImage(video, dx + (dw - tw) / 2, dy + (dh - th) / 2, tw, th);
+  }
+
+  function drawOverlay(w, h, alone) {
+    if (!overlayImage) return;
+    const iw = overlayImage.naturalWidth || overlayImage.width || 16;
+    const ih = overlayImage.naturalHeight || overlayImage.height || 9;
+    const maxW = alone ? w - 32 : Math.round(w * 0.28);
+    const maxH = alone ? h - 32 : Math.round(h * 0.28);
+    const scale = Math.min(maxW / iw, maxH / ih);
+    const tw = iw * scale;
+    const th = ih * scale;
+    const x = alone ? (w - tw) / 2 : 16;
+    const y = alone ? (h - th) / 2 : 16;
+    ctx.drawImage(overlayImage, x, y, tw, th);
   }
 
   function drawFrame() {
     resizeCanvas();
     const w = els.canvas.width;
     const h = els.canvas.height;
-    const main = screenStream || webcamStream;
-    const livePreview = Boolean(main && main.getVideoTracks()[0]);
-    if (els.programScreen) els.programScreen.classList.toggle('is-live-preview', livePreview);
-    if (!livePreview) {
-      els.empty.hidden = true;
-      requestAnimationFrame(drawFrame);
-      return;
-    }
-
-    ctx.fillStyle = '#0a0a0c';
+    ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, w, h);
-    drawVideo(main, 0, 0, w, h);
-
-    if (screenStream && webcamStream && webcamStream.getVideoTracks()[0]) {
+    const main = screenStream || webcamStream;
+    const mainTrack = main && main.getVideoTracks()[0];
+    const hasVideo = Boolean(mainTrack && mainTrack.readyState === 'live');
+    const livePreview = hasVideo || Boolean(overlayImage);
+    if (els.programScreen) els.programScreen.classList.toggle('is-live-preview', livePreview);
+    if (els.empty) els.empty.hidden = livePreview;
+    if (hasVideo) drawVideo(main, 0, 0, w, h, 'contain');
+    if (screenStream && webcamStream && webcamStream.getVideoTracks()[0]?.readyState === 'live') {
       const pipW = Math.round(w * 0.22);
       const pipH = Math.round(pipW * (9 / 16));
       const x = w - pipW - 16;
       const y = h - pipH - 16;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(x - 2, y - 2, pipW + 4, pipH + 4);
       ctx.strokeStyle = '#c9a227';
       ctx.lineWidth = 3;
       ctx.strokeRect(x - 2, y - 2, pipW + 4, pipH + 4);
-      drawVideo(webcamStream, x, y, pipW, pipH);
+      drawVideo(webcamStream, x, y, pipW, pipH, 'cover');
     }
-
-    els.empty.hidden = true;
+    if (overlayImage) drawOverlay(w, h, !hasVideo);
     requestAnimationFrame(drawFrame);
   }
 
@@ -670,6 +853,204 @@
       v.srcObject = null;
       videoEls.delete(stream);
     }
+  }
+
+  function disconnectAudioNode(node) {
+    if (!node) return;
+    try {
+      node.disconnect();
+    } catch {
+      /* already disconnected */
+    }
+  }
+
+  function gainFromFader(input) {
+    const n = Number(input && input.value);
+    if (!Number.isFinite(n)) return 1;
+    return Math.min(1, Math.max(0, n / 100));
+  }
+
+  function ensureAudioGraph() {
+    if (audio.ctx) {
+      if (audio.ctx.state === 'suspended') void audio.ctx.resume();
+      return audio.ctx;
+    }
+    const ctx = new AudioContext();
+    audio.ctx = ctx;
+    audio.desktopGain = ctx.createGain();
+    audio.micGain = ctx.createGain();
+    audio.desktopAnalyser = ctx.createAnalyser();
+    audio.micAnalyser = ctx.createAnalyser();
+    audio.desktopAnalyser.fftSize = 2048;
+    audio.micAnalyser.fftSize = 2048;
+    audio.mixDest = ctx.createMediaStreamDestination();
+    audio.desktopGain.connect(audio.desktopAnalyser);
+    audio.micGain.connect(audio.micAnalyser);
+    audio.desktopGain.connect(audio.mixDest);
+    audio.micGain.connect(audio.mixDest);
+    applyGains();
+    startMeterLoop();
+    return ctx;
+  }
+
+  function applyGains() {
+    const desktop = gainFromFader(els.faderDesktop);
+    const mic = gainFromFader(els.faderMic);
+    const game = gainFromFader(els.faderGame);
+    if (audio.micGain) audio.micGain.gain.value = mic;
+    if (audio.separateGameTrack && audio.gameGain) {
+      if (audio.desktopGain) audio.desktopGain.gain.value = desktop;
+      audio.gameGain.gain.value = game;
+      return;
+    }
+    // Game Audio has no separate capture in getDisplayMedia. The Game Audio
+    // fader is tied to the same desktop/display GainNode as Desktop Audio.
+    if (audio.desktopGain) audio.desktopGain.gain.value = desktop;
+  }
+
+  // Game Audio fader writes the desktop/display gain unless a second
+  // display-capture audio track exists. There is no fake game-audio meter.
+  function onFader(which) {
+    if (!audio.separateGameTrack && (which === 'desktop' || which === 'game')) {
+      const source = which === 'desktop' ? els.faderDesktop : els.faderGame;
+      const other = which === 'desktop' ? els.faderGame : els.faderDesktop;
+      if (source && other) other.value = source.value;
+    }
+    saveGains();
+    if (audio.ctx) applyGains();
+  }
+
+  function saveGains() {
+    writeStorage(STORAGE.gains, {
+      desktop: Number(els.faderDesktop && els.faderDesktop.value),
+      mic: Number(els.faderMic && els.faderMic.value),
+      game: Number(els.faderGame && els.faderGame.value),
+    });
+  }
+
+  function loadGains() {
+    const data = readStorage(STORAGE.gains);
+    if (!data) return;
+    const set = (input, value) => {
+      if (!input || typeof value !== 'number' || !Number.isFinite(value)) return;
+      input.value = String(Math.min(100, Math.max(0, value)));
+    };
+    set(els.faderDesktop, data.desktop);
+    set(els.faderMic, data.mic);
+    set(els.faderGame, data.game);
+    if (!audio.separateGameTrack && els.faderDesktop && els.faderGame) {
+      els.faderGame.value = els.faderDesktop.value;
+    }
+  }
+
+  function meterPercent(analyser) {
+    if (!analyser) return 0;
+    const buf = new Uint8Array(analyser.fftSize);
+    analyser.getByteTimeDomainData(buf);
+    let sum = 0;
+    for (let i = 0; i < buf.length; i += 1) {
+      const v = (buf[i] - 128) / 128;
+      sum += v * v;
+    }
+    const rms = Math.sqrt(sum / buf.length);
+    if (rms < 0.001) return 0;
+    const db = 20 * Math.log10(rms);
+    return Math.max(0, Math.min(100, ((db + 30) / 30) * 100));
+  }
+
+  function setMeter(el, percent) {
+    if (!el) return;
+    el.style.width = `${Math.max(0, Math.min(100, percent))}%`;
+  }
+
+  function startMeterLoop() {
+    if (meterTimer) return;
+    meterTimer = window.setInterval(() => {
+      const desktopLive = Boolean(
+        screenStream && screenStream.getAudioTracks().some((t) => t.readyState === 'live'),
+      );
+      const micLive = Boolean(micStream && micStream.getAudioTracks().some((t) => t.readyState === 'live'));
+      setMeter(els.desktopMeter, desktopLive ? meterPercent(audio.desktopAnalyser) : 0);
+      setMeter(els.micMeter, micLive ? meterPercent(audio.micAnalyser) : 0);
+      setMeter(
+        els.gameMeter,
+        audio.separateGameTrack && desktopLive ? meterPercent(audio.gameAnalyser) : 0,
+      );
+    }, 100);
+  }
+
+  function attachDisplayAudio(stream) {
+    disconnectAudioNode(audio.desktopSource);
+    disconnectAudioNode(audio.gameSource);
+    audio.desktopSource = null;
+    audio.gameSource = null;
+    audio.separateGameTrack = false;
+    const tracks = stream.getAudioTracks().filter((t) => t.readyState === 'live');
+    if (!tracks.length) return;
+    const ctx = ensureAudioGraph();
+    audio.desktopSource = ctx.createMediaStreamSource(new MediaStream([tracks[0]]));
+    audio.desktopSource.connect(audio.desktopGain);
+    if (tracks.length > 1) {
+      audio.separateGameTrack = true;
+      if (!audio.gameGain) {
+        audio.gameGain = ctx.createGain();
+        audio.gameAnalyser = ctx.createAnalyser();
+        audio.gameAnalyser.fftSize = 2048;
+        audio.gameGain.connect(audio.gameAnalyser);
+        audio.gameGain.connect(audio.mixDest);
+      }
+      audio.gameSource = ctx.createMediaStreamSource(new MediaStream([tracks[1]]));
+      audio.gameSource.connect(audio.gameGain);
+    }
+    applyGains();
+  }
+
+  function detachDisplayAudio() {
+    disconnectAudioNode(audio.desktopSource);
+    disconnectAudioNode(audio.gameSource);
+    audio.desktopSource = null;
+    audio.gameSource = null;
+    audio.separateGameTrack = false;
+    setMeter(els.desktopMeter, 0);
+    setMeter(els.gameMeter, 0);
+  }
+
+  function attachMicAudio(stream) {
+    disconnectAudioNode(audio.micSource);
+    audio.micSource = null;
+    const track = stream.getAudioTracks().find((t) => t.readyState === 'live');
+    if (!track) return;
+    const ctx = ensureAudioGraph();
+    audio.micSource = ctx.createMediaStreamSource(new MediaStream([track]));
+    audio.micSource.connect(audio.micGain);
+    applyGains();
+  }
+
+  function detachMicAudio() {
+    disconnectAudioNode(audio.micSource);
+    audio.micSource = null;
+    setMeter(els.micMeter, 0);
+  }
+
+  function liveAudioTracks() {
+    const tracks = [];
+    if (screenStream) tracks.push(...screenStream.getAudioTracks().filter((t) => t.readyState === 'live'));
+    if (micStream) tracks.push(...micStream.getAudioTracks().filter((t) => t.readyState === 'live'));
+    return tracks;
+  }
+
+  function mixedAudioStream() {
+    if (!liveAudioTracks().length) return null;
+    ensureAudioGraph();
+    return audio.mixDest.stream;
+  }
+
+  function programCanvasStream() {
+    if (!canvasCapture) {
+      const fps = Math.min(60, selectedProfileSpec().fps || 30);
+      canvasCapture = els.canvas.captureStream(fps);
+    }
+    return canvasCapture;
   }
 
   function namedStream(id, tracks) {
@@ -768,23 +1149,27 @@
   }
 
   function buildPublishSources() {
-    const canvasStream = els.canvas.captureStream(30);
+    const canvasStream = programCanvasStream();
     const gameplay = namedStream(TRACK_IDS.gameplay, canvasStream.getVideoTracks());
     let webcam = null;
     if (screenStream && webcamStream) {
       webcam = namedStream(TRACK_IDS.webcam, webcamStream.getVideoTracks());
     }
     let mic = null;
-    if (micStream && micStream.getAudioTracks()[0]) {
-      mic = namedStream(TRACK_IDS.mic, micStream.getAudioTracks());
+    // Desktop and mic audio are mixed through the fader gains and published
+    // on the existing `mic` WHIP stream id. The relay contract is unchanged.
+    const mix = mixedAudioStream();
+    if (mix && mix.getAudioTracks()[0]) {
+      mic = namedStream(TRACK_IDS.mic, mix.getAudioTracks());
     }
     return { gameplay, webcam, mic };
   }
 
   function hasCapture() {
     return Boolean(
-      (screenStream && screenStream.getVideoTracks()[0]) ||
-        (webcamStream && webcamStream.getVideoTracks()[0]),
+      (screenStream && screenStream.getVideoTracks().some((t) => t.readyState === 'live')) ||
+        (webcamStream && webcamStream.getVideoTracks().some((t) => t.readyState === 'live')) ||
+        overlayImage,
     );
   }
 
@@ -792,20 +1177,33 @@
     const live = Boolean(whipPublisher);
     if (els.btnStop) els.btnStop.disabled = !live;
     if (els.btnScreen) {
-      els.btnScreen.classList.toggle('is-on', Boolean(screenStream && screenStream.getVideoTracks()[0]));
+      els.btnScreen.classList.toggle(
+        'is-on',
+        Boolean(screenStream && screenStream.getVideoTracks().some((t) => t.readyState === 'live')),
+      );
     }
     if (els.btnWebcam) {
-      els.btnWebcam.classList.toggle('is-on', Boolean(webcamStream && webcamStream.getVideoTracks()[0]));
+      els.btnWebcam.classList.toggle(
+        'is-on',
+        Boolean(webcamStream && webcamStream.getVideoTracks().some((t) => t.readyState === 'live')),
+      );
     }
     if (els.btnMic) {
-      els.btnMic.classList.toggle('is-on', Boolean(micStream && micStream.getAudioTracks()[0]));
+      els.btnMic.classList.toggle(
+        'is-on',
+        Boolean(micStream && micStream.getAudioTracks().some((t) => t.readyState === 'live')),
+      );
+    }
+    if (els.btnOverlay) {
+      els.btnOverlay.classList.toggle('is-on', Boolean(overlayImage));
     }
     setLiveUi(live);
   }
 
   async function onStart() {
     if (!hasCapture()) {
-      log('Add webcam or screen share first.');
+      log('Add a game capture, webcam, or overlay image first.');
+      if (els.studioStatusText) els.studioStatusText.textContent = 'Add a source before going live';
       return;
     }
     const ok = relayHealth ? true : await probeRelay();
@@ -847,7 +1245,8 @@
       sessionLiveIntent = false;
       whipPublisher = null;
       logError(`Go live failed: ${err instanceof Error ? err.message : err}`);
-      els.modal.hidden = false;
+      if (!relayHealth && els.modal) els.modal.hidden = false;
+      else openSettings();
       updateButtons();
     }
   }
@@ -865,46 +1264,223 @@
     log('Stream stopped.');
   }
 
-  els.btnWebcam.addEventListener('click', async () => {
-    stopStream(webcamStream);
-    webcamStream = null;
-    try {
-      webcamStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      log('Webcam added.');
-    } catch (err) {
-      log(`Webcam denied: ${err instanceof Error ? err.message : err}`);
-    }
-    updateButtons();
-  });
-
-  els.btnScreen.addEventListener('click', async () => {
+  function releaseScreen() {
+    detachDisplayAudio();
     stopStream(screenStream);
     screenStream = null;
+  }
+
+  function releaseWebcam() {
+    stopStream(webcamStream);
+    webcamStream = null;
+  }
+
+  function releaseMic() {
+    detachMicAudio();
+    stopStream(micStream);
+    micStream = null;
+    setMeter(els.micMeter, 0);
+  }
+
+  function clearOverlay() {
+    overlayImage = null;
+    if (overlayUrl) {
+      URL.revokeObjectURL(overlayUrl);
+      overlayUrl = '';
+    }
+  }
+
+  async function captureDisplay() {
     try {
-      screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
-      screenStream.getVideoTracks()[0].onended = () => {
-        screenStream = null;
-        updateButtons();
-      };
-      log('Screen share added.');
+      return await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
     } catch (err) {
-      log(`Screen share denied: ${err instanceof Error ? err.message : err}`);
+      const name = err && err.name;
+      if (name === 'NotAllowedError' || name === 'AbortError') throw err;
+      return navigator.mediaDevices.getDisplayMedia({ video: true });
+    }
+  }
+
+  els.btnWebcam?.addEventListener('click', async () => {
+    if (webcamStream && webcamStream.getVideoTracks().some((t) => t.readyState === 'live')) {
+      releaseWebcam();
+      log('Webcam stopped.');
+      updateButtons();
+      return;
+    }
+    releaseWebcam();
+    try {
+      webcamStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      const track = webcamStream.getVideoTracks()[0];
+      if (track) {
+        track.onended = () => {
+          releaseWebcam();
+          updateButtons();
+        };
+      }
+      log('Webcam added.');
+    } catch (err) {
+      const name = err && err.name;
+      log(name === 'NotAllowedError' || name === 'AbortError' ? 'Webcam cancelled.' : `Webcam failed: ${err instanceof Error ? err.message : err}`);
     }
     updateButtons();
   });
 
-  els.btnMic.addEventListener('click', async () => {
-    stopStream(micStream);
-    micStream = null;
-    stopMicMeter();
+  els.btnScreen?.addEventListener('click', async () => {
+    if (screenStream && screenStream.getVideoTracks().some((t) => t.readyState === 'live')) {
+      releaseScreen();
+      log('Game capture stopped.');
+      updateButtons();
+      return;
+    }
+    releaseScreen();
     try {
-      micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      log('Microphone added.');
-      startMicMeter();
+      screenStream = await captureDisplay();
+      const videoTrack = screenStream.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.onended = () => {
+          releaseScreen();
+          log('Game capture ended.');
+          updateButtons();
+        };
+      }
+      attachDisplayAudio(screenStream);
+      const audioCount = screenStream.getAudioTracks().filter((t) => t.readyState === 'live').length;
+      log(audioCount ? `Game capture started (${audioCount} audio track${audioCount === 1 ? '' : 's'}).` : 'Game capture started (no audio shared).');
     } catch (err) {
-      log(`Mic denied: ${err instanceof Error ? err.message : err}`);
+      releaseScreen();
+      const name = err && err.name;
+      log(
+        name === 'NotAllowedError' || name === 'AbortError'
+          ? 'Game capture cancelled.'
+          : `Game capture failed: ${err instanceof Error ? err.message : err}`,
+      );
     }
     updateButtons();
+  });
+
+  els.btnMic?.addEventListener('click', async () => {
+    if (micStream && micStream.getAudioTracks().some((t) => t.readyState === 'live')) {
+      releaseMic();
+      log('Microphone stopped.');
+      updateButtons();
+      return;
+    }
+    releaseMic();
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      const track = micStream.getAudioTracks()[0];
+      if (track) {
+        track.onended = () => {
+          releaseMic();
+          updateButtons();
+        };
+      }
+      attachMicAudio(micStream);
+      log('Microphone added.');
+    } catch (err) {
+      releaseMic();
+      const name = err && err.name;
+      log(
+        name === 'NotAllowedError' || name === 'AbortError'
+          ? 'Microphone cancelled.'
+          : `Microphone failed: ${err instanceof Error ? err.message : err}`,
+      );
+    }
+    updateButtons();
+  });
+
+  function setRecordingUi(on) {
+    if (!els.btnRecord) return;
+    els.btnRecord.classList.toggle('is-recording', on);
+    els.btnRecord.setAttribute('aria-pressed', on ? 'true' : 'false');
+    const label = els.btnRecord.querySelector('[data-record-label]');
+    if (label) label.textContent = on ? 'Stop Recording' : 'Start Recording';
+  }
+
+  function recordingStream() {
+    const canvasStream = programCanvasStream();
+    const tracks = canvasStream.getVideoTracks().filter((t) => t.readyState === 'live');
+    const mix = mixedAudioStream();
+    if (mix) tracks.push(...mix.getAudioTracks().filter((t) => t.readyState === 'live'));
+    return new MediaStream(tracks);
+  }
+
+  function downloadRecording(blob) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    a.href = url;
+    a.download = `maka-recording-${stamp}.webm`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+
+  els.btnRecord?.addEventListener('click', () => {
+    if (recorder && recorder.state === 'recording') {
+      recorder.stop();
+      return;
+    }
+    if (typeof MediaRecorder === 'undefined') {
+      log('Recording is not available in this browser.');
+      return;
+    }
+    let stream;
+    try {
+      stream = recordingStream();
+    } catch (err) {
+      log(`Recording failed: ${err instanceof Error ? err.message : err}`);
+      return;
+    }
+    if (!stream.getVideoTracks().length) {
+      log('Program canvas is not ready to record.');
+      return;
+    }
+    const types = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+    let mimeType = '';
+    for (const type of types) {
+      if (MediaRecorder.isTypeSupported(type)) {
+        mimeType = type;
+        break;
+      }
+    }
+    try {
+      recordedChunks = [];
+      recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    } catch (err) {
+      recorder = null;
+      log(`Recording failed: ${err instanceof Error ? err.message : err}`);
+      return;
+    }
+    recorder.ondataavailable = (event) => {
+      if (event.data && event.data.size) recordedChunks.push(event.data);
+    };
+    recorder.onstop = () => {
+      const type = (recorder && recorder.mimeType) || 'video/webm';
+      const blob = new Blob(recordedChunks, { type });
+      recordedChunks = [];
+      setRecordingUi(false);
+      if (!blob.size) {
+        log('Recording was empty.');
+        return;
+      }
+      downloadRecording(blob);
+      log('Recording saved as WebM.');
+    };
+    recorder.onerror = () => {
+      setRecordingUi(false);
+      log('Recording failed.');
+    };
+    try {
+      recorder.start(1000);
+    } catch (err) {
+      setRecordingUi(false);
+      log(`Recording failed: ${err instanceof Error ? err.message : err}`);
+      return;
+    }
+    setRecordingUi(true);
+    log('Recording started.');
   });
 
   els.btnStart.addEventListener('click', () => {
@@ -923,8 +1499,50 @@
   els.btnVerify.addEventListener('click', () => {
     void verifyRelayConfig().catch((err) => logError(err instanceof Error ? err.message : String(err)));
   });
+  function saveSetup() {
+    writeStorage(STORAGE.setup, {
+      profile: els.cfgProfile.value,
+      twitch: els.destTwitch.checked,
+      youtube: els.destYoutube.checked,
+      custom: els.destCustom.checked,
+      twitchKey: els.cfgTwitchKey.value,
+      youtubeKey: els.cfgYoutubeKey.value,
+      customUrl: els.cfgCustomRtmpUrl.value,
+      customKey: els.cfgCustomRtmpKey.value,
+    });
+  }
+
+  function loadSetup() {
+    const data = readStorage(STORAGE.setup);
+    if (!data || typeof data !== 'object') return;
+    if (data.profile && Object.prototype.hasOwnProperty.call(ENCODE_PROFILES, data.profile)) {
+      els.cfgProfile.value = data.profile;
+    }
+    els.destTwitch.checked = Boolean(data.twitch);
+    els.destYoutube.checked = Boolean(data.youtube);
+    els.destCustom.checked = Boolean(data.custom);
+    if (typeof data.twitchKey === 'string') els.cfgTwitchKey.value = data.twitchKey;
+    if (typeof data.youtubeKey === 'string') els.cfgYoutubeKey.value = data.youtubeKey;
+    if (typeof data.customUrl === 'string') els.cfgCustomRtmpUrl.value = data.customUrl;
+    if (typeof data.customKey === 'string') els.cfgCustomRtmpKey.value = data.customKey;
+  }
+
+  function saveInfo() {
+    writeStorage(STORAGE.info, {
+      title: els.streamTitle && 'value' in els.streamTitle ? els.streamTitle.value : '',
+      category: els.streamCategory && 'value' in els.streamCategory ? els.streamCategory.value : '',
+    });
+  }
+
+  function loadInfo() {
+    const data = readStorage(STORAGE.info);
+    if (!data || typeof data !== 'object') return;
+    if (els.streamTitle && typeof data.title === 'string') els.streamTitle.value = data.title;
+    if (els.streamCategory && typeof data.category === 'string') els.streamCategory.value = data.category;
+  }
+
   els.cfgProfile.addEventListener('change', () => {
-    profileTouched = true;
+    saveSetup();
     updateStatsLine();
     if (relayHealth) {
       void postRelayConfig()
@@ -932,13 +1550,59 @@
         .catch((err) => log(err instanceof Error ? err.message : String(err)));
     }
   });
-  els.destTwitch.addEventListener('change', syncDestinationInputs);
-  els.destYoutube.addEventListener('change', syncDestinationInputs);
-  els.destCustom.addEventListener('change', syncDestinationInputs);
+  function onDestinationChange() {
+    syncDestinationInputs();
+    saveSetup();
+  }
+  els.destTwitch.addEventListener('change', onDestinationChange);
+  els.destYoutube.addEventListener('change', onDestinationChange);
+  els.destCustom.addEventListener('change', onDestinationChange);
+  [els.cfgTwitchKey, els.cfgYoutubeKey, els.cfgCustomRtmpUrl, els.cfgCustomRtmpKey].forEach((input) => {
+    input?.addEventListener('change', saveSetup);
+    input?.addEventListener('input', saveSetup);
+  });
   els.btnAddScene?.addEventListener('click', () => addScene());
   els.btnOverlay?.addEventListener('click', () => {
-    log('Overlay source is desktop-only in this build.');
+    if (overlayImage) {
+      clearOverlay();
+      log('Overlay removed.');
+      updateButtons();
+      return;
+    }
+    if (!els.overlayFile) {
+      log('Overlay image picker is unavailable.');
+      return;
+    }
+    els.overlayFile.click();
   });
+  els.overlayFile?.addEventListener('change', () => {
+    const file = els.overlayFile.files && els.overlayFile.files[0];
+    els.overlayFile.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      log('Overlay needs an image file.');
+      return;
+    }
+    clearOverlay();
+    overlayUrl = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      overlayImage = img;
+      log('Overlay image drawn on the program.');
+      updateButtons();
+    };
+    img.onerror = () => {
+      clearOverlay();
+      log('Could not read that overlay image.');
+      updateButtons();
+    };
+    img.src = overlayUrl;
+  });
+  els.faderDesktop?.addEventListener('input', () => onFader('desktop'));
+  els.faderMic?.addEventListener('input', () => onFader('mic'));
+  els.faderGame?.addEventListener('input', () => onFader('game'));
+  els.streamTitle?.addEventListener('input', saveInfo);
+  els.streamCategory?.addEventListener('input', saveInfo);
   function openSettings() {
     if (!els.settings) return;
     els.settings.hidden = false;
@@ -947,6 +1611,8 @@
     if (!els.settings) return;
     els.settings.hidden = true;
   }
+  // Help and the window min / max / close controls stay decorative.
+  // They cannot control the browser chrome, so they have no handlers.
   els.btnSettings?.addEventListener('click', openSettings);
   els.btnSettingsClose?.addEventListener('click', closeSettings);
   els.settings?.addEventListener('click', (e) => {
@@ -960,11 +1626,18 @@
   });
 
   window.addEventListener('resize', resizeCanvas);
+  loadScenes();
+  loadSetup();
+  loadInfo();
+  loadGains();
   syncDestinationInputs();
   renderSceneList();
+  showOfflineStats();
+  setMeter(els.desktopMeter, 0);
+  setMeter(els.micMeter, 0);
+  setMeter(els.gameMeter, 0);
   drawFrame();
   void probeRelay();
   updateButtons();
-  updateProgramStats();
-  log('Maka web studio — connect relay → configure → go live (see docs/web-relay.md).');
+  log('Maka web studio — capture, set destinations, then go live.');
 })();

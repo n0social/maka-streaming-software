@@ -1,4 +1,4 @@
-/* STREAM_CSS_BUILD=stream9d5 — bump ?v= on /stream/ links in site/stream/index.html */
+/* STREAM_CSS_BUILD=stream9d6 — bump ?v= on /stream/ links in site/stream/index.html */
 /* Desktop studio mock (docs/readme-hero.png). Tokens from src/renderer/app.css. */
 
 :root {
@@ -389,43 +389,42 @@ textarea {
   min-height: 0;
   border-radius: 12px;
   overflow: hidden;
-  background: #101010;
+  background: #ffffff;
   box-shadow: 0 0 0 1px rgba(26, 20, 8, 0.06);
 }
 
-.program-poster,
-.program-canvas {
+.program-canvas,
+.program-screen video {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: contain;
   display: block;
+  background: #ffffff;
 }
 
 .program-canvas {
-  opacity: 0;
-  background: transparent;
+  z-index: 0;
 }
 
-.program-screen.is-live-preview .program-poster {
-  visibility: hidden;
-}
-
-.program-screen.is-live-preview .program-canvas {
-  opacity: 1;
+.program-screen.is-live-preview .program-empty {
+  display: none;
 }
 
 .program-empty {
   position: absolute;
+  z-index: 1;
   inset: 0;
   display: grid;
   place-items: center;
   margin: 0;
   padding: 1rem;
   text-align: center;
-  color: #c8c0b4;
+  color: #6b6256;
   font-size: 0.95rem;
+  pointer-events: none;
+  background: transparent;
 }
 
 .program-empty[hidden] {
@@ -558,12 +557,56 @@ textarea {
   container-type: inline-size;
 }
 
+.audio-fader {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 12px;
+  margin: 0;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.audio-fader::-webkit-slider-runnable-track {
+  height: 12px;
+  background: transparent;
+}
+
+.audio-fader::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 8px;
+  height: 12px;
+  margin-top: 0;
+  border: 0;
+  border-radius: 1px;
+  background: #1a1408;
+}
+
+.audio-fader::-moz-range-track {
+  height: 12px;
+  background: transparent;
+  border: 0;
+}
+
+.audio-fader::-moz-range-thumb {
+  width: 8px;
+  height: 12px;
+  border: 0;
+  border-radius: 1px;
+  background: #1a1408;
+}
+
 .audio-meter {
   position: absolute;
   left: 0;
   top: 0;
   bottom: 0;
-  width: 12%;
+  width: 0%;
+  pointer-events: none;
   background-image: linear-gradient(
     90deg,
     var(--meter-green) 0%,
@@ -656,6 +699,18 @@ textarea {
   opacity: 0.72;
 }
 
+.btn-quiet.is-recording {
+  border-color: var(--live-red);
+  color: var(--live-red);
+}
+
+#btn-vcam {
+  white-space: normal;
+  line-height: 1.25;
+  padding: 8px 12px;
+  text-align: center;
+}
+
 .btn-quiet {
   border: 1px solid #eadfce;
   background: #fff;
@@ -681,8 +736,27 @@ textarea {
   height: 64px;
   border-radius: 8px;
   object-fit: cover;
-  background: #1a1408;
+  background: #ffffff;
+  border: 1px solid var(--line);
   display: block;
+}
+
+.stream-title,
+.stream-category {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0 2px;
+  margin: 0;
+  outline: none;
+}
+
+.stream-title:focus,
+.stream-category:focus {
+  background: #fff;
+  box-shadow: 0 0 0 1px var(--line);
+  border-radius: 4px;
 }
 
 .stream-meta {
@@ -736,6 +810,15 @@ textarea {
   border-radius: 50%;
   background: var(--live-red);
   box-shadow: 0 0 0 3px rgba(225, 29, 46, 0.12);
+}
+
+.stream-live-pill[data-live="false"] {
+  color: var(--muted);
+}
+
+.stream-live-pill[data-live="false"]::before {
+  background: #b7b3ac;
+  box-shadow: none;
 }
 
 .stream-viewers {

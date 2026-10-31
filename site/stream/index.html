@@ -31,7 +31,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=League+Spartan:ital,wght@0,500;0,600;0,700;0,800;1,700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/stream/stream.css?v=stream9d5" />
+    <link rel="stylesheet" href="/stream/stream.css?v=stream9d6" />
   </head>
   <body class="stream-page">
     <div class="stream-studio">
@@ -116,7 +116,7 @@
             </li>
             <li>
               <div class="studio-row">
-                <button type="button" class="studio-list-item" id="btn-overlay" title="Browser overlay is desktop-only">
+                <button type="button" class="studio-list-item" id="btn-overlay" title="Choose an image to draw on the program. Click again to remove it.">
                   <span class="source-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" width="16" height="16">
                       <rect x="7" y="7" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.7" />
@@ -127,6 +127,7 @@
                 </button>
                 <button type="button" class="studio-row-menu" tabindex="-1" aria-hidden="true">•••</button>
               </div>
+              <input type="file" id="overlay-file" accept="image/*" hidden />
             </li>
           </ul>
         </section>
@@ -140,19 +141,12 @@
       <main class="stream-stage" aria-label="Program">
         <div class="program-column">
           <p class="program-label">
-            <span class="program-name">Program</span>
+            <span class="program-name" id="program-scene-name">Gameplay</span>
             <span class="program-mode">• Live Output</span>
           </p>
           <div class="program-screen" id="program-screen">
-            <img
-              class="program-poster"
-              src="/stream/program-poster.jpg?v=stream9d5"
-              alt=""
-              width="726"
-              height="478"
-            />
             <canvas id="program-canvas" class="program-canvas" aria-label="Program preview"></canvas>
-            <p class="program-empty" id="program-empty" hidden>Select a display or window to start streaming</p>
+            <p class="program-empty" id="program-empty">Select a display or window to start streaming</p>
           </div>
           <div class="program-stats" id="program-stats" aria-label="Program stream stats">
             <label class="program-stats-field">
@@ -161,15 +155,15 @@
                 <option value="program" selected>Studio Mode</option>
               </select>
             </label>
-            <span class="program-stat" id="stat-dropped">Dropped Frames: 0 (0.0%) <span class="stat-caret" aria-hidden="true">▾</span></span>
-            <span class="program-stat" id="stat-fps">FPS: 60</span>
-            <span class="program-stat" id="stat-latency">17 ms</span>
+            <span class="program-stat" id="stat-dropped">Dropped Frames: 0 (0.0%)</span>
+            <span class="program-stat" id="stat-fps">FPS: 0</span>
+            <span class="program-stat" id="stat-latency">0 ms</span>
             <span class="program-stat program-stat-auto" id="stat-resolution">
               <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
                 <path d="M20 12a8 8 0 1 1-2.2-5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
                 <path d="M20 5v5h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
-              <span id="stat-resolution-text">Auto (1920x1080)</span>
+              <span id="stat-resolution-text">1280×720</span>
             </span>
           </div>
         </div>
@@ -179,15 +173,16 @@
         <section class="studio-card">
           <h2>Audio Mixer</h2>
           <div class="audio-mixer" id="audio-mixer">
-            <div class="audio-channel" title="Desktop audio capture not yet implemented">
+            <div class="audio-channel" id="audio-desktop-row">
               <span class="audio-channel-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" width="16" height="16">
                   <path fill="currentColor" d="M4 9.5v5h3.2L12 19V5L7.2 9.5H4zm11.2.2a3.6 3.6 0 0 1 0 4.6l1.2 1.1a5.2 5.2 0 0 0 0-6.8l-1.2 1.1z" />
                 </svg>
               </span>
               <span class="audio-channel-name">Desktop Audio</span>
-              <div class="audio-meter-track" aria-hidden="true">
-                <div class="audio-meter" style="width: 78%"></div>
+              <div class="audio-meter-track">
+                <div class="audio-meter" id="desktop-meter" style="width: 0%"></div>
+                <input type="range" class="audio-fader" id="fader-desktop" min="0" max="100" value="100" aria-label="Desktop Audio gain" />
               </div>
               <div class="audio-db" aria-hidden="true"><span>-30</span><span>-24</span><span>-18</span><span>-12</span><span>-6</span><span>0</span></div>
               <button type="button" class="audio-channel-settings" disabled aria-label="Desktop audio settings">
@@ -203,8 +198,9 @@
                 </svg>
               </span>
               <span class="audio-channel-name">Microphone</span>
-              <div class="audio-meter-track" aria-hidden="true">
-                <div class="audio-meter" id="mic-meter" style="width: 62%"></div>
+              <div class="audio-meter-track">
+                <div class="audio-meter" id="mic-meter" style="width: 0%"></div>
+                <input type="range" class="audio-fader" id="fader-mic" min="0" max="100" value="100" aria-label="Microphone gain" />
               </div>
               <div class="audio-db" aria-hidden="true"><span>-30</span><span>-24</span><span>-18</span><span>-12</span><span>-6</span><span>0</span></div>
               <button type="button" class="audio-channel-settings" disabled aria-label="Microphone settings">
@@ -213,15 +209,16 @@
                 </svg>
               </button>
             </div>
-            <div class="audio-channel" title="Game audio capture not yet implemented">
+            <div class="audio-channel" id="audio-game-row">
               <span class="audio-channel-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" width="16" height="16">
                   <path fill="currentColor" d="M4 9.5v5h3.2L12 19V5L7.2 9.5H4zm11.2.2a3.6 3.6 0 0 1 0 4.6l1.2 1.1a5.2 5.2 0 0 0 0-6.8l-1.2 1.1z" />
                 </svg>
               </span>
               <span class="audio-channel-name">Game Audio</span>
-              <div class="audio-meter-track" aria-hidden="true">
-                <div class="audio-meter" style="width: 84%"></div>
+              <div class="audio-meter-track">
+                <div class="audio-meter" id="game-meter" style="width: 0%"></div>
+                <input type="range" class="audio-fader" id="fader-game" min="0" max="100" value="100" aria-label="Game Audio gain" />
               </div>
               <div class="audio-db" aria-hidden="true"><span>-30</span><span>-24</span><span>-18</span><span>-12</span><span>-6</span><span>0</span></div>
               <button type="button" class="audio-channel-settings" disabled aria-label="Game audio settings">
@@ -244,18 +241,18 @@
               </svg>
               <span id="btn-go-live-label">Go Live</span>
             </button>
-            <button type="button" class="btn-quiet" disabled title="Recording is not available in the web studio yet">
+            <button type="button" class="btn-quiet" id="btn-record" aria-pressed="false">
               <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
                 <circle cx="12" cy="12" r="5.5" fill="none" stroke="currentColor" stroke-width="1.7" />
               </svg>
-              Start Recording
+              <span data-record-label>Start Recording</span>
             </button>
-            <button type="button" class="btn-quiet" disabled title="Virtual camera is not available in the web studio yet">
+            <button type="button" class="btn-quiet" id="btn-vcam" disabled title="Browsers cannot install an OS virtual camera. This control is desktop-app only.">
               <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
                 <rect x="3.5" y="5" width="17" height="11.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.7" />
                 <path d="M8 20h8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
               </svg>
-              Start Virtual Camera
+              Virtual camera — desktop app only
             </button>
             <button type="button" class="btn-quiet sr-only" id="btn-stop">End Live</button>
           </div>
@@ -267,20 +264,20 @@
             <button type="button" class="studio-row-menu studio-row-menu--static" tabindex="-1" aria-hidden="true">•••</button>
           </header>
           <div class="stream-preview">
-            <img class="stream-thumb" id="stream-thumb" src="/stream/stream-thumb.jpg?v=stream9d5" alt="" width="72" height="72" />
+            <div class="stream-thumb" id="stream-thumb" role="img" aria-label="No preview"></div>
             <div class="stream-meta">
-              <div class="stream-title" id="stream-title">Epic Fantasy Raids &amp; Chill</div>
-              <div class="stream-category" id="stream-category">Fantasy Games</div>
+              <input class="stream-title" id="stream-title" type="text" maxlength="140" placeholder="Stream title" autocomplete="off" spellcheck="false" aria-label="Stream title" />
+              <input class="stream-category" id="stream-category" type="text" maxlength="80" placeholder="Category" autocomplete="off" spellcheck="false" aria-label="Stream category" />
               <div class="stream-status-row">
-                <span class="stream-live-pill" id="stream-live-pill" data-live="true">Live</span>
+                <span class="stream-live-pill" id="stream-live-pill" data-live="false">Offline</span>
                 <span class="stream-viewers" id="stream-viewers">
                   <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true">
                     <circle cx="12" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.7" />
                     <path d="M5.5 19c1.2-3 3.4-4.5 6.5-4.5S17.3 16 18.5 19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
                   </svg>
-                  1,248 viewers
+                  <span id="stream-viewers-count">—</span>
                 </span>
-                <span class="stream-duration" id="stream-duration">00:23:47</span>
+                <span class="stream-duration" id="stream-duration">—</span>
               </div>
             </div>
           </div>
@@ -370,6 +367,6 @@
       </div>
     </div>
 
-    <script src="/stream/stream.js?v=stream9d5" defer></script>
+    <script src="/stream/stream.js?v=stream9d6" defer></script>
   </body>
 </html>
