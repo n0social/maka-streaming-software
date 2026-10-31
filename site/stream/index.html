@@ -21,7 +21,7 @@
     <meta property="og:image" content="https://makalive.stream/marketing/screenshot-desktop-1280x800.png" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://makalive.stream https://www.makalive.stream http://127.0.0.1:38473 http://localhost:38473"
+      content="default-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://makalive.stream https://www.makalive.stream http://127.0.0.1:38473 http://localhost:38473"
     />
     <title>Maka Studio</title>
     <link rel="icon" type="image/png" href="/marketing/favicon-32.png?v=maka-m" sizes="32x32" />
@@ -75,7 +75,6 @@
                   </span>
                   Game Capture
                 </button>
-                <button type="button" class="studio-row-menu" tabindex="-1" aria-hidden="true">•••</button>
               </div>
             </li>
             <li>
@@ -89,7 +88,6 @@
                   </span>
                   Webcam
                 </button>
-                <button type="button" class="studio-row-menu" tabindex="-1" aria-hidden="true">•••</button>
               </div>
             </li>
             <li>
@@ -103,12 +101,11 @@
                   </span>
                   Microphone
                 </button>
-                <button type="button" class="studio-row-menu" tabindex="-1" aria-hidden="true">•••</button>
               </div>
             </li>
             <li>
               <div class="studio-row">
-                <button type="button" class="studio-list-item" id="btn-overlay" title="Choose an image to draw on the program. Click again to remove it.">
+                <button type="button" class="studio-list-item" id="btn-overlay" title="Toggle the overlay layout. The menu picks a composition preset.">
                   <span class="source-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" width="16" height="16">
                       <rect x="7" y="7" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.7" />
@@ -117,9 +114,8 @@
                   </span>
                   Overlay
                 </button>
-                <button type="button" class="studio-row-menu" tabindex="-1" aria-hidden="true">•••</button>
+                <button type="button" class="studio-row-menu" id="btn-overlay-menu" aria-haspopup="menu" aria-label="Overlay options" title="Overlay layout">•••</button>
               </div>
-              <input type="file" id="overlay-file" accept="image/*" hidden />
             </li>
           </ul>
         </section>
@@ -364,6 +360,8 @@
       </div>
     </div>
 
+    <input type="file" id="scene-image-file" accept="image/png,image/jpeg,.png,.jpg,.jpeg" hidden />
+    <div class="studio-popover" id="studio-popover" hidden role="menu"></div>
     <script src="/stream/stream.js?v=stream9e1" defer></script>
   </body>
 </html>
