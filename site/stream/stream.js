@@ -160,7 +160,7 @@
   let micMeterTimer = 0;
 
   function activeSceneName() {
-    return scenes.find((s) => s.id === activeSceneId)?.name ?? 'Scene 1';
+    return scenes.find((s) => s.id === activeSceneId)?.name ?? 'Gameplay';
   }
 
   function renderSceneList() {
