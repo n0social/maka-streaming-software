@@ -97,6 +97,7 @@ function healthPayload() {
   return {
     ok: true,
     version: RELAY_VERSION,
+    implementation: 'mock',
     streamUrl: WHIP_URL,
     relayToken,
   }
@@ -122,9 +123,14 @@ function statusPayload() {
     error: relayError ?? undefined,
     ffmpegLog: ffmpegLog.length ? [...ffmpegLog] : undefined,
     bitrateMbps: relayConfig.bitrateMbps,
+    audioBitrateKbps: relayConfig.audioBitrateKbps,
+    width: relayConfig.width,
+    height: relayConfig.height,
+    fps: relayConfig.fps,
+    title: relayConfig.title || undefined,
+    category: relayConfig.category || undefined,
     droppedFrames: mockRtmpLive ? 0 : undefined,
     latencyMs: mockRtmpLive ? 35 : undefined,
-    viewerCount: mockRtmpLive ? 0 : undefined,
   }
 }
 
@@ -266,7 +272,20 @@ async function handleRequest(req, res) {
       }
       relayConfig.bitrateMbps = bitrates[body.profile] ?? relayConfig.bitrateMbps
     }
-    console.log('[config] updated profile=%s', relayConfig.profile)
+    console.log(
+      '[config] profile=%s %sx%s@%s video=%s audioKbps=%s title=%s category=%s twitch=%s youtube=%s custom=%s',
+      relayConfig.profile,
+      relayConfig.width || '',
+      relayConfig.height || '',
+      relayConfig.fps || '',
+      relayConfig.bitrateMbps,
+      relayConfig.audioBitrateKbps || '',
+      relayConfig.title || '',
+      relayConfig.category || '',
+      relayConfig.twitchKey ? 'set' : 'off',
+      relayConfig.youtubeKey ? 'set' : 'off',
+      relayConfig.customRtmpUrl ? 'set' : 'off',
+    )
     sendJson(res, 200, { ok: true })
     return
   }

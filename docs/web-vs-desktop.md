@@ -2,7 +2,19 @@
 
 Direct comparison between the **Electron streaming studio** (`src/renderer/*`) and the **browser studio** at [makalive.stream/stream/](https://makalive.stream/stream/). Visual grid reference: [makalive.stream/preview/](https://makalive.stream/preview/) (non-functional mock, closer to desktop chrome).
 
-**Staging relay (production site):** [https://makalive.stream/relay/health](https://makalive.stream/relay/health) — same HTTP contract as local `MAKA.relay` on port `38473`.
+**Staging relay (production site):** [https://makalive.stream/relay/health](https://makalive.stream/relay/health). The process listening on the droplet is `scripts/web-relay-dev.mjs` (`maka-relay-staging.service`, `127.0.0.1:38473`). Its health version is `0.1.0-mock`. That is a WHIP peer, not `MAKArelay.exe`. The desktop encoder is a Windows binary and is not running on the Linux droplet. The web studio reports that health body as a mock and does not say “connected” unless a non-mock health check answers (the exe’s `http://127.0.0.1:38473/health` when the page can reach it).
+
+## Settings and relay pass (stream9e1)
+
+| Control | What the browser does | Not ported |
+| --- | --- | --- |
+| Desktop Audio | Meter stays at silence until display/tab audio is on the capture. The fader sets that track’s gain. Gear: mute and monitor. Status reads “No desktop audio detected” when the capture has no audio track. | A separate OS “desktop audio” device. The browser only hears audio the user shares with the tab or screen. |
+| Microphone | Meter moves only while a live, unmuted mic track exists. Gear lists `enumerateDevices()` inputs after permission and restarts the track on change. Mute and monitor work. | ASIO / exclusive devices, phone-cam input. |
+| Game Audio | Removed. The browser cannot see a separate game device. | OS game-audio capture. |
+| Output mode | **Studio Mode** keeps the program as the live output. **Browser Mode** is the web stand-in for the exe’s Search (browser) mode: the program is tagged Browser, a URL opens in a new tab, the next Game Capture prefers a browser surface, and `POST /scene` includes a browser source. | The exe’s embedded Chromium webview. The disabled “Program” stats select had no second option. |
+| Stream info | Title and category persist in `localStorage` and are sent on `POST /config` and `POST /scene` (`title`, `category`). The log prints them and redacts stream keys to a length. Live/Offline follows the WHIP `connectionState`. Duration runs only while that state is `connected`. No viewer count. | Twitch/YouTube metadata. `RelayConfigRequest` in `src/shared/tabcast.ts` has no title or category, and `MAKArelay.exe` is not called from this page, so those fields are not published to the platforms. The staging mock stores them and, in this repo’s script, can echo them on `GET /status`; the process currently on the droplet is the older mock and does not echo them yet. |
+| Settings | Resolution, FPS, video bitrate (Mbps), audio bitrate, Twitch/YouTube/custom RTMP keys, and relay URL. Saved in `localStorage`. Resolution resizes the program canvas immediately. FPS applies the next time Go Live or recording creates `canvas.captureStream`. Video and audio bitrate call `RTCRtpSender.setParameters` on an open WHIP session and set `MediaRecorder` bitrates on the next recording. Relay URL is this site’s `/relay` or `http://127.0.0.1:38473`. | Tray, chat pop-out, demo/lab mode, startup-as-default, addons, virtual camera, record path, keyframe interval (the exe UI has no keyframe control), window min/max/close. |
+| Relay status | `GET /health` must succeed. A mock version is labeled `Mock relay v…` and the footer matches. Failure says relay not detected. Go Live publishes WHIP to that same base. | Replacing the droplet mock with `MAKArelay.exe` (Windows-only). |
 
 ## Reference files
 
@@ -32,7 +44,7 @@ Direct comparison between the **Electron streaming studio** (`src/renderer/*`) a
 | Sources list | Game capture, webcam, mic, overlay | Game Capture (`getDisplayMedia`), webcam, mic; click again stops the track. Overlay is an image file drawn on the program canvas | ⚠️ partial (no OS game-capture API; canvas compositor) |
 | Program monitor | Game + browser overlay + PIP | White stage. Capture is letterboxed on white; webcam is the program or a gold PIP when both are on | ⚠️ partial (no browser-page overlay track) |
 | Program stats bar | Studio mode, dropped, FPS, resolution | Offline: zeros and the selected encode profile size. Live: video-track resolution, RTC FPS / dropped frames / RTT when the stats report them | ⚠️ partial (no relay-side encoder stats) |
-| Audio mixer | Desktop / mic / game meters | Faders set Web Audio gain. Desktop meter follows display-capture audio; mic meter follows `getUserMedia`. A second display-audio track, if the browser provides one, is the Game Audio bus. Otherwise that fader is tied to the desktop gain and the game meter stays at silence | ⚠️ partial (no separate game-audio device) |
+| Audio mixer | Desktop / mic / game meters | Desktop and microphone only. Faders, mute, and monitor are live. Mic gear picks an input device. No Game Audio row | ⚠️ partial (no OS game-audio device) |
 | Stream controls sidebar | Go live, recording, vcam | Go Live / End Live (WHIP), Start/Stop Recording (WebM download). Virtual camera is disabled: desktop app only | ⚠️ partial (vcam is desktop-only) |
 | Stream info / destinations | Twitch / YT / custom RTMP toggles | Stream info card + destinations + encode in right column | ✅ parity (web sidebar) |
 | Encode profile | `profile-select` + center quality dropdown | `cfg-profile` in stream info block | ✅ parity (presets match `ENCODE_PROFILES`) |
@@ -84,7 +96,7 @@ Direct comparison between the **Electron streaming studio** (`src/renderer/*`) a
 | Context | Base URL |
 | --- | --- |
 | Desktop | `http://127.0.0.1:38473` (`RELAY_BASE_URL` in `tabcast.ts`) |
-| Web on makalive.stream | `{origin}/relay` (nginx → staging mock relay) |
+| Web on makalive.stream | `{origin}/relay` (nginx → staging mock `web-relay-dev.mjs`). UI says mock when health version contains `mock`. A real `http://127.0.0.1:38473` health check wins when it is not a mock |
 | Web local dev | `http://127.0.0.1:38473` or `?relay=` override |
 | CSP `connect-src` | Web allows `'self'`, localhost relay; explicit `https://makalive.stream` for www/origin edge cases |
 
@@ -116,7 +128,7 @@ The frozen mock, including the hero program image, is `MAKA_template/`. It is no
 | Webcam | `getUserMedia` video. Shown as the program, or as a PIP when a display capture is also on. Click again to stop. | Device picker beyond the browser prompt |
 | Microphone | `getUserMedia` audio. Drives the microphone meter. Click again to stop. | ASIO / exclusive-mode devices |
 | Overlay | Image file picker. The image is drawn on the program canvas. Click again to remove it. | Browser-source / URL overlay and the desktop browser track |
-| Audio mixer | Desktop, Microphone, and Game Audio faders set Web Audio gain for the publish/record mix. Meters use analyser levels and sit at silence with no track. If display capture has only one audio track, Game Audio uses that same desktop gain (no separate meter animation). | Separate game-audio device, monitoring, per-channel device pickers |
+| Audio mixer | Desktop and microphone faders, mute, and monitor. Meters stay at silence with no live track. Mic gear lists input devices. Game Audio is not on the page. | Separate game-audio device |
 | Go Live | Existing WHIP publish to the staging relay (`/relay/whip`, health, config, scene, stop). Button reads Go Live or End Live. End Live closes the peer connection. | Starting the relay process, multi-platform encode inside the app |
 | Start Recording | `MediaRecorder` on the program canvas (and the mixed audio bus when a track exists). Stop downloads a WebM. | Local recording path, remux, replay buffer |
 | Virtual camera | Disabled. The button says it is desktop-app only. | OS virtual camera |
