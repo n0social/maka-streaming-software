@@ -1,16 +1,31 @@
 (function () {
-  function resolveRelayBase() {
-    const params = new URLSearchParams(window.location.search);
-    const relayParam = params.get('relay');
-    if (relayParam) return relayParam.replace(/\/$/, '');
+  const EXE_RELAY = 'http://127.0.0.1:38473';
+
+  function stagingRelayBase() {
     const host = window.location.hostname;
-    if (host === 'makalive.stream' || host === 'www.makalive.stream') {
+    if (host === 'makalive.stream' || host === 'www.makalive.stream' || host === 'tabcast.live.skydav.work') {
       return `${window.location.origin}/relay`;
     }
-    return 'http://127.0.0.1:38473';
+    return EXE_RELAY;
   }
 
-  const RELAY_BASE = resolveRelayBase();
+  function allowedRelayBase(raw) {
+    const value = String(raw || '').trim();
+    if (!value) return '';
+    let url;
+    try { url = new URL(value); } catch { return null; }
+    const host = url.hostname;
+    const path = url.pathname.replace(/\/$/, '');
+    if ((host === '127.0.0.1' || host === 'localhost') && url.port === '38473' && path === '') {
+      return `${url.protocol}//${url.host}`;
+    }
+    const sameSite = host === window.location.hostname || host === 'makalive.stream' || host === 'www.makalive.stream';
+    if (sameSite && path === '/relay' && (url.protocol === 'https:' || url.protocol === 'http:')) return `${url.origin}/relay`;
+    return null;
+  }
+
+  let relayBase = stagingRelayBase();
+  let relayIsMock = false;
   const PATHS = {
     health: '/health',
     status: '/status',
@@ -41,6 +56,44 @@
 
   function profileSpec(id) {
     return ENCODE_PROFILES[normalizeProfile(id)];
+  }
+
+  const RESOLUTIONS = {
+    '1280x720': { width: 1280, height: 720 },
+    '1920x1080': { width: 1920, height: 1080 },
+    '2560x1440': { width: 2560, height: 1440 },
+    '3840x2160': { width: 3840, height: 2160 },
+  };
+  const AUDIO_BITRATES = [96, 128, 160, 192, 320];
+
+  function profileForSize(height, fps) {
+    const fps60 = Number(fps) >= 60;
+    if (height >= 2160) return '4k60';
+    if (height >= 1440) return '2k60';
+    if (height >= 1080) return fps60 ? '1080p60' : '1080p30';
+    return fps60 ? '720p60' : '720p30';
+  }
+
+  function resolutionKeyFor(width, height) {
+    const key = `${width}x${height}`;
+    return Object.prototype.hasOwnProperty.call(RESOLUTIONS, key) ? key : '1280x720';
+  }
+
+  function currentEncode() {
+    const key = els.cfgResolution && RESOLUTIONS[els.cfgResolution.value] ? els.cfgResolution.value : '1280x720';
+    const size = RESOLUTIONS[key];
+    const fps = els.cfgFps && Number(els.cfgFps.value) === 60 ? 60 : 30;
+    const profile = profileForSize(size.height, fps);
+    let video = Number(els.cfgVideoBitrate && els.cfgVideoBitrate.value);
+    if (!Number.isFinite(video)) video = profileSpec(profile).bitrateMbps;
+    video = Math.min(50, Math.max(0.5, Math.round(video * 2) / 2));
+    let audioKbps = Number(els.cfgAudioBitrate && els.cfgAudioBitrate.value);
+    if (!AUDIO_BITRATES.includes(audioKbps)) audioKbps = 128;
+    return { width: size.width, height: size.height, fps, bitrateMbps: video, audioBitrateKbps: audioKbps, profile };
+  }
+
+  function isMockHealth(health) {
+    return /mock/i.test(String(health && health.version ? health.version : '')) || (health && health.implementation === 'mock');
   }
 
   /** Mirrors `src/shared/stream-keys.ts` (static site has no bundler). */
@@ -114,7 +167,11 @@
     destTwitch: document.getElementById('dest-twitch'),
     destYoutube: document.getElementById('dest-youtube'),
     destCustom: document.getElementById('dest-custom'),
-    cfgProfile: document.getElementById('cfg-profile'),
+    cfgResolution: document.getElementById('cfg-resolution'),
+    cfgFps: document.getElementById('cfg-fps'),
+    cfgVideoBitrate: document.getElementById('cfg-video-bitrate'),
+    cfgAudioBitrate: document.getElementById('cfg-audio-bitrate'),
+    cfgRelayUrl: document.getElementById('cfg-relay-url'),
     cfgTwitchKey: document.getElementById('cfg-twitch-key'),
     cfgYoutubeKey: document.getElementById('cfg-youtube-key'),
     cfgCustomRtmpUrl: document.getElementById('cfg-custom-rtmp-url'),
@@ -135,6 +192,26 @@
     desktopMeter: document.getElementById('desktop-meter'),
     faderDesktop: document.getElementById('fader-desktop'),
     faderMic: document.getElementById('fader-mic'),
+    desktopStatus: document.getElementById('desktop-audio-status'),
+    desktopPanelStatus: document.getElementById('desktop-audio-panel-status'),
+    micStatus: document.getElementById('mic-audio-status'),
+    micDeviceNote: document.getElementById('mic-device-note'),
+    micDevice: document.getElementById('mic-device'),
+    desktopMute: document.getElementById('desktop-mute'),
+    desktopMonitor: document.getElementById('desktop-monitor'),
+    micMute: document.getElementById('mic-mute'),
+    micMonitor: document.getElementById('mic-monitor'),
+    btnDesktopSettings: document.getElementById('btn-desktop-audio-settings'),
+    btnMicSettings: document.getElementById('btn-mic-audio-settings'),
+    desktopPanel: document.getElementById('desktop-audio-panel'),
+    micPanel: document.getElementById('mic-audio-panel'),
+    btnMicPermission: document.getElementById('btn-mic-permission'),
+    outputModeSelect: document.getElementById('program-output-mode'),
+    programMode: document.getElementById('program-mode'),
+    windowTitle: document.getElementById('studio-window-title'),
+    browserBar: document.getElementById('program-browser-bar'),
+    browserForm: document.getElementById('browser-form'),
+    browserUrl: document.getElementById('browser-url'),
     programSceneName: document.getElementById('program-scene-name'),
     btnRecord: document.getElementById('btn-record'),
     overlayFile: document.getElementById('overlay-file'),
@@ -182,7 +259,16 @@
     info: 'maka.studio.info',
     setup: 'maka.studio.setup',
     gains: 'maka.studio.gains',
+    mixer: 'maka.studio.mixer',
+    mode: 'maka.studio.mode',
   };
+
+  const mix = {
+    desktop: { muted: false, monitor: false },
+    mic: { muted: false, monitor: false, deviceId: '' },
+  };
+  let outputMode = 'studio';
+  let bitrateTouched = false;
 
   const audio = {
     ctx: null,
@@ -383,27 +469,41 @@
     }, 1000);
   }
 
-  function setLiveUi(live) {
-    const label = live ? 'End Live' : 'Go Live';
+  function sessionPhase() {
+    if (!whipPublisher || !whipPublisher.pc) return 'off';
+    const state = whipPublisher.pc.connectionState;
+    if (state === 'connected') return 'live';
+    if (state === 'failed' || state === 'closed' || state === 'disconnected') return 'down';
+    return 'connecting';
+  }
+
+  function setLiveUi(phase) {
+    if (phase === true) phase = 'live';
+    if (phase === false) phase = 'off';
+    const live = phase === 'live';
+    const busy = phase === 'live' || phase === 'connecting' || phase === 'down';
+    const label = busy ? 'End Live' : 'Go Live';
     if (els.btnGoLiveLabel) els.btnGoLiveLabel.textContent = label;
     if (els.btnStart) els.btnStart.classList.toggle('is-live', live);
     if (els.btnGoLiveTop) els.btnGoLiveTop.textContent = label;
     if (els.streamLivePill) {
       els.streamLivePill.dataset.live = live ? 'true' : 'false';
-      els.streamLivePill.textContent = live ? 'Live' : 'Offline';
+      els.streamLivePill.textContent = live ? 'Live' : phase === 'connecting' ? 'Connecting' : 'Offline';
     }
     if (live) {
       if (!durationTimer) startDurationTimer();
       startLiveStats();
     } else {
       stopDurationTimer();
-      stopLiveStats();
-      showOfflineStats();
+      if (phase === 'off') {
+        stopLiveStats();
+        showOfflineStats();
+      }
     }
   }
 
   function selectedProfileSpec() {
-    return profileSpec(normalizeProfile(els.cfgProfile && els.cfgProfile.value));
+    return currentEncode();
   }
 
   function showOfflineStats() {
@@ -532,8 +632,10 @@
       els.studioStatusDot.dataset.state = state === 'warn' ? 'warn' : 'ok';
     }
     if (els.studioStatusText) {
-      els.studioStatusText.textContent =
-        state === 'live' ? 'Live on relay' : state === 'warn' ? 'Check relay / keys' : 'All systems nominal';
+      if (state === 'live') els.studioStatusText.textContent = relayIsMock ? 'Live on mock relay' : 'Live on MAKA.relay';
+      else if (!relayHealth) els.studioStatusText.textContent = 'Relay not detected';
+      else if (relayIsMock) els.studioStatusText.textContent = `Mock relay v${relayHealth.version}`;
+      else els.studioStatusText.textContent = `MAKA.relay v${relayHealth.version}`;
     }
   }
 
@@ -543,7 +645,7 @@
   }
 
   async function relayFetch(path, init) {
-    return fetch(`${RELAY_BASE}${path}`, {
+    return fetch(`${relayBase}${path}`, {
       ...init,
       mode: 'cors',
       cache: 'no-store',
@@ -559,36 +661,91 @@
     els.statusJson.textContent = data ? JSON.stringify(data, null, 2) : '';
   }
 
-  async function probeRelay() {
+  async function fetchHealth(base, timeoutMs) {
+    const ctrl = new AbortController();
+    const timer = window.setTimeout(() => ctrl.abort(), timeoutMs);
     try {
-      const res = await fetch(`${RELAY_BASE}${PATHS.health}`, {
+      const res = await fetch(`${base}${PATHS.health}`, {
         method: 'GET',
         mode: 'cors',
         cache: 'no-store',
+        signal: ctrl.signal,
         headers: { Accept: 'application/json' },
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      relayHealth = await res.json();
-      if (!relayHealth?.ok) throw new Error('health ok=false');
-      const version = relayHealth.version ?? '?';
-      const mock = String(version).includes('mock');
-      setRelayStatus('ok', mock ? `Dev relay v${version}` : `MAKA.relay v${version}`);
-      els.relayVersionLine.textContent = `Connected — ${mock ? 'mock' : 'MAKA.relay'} v${version} · WHIP ${RELAY_BASE}${PATHS.whip}`;
+      const body = await res.json();
+      if (!body || body.ok !== true || !body.relayToken) throw new Error('health ok=false');
+      return body;
+    } finally {
+      window.clearTimeout(timer);
+    }
+  }
+
+  function describeRelay(health) {
+    const version = health.version ?? '?';
+    relayIsMock = isMockHealth(health);
+    if (relayIsMock) {
+      setRelayStatus('warn', `Mock relay v${version}`);
+      els.relayVersionLine.textContent =
+        `Health OK at ${relayBase}/health — ${JSON.stringify({ ok: true, version })}. ` +
+        `This is the dev mock, not MAKA.relay. Nothing real answered at ${EXE_RELAY}. ` +
+        `WHIP still posts to ${relayBase}/whip. Twitch and YouTube RTMP are not encoded by this process.`;
+      log(`Relay health ${version} at ${relayBase} (mock — not reported as connected).`);
+      return;
+    }
+    setRelayStatus('ok', `MAKA.relay v${version}`);
+    els.relayVersionLine.textContent = `Connected — MAKA.relay v${version} · WHIP ${relayBase}/whip`;
+    log(`Relay health OK (v${version}) at ${relayBase}.`);
+  }
+
+  async function chooseRelay() {
+    const params = new URLSearchParams(window.location.search);
+    const relayParam = params.get('relay');
+    if (relayParam) return relayParam.replace(/\/$/, '');
+    const saved = allowedRelayBase(els.cfgRelayUrl && els.cfgRelayUrl.value);
+    if (saved) return saved;
+    if (saved === null && els.cfgRelayUrl && String(els.cfgRelayUrl.value).trim()) {
+      log('Relay URL must be this site’s /relay or http://127.0.0.1:38473. Using auto-detect.');
+    }
+    const staging = stagingRelayBase();
+    const localHealth = await fetchHealth(EXE_RELAY, 1200).catch(() => null);
+    if (localHealth && !isMockHealth(localHealth)) return EXE_RELAY;
+    if (staging !== EXE_RELAY) {
+      const stagingHealth = await fetchHealth(staging, 4000).catch(() => null);
+      if (stagingHealth) return staging;
+    }
+    if (localHealth) return EXE_RELAY;
+    return staging;
+  }
+
+  async function probeRelay() {
+    const previous = relayBase;
+    try {
+      const chosen = await chooseRelay();
+      if (whipPublisher && chosen !== previous) {
+        log('Relay URL saved. The open WHIP session stays on the previous relay until End Live.');
+      } else {
+        relayBase = chosen;
+      }
+      relayHealth = await fetchHealth(relayBase, 4000);
+      describeRelay(relayHealth);
       setStreamError(null);
       updateStatsLine();
-      log(`Relay health OK (v${version}) at ${RELAY_BASE}.`);
       await refreshRelayStatus();
       startStatusPoll();
       return true;
     } catch (err) {
       relayHealth = null;
+      relayIsMock = false;
       stopStatusPoll();
       renderStatusJson(null);
       setRelayStatus('warn', 'Relay not detected');
-      els.relayVersionLine.textContent = `No relay at ${RELAY_BASE} — run npm run web:relay or open /relay/health on staging.`;
+      if (els.relayVersionLine) {
+        els.relayVersionLine.textContent = `No relay at ${relayBase}/health. A failed health check is not a connection.`;
+      }
       updateStatsLine();
       const detail = err instanceof Error ? err.message : String(err);
-      logError(`No relay at ${RELAY_BASE} (${detail}).`);
+      logError(`No relay at ${relayBase} (${detail}).`);
       return false;
     }
   }
@@ -601,7 +758,7 @@
       const status = await res.json();
       renderStatusJson(status);
       if (status.status === 'live') {
-        setRelayStatus('live', 'Live — relay encoding');
+        setRelayStatus('live', relayIsMock ? 'Live on mock relay' : 'Live on MAKA.relay');
         updateStatsLine('live');
         setStreamError(null);
       } else if (status.status === 'error') {
@@ -639,10 +796,35 @@
     }
   }
 
+  function streamTitleValue() {
+    return els.streamTitle && 'value' in els.streamTitle ? String(els.streamTitle.value || '').trim() : '';
+  }
+
+  function streamCategoryValue() {
+    return els.streamCategory && 'value' in els.streamCategory ? String(els.streamCategory.value || '').trim() : '';
+  }
+
+  function redactConfig(body) {
+    const safe = { ...body };
+    for (const key of ['twitchKey', 'youtubeKey', 'customRtmpKey']) {
+      if (safe[key]) safe[key] = `set (${String(safe[key]).length} chars)`;
+      else delete safe[key];
+    }
+    return safe;
+  }
+
   function buildConfigBody() {
-    const profile = normalizeProfile(els.cfgProfile.value);
-    const spec = profileSpec(profile);
-    const body = { profile, bitrateMbps: spec.bitrateMbps };
+    const spec = currentEncode();
+    const body = {
+      profile: spec.profile,
+      bitrateMbps: spec.bitrateMbps,
+      audioBitrateKbps: spec.audioBitrateKbps,
+      width: spec.width,
+      height: spec.height,
+      fps: spec.fps,
+      title: streamTitleValue(),
+      category: streamCategoryValue(),
+    };
     const { twitch, youtube, customUrl, customKey } = destinationInputsForConfig();
     if (twitch) body.twitchKey = twitch;
     else body.twitchKey = '';
@@ -669,7 +851,7 @@
       const detail = (await res.text().catch(() => '')).trim();
       throw new Error(`Config failed (${res.status})${detail ? `: ${detail}` : ''}`);
     }
-    log('POST /config applied (keys stay in relay RAM).');
+    log(`POST /config ${JSON.stringify(redactConfig(buildConfigBody()))}`);
     setStreamError(null);
     await refreshRelayStatus();
   }
@@ -708,13 +890,15 @@
 
   async function postSceneLayout() {
     if (!relayHealth) return;
-    const profile = normalizeProfile(els.cfgProfile.value);
-    const spec = profileSpec(profile);
+    const spec = currentEncode();
     const w = spec.width;
     const h = spec.height;
     const sceneName = activeSceneName();
     const layout = {
       name: sceneName,
+      title: streamTitleValue(),
+      category: streamCategoryValue(),
+      mode: outputMode,
       canvas: { width: w, height: h },
       sources: [
         {
@@ -729,6 +913,11 @@
         },
       ],
     };
+    if (outputMode === 'browse') {
+      const browserW = Math.round(w * 0.35);
+      const browserH = Math.round(browserW * (9 / 16));
+      layout.sources.push({ id: 'browser', type: 'video', label: 'Browser', x: 24, y: 24, width: browserW, height: browserH, zIndex: 1 });
+    }
     if (screenStream && webcamStream) {
       const pipW = Math.round(w * 0.22);
       const pipH = Math.round(pipW * (9 / 16));
@@ -749,18 +938,18 @@
       body: JSON.stringify(layout),
     })
       .then((res) => {
-        if (res.ok) log(`POST /scene (${w}×${h}) — ${activeSceneName()}.`);
+        if (res.ok) {
+          log(`POST /scene (${w}×${h}) mode=${outputMode} title=${JSON.stringify(streamTitleValue())} category=${JSON.stringify(streamCategoryValue())} scene=${activeSceneName()}.`);
+        }
       })
       .catch(() => undefined);
   }
 
   function resizeCanvas() {
-    const rect = els.canvas.parentElement.getBoundingClientRect();
-    const w = Math.max(640, Math.floor(rect.width));
-    const h = Math.max(360, Math.floor(rect.height));
-    if (els.canvas.width !== w || els.canvas.height !== h) {
-      els.canvas.width = w;
-      els.canvas.height = h;
+    const spec = currentEncode();
+    if (els.canvas.width !== spec.width || els.canvas.height !== spec.height) {
+      els.canvas.width = spec.width;
+      els.canvas.height = spec.height;
     }
   }
 
@@ -887,11 +1076,42 @@
 
   // Fader value 100 is unity gain (0 dB on the mixer scale) and is the default.
   // 0 is mute. Display/tab audio and the microphone start at unity, not muted.
+  function linkMonitor(gain, on) {
+    if (!audio.ctx || !gain) return;
+    try { gain.disconnect(audio.ctx.destination); } catch { /* not monitoring */ }
+    if (on) gain.connect(audio.ctx.destination);
+  }
+
+  function applyChannelTracks() {
+    for (const track of screenStream ? screenStream.getAudioTracks() : []) track.enabled = !mix.desktop.muted;
+    for (const track of micStream ? micStream.getAudioTracks() : []) track.enabled = !mix.mic.muted;
+  }
+
+  function refreshDesktopStatus() {
+    const tracks = screenStream ? screenStream.getAudioTracks().filter((t) => t.readyState === 'live') : [];
+    let text = 'No desktop audio detected';
+    if (tracks.length) {
+      const label = tracks[0].label ? ` · ${tracks[0].label}` : '';
+      text = mix.desktop.muted ? `Muted${label}` : `Desktop audio detected${label}`;
+    } else if (mix.desktop.muted) text = 'No desktop audio detected · muted';
+    if (els.desktopStatus) els.desktopStatus.textContent = text;
+    if (els.desktopPanelStatus) els.desktopPanelStatus.textContent = text;
+  }
+
+  function refreshMicStatus() {
+    const track = micStream && micStream.getAudioTracks().find((t) => t.readyState === 'live');
+    const text = !track ? 'Off' : mix.mic.muted ? 'Muted' : (track.label || 'Live');
+    if (els.micStatus) els.micStatus.textContent = text;
+  }
+
   function applyGains() {
-    const desktop = gainFromFader(els.faderDesktop);
-    const mic = gainFromFader(els.faderMic);
-    if (audio.desktopGain) audio.desktopGain.gain.value = desktop;
-    if (audio.micGain) audio.micGain.gain.value = mic;
+    if (audio.desktopGain) audio.desktopGain.gain.value = mix.desktop.muted ? 0 : gainFromFader(els.faderDesktop);
+    if (audio.micGain) audio.micGain.gain.value = mix.mic.muted ? 0 : gainFromFader(els.faderMic);
+    applyChannelTracks();
+    linkMonitor(audio.desktopGain, mix.desktop.monitor && !mix.desktop.muted);
+    linkMonitor(audio.micGain, mix.mic.monitor && !mix.mic.muted);
+    refreshDesktopStatus();
+    refreshMicStatus();
   }
 
   function onFader() {
@@ -944,8 +1164,9 @@
         screenStream && screenStream.getAudioTracks().some((t) => t.readyState === 'live'),
       );
       const micLive = Boolean(micStream && micStream.getAudioTracks().some((t) => t.readyState === 'live'));
-      setMeter(els.desktopMeter, desktopLive ? meterPercent(audio.desktopAnalyser) : 0);
-      setMeter(els.micMeter, micLive ? meterPercent(audio.micAnalyser) : 0);
+      setMeter(els.desktopMeter, desktopLive && !mix.desktop.muted ? meterPercent(audio.desktopAnalyser) : 0);
+      setMeter(els.micMeter, micLive && !mix.mic.muted ? meterPercent(audio.micAnalyser) : 0);
+      refreshDesktopStatus();
     }, 100);
   }
 
@@ -953,7 +1174,11 @@
     disconnectAudioNode(audio.desktopSource);
     audio.desktopSource = null;
     const tracks = stream.getAudioTracks().filter((t) => t.readyState === 'live');
-    if (!tracks.length) return;
+    refreshDesktopStatus();
+    if (!tracks.length) {
+      log('No desktop audio detected.');
+      return;
+    }
     const ctx = ensureAudioGraph();
     audio.desktopSource = ctx.createMediaStreamSource(new MediaStream(tracks));
     audio.desktopSource.connect(audio.desktopGain);
@@ -964,6 +1189,7 @@
     disconnectAudioNode(audio.desktopSource);
     audio.desktopSource = null;
     setMeter(els.desktopMeter, 0);
+    refreshDesktopStatus();
   }
 
   function attachMicAudio(stream) {
@@ -981,6 +1207,7 @@
     disconnectAudioNode(audio.micSource);
     audio.micSource = null;
     setMeter(els.micMeter, 0);
+    refreshMicStatus();
   }
 
   function liveAudioTracks() {
@@ -994,6 +1221,15 @@
     if (!liveAudioTracks().length) return null;
     ensureAudioGraph();
     return audio.mixDest.stream;
+  }
+
+  function resetCanvasCapture() {
+    if ((recorder && recorder.state === 'recording') || whipPublisher) return false;
+    if (canvasCapture) {
+      canvasCapture.getTracks().forEach((t) => t.stop());
+      canvasCapture = null;
+    }
+    return true;
   }
 
   function programCanvasStream() {
@@ -1056,6 +1292,21 @@
     }
   }
 
+  async function applySenderBitrates(pc) {
+    const target = pc || (whipPublisher && whipPublisher.pc);
+    if (!target || typeof target.getSenders !== 'function') return;
+    const enc = currentEncode();
+    const videoBps = Math.round(enc.bitrateMbps * 1000000);
+    const audioBps = enc.audioBitrateKbps * 1000;
+    for (const sender of target.getSenders()) {
+      if (!sender.track) continue;
+      const params = sender.getParameters();
+      if (!params.encodings || !params.encodings.length) params.encodings = [{}];
+      params.encodings[0].maxBitrate = sender.track.kind === 'audio' ? audioBps : videoBps;
+      try { await sender.setParameters(params); } catch { /* not negotiated yet */ }
+    }
+  }
+
   async function publishWhip(sources) {
     const pc = new RTCPeerConnection({ iceServers: [] });
     attachWhipSources(pc, sources);
@@ -1068,7 +1319,7 @@
       pc.close();
       throw new Error('Empty WHIP offer');
     }
-    const response = await fetch(`${RELAY_BASE}${PATHS.whip}`, {
+    const response = await fetch(`${relayBase}${PATHS.whip}`, {
       method: 'POST',
       mode: 'cors',
       headers: { 'Content-Type': 'application/sdp', ...authHeaders() },
@@ -1081,8 +1332,9 @@
     }
     const answer = await response.text();
     const location = response.headers.get('Location');
-    const resourceUrl = location ? new URL(location, `${RELAY_BASE}${PATHS.whip}`).href : null;
+    const resourceUrl = location ? new URL(location, `${relayBase}${PATHS.whip}`).href : null;
     await pc.setRemoteDescription({ type: 'answer', sdp: answer });
+    void applySenderBitrates(pc);
     return {
       pc,
       resourceUrl,
@@ -1148,7 +1400,7 @@
     if (els.btnOverlay) {
       els.btnOverlay.classList.toggle('is-on', Boolean(overlayImage));
     }
-    setLiveUi(live);
+    setLiveUi(sessionPhase());
   }
 
   async function onStart() {
@@ -1176,7 +1428,7 @@
 
       await postRelayConfig();
       await postSceneLayout();
-      log(`Publishing WHIP to ${RELAY_BASE}${PATHS.whip}…`);
+      log(`Publishing WHIP to ${relayBase}${PATHS.whip}…`);
       sessionLiveIntent = true;
       const publisher = await publishWhip(buildPublishSources());
       whipPublisher = publisher;
@@ -1184,11 +1436,11 @@
         if (whipPublisher !== publisher) return;
         log(`WHIP connection: ${publisher.pc.connectionState}`);
         if (publisher.pc.connectionState === 'connected') {
-          setRelayStatus('live', 'Live via relay');
+          setRelayStatus('live', relayIsMock ? 'Live on mock relay' : 'Live on MAKA.relay');
           void refreshRelayStatus();
         }
+        updateButtons();
       };
-      setRelayStatus('live', 'Live via relay');
       log('WHIP active — check relay /status for pipeline state.');
       updateButtons();
       await refreshRelayStatus();
@@ -1209,7 +1461,7 @@
       whipPublisher = null;
     }
     await postRelayStop();
-    if (relayHealth) setRelayStatus('ok', `Relay v${relayHealth.version}`);
+    if (relayHealth) describeRelay(relayHealth);
     await refreshRelayStatus();
     updateButtons();
     log('Stream stopped.');
@@ -1231,6 +1483,29 @@
     stopStream(micStream);
     micStream = null;
     setMeter(els.micMeter, 0);
+    refreshMicStatus();
+  }
+
+  async function startMicrophone(deviceId) {
+    releaseMic();
+    const audioConstraints = deviceId ? { deviceId: { exact: deviceId } } : true;
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints, video: false });
+    } catch (err) {
+      if (!deviceId) throw err;
+      log('That microphone could not be opened. Trying the default input.');
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    }
+    const track = micStream.getAudioTracks()[0];
+    if (track) {
+      track.onended = () => { releaseMic(); updateButtons(); };
+      const settings = typeof track.getSettings === 'function' ? track.getSettings() : {};
+      if (settings.deviceId) mix.mic.deviceId = settings.deviceId;
+    }
+    attachMicAudio(micStream);
+    applyGains();
+    saveMixer();
+    log(track && track.label ? `Microphone started: ${track.label}.` : 'Microphone started.');
   }
 
   function clearOverlay() {
@@ -1242,8 +1517,9 @@
   }
 
   async function captureDisplay() {
+    const video = outputMode === 'browse' ? { displaySurface: 'browser' } : true;
     try {
-      return await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      return await navigator.mediaDevices.getDisplayMedia({ video, audio: true });
     } catch (err) {
       const name = err && err.name;
       if (name === 'NotAllowedError' || name === 'AbortError') throw err;
@@ -1316,18 +1592,8 @@
       updateButtons();
       return;
     }
-    releaseMic();
     try {
-      micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      const track = micStream.getAudioTracks()[0];
-      if (track) {
-        track.onended = () => {
-          releaseMic();
-          updateButtons();
-        };
-      }
-      attachMicAudio(micStream);
-      log('Microphone added.');
+      await startMicrophone(mix.mic.deviceId);
     } catch (err) {
       releaseMic();
       const name = err && err.name;
@@ -1398,7 +1664,13 @@
     }
     try {
       recordedChunks = [];
-      recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      const enc = currentEncode();
+      const recOpts = {
+        videoBitsPerSecond: Math.round(enc.bitrateMbps * 1000000),
+        audioBitsPerSecond: enc.audioBitrateKbps * 1000,
+      };
+      if (mimeType) recOpts.mimeType = mimeType;
+      recorder = new MediaRecorder(stream, recOpts);
     } catch (err) {
       recorder = null;
       log(`Recording failed: ${err instanceof Error ? err.message : err}`);
@@ -1451,8 +1723,15 @@
     void verifyRelayConfig().catch((err) => logError(err instanceof Error ? err.message : String(err)));
   });
   function saveSetup() {
+    const enc = currentEncode();
     writeStorage(STORAGE.setup, {
-      profile: els.cfgProfile.value,
+      resolution: els.cfgResolution ? els.cfgResolution.value : '1280x720',
+      fps: enc.fps,
+      videoBitrate: enc.bitrateMbps,
+      audioBitrate: enc.audioBitrateKbps,
+      bitrateTouched,
+      relayUrl: els.cfgRelayUrl ? els.cfgRelayUrl.value : '',
+      profile: enc.profile,
       twitch: els.destTwitch.checked,
       youtube: els.destYoutube.checked,
       custom: els.destCustom.checked,
@@ -1466,9 +1745,22 @@
   function loadSetup() {
     const data = readStorage(STORAGE.setup);
     if (!data || typeof data !== 'object') return;
-    if (data.profile && Object.prototype.hasOwnProperty.call(ENCODE_PROFILES, data.profile)) {
-      els.cfgProfile.value = data.profile;
+    if (data.resolution && RESOLUTIONS[data.resolution] && els.cfgResolution) els.cfgResolution.value = data.resolution;
+    else if (data.profile && ENCODE_PROFILES[data.profile] && els.cfgResolution) {
+      const spec = ENCODE_PROFILES[data.profile];
+      els.cfgResolution.value = resolutionKeyFor(spec.width, spec.height);
+      if (els.cfgFps) els.cfgFps.value = String(spec.fps >= 60 ? 60 : 30);
+      if (typeof data.videoBitrate !== 'number' && els.cfgVideoBitrate) els.cfgVideoBitrate.value = String(spec.bitrateMbps);
     }
+    if ((data.fps === 30 || data.fps === 60) && els.cfgFps) els.cfgFps.value = String(data.fps);
+    if (typeof data.videoBitrate === 'number' && els.cfgVideoBitrate) {
+      bitrateTouched = data.bitrateTouched !== false;
+      els.cfgVideoBitrate.value = String(data.videoBitrate);
+    }
+    if (AUDIO_BITRATES.includes(Number(data.audioBitrate)) && els.cfgAudioBitrate) {
+      els.cfgAudioBitrate.value = String(Number(data.audioBitrate));
+    }
+    if (typeof data.relayUrl === 'string' && els.cfgRelayUrl) els.cfgRelayUrl.value = data.relayUrl;
     els.destTwitch.checked = Boolean(data.twitch);
     els.destYoutube.checked = Boolean(data.youtube);
     els.destCustom.checked = Boolean(data.custom);
@@ -1492,15 +1784,26 @@
     if (els.streamCategory && typeof data.category === 'string') els.streamCategory.value = data.category;
   }
 
-  els.cfgProfile.addEventListener('change', () => {
-    saveSetup();
-    updateStatsLine();
-    if (relayHealth) {
-      void postRelayConfig()
-        .then(() => postSceneLayout())
-        .catch((err) => log(err instanceof Error ? err.message : String(err)));
+  function onEncodeChange(fromBitrate) {
+    if (fromBitrate) bitrateTouched = true;
+    else if (!bitrateTouched && els.cfgVideoBitrate && els.cfgResolution && els.cfgFps) {
+      const size = RESOLUTIONS[els.cfgResolution.value] || RESOLUTIONS['1280x720'];
+      const fps = Number(els.cfgFps.value) === 60 ? 60 : 30;
+      els.cfgVideoBitrate.value = String(profileSpec(profileForSize(size.height, fps)).bitrateMbps);
     }
-  });
+    saveSetup();
+    if (!whipPublisher) showOfflineStats();
+    if (!resetCanvasCapture()) log('FPS applies when the next Go Live or recording creates the canvas stream.');
+    void applySenderBitrates();
+    if (relayHealth && !whipPublisher) {
+      void postRelayConfig().then(() => postSceneLayout()).catch((err) => log(err instanceof Error ? err.message : String(err)));
+    }
+  }
+  els.cfgResolution?.addEventListener('change', () => onEncodeChange(false));
+  els.cfgFps?.addEventListener('change', () => onEncodeChange(false));
+  els.cfgVideoBitrate?.addEventListener('change', () => onEncodeChange(true));
+  els.cfgAudioBitrate?.addEventListener('change', () => onEncodeChange(false));
+  els.cfgRelayUrl?.addEventListener('change', () => { saveSetup(); void probeRelay(); });
   function onDestinationChange() {
     syncDestinationInputs();
     saveSetup();
@@ -1573,16 +1876,171 @@
     if (e.target === els.modal) els.modal.hidden = true;
   });
 
+  function saveMixer() {
+    writeStorage(STORAGE.mixer, {
+      desktopMuted: mix.desktop.muted,
+      desktopMonitor: mix.desktop.monitor,
+      micMuted: mix.mic.muted,
+      micMonitor: mix.mic.monitor,
+      micDeviceId: mix.mic.deviceId,
+    });
+  }
+
+  function loadMixer() {
+    const data = readStorage(STORAGE.mixer);
+    if (!data || typeof data !== 'object') return;
+    mix.desktop.muted = Boolean(data.desktopMuted);
+    mix.desktop.monitor = Boolean(data.desktopMonitor);
+    mix.mic.muted = Boolean(data.micMuted);
+    mix.mic.monitor = Boolean(data.micMonitor);
+    mix.mic.deviceId = typeof data.micDeviceId === 'string' ? data.micDeviceId : '';
+    if (els.desktopMute) els.desktopMute.checked = mix.desktop.muted;
+    if (els.desktopMonitor) els.desktopMonitor.checked = mix.desktop.monitor;
+    if (els.micMute) els.micMute.checked = mix.mic.muted;
+    if (els.micMonitor) els.micMonitor.checked = mix.mic.monitor;
+  }
+
+  function closeChannelPanels() {
+    for (const [panel, button] of [[els.desktopPanel, els.btnDesktopSettings], [els.micPanel, els.btnMicSettings]]) {
+      if (panel) panel.hidden = true;
+      if (button) button.setAttribute('aria-expanded', 'false');
+    }
+  }
+
+  function toggleChannelPanel(panel, button) {
+    const willOpen = Boolean(panel && panel.hidden);
+    closeChannelPanels();
+    if (!panel || !button) return;
+    panel.hidden = !willOpen;
+    button.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+    if (willOpen && panel === els.micPanel) void refreshMicDevices();
+  }
+
+  async function refreshMicDevices() {
+    if (!els.micDevice || !navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+      if (els.micDeviceNote) els.micDeviceNote.textContent = 'This browser cannot list microphones.';
+      return;
+    }
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const mics = devices.filter((d) => d.kind === 'audioinput');
+    const named = mics.some((d) => d.label);
+    els.micDevice.replaceChildren();
+    if (els.btnMicPermission) els.btnMicPermission.hidden = named || !mics.length;
+    if (!mics.length) {
+      if (els.micDeviceNote) els.micDeviceNote.textContent = 'No microphone detected.';
+      return;
+    }
+    if (!named) {
+      if (els.micDeviceNote) els.micDeviceNote.textContent = 'Microphone permission is needed to list input devices.';
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = 'Allow microphone to see device names';
+      els.micDevice.appendChild(opt);
+      return;
+    }
+    if (els.micDeviceNote) {
+      els.micDeviceNote.textContent = micStream
+        ? 'Live microphone. The meter follows this input.'
+        : 'Microphone is off. The meter stays silent until it is on.';
+    }
+    for (const mic of mics) {
+      const opt = document.createElement('option');
+      opt.value = mic.deviceId;
+      opt.textContent = mic.label || 'Microphone';
+      els.micDevice.appendChild(opt);
+    }
+    if (mix.mic.deviceId && [...els.micDevice.options].some((o) => o.value === mix.mic.deviceId)) {
+      els.micDevice.value = mix.mic.deviceId;
+    }
+  }
+
+  function applyOutputMode(mode, options) {
+    outputMode = mode === 'browse' ? 'browse' : 'studio';
+    if (els.outputModeSelect && els.outputModeSelect.value !== outputMode) els.outputModeSelect.value = outputMode;
+    document.body.dataset.mode = outputMode;
+    const browse = outputMode === 'browse';
+    if (els.browserBar) els.browserBar.hidden = !browse;
+    if (els.programMode) els.programMode.textContent = browse ? '• Browser' : '• Live Output';
+    if (els.windowTitle) els.windowTitle.textContent = browse ? 'Search' : 'Maka Studio';
+    document.title = browse ? 'Maka — Search' : 'Maka Studio';
+    if (els.empty) {
+      els.empty.textContent = browse
+        ? 'Browser Mode. Open a page, then share that tab with Game Capture.'
+        : 'Select a display or window to start streaming';
+    }
+    if (!options || !options.silent) {
+      writeStorage(STORAGE.mode, { mode: outputMode, url: els.browserUrl ? els.browserUrl.value : '' });
+      log(browse ? 'Browser Mode — Search. Share a browser tab to put it on the program.' : 'Studio Mode — the program is the live output.');
+    }
+    if (relayHealth && !(options && options.skipScene)) void postSceneLayout();
+  }
+
+  function loadOutputMode() {
+    const data = readStorage(STORAGE.mode);
+    if (data && typeof data.url === 'string' && els.browserUrl) els.browserUrl.value = data.url;
+    applyOutputMode(data && data.mode === 'browse' ? 'browse' : 'studio', { silent: true, skipScene: true });
+  }
+
   window.addEventListener('resize', resizeCanvas);
   loadScenes();
   loadSetup();
   loadInfo();
   loadGains();
+  loadMixer();
+  loadOutputMode();
   syncDestinationInputs();
   renderSceneList();
   showOfflineStats();
   setMeter(els.desktopMeter, 0);
   setMeter(els.micMeter, 0);
+  refreshDesktopStatus();
+  refreshMicStatus();
+  els.btnDesktopSettings?.addEventListener('click', (event) => { event.stopPropagation(); toggleChannelPanel(els.desktopPanel, els.btnDesktopSettings); });
+  els.btnMicSettings?.addEventListener('click', (event) => { event.stopPropagation(); toggleChannelPanel(els.micPanel, els.btnMicSettings); });
+  document.addEventListener('click', (event) => {
+    const t = event.target;
+    if (t && t.closest && (t.closest('#desktop-audio-panel') || t.closest('#mic-audio-panel') || t.closest('.audio-channel-settings'))) return;
+    closeChannelPanels();
+  });
+  function bindMute(input, channel) {
+    input?.addEventListener('change', () => {
+      mix[channel].muted = Boolean(input.checked);
+      saveMixer();
+      if (audio.ctx) applyGains();
+      else { refreshDesktopStatus(); refreshMicStatus(); }
+    });
+  }
+  bindMute(els.desktopMute, 'desktop');
+  bindMute(els.micMute, 'mic');
+  els.desktopMonitor?.addEventListener('change', () => { mix.desktop.monitor = Boolean(els.desktopMonitor.checked); saveMixer(); if (!audio.ctx && mix.desktop.monitor) ensureAudioGraph(); else applyGains(); });
+  els.micMonitor?.addEventListener('change', () => { mix.mic.monitor = Boolean(els.micMonitor.checked); saveMixer(); if (!audio.ctx && mix.mic.monitor) ensureAudioGraph(); else applyGains(); });
+  els.micDevice?.addEventListener('change', () => {
+    mix.mic.deviceId = els.micDevice.value;
+    saveMixer();
+    if (micStream) void startMicrophone(mix.mic.deviceId).then(() => updateButtons()).catch((err) => log(`Microphone failed: ${err instanceof Error ? err.message : err}`));
+    else log('Microphone selection saved. The meter stays silent until the mic is on.');
+  });
+  els.btnMicPermission?.addEventListener('click', async () => {
+    try {
+      const tmp = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      tmp.getTracks().forEach((t) => t.stop());
+      await refreshMicDevices();
+    } catch (err) {
+      if (els.micDeviceNote) els.micDeviceNote.textContent = 'Microphone permission is needed to list input devices.';
+      log(err && err.name === 'NotAllowedError' ? 'Microphone permission was blocked.' : `Microphone permission failed: ${err instanceof Error ? err.message : err}`);
+    }
+  });
+  els.outputModeSelect?.addEventListener('change', () => applyOutputMode(els.outputModeSelect.value));
+  els.browserForm?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const raw = els.browserUrl ? els.browserUrl.value.trim() : '';
+    if (!raw) return;
+    let url = raw;
+    if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
+    writeStorage(STORAGE.mode, { mode: outputMode, url });
+    window.open(url, '_blank', 'noopener');
+    log(`Opened ${url} in a new tab. Share that tab with Game Capture to put it on the program.`);
+  });
   drawFrame();
   void probeRelay();
   updateButtons();
