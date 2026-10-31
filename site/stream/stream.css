@@ -1,4 +1,4 @@
-/* STREAM_CSS_BUILD=stream9d7 — bump ?v= on /stream/ links in site/stream/index.html */
+/* STREAM_CSS_BUILD=stream9d8 — bump ?v= on /stream/ links in site/stream/index.html */
 /* Desktop studio mock (docs/readme-hero.png). Tokens from src/renderer/app.css. */
 
 :root {
@@ -147,6 +147,7 @@ textarea {
 
 /* —— Sidebars —— */
 .stream-sidebar {
+  min-width: 0;
   min-height: 0;
   overflow: auto;
   background: var(--bg);
@@ -288,7 +289,7 @@ textarea {
 .studio-footer {
   margin-top: auto;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   min-height: 38px;
   padding: 8px 12px;
@@ -302,14 +303,25 @@ textarea {
 .studio-status-dot {
   width: 8px;
   height: 8px;
+  margin-top: 4px;
   border-radius: 50%;
   background: var(--ok);
   box-shadow: 0 0 0 3px rgba(20, 148, 50, 0.12);
   flex-shrink: 0;
 }
 
+#studio-status-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .studio-status-dot[data-state="warn"] {
   background: #9a3b3b;
+  box-shadow: none;
+}
+
+.studio-status-dot[data-state="pending"] {
+  background: #b7b3ac;
   box-shadow: none;
 }
 
@@ -403,8 +415,9 @@ textarea {
 .program-stats {
   flex-shrink: 0;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 14px;
+  gap: 8px 14px;
   min-height: 40px;
   padding: 2px 2px 0;
   color: #2c2824;

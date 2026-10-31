@@ -176,6 +176,17 @@
   let recorder = null;
   let recordedChunks = [];
   let canvasCapture = null;
+  let publishBusy = false;
+  let stopBusy = false;
+  let recordBusy = false;
+  let recordStartedAt = 0;
+  let endingLive = false;
+  let pageUnloading = false;
+  let activeError = '';
+  let relayFooterState = 'pending';
+  let sceneFlushing = false;
+  let sceneDirty = false;
+  const sourceBusy = { screen: false, webcam: false, mic: false };
 
   const STORAGE = {
     scenes: 'maka.studio.scenes',
@@ -305,13 +316,34 @@
   }
 
   async function switchScene(sceneId) {
-    if (!scenes.some((s) => s.id === sceneId)) return;
+    if (!scenes.some((s) => s.id === sceneId) || sceneId === activeSceneId) return;
     activeSceneId = sceneId;
     saveScenes();
     renderSceneList();
     log(`Active scene: ${activeSceneName()}.`);
-    if (relayHealth) {
-      await postSceneLayout();
+    sceneDirty = true;
+    try {
+      await flushScenePost();
+    } catch (err) {
+      log(`Scene update failed: ${err instanceof Error ? err.message : err}`);
+    }
+  }
+
+  async function flushScenePost() {
+    if (sceneFlushing || !relayHealth) return;
+    sceneFlushing = true;
+    try {
+      while (sceneDirty && relayHealth) {
+        sceneDirty = false;
+        await postSceneLayout();
+      }
+    } finally {
+      sceneFlushing = false;
+      if (sceneDirty && relayHealth) {
+        void flushScenePost().catch((err) => {
+          log(`Scene update failed: ${err instanceof Error ? err.message : err}`);
+        });
+      }
     }
   }
 
@@ -342,14 +374,40 @@
     return { twitch, youtube, customUrl, customKey };
   }
 
-  function setStreamError(message) {
-    if (!message) {
-      els.streamError.hidden = true;
-      els.streamError.textContent = '';
-      return;
+  function applyFooter() {
+    if (els.studioStatusDot) {
+      els.studioStatusDot.dataset.state = activeError
+        ? 'warn'
+        : relayFooterState === 'warn'
+          ? 'warn'
+          : relayFooterState === 'pending'
+            ? 'pending'
+            : 'ok';
     }
-    els.streamError.hidden = false;
-    els.streamError.textContent = message;
+    if (els.studioStatusText) {
+      els.studioStatusText.textContent = activeError
+        ? activeError
+        : relayFooterState === 'live'
+          ? 'Live on relay'
+          : relayFooterState === 'warn'
+            ? 'Check relay / keys'
+            : relayFooterState === 'pending'
+              ? 'Checking relay…'
+              : 'All systems nominal';
+    }
+  }
+
+  function setStreamError(message) {
+    activeError = message ? String(message) : '';
+    if (els.streamError) {
+      els.streamError.hidden = !activeError;
+      els.streamError.textContent = activeError;
+    }
+    applyFooter();
+  }
+
+  function clearSourcePrompt() {
+    if (/before going live|before recording/i.test(activeError)) setStreamError(null);
   }
 
   function formatDuration(ms) {
@@ -415,7 +473,8 @@
   }
 
   function captureResolution() {
-    const track = (screenStream || webcamStream)?.getVideoTracks?.()[0];
+    const stream = videoLive(screenStream) ? screenStream : webcamStream;
+    const track = stream?.getVideoTracks?.()[0];
     if (!track || track.readyState !== 'live') return null;
     const settings = typeof track.getSettings === 'function' ? track.getSettings() : {};
     const width = Number(settings.width);
@@ -424,10 +483,14 @@
     return null;
   }
 
-  function applyResolutionText(width, height) {
+  function applyResolutionText(width, height, live) {
     if (!els.statResolution) return;
     if (width > 0 && height > 0) {
       els.statResolution.textContent = `${Math.round(width)}×${Math.round(height)}`;
+      return;
+    }
+    if (live) {
+      els.statResolution.textContent = '—';
       return;
     }
     const spec = selectedProfileSpec();
@@ -435,7 +498,8 @@
   }
 
   async function readLiveStats() {
-    if (!whipPublisher?.pc) {
+    const publisher = whipPublisher;
+    if (!publisher?.pc) {
       showOfflineStats();
       return;
     }
@@ -447,7 +511,7 @@
     let height = sourceSize ? sourceSize.height : null;
     let rttMs = null;
     try {
-      const report = await whipPublisher.pc.getStats();
+      const report = await publisher.pc.getStats();
       report.forEach((stat) => {
         if (!stat || typeof stat !== 'object') return;
         const kind = stat.kind || stat.mediaType;
@@ -467,11 +531,12 @@
     } catch {
       /* stats not available yet */
     }
+    if (whipPublisher !== publisher) return;
     if (sourceSize) {
       width = sourceSize.width;
       height = sourceSize.height;
     }
-    applyResolutionText(width, height);
+    applyResolutionText(width, height, true);
     if (els.statFps) els.statFps.textContent = typeof fps === 'number' ? `FPS: ${Math.round(fps)}` : 'FPS: —';
     if (els.statDropped) {
       if (typeof dropped === 'number') {
@@ -483,7 +548,7 @@
         els.statDropped.textContent = 'Dropped Frames: —';
       }
     }
-    if (els.statLatency) els.statLatency.textContent = typeof rttMs === 'number' ? `${rttMs} ms` : '0 ms';
+    if (els.statLatency) els.statLatency.textContent = typeof rttMs === 'number' ? `${rttMs} ms` : '—';
   }
 
   function startLiveStats() {
@@ -521,20 +586,16 @@
   }
 
   function setRelayStatus(state, text) {
-    els.statusDot.dataset.state = state;
-    els.statusText.textContent = text;
+    if (els.statusDot) els.statusDot.dataset.state = state;
+    if (els.statusText) els.statusText.textContent = text;
     if (els.relayChip) {
       const chipState =
         state === 'live' ? 'live' : state === 'ok' ? 'ready' : state === 'warn' ? 'error' : 'stopped';
       els.relayChip.dataset.state = chipState;
     }
-    if (els.studioStatusDot) {
-      els.studioStatusDot.dataset.state = state === 'warn' ? 'warn' : 'ok';
-    }
-    if (els.studioStatusText) {
-      els.studioStatusText.textContent =
-        state === 'live' ? 'Live on relay' : state === 'warn' ? 'Check relay / keys' : 'All systems nominal';
-    }
+    relayFooterState = state === 'live' || state === 'warn' || state === 'ok' ? state : 'pending';
+    if (state === 'live') setStreamError(null);
+    else applyFooter();
   }
 
   function authHeaders() {
@@ -729,7 +790,7 @@
         },
       ],
     };
-    if (screenStream && webcamStream) {
+    if (videoLive(screenStream) && videoLive(webcamStream)) {
       const pipW = Math.round(w * 0.22);
       const pipH = Math.round(pipW * (9 / 16));
       layout.sources.push({
@@ -743,15 +804,22 @@
         zIndex: 2,
       });
     }
-    await relayFetch(PATHS.scene, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(layout),
-    })
-      .then((res) => {
-        if (res.ok) log(`POST /scene (${w}×${h}) — ${activeSceneName()}.`);
-      })
-      .catch(() => undefined);
+    let res;
+    try {
+      res = await relayFetch(PATHS.scene, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(layout),
+      });
+    } catch (err) {
+      log(`Scene update failed: ${err instanceof Error ? err.message : err}`);
+      return;
+    }
+    if (!res.ok) {
+      log(`Scene update failed (HTTP ${res.status}).`);
+      return;
+    }
+    log(`POST /scene (${w}×${h}) — ${sceneName}.`);
   }
 
   function resizeCanvas() {
@@ -809,19 +877,24 @@
   }
 
   function drawFrame() {
+    if (!ctx || !els.canvas) return;
+    if (videoEnded(screenStream)) releaseScreen();
+    if (videoEnded(webcamStream)) releaseWebcam();
+    if (audioEnded(micStream)) releaseMic();
     resizeCanvas();
     const w = els.canvas.width;
     const h = els.canvas.height;
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, w, h);
-    const main = screenStream || webcamStream;
-    const mainTrack = main && main.getVideoTracks()[0];
-    const hasVideo = Boolean(mainTrack && mainTrack.readyState === 'live');
+    const screenOn = videoLive(screenStream);
+    const webcamOn = videoLive(webcamStream);
+    const hasVideo = screenOn || webcamOn;
     const livePreview = hasVideo || Boolean(overlayImage);
     if (els.programScreen) els.programScreen.classList.toggle('is-live-preview', livePreview);
     if (els.empty) els.empty.hidden = livePreview;
-    if (hasVideo) drawVideo(main, 0, 0, w, h, 'contain');
-    if (screenStream && webcamStream && webcamStream.getVideoTracks()[0]?.readyState === 'live') {
+    if (screenOn) drawVideo(screenStream, 0, 0, w, h, 'contain');
+    else if (webcamOn) drawVideo(webcamStream, 0, 0, w, h, 'contain');
+    if (screenOn && webcamOn) {
       const pipW = Math.round(w * 0.22);
       const pipH = Math.round(pipW * (9 / 16));
       const x = w - pipW - 16;
@@ -834,12 +907,16 @@
       drawVideo(webcamStream, x, y, pipW, pipH, 'cover');
     }
     if (overlayImage) drawOverlay(w, h, !hasVideo);
+    paintSourceButtons();
     requestAnimationFrame(drawFrame);
   }
 
   function stopStream(stream) {
     if (!stream) return;
-    stream.getTracks().forEach((t) => t.stop());
+    stream.getTracks().forEach((t) => {
+      t.onended = null;
+      t.stop();
+    });
     const v = videoEls.get(stream);
     if (v) {
       v.srcObject = null;
@@ -1058,52 +1135,61 @@
 
   async function publishWhip(sources) {
     const pc = new RTCPeerConnection({ iceServers: [] });
-    attachWhipSources(pc, sources);
-    preferH264VideoCodecs(pc);
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    await waitForIce(pc, 5000);
-    const sdp = pc.localDescription && pc.localDescription.sdp;
-    if (!sdp) {
-      pc.close();
-      throw new Error('Empty WHIP offer');
-    }
-    const response = await fetch(`${RELAY_BASE}${PATHS.whip}`, {
-      method: 'POST',
-      mode: 'cors',
-      headers: { 'Content-Type': 'application/sdp', ...authHeaders() },
-      body: sdp,
-    });
-    if (!response.ok) {
-      pc.close();
-      const detail = (await response.text().catch(() => '')).trim();
-      throw new Error(`WHIP ${response.status}${detail ? `: ${detail}` : ''}`);
-    }
-    const answer = await response.text();
-    const location = response.headers.get('Location');
-    const resourceUrl = location ? new URL(location, `${RELAY_BASE}${PATHS.whip}`).href : null;
-    await pc.setRemoteDescription({ type: 'answer', sdp: answer });
-    return {
-      pc,
-      resourceUrl,
-      async close() {
-        if (resourceUrl) {
+    try {
+      attachWhipSources(pc, sources);
+      preferH264VideoCodecs(pc);
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      await waitForIce(pc, 5000);
+      const sdp = pc.localDescription && pc.localDescription.sdp;
+      if (!sdp) throw new Error('Empty WHIP offer');
+      const response = await fetch(`${RELAY_BASE}${PATHS.whip}`, {
+        method: 'POST',
+        mode: 'cors',
+        headers: { 'Content-Type': 'application/sdp', ...authHeaders() },
+        body: sdp,
+      });
+      if (!response.ok) {
+        const detail = (await response.text().catch(() => '')).trim();
+        throw new Error(`WHIP ${response.status}${detail ? `: ${detail}` : ''}`);
+      }
+      const answer = await response.text();
+      const location = response.headers.get('Location');
+      const resourceUrl = location ? new URL(location, `${RELAY_BASE}${PATHS.whip}`).href : null;
+      await pc.setRemoteDescription({ type: 'answer', sdp: answer });
+      return {
+        pc,
+        resourceUrl,
+        async close() {
           try {
-            await fetch(resourceUrl, { method: 'DELETE', headers: authHeaders() });
+            pc.close();
           } catch {
-            /* ignore */
+            /* already closed */
           }
-        }
+          if (resourceUrl) {
+            try {
+              await fetch(resourceUrl, { method: 'DELETE', headers: authHeaders(), keepalive: true });
+            } catch {
+              /* ignore */
+            }
+          }
+        },
+      };
+    } catch (err) {
+      try {
         pc.close();
-      },
-    };
+      } catch {
+        /* already closed */
+      }
+      throw err;
+    }
   }
 
   function buildPublishSources() {
     const canvasStream = programCanvasStream();
     const gameplay = namedStream(TRACK_IDS.gameplay, canvasStream.getVideoTracks());
     let webcam = null;
-    if (screenStream && webcamStream) {
+    if (videoLive(screenStream) && videoLive(webcamStream)) {
       webcam = namedStream(TRACK_IDS.webcam, webcamStream.getVideoTracks());
     }
     let mic = null;
@@ -1116,53 +1202,70 @@
     return { gameplay, webcam, mic };
   }
 
+  function videoLive(stream) {
+    return Boolean(stream && stream.getVideoTracks().some((t) => t.readyState === 'live'));
+  }
+
+  function audioLive(stream) {
+    return Boolean(stream && stream.getAudioTracks().some((t) => t.readyState === 'live'));
+  }
+
+  function videoEnded(stream) {
+    if (!stream) return false;
+    const tracks = stream.getVideoTracks();
+    return tracks.length > 0 && tracks.every((t) => t.readyState === 'ended');
+  }
+
+  function audioEnded(stream) {
+    if (!stream) return false;
+    const tracks = stream.getAudioTracks();
+    return tracks.length > 0 && tracks.every((t) => t.readyState === 'ended');
+  }
+
   function hasCapture() {
-    return Boolean(
-      (screenStream && screenStream.getVideoTracks().some((t) => t.readyState === 'live')) ||
-        (webcamStream && webcamStream.getVideoTracks().some((t) => t.readyState === 'live')) ||
-        overlayImage,
-    );
+    return videoLive(screenStream) || videoLive(webcamStream) || Boolean(overlayImage);
+  }
+
+  function paintSourceButtons() {
+    if (els.btnScreen) els.btnScreen.classList.toggle('is-on', videoLive(screenStream));
+    if (els.btnWebcam) els.btnWebcam.classList.toggle('is-on', videoLive(webcamStream));
+    if (els.btnMic) els.btnMic.classList.toggle('is-on', audioLive(micStream));
+    if (els.btnOverlay) els.btnOverlay.classList.toggle('is-on', Boolean(overlayImage));
   }
 
   function updateButtons() {
     const live = Boolean(whipPublisher);
-    if (els.btnStop) els.btnStop.disabled = !live;
-    if (els.btnScreen) {
-      els.btnScreen.classList.toggle(
-        'is-on',
-        Boolean(screenStream && screenStream.getVideoTracks().some((t) => t.readyState === 'live')),
-      );
-    }
-    if (els.btnWebcam) {
-      els.btnWebcam.classList.toggle(
-        'is-on',
-        Boolean(webcamStream && webcamStream.getVideoTracks().some((t) => t.readyState === 'live')),
-      );
-    }
-    if (els.btnMic) {
-      els.btnMic.classList.toggle(
-        'is-on',
-        Boolean(micStream && micStream.getAudioTracks().some((t) => t.readyState === 'live')),
-      );
-    }
-    if (els.btnOverlay) {
-      els.btnOverlay.classList.toggle('is-on', Boolean(overlayImage));
-    }
+    if (els.btnStop) els.btnStop.disabled = !live || publishBusy;
+    if (els.btnStart) els.btnStart.disabled = publishBusy || stopBusy;
+    paintSourceButtons();
     setLiveUi(live);
   }
 
+  function permissionMessage(err, cancelledText, failedText) {
+    const name = err && err.name;
+    if (name === 'NotAllowedError' || name === 'AbortError') return { cancelled: true, message: cancelledText };
+    return {
+      cancelled: false,
+      message: `${failedText}: ${err instanceof Error ? err.message : err}`,
+    };
+  }
+
   async function onStart() {
+    if (publishBusy || whipPublisher) return;
     if (!hasCapture()) {
-      log('Add a game capture, webcam, or overlay image first.');
-      if (els.studioStatusText) els.studioStatusText.textContent = 'Add a source before going live';
+      logError('Add a game capture, webcam, or overlay before going live.');
       return;
     }
-    const ok = relayHealth ? true : await probeRelay();
-    if (!ok) {
-      els.modal.hidden = false;
-      return;
-    }
+    publishBusy = true;
+    if (els.btnGoLiveLabel) els.btnGoLiveLabel.textContent = 'Starting…';
+    if (els.btnStart) els.btnStart.disabled = true;
     try {
+      const ok = relayHealth ? true : await probeRelay();
+      if (!ok) {
+        if (els.modal) els.modal.hidden = false;
+        return;
+      }
+      if (els.modal) els.modal.hidden = true;
       setStreamError(null);
       const { twitch, youtube, customUrl, customKey } = destinationInputsForConfig();
       const keysOk = validateRelayStreamKeys({
@@ -1179,40 +1282,63 @@
       log(`Publishing WHIP to ${RELAY_BASE}${PATHS.whip}…`);
       sessionLiveIntent = true;
       const publisher = await publishWhip(buildPublishSources());
+      if (!sessionLiveIntent) {
+        await publisher.close().catch(() => undefined);
+        return;
+      }
       whipPublisher = publisher;
       publisher.pc.onconnectionstatechange = () => {
-        if (whipPublisher !== publisher) return;
-        log(`WHIP connection: ${publisher.pc.connectionState}`);
-        if (publisher.pc.connectionState === 'connected') {
+        if (whipPublisher !== publisher || endingLive) return;
+        const state = publisher.pc.connectionState;
+        log(`WHIP connection: ${state}`);
+        if (state === 'connected') {
           setRelayStatus('live', 'Live via relay');
           void refreshRelayStatus();
+          return;
+        }
+        if (state === 'failed' || state === 'disconnected') {
+          logError(`WHIP connection ${state}. Ended the live session.`);
+          void onStop();
         }
       };
       setRelayStatus('live', 'Live via relay');
       log('WHIP active — check relay /status for pipeline state.');
-      updateButtons();
       await refreshRelayStatus();
     } catch (err) {
       sessionLiveIntent = false;
+      endingLive = true;
+      const failed = whipPublisher;
       whipPublisher = null;
+      if (failed) await failed.close().catch(() => undefined);
+      endingLive = false;
       logError(`Go live failed: ${err instanceof Error ? err.message : err}`);
       if (!relayHealth && els.modal) els.modal.hidden = false;
       else openSettings();
+    } finally {
+      publishBusy = false;
+      if (els.btnStart) els.btnStart.disabled = false;
       updateButtons();
     }
   }
 
   async function onStop() {
+    if (stopBusy) return;
+    stopBusy = true;
+    endingLive = true;
     sessionLiveIntent = false;
-    if (whipPublisher) {
-      await whipPublisher.close().catch(() => undefined);
-      whipPublisher = null;
+    const publisher = whipPublisher;
+    whipPublisher = null;
+    try {
+      if (publisher) await publisher.close().catch(() => undefined);
+      await postRelayStop();
+      if (relayHealth) setRelayStatus('ok', `Relay v${relayHealth.version ?? '?'}`);
+      await refreshRelayStatus();
+      log('Stream stopped.');
+    } finally {
+      endingLive = false;
+      stopBusy = false;
+      updateButtons();
     }
-    await postRelayStop();
-    if (relayHealth) setRelayStatus('ok', `Relay v${relayHealth.version}`);
-    await refreshRelayStatus();
-    updateButtons();
-    log('Stream stopped.');
   }
 
   function releaseScreen() {
@@ -1252,92 +1378,116 @@
   }
 
   els.btnWebcam?.addEventListener('click', async () => {
-    if (webcamStream && webcamStream.getVideoTracks().some((t) => t.readyState === 'live')) {
+    if (sourceBusy.webcam) return;
+    if (videoLive(webcamStream)) {
       releaseWebcam();
       log('Webcam stopped.');
       updateButtons();
       return;
     }
-    releaseWebcam();
+    sourceBusy.webcam = true;
     try {
-      webcamStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      const track = webcamStream.getVideoTracks()[0];
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      releaseWebcam();
+      webcamStream = stream;
+      const track = stream.getVideoTracks()[0];
       if (track) {
         track.onended = () => {
+          if (webcamStream !== stream) return;
           releaseWebcam();
+          log('Webcam ended.');
           updateButtons();
         };
       }
       log('Webcam added.');
+      clearSourcePrompt();
     } catch (err) {
-      const name = err && err.name;
-      log(name === 'NotAllowedError' || name === 'AbortError' ? 'Webcam cancelled.' : `Webcam failed: ${err instanceof Error ? err.message : err}`);
+      releaseWebcam();
+      const result = permissionMessage(err, 'Webcam cancelled.', 'Webcam failed');
+      if (result.cancelled) log(result.message);
+      else logError(result.message);
+    } finally {
+      sourceBusy.webcam = false;
+      updateButtons();
     }
-    updateButtons();
   });
 
   els.btnScreen?.addEventListener('click', async () => {
-    if (screenStream && screenStream.getVideoTracks().some((t) => t.readyState === 'live')) {
+    if (sourceBusy.screen) return;
+    if (videoLive(screenStream)) {
       releaseScreen();
       log('Game capture stopped.');
       updateButtons();
       return;
     }
-    releaseScreen();
+    sourceBusy.screen = true;
+    ensureAudioGraph();
     try {
-      screenStream = await captureDisplay();
-      const videoTrack = screenStream.getVideoTracks()[0];
+      const stream = await captureDisplay();
+      releaseScreen();
+      screenStream = stream;
+      const videoTrack = stream.getVideoTracks()[0];
       if (videoTrack) {
         videoTrack.onended = () => {
+          if (screenStream !== stream) return;
           releaseScreen();
           log('Game capture ended.');
           updateButtons();
         };
       }
-      attachDisplayAudio(screenStream);
-      const audioCount = screenStream.getAudioTracks().filter((t) => t.readyState === 'live').length;
-      log(audioCount ? `Game capture started (${audioCount} audio track${audioCount === 1 ? '' : 's'}).` : 'Game capture started (no audio shared).');
+      attachDisplayAudio(stream);
+      const audioCount = stream.getAudioTracks().filter((t) => t.readyState === 'live').length;
+      log(
+        audioCount
+          ? `Game capture started (${audioCount} audio track${audioCount === 1 ? '' : 's'}).`
+          : 'Game capture started (no audio shared).',
+      );
+      clearSourcePrompt();
     } catch (err) {
       releaseScreen();
-      const name = err && err.name;
-      log(
-        name === 'NotAllowedError' || name === 'AbortError'
-          ? 'Game capture cancelled.'
-          : `Game capture failed: ${err instanceof Error ? err.message : err}`,
-      );
+      const result = permissionMessage(err, 'Game capture cancelled.', 'Game capture failed');
+      if (result.cancelled) log(result.message);
+      else logError(result.message);
+    } finally {
+      sourceBusy.screen = false;
+      updateButtons();
     }
-    updateButtons();
   });
 
   els.btnMic?.addEventListener('click', async () => {
-    if (micStream && micStream.getAudioTracks().some((t) => t.readyState === 'live')) {
+    if (sourceBusy.mic) return;
+    if (audioLive(micStream)) {
       releaseMic();
       log('Microphone stopped.');
       updateButtons();
       return;
     }
-    releaseMic();
+    sourceBusy.mic = true;
+    ensureAudioGraph();
     try {
-      micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      const track = micStream.getAudioTracks()[0];
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      releaseMic();
+      micStream = stream;
+      const track = stream.getAudioTracks()[0];
       if (track) {
         track.onended = () => {
+          if (micStream !== stream) return;
           releaseMic();
+          log('Microphone ended.');
           updateButtons();
         };
       }
-      attachMicAudio(micStream);
+      attachMicAudio(stream);
       log('Microphone added.');
     } catch (err) {
       releaseMic();
-      const name = err && err.name;
-      log(
-        name === 'NotAllowedError' || name === 'AbortError'
-          ? 'Microphone cancelled.'
-          : `Microphone failed: ${err instanceof Error ? err.message : err}`,
-      );
+      const result = permissionMessage(err, 'Microphone cancelled.', 'Microphone failed');
+      if (result.cancelled) log(result.message);
+      else logError(result.message);
+    } finally {
+      sourceBusy.mic = false;
+      updateButtons();
     }
-    updateButtons();
   });
 
   function setRecordingUi(on) {
@@ -1370,22 +1520,31 @@
 
   els.btnRecord?.addEventListener('click', () => {
     if (recorder && recorder.state === 'recording') {
+      if (Date.now() - recordStartedAt < 500) return;
       recorder.stop();
       return;
     }
+    if (recordBusy) return;
     if (typeof MediaRecorder === 'undefined') {
-      log('Recording is not available in this browser.');
+      logError('Recording is not available in this browser.');
       return;
     }
+    if (!hasCapture()) {
+      logError('Add a game capture, webcam, or overlay before recording.');
+      return;
+    }
+    recordBusy = true;
     let stream;
     try {
       stream = recordingStream();
     } catch (err) {
-      log(`Recording failed: ${err instanceof Error ? err.message : err}`);
+      recordBusy = false;
+      logError(`Recording failed: ${err instanceof Error ? err.message : err}`);
       return;
     }
     if (!stream.getVideoTracks().length) {
-      log('Program canvas is not ready to record.');
+      recordBusy = false;
+      logError('Program canvas is not ready to record.');
       return;
     }
     const types = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
@@ -1401,33 +1560,41 @@
       recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
     } catch (err) {
       recorder = null;
-      log(`Recording failed: ${err instanceof Error ? err.message : err}`);
+      recordBusy = false;
+      logError(`Recording failed: ${err instanceof Error ? err.message : err}`);
       return;
     }
     recorder.ondataavailable = (event) => {
       if (event.data && event.data.size) recordedChunks.push(event.data);
     };
     recorder.onstop = () => {
+      recordBusy = false;
       const type = (recorder && recorder.mimeType) || 'video/webm';
       const blob = new Blob(recordedChunks, { type });
       recordedChunks = [];
       setRecordingUi(false);
+      if (pageUnloading) return;
       if (!blob.size) {
-        log('Recording was empty.');
+        logError('Recording was empty. Nothing was downloaded.');
         return;
       }
       downloadRecording(blob);
       log('Recording saved as WebM.');
     };
-    recorder.onerror = () => {
+    recorder.onerror = (event) => {
+      recordBusy = false;
       setRecordingUi(false);
-      log('Recording failed.');
+      const detail = event && event.error && event.error.message ? event.error.message : 'Recording failed.';
+      logError(detail);
     };
     try {
-      recorder.start(1000);
+      recorder.start(250);
+      recordStartedAt = Date.now();
     } catch (err) {
+      recordBusy = false;
+      recorder = null;
       setRecordingUi(false);
-      log(`Recording failed: ${err instanceof Error ? err.message : err}`);
+      logError(`Recording failed: ${err instanceof Error ? err.message : err}`);
       return;
     }
     setRecordingUi(true);
@@ -1530,8 +1697,9 @@
     const file = els.overlayFile.files && els.overlayFile.files[0];
     els.overlayFile.value = '';
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      log('Overlay needs an image file.');
+    if (file.type && !file.type.startsWith('image/')) {
+      logError('Overlay needs an image file.');
+      updateButtons();
       return;
     }
     clearOverlay();
@@ -1540,11 +1708,12 @@
     img.onload = () => {
       overlayImage = img;
       log('Overlay image drawn on the program.');
+      clearSourcePrompt();
       updateButtons();
     };
     img.onerror = () => {
       clearOverlay();
-      log('Could not read that overlay image.');
+      logError('Could not read that overlay image.');
       updateButtons();
     };
     img.src = overlayUrl;
@@ -1571,6 +1740,64 @@
   });
   els.modal.addEventListener('click', (e) => {
     if (e.target === els.modal) els.modal.hidden = true;
+  });
+
+  function releaseAllMedia() {
+    if (pageUnloading) return;
+    pageUnloading = true;
+    if (recorder && recorder.state === 'recording') {
+      recorder.onstop = null;
+      recorder.onerror = null;
+      try {
+        recorder.stop();
+      } catch {
+        /* already stopped */
+      }
+    }
+    recorder = null;
+    recordBusy = false;
+    releaseScreen();
+    releaseWebcam();
+    releaseMic();
+    endingLive = true;
+    sessionLiveIntent = false;
+    const publisher = whipPublisher;
+    whipPublisher = null;
+    if (publisher) {
+      try {
+        publisher.pc.close();
+      } catch {
+        /* already closed */
+      }
+      if (publisher.resourceUrl) {
+        void fetch(publisher.resourceUrl, {
+          method: 'DELETE',
+          headers: authHeaders(),
+          keepalive: true,
+        }).catch(() => undefined);
+      }
+    }
+    if (canvasCapture) {
+      canvasCapture.getTracks().forEach((track) => {
+        try {
+          track.stop();
+        } catch {
+          /* already stopped */
+        }
+      });
+      canvasCapture = null;
+    }
+    if (audio.ctx && audio.ctx.state !== 'closed') {
+      void audio.ctx.close().catch(() => undefined);
+      audio.ctx = null;
+    }
+  }
+
+  window.addEventListener('pagehide', releaseAllMedia);
+  window.addEventListener('beforeunload', releaseAllMedia);
+  window.addEventListener('pageshow', () => {
+    pageUnloading = false;
+    updateButtons();
   });
 
   window.addEventListener('resize', resizeCanvas);
