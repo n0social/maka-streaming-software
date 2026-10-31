@@ -8,7 +8,7 @@ Direct comparison between the **Electron streaming studio** (`src/renderer/*`) a
 
 | Area | Desktop (Electron) | Web (`/stream/`) | Notes |
 | --- | --- | --- | --- |
-| Shell / layout | `src/renderer/app.html`, `app.css` | `site/stream/index.html`, `site/stream/stream.css` | Web uses studio grid; no window controls |
+| Shell / layout | `src/renderer/app.html`, `app.css` | `site/stream/index.html`, `site/stream/stream.css` | Web grid mirrors desktop (scenes/sources left, program + stats center, mixer/controls/info right); decorative window controls only |
 | App logic | `src/renderer/app.ts` | `site/stream/stream.js` | Web is a single IIFE; no Tabcast IPC |
 | Relay HTTP | `src/renderer/relay-client.ts` | `stream.js` (`relayFetch`, config/scene/stop) | Shared contract in `src/shared/tabcast.ts` |
 | WHIP publish | `src/renderer/whip.ts` | `stream.js` (`publishWhip`) | Desktop prefers H.264; web mirrors in wire pass 1 |
@@ -21,21 +21,21 @@ Direct comparison between the **Electron streaming studio** (`src/renderer/*`) a
 
 | Region | Desktop | Web `/stream/` | Parity |
 | --- | --- | --- | --- |
-| Top bar (brand, version) | Maka wordmark, app version | Maka wordmark, “Browser studio” tag | ⚠️ partial (no version chip) |
-| Mode tabs | Stream + Search (browse) | Stream tab only (static label) | ❌ missing Search/Browse |
-| Relay chip | Lifecycle + label (`relay-chip`) | Status dot + text (`relay-status-*`) | ⚠️ partial (no start/stop relay process) |
-| Go Live (header) | Primary `Go Live` / `End Live` | — | ❌ missing (sidebar buttons only on web) |
-| Window controls | Min / max / close | — | ❌ N/A (web) |
+| Top bar (brand, version) | Maka wordmark, “Streaming studio”, app version | Maka wordmark, “Streaming studio”, Web version chip | ⚠️ partial (web chip, not semver from binary) |
+| Mode tabs | Stream + Search (browse) | Stream active; Search tab disabled stub | ⚠️ partial (no browse webview) |
+| Relay chip | Lifecycle + label (`relay-chip`) | Same chip pattern + WHIP health text | ⚠️ partial (no start/stop relay process) |
+| Go Live (header) | Primary `Go Live` / `End Live` | Header + sidebar Start/End streaming | ✅ parity (web) |
+| Window controls | Min / max / close | Decorative only (non-functional) | ⚠️ N/A (web) |
 | Browse tab strip | Twitch, YT, chat pins | — | ❌ missing |
 | URL / nav row | Back, forward, reload, omnibox | — | ❌ missing |
-| Scene list | Multiple scenes, switch layout | Scenes column — Scene 1 + add scene; switch re-POSTs `/scene` at profile canvas size | ⚠️ partial (no per-scene source layouts) |
-| Sources list | Game capture, webcam, mic, layers | Add webcam / screen / mic buttons | ⚠️ partial (no game capture API; canvas compositor instead) |
+| Scene list | Multiple scenes, switch layout | Default desktop scene names + add scene; switch re-POSTs `/scene` at profile canvas size | ⚠️ partial (no per-scene source layouts) |
+| Sources list | Game capture, webcam, mic, overlay | List rows (screen/webcam/mic wired; overlay stub) | ⚠️ partial (no game capture API; canvas compositor instead) |
 | Program monitor | Game + browser overlay + PIP | Canvas preview + gold PIP | ⚠️ partial (no browser overlay track) |
-| Program stats bar | Quality select, dropped, FPS, resolution | Footer hint line only | ⚠️ partial |
-| Audio mixer | Desktop / mic / game meters | — | ❌ missing |
-| Stream controls sidebar | Go live, recording, vcam (stubs) | Start / stop + relay config block | ⚠️ partial |
-| Stream info / destinations | Twitch / YT / custom RTMP toggles | Twitch / YT / Custom RTMP toggles + key fields + verify | ✅ parity (web sidebar) |
-| Encode profile | `profile-select` + center quality dropdown | `cfg-profile` select | ✅ parity (presets match `ENCODE_PROFILES`) |
+| Program stats bar | Studio mode, dropped, FPS, resolution | Under program monitor; FPS/resolution from encode profile | ⚠️ partial (dropped/health mostly static) |
+| Audio mixer | Desktop / mic / game meters | Mixer UI with mic meter stub when mic active | ⚠️ partial (no desktop/game audio) |
+| Stream controls sidebar | Go live, recording, vcam (stubs) | Start/end + disabled recording/vcam stubs | ⚠️ partial |
+| Stream info / destinations | Twitch / YT / custom RTMP toggles | Stream info card + destinations + encode in right column | ✅ parity (web sidebar) |
+| Encode profile | `profile-select` + center quality dropdown | `cfg-profile` in stream info block | ✅ parity (presets match `ENCODE_PROFILES`) |
 | Settings dialog | Tray, chat, lab mode, startup, addons | — | ❌ missing |
 | Relay modal / errors | `relay-error`, `dest-error`, settings | Log panel + relay modal | ⚠️ partial (wire pass 1 adds error banner) |
 | Addons marketplace | Settings → addons | — | ❌ missing |
@@ -75,7 +75,7 @@ Direct comparison between the **Electron streaming studio** (`src/renderer/*`) a
 | Marketing `maka.css` | Not loaded in app window | Not loaded on `/stream/` (by design) | ✅ |
 | Preview mock | Loads `maka.css` + mascot | `/stream/` has no mascot/hero | ✅ |
 | Cream / gold tokens | `--bg`, `--gold`, program black stage | Same token set in `stream.css` | ✅ |
-| Center stats / mixer styling | Full `app.css` | Footer strip only | ⚠️ partial |
+| Center stats / mixer styling | Full `app.css` | Program stats + right-column mixer (stream9d4 layout) | ⚠️ partial |
 
 ---
 
@@ -102,6 +102,14 @@ Both clients aim for this order:
 6. Stop: WHIP `DELETE` + `POST /stop`
 
 Desktop additionally runs relay lifecycle via Tabcast, live recovery, and WHIP video stall watchdog (`whip.ts`).
+
+---
+
+## UI pass (stream9d4)
+
+- **`/stream/` layout** matches desktop mock: left scenes/sources, center program + stats bar, right mixer / controls / stream info (see `docs/readme-hero.png`).
+- **Brand** uses “Streaming studio” (not “Browser studio”); no marketing `maka.css` or mascot on `/stream/`.
+- **Stats bar** binds FPS and resolution from `cfg-profile`; dropped frames and health are demo/static unless relay errors surface in health text.
 
 ---
 

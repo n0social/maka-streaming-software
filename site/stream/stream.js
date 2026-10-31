@@ -93,6 +93,7 @@
   const els = {
     canvas: document.getElementById('program-canvas'),
     empty: document.getElementById('program-empty'),
+    relayChip: document.getElementById('relay-chip'),
     statusDot: document.getElementById('relay-status-dot'),
     statusText: document.getElementById('relay-status-text'),
     statusJson: document.getElementById('relay-status-json'),
@@ -103,6 +104,8 @@
     btnMic: document.getElementById('btn-mic'),
     btnStart: document.getElementById('btn-start'),
     btnStop: document.getElementById('btn-stop'),
+    btnGoLiveTop: document.getElementById('btn-go-live-top'),
+    btnGoLiveLabel: document.getElementById('btn-go-live-label'),
     btnRelayRefresh: document.getElementById('btn-relay-refresh'),
     btnConfig: document.getElementById('btn-config'),
     btnVerify: document.getElementById('btn-verify'),
@@ -119,7 +122,17 @@
     modal: document.getElementById('relay-modal'),
     modalClose: document.getElementById('modal-close'),
     streamError: document.getElementById('stream-error'),
-    streamStatsLine: document.getElementById('stream-stats-line'),
+    statDropped: document.getElementById('stat-dropped'),
+    statFps: document.getElementById('stat-fps'),
+    statResolution: document.getElementById('stat-resolution'),
+    statHealth: document.getElementById('stat-health'),
+    streamLivePill: document.getElementById('stream-live-pill'),
+    streamTitle: document.getElementById('stream-title'),
+    streamDuration: document.getElementById('stream-duration'),
+    streamViewers: document.getElementById('stream-viewers'),
+    micMeter: document.getElementById('mic-meter'),
+    studioStatusDot: document.getElementById('studio-status-dot'),
+    studioStatusText: document.getElementById('studio-status-text'),
   };
 
   const ctx = els.canvas.getContext('2d');
@@ -131,9 +144,20 @@
   let statusPollTimer = 0;
   let sessionLiveIntent = false;
 
-  /** @type {{ id: string, name: string }[]} */
-  let scenes = [{ id: 'scene-1', name: 'Scene 1' }];
-  let activeSceneId = 'scene-1';
+  const DEFAULT_SCENES = [
+    { id: 'scene-gameplay', name: 'Gameplay', icon: '🎮' },
+    { id: 'scene-starting', name: 'Starting Soon', icon: '📄' },
+    { id: 'scene-chatting', name: 'Just Chatting', icon: '▶️' },
+    { id: 'scene-intermission', name: 'Intermission', icon: '⏸️' },
+    { id: 'scene-ending', name: 'Ending Scene', icon: '🏠' },
+  ];
+
+  /** @type {{ id: string, name: string, icon?: string }[]} */
+  let scenes = DEFAULT_SCENES.map((s) => ({ ...s }));
+  let activeSceneId = 'scene-gameplay';
+  let liveStartedAt = 0;
+  let durationTimer = 0;
+  let micMeterTimer = 0;
 
   function activeSceneName() {
     return scenes.find((s) => s.id === activeSceneId)?.name ?? 'Scene 1';
@@ -146,8 +170,13 @@
       const li = document.createElement('li');
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'stream-scene-item' + (scene.id === activeSceneId ? ' is-on' : '');
-      btn.textContent = scene.name;
+      btn.className = 'studio-list-item' + (scene.id === activeSceneId ? ' is-on' : '');
+      const icon = document.createElement('span');
+      icon.className = 'scene-icon';
+      icon.setAttribute('aria-hidden', 'true');
+      icon.textContent = scene.icon || '🎬';
+      btn.appendChild(icon);
+      btn.appendChild(document.createTextNode(scene.name));
       btn.setAttribute('aria-current', scene.id === activeSceneId ? 'true' : 'false');
       btn.addEventListener('click', () => {
         void switchScene(scene.id);
@@ -155,6 +184,20 @@
       li.appendChild(btn);
       els.sceneList.appendChild(li);
     }
+    const addLi = document.createElement('li');
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'studio-list-item studio-list-add';
+    addBtn.id = 'btn-add-scene-alt';
+    const addIcon = document.createElement('span');
+    addIcon.className = 'scene-icon';
+    addIcon.setAttribute('aria-hidden', 'true');
+    addIcon.textContent = '+';
+    addBtn.appendChild(addIcon);
+    addBtn.appendChild(document.createTextNode('Add Scene'));
+    addBtn.addEventListener('click', () => addScene());
+    addLi.appendChild(addBtn);
+    els.sceneList.appendChild(addLi);
   }
 
   async function switchScene(sceneId) {
@@ -168,9 +211,9 @@
   }
 
   function addScene() {
-    const n = scenes.length + 1;
-    const id = `scene-${n}`;
-    scenes.push({ id, name: `Scene ${n}` });
+    const n = scenes.filter((s) => !DEFAULT_SCENES.some((d) => d.id === s.id)).length + 1;
+    const id = `scene-custom-${Date.now()}`;
+    scenes.push({ id, name: `Scene ${n}`, icon: '🎬' });
     renderSceneList();
     void switchScene(id);
   }
@@ -203,12 +246,91 @@
     els.streamError.textContent = message;
   }
 
-  function updateStatsLine(extra) {
+  function formatDuration(ms) {
+    const total = Math.max(0, Math.floor(ms / 1000));
+    const h = Math.floor(total / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    const s = total % 60;
+    return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':');
+  }
+
+  function stopDurationTimer() {
+    if (durationTimer) {
+      clearInterval(durationTimer);
+      durationTimer = 0;
+    }
+    liveStartedAt = 0;
+    if (els.streamDuration) els.streamDuration.textContent = '00:00:00';
+  }
+
+  function startDurationTimer() {
+    stopDurationTimer();
+    liveStartedAt = Date.now();
+    durationTimer = window.setInterval(() => {
+      if (els.streamDuration && liveStartedAt) {
+        els.streamDuration.textContent = formatDuration(Date.now() - liveStartedAt);
+      }
+    }, 1000);
+  }
+
+  function stopMicMeter() {
+    if (micMeterTimer) {
+      clearInterval(micMeterTimer);
+      micMeterTimer = 0;
+    }
+    if (els.micMeter) els.micMeter.style.width = micStream ? '22%' : '12%';
+  }
+
+  function startMicMeter() {
+    stopMicMeter();
+    if (!els.micMeter || !micStream) return;
+    micMeterTimer = window.setInterval(() => {
+      const level = 18 + Math.random() * 52;
+      els.micMeter.style.width = `${level}%`;
+    }, 350);
+  }
+
+  function setLiveUi(live) {
+    if (els.streamLivePill) {
+      els.streamLivePill.dataset.live = live ? 'true' : 'false';
+      els.streamLivePill.textContent = live ? '● Live' : 'Offline';
+    }
+    if (els.streamViewers) {
+      els.streamViewers.textContent = live ? '— viewers' : '— viewers';
+    }
+    const label = live ? 'End Streaming' : 'Start Streaming';
+    if (els.btnGoLiveLabel) els.btnGoLiveLabel.textContent = label;
+    if (els.btnGoLiveTop) {
+      els.btnGoLiveTop.textContent = live ? 'End Live' : 'Go Live';
+    }
+    if (live) startDurationTimer();
+    else stopDurationTimer();
+  }
+
+  function updateProgramStats(extra) {
     const profile = normalizeProfile(els.cfgProfile.value);
     const spec = profileSpec(profile);
-    const relayBit = relayHealth ? `relay ${RELAY_BASE}` : 'relay offline';
-    const line = `${spec.width}×${spec.height} @ ${spec.fps}fps · ${spec.bitrateMbps} Mbps · ${relayBit}`;
-    els.streamStatsLine.textContent = extra ? `${line} · ${extra}` : line;
+    if (els.statFps) els.statFps.innerHTML = `<strong>FPS</strong> ${spec.fps}`;
+    if (els.statResolution) {
+      els.statResolution.innerHTML = `<strong>Resolution</strong> ${spec.width}×${spec.height}`;
+    }
+    if (els.statDropped) {
+      els.statDropped.innerHTML = '<strong>Dropped</strong> 0 (0.0%)';
+    }
+    if (els.statHealth) {
+      const warn = extra && /error|offline|orphan|fail/i.test(String(extra));
+      els.statHealth.dataset.state = warn ? 'warn' : 'ok';
+      els.statHealth.innerHTML = warn
+        ? `<strong>Health</strong> ${extra}`
+        : '<strong>Health</strong> OK';
+    }
+    if (els.streamTitle && activeSceneName()) {
+      els.streamTitle.textContent = activeSceneName();
+    }
+  }
+
+  function updateStatsLine(extra) {
+    updateProgramStats(extra);
   }
 
   function log(line) {
@@ -225,6 +347,18 @@
   function setRelayStatus(state, text) {
     els.statusDot.dataset.state = state;
     els.statusText.textContent = text;
+    if (els.relayChip) {
+      const chipState =
+        state === 'live' ? 'live' : state === 'ok' ? 'ready' : state === 'warn' ? 'error' : 'stopped';
+      els.relayChip.dataset.state = chipState;
+    }
+    if (els.studioStatusDot) {
+      els.studioStatusDot.dataset.state = state === 'warn' ? 'warn' : 'ok';
+    }
+    if (els.studioStatusText) {
+      els.studioStatusText.textContent =
+        state === 'live' ? 'Live on relay' : state === 'warn' ? 'Check relay / keys' : 'All systems nominal';
+    }
   }
 
   function authHeaders() {
@@ -627,8 +761,13 @@
   }
 
   function updateButtons() {
-    els.btnStart.disabled = !hasCapture() || Boolean(whipPublisher);
-    els.btnStop.disabled = !whipPublisher;
+    const live = Boolean(whipPublisher);
+    els.btnStart.disabled = !hasCapture() || live;
+    els.btnStop.disabled = !live;
+    if (els.btnGoLiveTop) {
+      els.btnGoLiveTop.disabled = !hasCapture() && !live;
+    }
+    setLiveUi(live);
   }
 
   async function onStart() {
@@ -724,9 +863,11 @@
   els.btnMic.addEventListener('click', async () => {
     stopStream(micStream);
     micStream = null;
+    stopMicMeter();
     try {
       micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       log('Microphone added.');
+      startMicMeter();
     } catch (err) {
       log(`Mic denied: ${err instanceof Error ? err.message : err}`);
     }
@@ -735,6 +876,10 @@
 
   els.btnStart.addEventListener('click', () => void onStart());
   els.btnStop.addEventListener('click', () => void onStop());
+  els.btnGoLiveTop?.addEventListener('click', () => {
+    if (whipPublisher) void onStop();
+    else void onStart();
+  });
   els.btnRelayRefresh.addEventListener('click', () => void probeRelay());
   els.btnConfig.addEventListener('click', () => {
     void postRelayConfig().catch((err) => logError(err instanceof Error ? err.message : String(err)));
@@ -767,5 +912,6 @@
   drawFrame();
   void probeRelay();
   updateButtons();
-  log('Web studio — connect relay → configure → go live (see docs/web-relay.md).');
+  updateProgramStats();
+  log('Maka web studio — connect relay → configure → go live (see docs/web-relay.md).');
 })();
