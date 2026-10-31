@@ -131,13 +131,10 @@
     streamTitle: document.getElementById('stream-title'),
     streamCategory: document.getElementById('stream-category'),
     streamDuration: document.getElementById('stream-duration'),
-    streamViewers: document.getElementById('stream-viewers-count'),
     micMeter: document.getElementById('mic-meter'),
     desktopMeter: document.getElementById('desktop-meter'),
-    gameMeter: document.getElementById('game-meter'),
     faderDesktop: document.getElementById('fader-desktop'),
     faderMic: document.getElementById('fader-mic'),
-    faderGame: document.getElementById('fader-game'),
     programSceneName: document.getElementById('program-scene-name'),
     btnRecord: document.getElementById('btn-record'),
     overlayFile: document.getElementById('overlay-file'),
@@ -191,15 +188,11 @@
     ctx: null,
     desktopGain: null,
     micGain: null,
-    gameGain: null,
     desktopAnalyser: null,
     micAnalyser: null,
-    gameAnalyser: null,
     mixDest: null,
     desktopSource: null,
     micSource: null,
-    gameSource: null,
-    separateGameTrack: false,
   };
 
   function sceneIconSvg(kind) {
@@ -399,7 +392,6 @@
       els.streamLivePill.dataset.live = live ? 'true' : 'false';
       els.streamLivePill.textContent = live ? 'Live' : 'Offline';
     }
-    if (els.streamViewers) els.streamViewers.textContent = '—';
     if (live) {
       if (!durationTimer) startDurationTimer();
       startLiveStats();
@@ -893,29 +885,16 @@
     return ctx;
   }
 
+  // Fader value 100 is unity gain (0 dB on the mixer scale) and is the default.
+  // 0 is mute. Display/tab audio and the microphone start at unity, not muted.
   function applyGains() {
     const desktop = gainFromFader(els.faderDesktop);
     const mic = gainFromFader(els.faderMic);
-    const game = gainFromFader(els.faderGame);
-    if (audio.micGain) audio.micGain.gain.value = mic;
-    if (audio.separateGameTrack && audio.gameGain) {
-      if (audio.desktopGain) audio.desktopGain.gain.value = desktop;
-      audio.gameGain.gain.value = game;
-      return;
-    }
-    // Game Audio has no separate capture in getDisplayMedia. The Game Audio
-    // fader is tied to the same desktop/display GainNode as Desktop Audio.
     if (audio.desktopGain) audio.desktopGain.gain.value = desktop;
+    if (audio.micGain) audio.micGain.gain.value = mic;
   }
 
-  // Game Audio fader writes the desktop/display gain unless a second
-  // display-capture audio track exists. There is no fake game-audio meter.
-  function onFader(which) {
-    if (!audio.separateGameTrack && (which === 'desktop' || which === 'game')) {
-      const source = which === 'desktop' ? els.faderDesktop : els.faderGame;
-      const other = which === 'desktop' ? els.faderGame : els.faderDesktop;
-      if (source && other) other.value = source.value;
-    }
+  function onFader() {
     saveGains();
     if (audio.ctx) applyGains();
   }
@@ -924,7 +903,6 @@
     writeStorage(STORAGE.gains, {
       desktop: Number(els.faderDesktop && els.faderDesktop.value),
       mic: Number(els.faderMic && els.faderMic.value),
-      game: Number(els.faderGame && els.faderGame.value),
     });
   }
 
@@ -937,10 +915,6 @@
     };
     set(els.faderDesktop, data.desktop);
     set(els.faderMic, data.mic);
-    set(els.faderGame, data.game);
-    if (!audio.separateGameTrack && els.faderDesktop && els.faderGame) {
-      els.faderGame.value = els.faderDesktop.value;
-    }
   }
 
   function meterPercent(analyser) {
@@ -972,47 +946,24 @@
       const micLive = Boolean(micStream && micStream.getAudioTracks().some((t) => t.readyState === 'live'));
       setMeter(els.desktopMeter, desktopLive ? meterPercent(audio.desktopAnalyser) : 0);
       setMeter(els.micMeter, micLive ? meterPercent(audio.micAnalyser) : 0);
-      setMeter(
-        els.gameMeter,
-        audio.separateGameTrack && desktopLive ? meterPercent(audio.gameAnalyser) : 0,
-      );
     }, 100);
   }
 
   function attachDisplayAudio(stream) {
     disconnectAudioNode(audio.desktopSource);
-    disconnectAudioNode(audio.gameSource);
     audio.desktopSource = null;
-    audio.gameSource = null;
-    audio.separateGameTrack = false;
     const tracks = stream.getAudioTracks().filter((t) => t.readyState === 'live');
     if (!tracks.length) return;
     const ctx = ensureAudioGraph();
-    audio.desktopSource = ctx.createMediaStreamSource(new MediaStream([tracks[0]]));
+    audio.desktopSource = ctx.createMediaStreamSource(new MediaStream(tracks));
     audio.desktopSource.connect(audio.desktopGain);
-    if (tracks.length > 1) {
-      audio.separateGameTrack = true;
-      if (!audio.gameGain) {
-        audio.gameGain = ctx.createGain();
-        audio.gameAnalyser = ctx.createAnalyser();
-        audio.gameAnalyser.fftSize = 2048;
-        audio.gameGain.connect(audio.gameAnalyser);
-        audio.gameGain.connect(audio.mixDest);
-      }
-      audio.gameSource = ctx.createMediaStreamSource(new MediaStream([tracks[1]]));
-      audio.gameSource.connect(audio.gameGain);
-    }
     applyGains();
   }
 
   function detachDisplayAudio() {
     disconnectAudioNode(audio.desktopSource);
-    disconnectAudioNode(audio.gameSource);
     audio.desktopSource = null;
-    audio.gameSource = null;
-    audio.separateGameTrack = false;
     setMeter(els.desktopMeter, 0);
-    setMeter(els.gameMeter, 0);
   }
 
   function attachMicAudio(stream) {
@@ -1598,9 +1549,8 @@
     };
     img.src = overlayUrl;
   });
-  els.faderDesktop?.addEventListener('input', () => onFader('desktop'));
-  els.faderMic?.addEventListener('input', () => onFader('mic'));
-  els.faderGame?.addEventListener('input', () => onFader('game'));
+  els.faderDesktop?.addEventListener('input', () => onFader());
+  els.faderMic?.addEventListener('input', () => onFader());
   els.streamTitle?.addEventListener('input', saveInfo);
   els.streamCategory?.addEventListener('input', saveInfo);
   function openSettings() {
@@ -1611,8 +1561,6 @@
     if (!els.settings) return;
     els.settings.hidden = true;
   }
-  // Help and the window min / max / close controls stay decorative.
-  // They cannot control the browser chrome, so they have no handlers.
   els.btnSettings?.addEventListener('click', openSettings);
   els.btnSettingsClose?.addEventListener('click', closeSettings);
   els.settings?.addEventListener('click', (e) => {
@@ -1635,7 +1583,6 @@
   showOfflineStats();
   setMeter(els.desktopMeter, 0);
   setMeter(els.micMeter, 0);
-  setMeter(els.gameMeter, 0);
   drawFrame();
   void probeRelay();
   updateButtons();
