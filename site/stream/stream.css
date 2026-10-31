@@ -1,4 +1,4 @@
-/* STREAM_CSS_BUILD=stream9d6 — bump ?v= on /stream/ links in site/stream/index.html */
+/* STREAM_CSS_BUILD=stream9d7 — bump ?v= on /stream/ links in site/stream/index.html */
 /* Desktop studio mock (docs/readme-hero.png). Tokens from src/renderer/app.css. */
 
 :root {
@@ -127,8 +127,7 @@ textarea {
   gap: 2px;
 }
 
-.win-btn,
-.win-controls button {
+.win-btn {
   width: 28px;
   height: 28px;
   border: 0;
@@ -142,29 +141,8 @@ textarea {
   font-size: 14px;
 }
 
-.win-btn:hover,
-.win-controls button:hover {
+.win-btn:hover {
   background: rgba(26, 20, 8, 0.06);
-}
-
-.win-sep {
-  width: 1px;
-  height: 16px;
-  margin: 0 4px;
-  background: transparent;
-}
-
-.win-controls {
-  display: flex;
-  align-items: center;
-}
-
-.win-controls button {
-  width: 32px;
-  border-radius: 6px;
-  font-size: 13px;
-  color: #5c554c;
-  cursor: default;
 }
 
 /* —— Sidebars —— */
@@ -220,10 +198,6 @@ textarea {
   line-height: 1;
   padding: 0;
   cursor: pointer;
-}
-
-.studio-icon-btn--static {
-  cursor: default;
 }
 
 .studio-list {
@@ -307,13 +281,95 @@ textarea {
   font-size: 12px;
   letter-spacing: 0.08em;
   padding: 4px 2px;
-  cursor: default;
+  cursor: pointer;
   line-height: 1;
 }
 
-.studio-row-menu--static {
-  position: static;
-  transform: none;
+.studio-row-menu:hover,
+.studio-row-menu[aria-expanded='true'] {
+  color: #1a1408;
+}
+
+.studio-list-item.is-scene-hidden {
+  opacity: 0.55;
+}
+
+.studio-scene-name {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 500;
+  padding: 0;
+  margin: 0;
+}
+
+.studio-scene-name:focus {
+  outline: none;
+  box-shadow: inset 0 -1px 0 #c9a227;
+}
+
+.studio-list-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-popover {
+  position: fixed;
+  z-index: 40;
+  min-width: 196px;
+  max-width: 260px;
+  padding: 4px;
+  border: 1px solid #eadfce;
+  border-radius: 10px;
+  background: #fffdfb;
+  box-shadow: 0 8px 24px rgba(26, 20, 8, 0.12);
+}
+
+.studio-popover[hidden] {
+  display: none !important;
+}
+
+.studio-popover-label {
+  margin: 4px 8px 2px;
+  color: #8a8176;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.studio-popover button {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #1a1408;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.studio-popover button:hover {
+  background: #fff6e4;
+}
+
+.studio-popover button[aria-checked='true'] {
+  background: #fff1cc;
+}
+
+.studio-list-add:disabled,
+.studio-icon-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .studio-footer {
@@ -443,33 +499,6 @@ textarea {
   font-variant-numeric: tabular-nums;
 }
 
-.program-stats-field {
-  margin: 0;
-  display: flex;
-}
-
-.program-stats-select {
-  appearance: none;
-  height: 34px;
-  min-width: 138px;
-  padding: 0 28px 0 12px;
-  border-radius: 8px;
-  border: 1px solid #e6dccb;
-  background-color: #fff;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%235c554c' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 10px center;
-  font: inherit;
-  font-size: 13px;
-  color: var(--text);
-}
-
-.program-stats-select:disabled {
-  opacity: 1;
-  color: var(--text);
-  cursor: default;
-}
-
 .program-stat {
   display: inline-flex;
   align-items: center;
@@ -518,11 +547,11 @@ textarea {
 
 .audio-channel {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) 18px;
+  grid-template-columns: 18px minmax(0, 1fr);
   grid-template-areas:
-    ". name ."
-    "icon meter gear"
-    ". scale .";
+    ". name"
+    "icon meter"
+    ". scale";
   column-gap: 8px;
   row-gap: 2px;
   align-items: center;
@@ -634,21 +663,6 @@ textarea {
   padding-top: 1px;
 }
 
-.audio-channel-settings {
-  grid-area: gear;
-  border: 0;
-  background: transparent;
-  color: #8a8178;
-  padding: 0;
-  display: grid;
-  place-items: center;
-  cursor: default;
-}
-
-.audio-channel-settings:disabled {
-  opacity: 1;
-}
-
 .stream-controls-stack {
   display: flex;
   flex-direction: column;
@@ -702,13 +716,6 @@ textarea {
 .btn-quiet.is-recording {
   border-color: var(--live-red);
   color: var(--live-red);
-}
-
-#btn-vcam {
-  white-space: normal;
-  line-height: 1.25;
-  padding: 8px 12px;
-  text-align: center;
 }
 
 .btn-quiet {
@@ -819,14 +826,6 @@ textarea {
 .stream-live-pill[data-live="false"]::before {
   background: #b7b3ac;
   box-shadow: none;
-}
-
-.stream-viewers {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: #5c554c;
-  white-space: nowrap;
 }
 
 .stream-duration {
@@ -1074,10 +1073,6 @@ textarea {
   }
 
   .studio-window-title {
-    display: none;
-  }
-
-  .win-controls {
     display: none;
   }
 }

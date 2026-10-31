@@ -28,9 +28,9 @@ Direct comparison between the **Electron streaming studio** (`src/renderer/*`) a
 | Window controls | Min / max / close | Decorative only (non-functional) | ⚠️ N/A (web) |
 | Browse tab strip | Twitch, YT, chat pins | — | ❌ missing |
 | URL / nav row | Back, forward, reload, omnibox | — | ❌ missing |
-| Scene list | Multiple scenes, switch layout | Default scene names + add scene, saved in localStorage; active name is the program label and is sent on `POST /scene` | ⚠️ partial (no per-scene source layouts) |
-| Sources list | Game capture, webcam, mic, overlay | Game Capture (`getDisplayMedia`), webcam, mic; click again stops the track. Overlay is an image file drawn on the program canvas | ⚠️ partial (no OS game-capture API; canvas compositor) |
-| Program monitor | Game + browser overlay + PIP | White stage. Capture is letterboxed on white; webcam is the program or a gold PIP when both are on | ⚠️ partial (no browser-page overlay track) |
+| Scene list | Five built-ins plus up to three custom scenes. ••• is Choose image / Clear image (not on Gameplay). Custom names are inline. Switching a scene sets game/webcam visibility from the template and clears the overlay preset. Scene images persist in settings. No delete, duplicate, or reorder | Same five names, add (max 3 custom), rename on custom rows, delete any scene except the last. List and active id persist in `localStorage`; corrupt JSON falls back to the five built-ins. Switching updates the program label, the scene’s image or holding card, and which captures are drawn. `POST /scene` sends the scene `name` when the relay is up. Delete is web-only | ⚠️ partial (no drag-reorder; delete is extra) |
+| Sources list | Game capture, webcam, mic, overlay layout presets, chat, notifications | Game Capture, webcam, and mic still start and stop their tracks. Overlay is the desktop composition menu (nine presets or follow the scene layout), not an image file | ⚠️ partial (no OS capture, no chat feed) |
+| Program monitor | Game + scene image + overlay preset slots + PIP | White stage. Gameplay keeps letterboxed capture and the gold webcam PIP. Other scenes hide the captures the template turns off, without stopping them. Holding scenes draw their card until a PNG/JPG is chosen | ⚠️ partial (no Search-tab browser track) |
 | Program stats bar | Studio mode, dropped, FPS, resolution | Offline: zeros and the selected encode profile size. Live: video-track resolution, RTC FPS / dropped frames / RTT when the stats report them | ⚠️ partial (no relay-side encoder stats) |
 | Audio mixer | Desktop / mic / game meters | Faders set Web Audio gain. Desktop meter follows display-capture audio; mic meter follows `getUserMedia`. A second display-audio track, if the browser provides one, is the Game Audio bus. Otherwise that fader is tied to the desktop gain and the game meter stays at silence | ⚠️ partial (no separate game-audio device) |
 | Stream controls sidebar | Go live, recording, vcam | Go Live / End Live (WHIP), Start/Stop Recording (WebM download). Virtual camera is disabled: desktop app only | ⚠️ partial (vcam is desktop-only) |
@@ -52,7 +52,7 @@ Direct comparison between the **Electron streaming studio** (`src/renderer/*`) a
 | Auth on protected routes | `Authorization: Bearer {relayToken}` | Same in `authHeaders()` | ✅ |
 | `POST /config` | Profile + `bitrateMbps` + keys (+ custom RTMP) | Profile + `bitrateMbps` + enabled destination keys (matches `relay-client.ts`) | ✅ |
 | `POST /config/verify` | With destination toggles | Apply config, then verify (destination toggles) | ✅ |
-| `POST /scene` | Profile-sized canvas + gameplay/webcam/browser | Profile canvas + `name` and gameplay `label` set to the active scene; switch/add re-POSTs when the relay is up | ⚠️ partial (same capture layout per scene) |
+| `POST /scene` | Profile-sized canvas + gameplay/webcam/browser, empty for holding scenes, scene-image metadata | Profile canvas + `name`. Gameplay still sends the full frame and a webcam PIP when both captures exist. Other scenes send the template or the selected overlay preset (chat and notification slots included). Switching does not republish WHIP | ⚠️ partial (scene image is drawn on the canvas; the relay does not receive the file) |
 | WHIP publish | Named streams, H.264 preference, ICE gather | Named streams, H.264 preference. Mic id carries the mixed desktop + microphone bus after the faders | ⚠️ partial (no separate browser track) |
 | WHIP teardown | `DELETE` Location + `POST /stop` | Same | ✅ |
 | Status poll | Tabcast snapshot + UI stats | 2s poll `GET /status` | ⚠️ partial (no dropped/FPS from relay in UI) |
@@ -111,21 +111,33 @@ The frozen mock, including the hero program image, is `MAKA_template/`. It is no
 
 | Control | Web `/stream/` | Still desktop-only |
 | --- | --- | --- |
-| Scenes | Select Gameplay, Starting Soon, Just Chatting, Intermission, Ending Scene, or an added scene. The program label updates. The list is stored in `localStorage`. When `/relay/scene` is up, the active scene name is posted (`name` and the gameplay source `label`). | Per-scene source layouts, scene templates |
-| Game Capture | `getDisplayMedia` (screen, window, or tab, plus shared audio when the browser provides it). Click again to stop the tracks. | OS game-capture / process capture |
-| Webcam | `getUserMedia` video. Shown as the program, or as a PIP when a display capture is also on. Click again to stop. | Device picker beyond the browser prompt |
-| Microphone | `getUserMedia` audio. Drives the microphone meter. Click again to stop. | ASIO / exclusive-mode devices |
-| Overlay | Image file picker. The image is drawn on the program canvas. Click again to remove it. | Browser-source / URL overlay and the desktop browser track |
-| Audio mixer | Desktop, Microphone, and Game Audio faders set Web Audio gain for the publish/record mix. Meters use analyser levels and sit at silence with no track. If display capture has only one audio track, Game Audio uses that same desktop gain (no separate meter animation). | Separate game-audio device, monitoring, per-channel device pickers |
+| Scenes | Gameplay, Starting Soon, Just Chatting, Intermission, Ending Scene, plus up to three custom scenes (`custom-1` … `custom-3`). Custom names rename in the row. ••• can delete a scene (refused when it is the last one) and, except on Gameplay, choose or clear a PNG/JPG. The list is stored in `localStorage` (`maka.studio.scenes`). A corrupt or empty list falls back to the five built-in scenes. The program label follows the selection. Scene switch does not stop capture or tear down a live WHIP session | Drag-reorder, duplicate, and deleting the last scene. Desktop does not delete scenes at all |
+| Overlay | The Overlay row toggles a layout preset. ••• lists Follow scene layout plus the nine desktop presets (Classic gaming, Webcam focus, Notifications stack, Chat corner, Balanced triple, Gameplay PiP left, Minimal cam, Broadcast lower third, Symmetric PiP). Presets position gameplay, webcam, and chat/notification placeholders on the program canvas. Choosing a scene clears the preset, matching the exe. Per-scene PNG/JPG (Just Chatting, the three holding scenes, and custom scenes) is stored in `localStorage` and drawn in the exe mask: gameplay-only, or full frame with chat slots left clear | Search-tab browser overlay, real chat and notification feeds, click-through, and opacity. The old single image picker on the Overlay row is gone |
+| Game Capture | `getDisplayMedia` (screen, window, or tab, plus shared audio when the browser provides it). Click again to stop the tracks. A scene that hides gameplay leaves the track running | OS game-capture / process capture |
+| Webcam | `getUserMedia` video. On Gameplay it is the program, or a gold PIP when a display capture is also on. Just Chatting shows it full frame. Click again to stop the track | Device picker beyond the browser prompt |
+| Microphone | `getUserMedia` audio. Drives the microphone meter. Click again to stop. Scene changes do not mute it | ASIO / exclusive-mode devices |
+| Audio mixer | Desktop and Microphone faders set Web Audio gain. Meters use analyser levels and sit at silence with no track. The Game Audio channel is not on this page | Separate game-audio device, monitoring, per-channel device pickers |
 | Go Live | Existing WHIP publish to the staging relay (`/relay/whip`, health, config, scene, stop). Button reads Go Live or End Live. End Live closes the peer connection. | Starting the relay process, multi-platform encode inside the app |
 | Start Recording | `MediaRecorder` on the program canvas (and the mixed audio bus when a track exists). Stop downloads a WebM. | Local recording path, remux, replay buffer |
-| Virtual camera | Disabled. The button says it is desktop-app only. | OS virtual camera |
-| Stream info | Title and category are editable and saved in `localStorage`. Viewers stay `—` (the relay does not report a count). Duration runs only while the WHIP session is up. | Platform metadata sync, real viewer counts |
+| Virtual camera | Not shown. Browsers cannot install an OS virtual camera | OS virtual camera |
+| Stream info | Title and category are editable and saved in `localStorage`. Duration runs only while the WHIP session is up. Viewer count is not shown | Platform metadata sync, real viewer counts |
 | Stats | Offline: dropped frames 0, FPS 0, 0 ms, and the selected encode profile resolution. Live: resolution from the video track; FPS, dropped frames, and RTT only when `RTCPeerConnection.getStats()` reports them. | Encoder process stats from the desktop relay UI |
 | Settings gear | Opens destinations, encode profile, and the relay log. Values are saved locally and sent on Apply and Go Live. | Tray, chat, lab mode, startup, addons |
-| Help, minimize, maximize, close | Decorative. They do not control the browser window. | Real window chrome |
+| Window chrome | Not shown. The page does not draw minimize, maximize, or close | Real window chrome |
 
-Cache buster: `stream9d6`.
+Cache buster: `stream9d8`.
+
+## Scenes and overlay (stream9d8)
+
+Ported from the desktop studio (`src/renderer/app.ts` on the v0.2.6 line, `src/shared/scene-templates.ts`, `scene-images.ts`, `custom-scenes.ts`, `overlay-layout-presets.ts`):
+
+- Scene switch applies the template: Gameplay shows game and webcam, Just Chatting and custom scenes show webcam only, and Starting Soon / Intermission / Ending Scene show the branded card until a scene image is set.
+- Overlay presets are the nine named compositions. They are not stored per scene; selecting a scene clears the preset, as the exe does.
+- Scene PNG/JPG files belong to the scene. Gameplay has no image slot.
+- Web adds delete, which the exe scene menu does not have. The last remaining scene cannot be deleted.
+- Capture tracks and a live WHIP session stay up across scene changes.
+
+Still desktop-only: Search-tab browser overlay, live chat and notification feeds, phone camera, click-through, and opacity. The exe does not reorder or duplicate scenes.
 
 ## UI pass (stream9d5)
 
