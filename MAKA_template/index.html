@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Maka Studio — browser capture with WHIP to MAKA.relay."
+    />
+    <meta name="theme-color" content="#faf8f4" />
+    <link rel="canonical" href="https://makalive.stream/stream/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Maka" />
+    <meta property="og:title" content="Maka Studio" />
+    <meta
+      property="og:description"
+      content="Streaming studio layout matched to the Maka desktop mock. RTMP encoding uses MAKA.relay."
+    />
+    <meta property="og:url" content="https://makalive.stream/stream/" />
+    <meta property="og:image" content="https://makalive.stream/marketing/screenshot-desktop-1280x800.png" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://makalive.stream https://www.makalive.stream http://127.0.0.1:38473 http://localhost:38473"
+    />
+    <title>Maka Studio</title>
+    <link rel="icon" type="image/png" href="favicon-32.png" sizes="32x32" />
+    <link rel="stylesheet" href="fonts.css" />
+    <link rel="stylesheet" href="stream.css" />
+  </head>
+  <body class="stream-page">
+    <div class="stream-studio">
+      <header class="stream-topbar">
+        <div class="brand stream-top-brand">
+          <span class="mark" aria-hidden="true">M</span>
+          <span class="wordmark">Maka <span class="wordmark-studio">Studio</span></span>
+        </div>
+        <div class="studio-window-title">Maka Studio</div>
+        <div class="topbar-right">
+          <button type="button" class="win-btn" id="btn-help" title="Help" aria-label="Help">?</button>
+          <button type="button" class="win-btn" id="btn-settings" title="Stream setup" aria-label="Stream setup">
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+              <path fill="currentColor" d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.2 7.2 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.59.24-1.13.56-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.71 8.84a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.39.31.6.22l2.39-.96c.5.38 1.04.7 1.63.94l.36 2.54c.05.24.25.42.5.42h3.84c.25 0 .45-.18.5-.42l.36-2.54c.59-.24 1.13-.56 1.63-.94l2.39.96c.22.09.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z" />
+            </svg>
+          </button>
+          <span class="win-sep" aria-hidden="true"></span>
+          <div class="win-controls" aria-hidden="true">
+            <button type="button" tabindex="-1">—</button>
+            <button type="button" tabindex="-1">□</button>
+            <button type="button" tabindex="-1">×</button>
+          </div>
+        </div>
+      </header>
+
+      <aside class="stream-sidebar stream-sidebar--left" aria-label="Scenes and sources">
+        <section class="studio-block">
+          <header class="studio-block-head">
+            <h2>Scenes</h2>
+            <button type="button" class="studio-icon-btn" id="btn-add-scene" title="Add scene" aria-label="Add scene">+</button>
+          </header>
+          <ul class="studio-list" id="scene-list" aria-label="Scenes"></ul>
+        </section>
+
+        <section class="studio-block">
+          <header class="studio-block-head">
+            <h2>Sources</h2>
+            <span class="studio-icon-btn studio-icon-btn--static" aria-hidden="true">+</span>
+          </header>
+          <ul class="studio-list" aria-label="Sources">
+            <li>
+              <div class="studio-row">
+                <button type="button" class="studio-list-item" id="btn-screen">
+                  <span class="source-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="16" height="16">
+                      <rect x="3.5" y="5" width="17" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.7" />
+                      <path d="M8 19.5h8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+                    </svg>
+                  </span>
+                  Game Capture
+                </button>
+                <button type="button" class="studio-row-menu" tabindex="-1" aria-hidden="true">•••</button>
+              </div>
+            </li>
+            <li>
+              <div class="studio-row">
+                <button type="button" class="studio-list-item" id="btn-webcam">
+                  <span class="source-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="16" height="16">
+                      <path d="M2.5 12S6.2 6.5 12 6.5 21.5 12 21.5 12 17.8 17.5 12 17.5 2.5 12 2.5 12z" fill="none" stroke="currentColor" stroke-width="1.7" />
+                      <circle cx="12" cy="12" r="2.4" fill="none" stroke="currentColor" stroke-width="1.7" />
+                    </svg>
+                  </span>
+                  Webcam
+                </button>
+                <button type="button" class="studio-row-menu" tabindex="-1" aria-hidden="true">•••</button>
+              </div>
+            </li>
+            <li>
+              <div class="studio-row">
+                <button type="button" class="studio-list-item" id="btn-mic">
+                  <span class="source-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="16" height="16">
+                      <rect x="9" y="3.5" width="6" height="10" rx="3" fill="none" stroke="currentColor" stroke-width="1.7" />
+                      <path d="M6.5 11a5.5 5.5 0 0 0 11 0M12 16.5V20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+                    </svg>
+                  </span>
+                  Microphone
+                </button>
+                <button type="button" class="studio-row-menu" tabindex="-1" aria-hidden="true">•••</button>
+              </div>
+            </li>
+            <li>
+              <div class="studio-row">
+                <button type="button" class="studio-list-item" id="btn-overlay" title="Browser overlay is desktop-only">
+                  <span class="source-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="16" height="16">
+                      <rect x="7" y="7" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.7" />
+                      <path d="M5 15V5h10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+                    </svg>
+                  </span>
+                  Overlay
+                </button>
+                <button type="button" class="studio-row-menu" tabindex="-1" aria-hidden="true">•••</button>
+              </div>
+            </li>
+          </ul>
+        </section>
+
+        <footer class="studio-footer">
+          <span class="studio-status-dot" id="studio-status-dot" data-state="ok" aria-hidden="true"></span>
+          <span id="studio-status-text">All systems nominal</span>
+        </footer>
+      </aside>
+
+      <main class="stream-stage" aria-label="Program">
+        <div class="program-column">
+          <p class="program-label">
+            <span class="program-name">Program</span>
+            <span class="program-mode">• Live Output</span>
+          </p>
+          <div class="program-screen" id="program-screen">
+            <img
+              class="program-poster"
+              src="program-poster.jpg"
+              alt=""
+              width="726"
+              height="478"
+            />
+            <canvas id="program-canvas" class="program-canvas" aria-label="Program preview"></canvas>
+            <p class="program-empty" id="program-empty" hidden>Select a display or window to start streaming</p>
+          </div>
+          <div class="program-stats" id="program-stats" aria-label="Program stream stats">
+            <label class="program-stats-field">
+              <span class="sr-only">Studio mode</span>
+              <select id="program-output-mode" class="program-stats-select" disabled title="Program is the live output feed">
+                <option value="program" selected>Studio Mode</option>
+              </select>
+            </label>
+            <span class="program-stat" id="stat-dropped">Dropped Frames: 0 (0.0%) <span class="stat-caret" aria-hidden="true">▾</span></span>
+            <span class="program-stat" id="stat-fps">FPS: 60</span>
+            <span class="program-stat" id="stat-latency">17 ms</span>
+            <span class="program-stat program-stat-auto" id="stat-resolution">
+              <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                <path d="M20 12a8 8 0 1 1-2.2-5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                <path d="M20 5v5h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <span id="stat-resolution-text">Auto (1920x1080)</span>
+            </span>
+          </div>
+        </div>
+      </main>
+
+      <aside class="stream-sidebar stream-sidebar--right" aria-label="Mixer and stream controls">
+        <section class="studio-card">
+          <h2>Audio Mixer</h2>
+          <div class="audio-mixer" id="audio-mixer">
+            <div class="audio-channel" title="Desktop audio capture not yet implemented">
+              <span class="audio-channel-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                  <path fill="currentColor" d="M4 9.5v5h3.2L12 19V5L7.2 9.5H4zm11.2.2a3.6 3.6 0 0 1 0 4.6l1.2 1.1a5.2 5.2 0 0 0 0-6.8l-1.2 1.1z" />
+                </svg>
+              </span>
+              <span class="audio-channel-name">Desktop Audio</span>
+              <div class="audio-meter-track" aria-hidden="true">
+                <div class="audio-meter" style="width: 78%"></div>
+              </div>
+              <div class="audio-db" aria-hidden="true"><span>-30</span><span>-24</span><span>-18</span><span>-12</span><span>-6</span><span>0</span></div>
+              <button type="button" class="audio-channel-settings" disabled aria-label="Desktop audio settings">
+                <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                  <path fill="currentColor" d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.2 7.2 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.59.24-1.13.56-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.71 8.84a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.39.31.6.22l2.39-.96c.5.38 1.04.7 1.63.94l.36 2.54c.05.24.25.42.5.42h3.84c.25 0 .45-.18.5-.42l.36-2.54c.59-.24 1.13-.56 1.63-.94l2.39.96c.22.09.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z" />
+                </svg>
+              </button>
+            </div>
+            <div class="audio-channel" id="audio-mic-row">
+              <span class="audio-channel-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                  <path fill="currentColor" d="M4 9.5v5h3.2L12 19V5L7.2 9.5H4zm11.2.2a3.6 3.6 0 0 1 0 4.6l1.2 1.1a5.2 5.2 0 0 0 0-6.8l-1.2 1.1z" />
+                </svg>
+              </span>
+              <span class="audio-channel-name">Microphone</span>
+              <div class="audio-meter-track" aria-hidden="true">
+                <div class="audio-meter" id="mic-meter" style="width: 62%"></div>
+              </div>
+              <div class="audio-db" aria-hidden="true"><span>-30</span><span>-24</span><span>-18</span><span>-12</span><span>-6</span><span>0</span></div>
+              <button type="button" class="audio-channel-settings" disabled aria-label="Microphone settings">
+                <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                  <path fill="currentColor" d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.2 7.2 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.59.24-1.13.56-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.71 8.84a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.39.31.6.22l2.39-.96c.5.38 1.04.7 1.63.94l.36 2.54c.05.24.25.42.5.42h3.84c.25 0 .45-.18.5-.42l.36-2.54c.59-.24 1.13-.56 1.63-.94l2.39.96c.22.09.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z" />
+                </svg>
+              </button>
+            </div>
+            <div class="audio-channel" title="Game audio capture not yet implemented">
+              <span class="audio-channel-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                  <path fill="currentColor" d="M4 9.5v5h3.2L12 19V5L7.2 9.5H4zm11.2.2a3.6 3.6 0 0 1 0 4.6l1.2 1.1a5.2 5.2 0 0 0 0-6.8l-1.2 1.1z" />
+                </svg>
+              </span>
+              <span class="audio-channel-name">Game Audio</span>
+              <div class="audio-meter-track" aria-hidden="true">
+                <div class="audio-meter" style="width: 84%"></div>
+              </div>
+              <div class="audio-db" aria-hidden="true"><span>-30</span><span>-24</span><span>-18</span><span>-12</span><span>-6</span><span>0</span></div>
+              <button type="button" class="audio-channel-settings" disabled aria-label="Game audio settings">
+                <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                  <path fill="currentColor" d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.2 7.2 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.59.24-1.13.56-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.71 8.84a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.39.31.6.22l2.39-.96c.5.38 1.04.7 1.63.94l.36 2.54c.05.24.25.42.5.42h3.84c.25 0 .45-.18.5-.42l.36-2.54c.59-.24 1.13-.56 1.63-.94l2.39.96c.22.09.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section class="studio-card">
+          <h2>Stream Controls</h2>
+          <div class="stream-controls-stack">
+            <button type="button" class="btn-go-live" id="btn-start">
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                <circle cx="12" cy="12" r="2.1" fill="currentColor" />
+                <path d="M8.2 8.2a5.2 5.2 0 0 0 0 7.6M15.8 8.2a5.2 5.2 0 0 1 0 7.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+                <path d="M5.8 5.8a8.6 8.6 0 0 0 0 12.4M18.2 5.8a8.6 8.6 0 0 1 0 12.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+              </svg>
+              <span id="btn-go-live-label">Go Live</span>
+            </button>
+            <button type="button" class="btn-quiet" disabled title="Recording is not available in the web studio yet">
+              <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                <circle cx="12" cy="12" r="5.5" fill="none" stroke="currentColor" stroke-width="1.7" />
+              </svg>
+              Start Recording
+            </button>
+            <button type="button" class="btn-quiet" disabled title="Virtual camera is not available in the web studio yet">
+              <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                <rect x="3.5" y="5" width="17" height="11.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.7" />
+                <path d="M8 20h8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+              </svg>
+              Start Virtual Camera
+            </button>
+            <button type="button" class="btn-quiet sr-only" id="btn-stop">End Live</button>
+          </div>
+        </section>
+
+        <section class="studio-card studio-card-info">
+          <header class="studio-block-head">
+            <h2>Stream Info</h2>
+            <button type="button" class="studio-row-menu studio-row-menu--static" tabindex="-1" aria-hidden="true">•••</button>
+          </header>
+          <div class="stream-preview">
+            <img class="stream-thumb" id="stream-thumb" src="stream-thumb.jpg" alt="" width="72" height="72" />
+            <div class="stream-meta">
+              <div class="stream-title" id="stream-title">Epic Fantasy Raids &amp; Chill</div>
+              <div class="stream-category" id="stream-category">Fantasy Games</div>
+              <div class="stream-status-row">
+                <span class="stream-live-pill" id="stream-live-pill" data-live="true">Live</span>
+                <span class="stream-viewers" id="stream-viewers">
+                  <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true">
+                    <circle cx="12" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.7" />
+                    <path d="M5.5 19c1.2-3 3.4-4.5 6.5-4.5S17.3 16 18.5 19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+                  </svg>
+                  1,248 viewers
+                </span>
+                <span class="stream-duration" id="stream-duration">00:23:47</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </div>
+
+    <div class="modal-backdrop" id="studio-settings" hidden role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <div class="modal modal-settings">
+        <header class="settings-head">
+          <h2 id="settings-title">Stream setup</h2>
+          <button type="button" class="win-btn" id="btn-settings-close" aria-label="Close setup">×</button>
+        </header>
+        <p class="stream-hint" id="relay-version-line">Checking relay…</p>
+        <div class="relay-chip stream-relay-chip" id="relay-chip" data-state="stopped" aria-live="polite">
+          <span class="dot status-dot" id="relay-status-dot" data-state="warn"></span>
+          <span id="relay-status-text">Checking relay…</span>
+        </div>
+        <p class="stream-error" id="stream-error" hidden role="alert"></p>
+        <div class="stream-destinations" id="stream-destinations">
+          <label class="stream-check">
+            <input type="checkbox" id="dest-twitch" checked />
+            <span>Twitch</span>
+          </label>
+          <label class="stream-field stream-field--key">
+            <span class="sr-only">Twitch stream key</span>
+            <input id="cfg-twitch-key" type="password" autocomplete="off" spellcheck="false" placeholder="live_… Twitch stream key" />
+          </label>
+          <label class="stream-check">
+            <input type="checkbox" id="dest-youtube" />
+            <span>YouTube</span>
+          </label>
+          <label class="stream-field stream-field--key">
+            <span class="sr-only">YouTube stream key</span>
+            <input id="cfg-youtube-key" type="password" autocomplete="off" spellcheck="false" placeholder="YouTube stream key" disabled />
+          </label>
+          <label class="stream-check">
+            <input type="checkbox" id="dest-custom" />
+            <span>Custom RTMP</span>
+          </label>
+          <label class="stream-field stream-field--key">
+            <span class="sr-only">Custom RTMP ingest URL</span>
+            <input id="cfg-custom-rtmp-url" type="text" autocomplete="off" spellcheck="false" placeholder="rtmps://…/app" disabled />
+          </label>
+          <label class="stream-field stream-field--key">
+            <span class="sr-only">Custom RTMP stream key</span>
+            <input id="cfg-custom-rtmp-key" type="password" autocomplete="off" spellcheck="false" placeholder="Stream key" disabled />
+          </label>
+        </div>
+        <label class="stream-field" for="cfg-profile">
+          <span>Encode profile</span>
+          <select id="cfg-profile">
+            <option value="720p30">720p30</option>
+            <option value="720p60">720p60</option>
+            <option value="1080p30">1080p30</option>
+            <option value="1080p60">1080p60</option>
+            <option value="2k60">2k60</option>
+            <option value="4k60">4k60</option>
+          </select>
+        </label>
+        <div class="stream-actions stream-actions--row">
+          <button type="button" class="btn-quiet" id="btn-config">Apply config</button>
+          <button type="button" class="btn-quiet" id="btn-verify">Verify keys</button>
+          <button type="button" class="btn-quiet" id="btn-relay-refresh">Check relay</button>
+        </div>
+        <details class="settings-log">
+          <summary>Log</summary>
+          <pre class="stream-log" id="stream-log"></pre>
+          <pre class="stream-status-json" id="relay-status-json" aria-live="polite"></pre>
+        </details>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="relay-modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal">
+        <h2 id="modal-title">Relay required for go-live</h2>
+        <p>
+          No relay responded at the configured base URL. On production, check
+          <a href="/relay/health"><code>/relay/health</code></a>. Locally, run
+          <code>npm run dev:web-studio</code> or install Maka with MAKA.relay on port 38473.
+        </p>
+        <div class="modal-actions">
+          <a class="btn-go-live btn-go-live--link" href="/download.html">Download Maka</a>
+          <a class="btn-quiet" href="https://github.com/n0social/maka-streaming-software/blob/main/docs/web-relay.md">Web relay docs</a>
+          <button type="button" class="btn-quiet" id="modal-close">Keep previewing</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="stream.js" defer></script>
+  </body>
+</html>
