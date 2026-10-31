@@ -281,8 +281,95 @@ textarea {
   font-size: 12px;
   letter-spacing: 0.08em;
   padding: 4px 2px;
-  cursor: default;
+  cursor: pointer;
   line-height: 1;
+}
+
+.studio-row-menu:hover,
+.studio-row-menu[aria-expanded='true'] {
+  color: #1a1408;
+}
+
+.studio-list-item.is-scene-hidden {
+  opacity: 0.55;
+}
+
+.studio-scene-name {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 500;
+  padding: 0;
+  margin: 0;
+}
+
+.studio-scene-name:focus {
+  outline: none;
+  box-shadow: inset 0 -1px 0 #c9a227;
+}
+
+.studio-list-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-popover {
+  position: fixed;
+  z-index: 40;
+  min-width: 196px;
+  max-width: 260px;
+  padding: 4px;
+  border: 1px solid #eadfce;
+  border-radius: 10px;
+  background: #fffdfb;
+  box-shadow: 0 8px 24px rgba(26, 20, 8, 0.12);
+}
+
+.studio-popover[hidden] {
+  display: none !important;
+}
+
+.studio-popover-label {
+  margin: 4px 8px 2px;
+  color: #8a8176;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.studio-popover button {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #1a1408;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.studio-popover button:hover {
+  background: #fff6e4;
+}
+
+.studio-popover button[aria-checked='true'] {
+  background: #fff1cc;
+}
+
+.studio-list-add:disabled,
+.studio-icon-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .studio-footer {
