@@ -2,7 +2,32 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { app } from 'electron'
 import type { EncodeProfileId } from '../shared/stream-encode-profiles'
+import { coerceCustomScenes, type CustomScene } from '../shared/custom-scenes'
+import { isSceneImageStorageKey } from '../shared/scene-images'
+import {
+  DEFAULT_STREAM_DESTINATIONS,
+  type StreamDestinationSettings,
+  coerceStreamDestinations,
+} from '../shared/stream-destination-settings'
 import { coerceSettings, isValidTabId, sanitizeSavedTabs } from './security'
+
+export type StreamPlatformPreference = 'twitch' | 'youtube' | 'none'
+
+export type VideoEncoderPreference = 'system' | 'hardware' | 'software'
+
+export type GpuPreference = 'default' | 'discrete' | 'integrated' | `gpu-${string}`
+
+export const SETTINGS_TAB_IDS = [
+  'general',
+  'streaming',
+  'audio',
+  'video',
+  'recording',
+  'modes',
+  'help',
+] as const
+
+export type SettingsTabId = (typeof SETTINGS_TAB_IDS)[number]
 
 export type AppSettings = {
   bitrateProfile: EncodeProfileId
@@ -10,8 +35,28 @@ export type AppSettings = {
   minimizeToTrayWhileLive: boolean
   openChatOnBrowse: boolean
   labMode: boolean
+  autoCheckUpdatesOnStartup: boolean
+  recordingSaveFolder: string
+  /** Last selected tab in full-page Settings mode. */
+  settingsActiveTab: SettingsTabId
+  lastStreamPlatform: StreamPlatformPreference
+  streamTitle: string
+  streamCategory: string
+  preferredMicDeviceId: string
+  /** Windows loopback output device (audiooutput); empty = default playback device. */
+  preferredDesktopAudioOutputDeviceId: string
+  audioMicBitrateKbps: number
+  audioDesktopBitrateKbps: number
+  videoEncoderPreference: VideoEncoderPreference
+  gpuPreference: GpuPreference
   onboardingComplete: boolean
   setupWizardComplete: boolean
+  /** Absolute paths to PNG/JPG scene backgrounds keyed by scene template id. */
+  sceneImages: Partial<Record<string, string>>
+  /** User-defined scenes (max three); ids `custom-1` … `custom-3`. */
+  customScenes: CustomScene[]
+  /** Twitch/YouTube enable flags and stream keys saved from the stats bar dialog. */
+  streamDestinations: StreamDestinationSettings
 }
 
 export type SavedBrowseTab = {
@@ -32,8 +77,23 @@ const DEFAULT_SETTINGS: AppSettings = {
   minimizeToTrayWhileLive: true,
   openChatOnBrowse: false,
   labMode: false,
+  autoCheckUpdatesOnStartup: true,
+  recordingSaveFolder: '',
+  settingsActiveTab: 'general',
+  lastStreamPlatform: 'none',
+  streamTitle: '',
+  streamCategory: '',
+  preferredMicDeviceId: '',
+  preferredDesktopAudioOutputDeviceId: '',
+  audioMicBitrateKbps: 160,
+  audioDesktopBitrateKbps: 160,
+  videoEncoderPreference: 'system',
+  gpuPreference: 'default',
   onboardingComplete: false,
   setupWizardComplete: false,
+  sceneImages: {},
+  customScenes: [],
+  streamDestinations: { ...DEFAULT_STREAM_DESTINATIONS },
 }
 
 function storeDir(): string {
@@ -62,7 +122,24 @@ export function loadSettings(): AppSettings {
 }
 
 export function saveSettings(partial: Partial<AppSettings>): AppSettings {
-  const next = { ...loadSettings(), ...partial }
+  const prev = loadSettings()
+  let sceneImages = { ...prev.sceneImages }
+  if (partial.sceneImages) {
+    for (const [key, value] of Object.entries(partial.sceneImages)) {
+      if (!isSceneImageStorageKey(key)) continue
+      if (!value) delete sceneImages[key]
+      else sceneImages[key] = value
+    }
+  }
+  let customScenes = prev.customScenes
+  if (partial.customScenes) {
+    customScenes = coerceCustomScenes(partial.customScenes)
+  }
+  let streamDestinations = prev.streamDestinations
+  if (partial.streamDestinations !== undefined) {
+    streamDestinations = coerceStreamDestinations(partial.streamDestinations)
+  }
+  const next = { ...prev, ...partial, sceneImages, customScenes, streamDestinations }
   writeJson('settings.json', next)
   return next
 }

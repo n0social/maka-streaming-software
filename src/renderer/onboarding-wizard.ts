@@ -164,13 +164,13 @@ export class SetupWizard {
     statusEl.dataset.state = 'pending'
     nextBtn.disabled = true
 
-    let snapshot = await window.tabcast.getRelay()
+    let snapshot = await window.maka.getRelay()
     if (snapshot.lifecycle !== 'ready' && snapshot.lifecycle !== 'live') {
       statusEl.textContent = 'Starting relay…'
-      snapshot = await window.tabcast.startRelay()
+      snapshot = await window.maka.startRelay()
     }
 
-    const report = await window.tabcast.verifySystem()
+    const report = await window.maka.verifySystem()
     const relayCheck = report.checks.find((c) => c.name === 'relay-lifecycle')
     const healthCheck = report.checks.find((c) => c.name === 'relay-health')
     const binaryCheck = report.checks.find((c) => c.name === 'relay-binary')
@@ -205,7 +205,7 @@ export class SetupWizard {
     nextBtn.disabled = true
 
     try {
-      const sources = await window.tabcast.listCaptureSources()
+      const sources = await window.maka.listCaptureSources()
       this.captureOk = sources.length > 0
       if (this.captureOk) {
         const screens = sources.filter((s) => s.type === 'screen').length

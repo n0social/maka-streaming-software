@@ -1,5 +1,5 @@
-/** Bundled Hello Maka sample files (mirrors addons/_samples/hello-tabcast/). */
-export const HELLO_TABCAST_FILES: Record<string, string> = {
+/** Bundled Hello Maka sample files (mirrors addons/_samples/hello-maka/). */
+export const HELLO_MAKA_FILES: Record<string, string> = {
   'index.html': `<!doctype html>
 <html lang="en">
   <head>
@@ -24,16 +24,16 @@ export const HELLO_TABCAST_FILES: Record<string, string> = {
   </body>
 </html>
 `,
-  'index.js': `/** Hello Maka — minimal sandboxed addon using tabcast.addons API. */
+  'index.js': `/** Hello Maka — minimal sandboxed addon using maka.addons API. */
 ;(async () => {
   const status = document.getElementById('status')
   const meta = document.getElementById('meta')
   const btn = document.getElementById('btn-toast')
-  if (!window.tabcast?.addons) {
-    status.textContent = 'tabcast.addons bridge not available'
+  if (!window.maka?.addons) {
+    status.textContent = 'maka.addons bridge not available'
     return
   }
-  const api = window.tabcast.addons
+  const api = window.maka.addons
   try {
     const info = await api.getInfo()
     meta.textContent = info.name + ' v' + info.version + ' · API ' + info.apiVersion

@@ -1,9 +1,9 @@
-import type { TabcastBridge } from '../preload/index'
+import type { MakaBridge } from '../preload/index'
 import type { RelaySnapshot } from '../shared/relay-snapshot'
 
 declare global {
   interface Window {
-    tabcast: TabcastBridge
+    maka: MakaBridge
   }
 }
 
@@ -53,17 +53,17 @@ function render(snapshot: RelaySnapshot): void {
 }
 
 document.getElementById('btn-start')!.addEventListener('click', () => {
-  void window.tabcast.startRelay()
+  void window.maka.startRelay()
 })
 document.getElementById('btn-stop')!.addEventListener('click', () => {
-  void window.tabcast.stopRelay()
+  void window.maka.stopRelay()
 })
 document.getElementById('btn-stream')!.addEventListener('click', () => {
-  void window.tabcast.openStream()
+  void window.maka.openStream()
 })
 document.getElementById('btn-home')!.addEventListener('click', () => {
-  void window.tabcast.openHome()
+  void window.maka.openHome()
 })
 
-void window.tabcast.getRelay().then(render)
-window.tabcast.onRelayUpdate(render)
+void window.maka.getRelay().then(render)
+window.maka.onRelayUpdate(render)

@@ -1,7 +1,6 @@
 import type { RelaySnapshot } from '../shared/relay-snapshot'
 import { encodeProfileSpec, normalizeEncodeProfileId } from '../shared/stream-encode-profiles'
 import {
-  DEFAULT_STREAM_PROFILE,
   RELAY_BASE_URL,
   RELAY_CONFIG_PATH,
   RELAY_HEALTH_PATH,
@@ -16,7 +15,6 @@ import {
   type SceneLayout,
   type StreamProfile,
 } from '../shared/tabcast'
-import { normalizeStreamKey } from '../shared/stream-keys'
 
 const RELAY_FETCH_MS = 8_000
 
@@ -34,31 +32,8 @@ export function authHeaders(health: RelayHealth | null): Record<string, string> 
 
 export async function postRelayConfig(
   health: RelayHealth,
-  input: {
-    twitchKey?: string
-    youtubeKey?: string
-    customRtmpUrl?: string
-    customRtmpKey?: string
-    profile: StreamProfile
-  },
+  body: RelayConfigRequest,
 ): Promise<void> {
-  const profile = normalizeEncodeProfileId(input.profile || DEFAULT_STREAM_PROFILE)
-  const spec = encodeProfileSpec(profile)
-  const body: RelayConfigRequest = {
-    profile,
-    bitrateMbps: spec.bitrateMbps,
-  }
-  const twitch = normalizeStreamKey(input.twitchKey ?? '')
-  const youtube = normalizeStreamKey(input.youtubeKey ?? '')
-  const customKey = normalizeStreamKey(input.customRtmpKey ?? '')
-  const customUrl = (input.customRtmpUrl ?? '').trim()
-  if (twitch) body.twitchKey = twitch
-  if (youtube) body.youtubeKey = youtube
-  if (customUrl && customKey) {
-    body.customRtmpUrl = customUrl
-    body.customRtmpKey = customKey
-  }
-
   const res = await relayFetch(`${RELAY_BASE_URL}${RELAY_CONFIG_PATH}`, {
     method: 'POST',
     headers: {

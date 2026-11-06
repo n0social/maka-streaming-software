@@ -98,8 +98,8 @@ Run full verify with relay running: `npm run verify` (no `--offline`).
 
 | Item | Change |
 |------|--------|
-| Sandboxed webview runtime | `tabcast-addon://` protocol + per-addon webview in sidebar |
-| `tabcast.addons` bridge | Preload API: toast, fetch, settings, openExternal, onLiveEvent |
+| Sandboxed webview runtime | `maka-addon://` protocol + per-addon webview in sidebar |
+| `maka.addons` bridge | Preload API: toast, fetch, settings, openExternal, onLiveEvent |
 | Live event broadcast | `app.ready`, `live.start`, `live.end` pushed to runtime webviews |
 | Hello Maka sample | Marketplace installable demo with UI panel |
 

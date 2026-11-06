@@ -1,7 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { app } from 'electron'
-import { isValidAddonId } from '../shared/addon-api'
+import { addonFolderName, isValidAddonId } from '../shared/addon-api'
+import { canonicalAddonId, legacyAddonId } from '../shared/addon-ids'
 
 export type AddonState = {
   /** addon id → enabled (default true when installed) */
@@ -20,12 +21,19 @@ export function loadAddonState(): AddonState {
   try {
     const raw = JSON.parse(readFileSync(path, 'utf8')) as Partial<AddonState>
     const enabled: Record<string, boolean> = {}
+    let migrated = false
     if (raw.enabled && typeof raw.enabled === 'object') {
       for (const [k, v] of Object.entries(raw.enabled)) {
-        if (isValidAddonId(k) && typeof v === 'boolean') enabled[k] = v
+        if (!isValidAddonId(k) || typeof v !== 'boolean') continue
+        const id = canonicalAddonId(k)
+        if (id !== k) migrated = true
+        // A current id already in the file wins over a legacy key for the same addon.
+        if (id === k || !(id in enabled)) enabled[id] = v
       }
     }
-    return { enabled }
+    const state = { enabled }
+    if (migrated) saveAddonState(state)
+    return state
   } catch {
     return { enabled: {} }
   }
@@ -37,7 +45,10 @@ export function saveAddonState(state: AddonState): void {
 
 export function isAddonEnabled(state: AddonState, id: string, builtin: boolean): boolean {
   if (builtin) return true
-  if (id in state.enabled) return state.enabled[id]
+  const canon = canonicalAddonId(id)
+  if (canon in state.enabled) return state.enabled[canon]
+  const legacy = legacyAddonId(canon)
+  if (legacy && legacy in state.enabled) return state.enabled[legacy]
   return true
 }
 
@@ -58,4 +69,18 @@ export function removeAddonDir(folderName: string): void {
   if (existsSync(target)) {
     rmSync(target, { recursive: true, force: true })
   }
+}
+
+/** Installed folder for an addon id, preferring the current name and accepting the legacy folder. */
+export function resolveAddonDir(addonId: string): string {
+  const root = addonsInstallDir()
+  const canon = canonicalAddonId(addonId)
+  const names = [addonFolderName(canon)]
+  const legacy = legacyAddonId(canon)
+  if (legacy) names.push(addonFolderName(legacy))
+  for (const name of names) {
+    const dir = join(root, name)
+    if (existsSync(dir)) return dir
+  }
+  return join(root, names[0]!)
 }

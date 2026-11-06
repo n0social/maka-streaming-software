@@ -14,9 +14,13 @@ Maka is **free streaming software** for Windows: a desktop **Electron studio** f
 
 The current **unsigned** Windows installer on GitHub is **v0.2.6**. Installed copies of **v0.2.4** and **v0.2.5** check this release for an update. The build includes the **phone camera/mic add-on** (QR pairing, independent camera and mic, 60-second rejoin, STUN and optional TURN) and **live stream recovery** (a bad stream key stops the stream immediately, network blips retry longer, WHIP stall watchdog, backup RTMP ingest).
 
-`git checkout v0.2.6` matches the published installer.
+`main` matches **v0.2.7**: the v0.2.6 desktop tree, with in-app Home opening [https://makalive.stream](https://makalive.stream). Building from `main` produces `Maka-Setup-0.2.7.exe`.
 
 ### Recent updates
+
+**0.2.7**
+
+- `main` carries the v0.2.6 desktop app. In-app Home opens [https://makalive.stream](https://makalive.stream). The published GitHub installer is still the unsigned **v0.2.6** build.
 
 **0.2.6**
 
@@ -44,7 +48,7 @@ npm run fetch:relay
 npm run dev
 ```
 
-On Windows, `npm run dist` produces the NSIS installer. Use tag **`v0.2.6`** if you need a tree that exactly matches the published installer above.
+On Windows, `npm run dist` produces the NSIS installer `Maka-Setup-0.2.7.exe`.
 
 ### Browser pipeline test (no MAKArelay.exe download)
 
