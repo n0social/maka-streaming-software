@@ -60,7 +60,7 @@ export const PHONE_CAM_FILES: Record<string, string> = {
   var lanHint = document.getElementById('lan-hint')
   var btnRefresh = document.getElementById('btn-refresh')
   var btnUnpair = document.getElementById('btn-unpair')
-  var api = window.tabcast && window.tabcast.addons
+  var api = window.maka && window.maka.addons
 
   function renderStatus(snap) {
     if (snap.status === 'connected') {

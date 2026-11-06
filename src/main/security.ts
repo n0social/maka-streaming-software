@@ -1,6 +1,9 @@
-import type { AppSettings, SavedBrowseTab } from './settings-store'
+import { coerceCustomScenes } from '../shared/custom-scenes'
+import { coerceStreamDestinations } from '../shared/stream-destination-settings'
+import { SETTINGS_TAB_IDS, type AppSettings, type GpuPreference, type SavedBrowseTab } from './settings-store'
 import { normalizeBrowseUrl } from '../shared/browse-url'
 import { isEncodeProfileId } from '../shared/stream-encode-profiles'
+import { coerceSceneImagesRecord } from './scene-image-io'
 
 const TAB_ID_RE = /^[a-zA-Z0-9_-]{1,64}$/
 const PRESET_IDS = new Set(['pin-twitch', 'pin-yt-studio', 'pin-yt-chat', 'pin-chat'])
@@ -41,11 +44,65 @@ export function coerceSettings(partial: unknown): Partial<AppSettings> {
   if (typeof p.labMode === 'boolean') {
     out.labMode = p.labMode
   }
+  if (typeof p.autoCheckUpdatesOnStartup === 'boolean') {
+    out.autoCheckUpdatesOnStartup = p.autoCheckUpdatesOnStartup
+  }
+  if (typeof p.recordingSaveFolder === 'string') {
+    const folder = p.recordingSaveFolder.trim()
+    out.recordingSaveFolder = folder.length <= 4096 ? folder : folder.slice(0, 4096)
+  }
+  if (
+    typeof p.settingsActiveTab === 'string' &&
+    (SETTINGS_TAB_IDS as readonly string[]).includes(p.settingsActiveTab)
+  ) {
+    out.settingsActiveTab = p.settingsActiveTab as AppSettings['settingsActiveTab']
+  }
+  if (p.lastStreamPlatform === 'twitch' || p.lastStreamPlatform === 'youtube' || p.lastStreamPlatform === 'none') {
+    out.lastStreamPlatform = p.lastStreamPlatform
+  }
+  if (typeof p.streamTitle === 'string') {
+    out.streamTitle = p.streamTitle.trim().replace(/\s+/g, ' ').slice(0, 140)
+  }
+  if (typeof p.streamCategory === 'string') {
+    out.streamCategory = p.streamCategory.trim().replace(/\s+/g, ' ').slice(0, 100)
+  }
+  if (typeof p.preferredMicDeviceId === 'string') {
+    const id = p.preferredMicDeviceId.trim()
+    out.preferredMicDeviceId = id.length <= 512 ? id : id.slice(0, 512)
+  }
+  if (typeof p.preferredDesktopAudioOutputDeviceId === 'string') {
+    const id = p.preferredDesktopAudioOutputDeviceId.trim()
+    out.preferredDesktopAudioOutputDeviceId = id.length <= 512 ? id : id.slice(0, 512)
+  }
+  if (typeof p.audioMicBitrateKbps === 'number' && Number.isFinite(p.audioMicBitrateKbps)) {
+    out.audioMicBitrateKbps = Math.min(320, Math.max(64, Math.round(p.audioMicBitrateKbps)))
+  }
+  if (typeof p.audioDesktopBitrateKbps === 'number' && Number.isFinite(p.audioDesktopBitrateKbps)) {
+    out.audioDesktopBitrateKbps = Math.min(320, Math.max(64, Math.round(p.audioDesktopBitrateKbps)))
+  }
+  if (p.videoEncoderPreference === 'system' || p.videoEncoderPreference === 'hardware' || p.videoEncoderPreference === 'software') {
+    out.videoEncoderPreference = p.videoEncoderPreference
+  }
+  if (typeof p.gpuPreference === 'string') {
+    const gpu = p.gpuPreference.trim()
+    if (gpu === 'default' || gpu === 'discrete' || gpu === 'integrated' || /^gpu-\d+$/.test(gpu)) {
+      out.gpuPreference = gpu as GpuPreference
+    }
+  }
   if (typeof p.onboardingComplete === 'boolean') {
     out.onboardingComplete = p.onboardingComplete
   }
   if (typeof p.setupWizardComplete === 'boolean') {
     out.setupWizardComplete = p.setupWizardComplete
+  }
+  if (p.sceneImages !== undefined) {
+    out.sceneImages = coerceSceneImagesRecord(p.sceneImages)
+  }
+  if (p.customScenes !== undefined) {
+    out.customScenes = coerceCustomScenes(p.customScenes)
+  }
+  if (p.streamDestinations !== undefined) {
+    out.streamDestinations = coerceStreamDestinations(p.streamDestinations)
   }
 
   return out

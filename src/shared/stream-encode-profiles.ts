@@ -12,7 +12,7 @@ export type EncodeProfileSpec = {
   id: EncodeProfileId
   /** Center stats bar dropdown */
   menuLabel: string
-  /** Sidebar encode profile select */
+  /** Compact label (legacy sidebar; stats bar uses menuLabel) */
   sidebarLabel: string
   width: number
   height: number
@@ -120,4 +120,10 @@ export function addonProfileBucket(id: EncodeProfileId): '720p' | '1080p' {
 export function formatResolutionLabel(id: EncodeProfileId): string {
   const { width, height } = ENCODE_PROFILES[id]
   return `${width}×${height}`
+}
+
+/** Program stats bar quality dropdown (readme hero style). */
+export function formatAutoEncodeLabel(id: EncodeProfileId): string {
+  const { width, height } = ENCODE_PROFILES[id]
+  return `Auto (${width}×${height})`
 }

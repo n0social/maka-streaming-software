@@ -307,6 +307,9 @@ function resolveLaunch(): DirectRelayLaunch {
             TABCAST_NO_OPEN: '1',
             TABCAST_STREAM_URL: RELAY_WHIP_URL,
             TABCAST_RELAY_ROOT: relayRoot,
+            MAKA_NO_OPEN: '1',
+            MAKA_STREAM_URL: RELAY_WHIP_URL,
+            MAKA_RELAY_ROOT: relayRoot,
             FFMPEG_PATH: existsSync(ffmpeg) ? ffmpeg : (process.env.FFMPEG_PATH ?? ''),
           },
         }
@@ -324,6 +327,8 @@ function resolveLaunch(): DirectRelayLaunch {
       ...process.env,
       TABCAST_NO_OPEN: '1',
       TABCAST_STREAM_URL: RELAY_WHIP_URL,
+      MAKA_NO_OPEN: '1',
+      MAKA_STREAM_URL: RELAY_WHIP_URL,
     },
   }
 }
