@@ -37,7 +37,8 @@
   opacity: 0.55;
 }
 
-.audio-channel[data-idle='1'] {
+.audio-channel[data-idle='1'],
+.audio-channel[data-no-signal='1'] {
   opacity: 0.55;
 }
 
@@ -131,6 +132,7 @@
 }
 
 .audio-meter-track {
+  position: relative;
   flex: 1 1 auto;
   min-width: 4.5rem;
   height: 14px;
@@ -158,6 +160,30 @@
   /* Gradient spans the track, so color zones stay put as the fill widens. */
   background-size: 100cqi 100%;
   transition: width 0.05s linear;
+}
+
+.audio-meter-nosignal {
+  display: none;
+  position: absolute;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted, #6b6256);
+  pointer-events: none;
+  user-select: none;
+}
+
+.audio-channel[data-idle='1'] .audio-meter-nosignal,
+.audio-channel[data-no-signal='1'] .audio-meter-nosignal {
+  display: flex;
+}
+
+.audio-channel[data-idle='0'][data-no-signal='0'] .audio-meter-nosignal {
+  display: none;
 }
 
 .audio-fader {

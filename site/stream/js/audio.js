@@ -1,9 +1,14 @@
 /**
  * Maka web studio — Audio Mixer
- * 1:1 port of Electron studio mic / desktop / game meters + mute + faders.
+ * Mic / desktop / game meters + mute + faders.
  *
- * Streams arrive via window.MakaStreamAudio or CustomEvent('maka-stream-audio').
- * Without a stream, idle meters match exe chrome (desktop/game at 12%).
+ * Streams arrive via window.MakaStreamAudio.setStream / setStreams or
+ * CustomEvent('maka-stream-audio'). Channels stay separate (no OBS-style
+ * combined desktop bus): mic = getUserMedia; desktop = system/monitor share
+ * audio; game = browser-tab capture audio.
+ *
+ * Without a live audio track, meters stay flat at 0% (“No signal”) — never
+ * a fake mid-level idle fill.
  */
 ;(function (global) {
   'use strict'
@@ -23,7 +28,7 @@
       name: 'Desktop Audio',
       settingsId: 'btn-desktop-audio-settings',
       settingsTitle: 'Desktop audio settings',
-      idlePercent: 12,
+      idlePercent: 0,
       idleUnavailable: true,
     },
     mic: {
@@ -49,7 +54,7 @@
       name: 'Game Audio',
       settingsId: 'btn-game-audio-settings',
       settingsTitle: 'Game audio settings',
-      idlePercent: 12,
+      idlePercent: 0,
       idleUnavailable: true,
     },
   }
@@ -170,10 +175,29 @@
     })
   }
 
+  function watchStreamEnded(id, stream) {
+    var tracks = stream && stream.getAudioTracks ? stream.getAudioTracks() : []
+    for (var i = 0; i < tracks.length; i++) {
+      ;(function (track) {
+        track.addEventListener('ended', function () {
+          var rt = runtime[id]
+          if (rt.stream !== stream) return
+          var live = rt.stream.getAudioTracks().some(function (t) {
+            return t && t.readyState !== 'ended'
+          })
+          if (!live) {
+            setStream(id, null)
+          }
+        })
+      })(tracks[i])
+    }
+  }
+
   function startMeter(id, stream) {
     stopMeter(id)
     var rt = runtime[id]
     rt.stream = stream
+    watchStreamEnded(id, stream)
     try {
       var ctx = new AudioContext()
       var source = ctx.createMediaStreamSource(stream)
@@ -202,17 +226,25 @@
   function showIdleMeter(id) {
     var meta = CHANNEL_META[id]
     var els = channelEls(id)
-    setMeterWidth(els.meter, meta.idlePercent)
+    // Always flat — never a mock mid-level fill when no analyser stream.
+    setMeterWidth(els.meter, meta.idlePercent || 0)
   }
 
   function syncChannelUi(id) {
     var meta = CHANNEL_META[id]
     var rt = runtime[id]
     var els = channelEls(id)
-    var hasStream = Boolean(rt.stream && rt.stream.getAudioTracks().length)
+    var hasStream = Boolean(
+      rt.stream &&
+        rt.stream.getAudioTracks &&
+        rt.stream.getAudioTracks().some(function (t) {
+          return t && t.readyState !== 'ended'
+        }),
+    )
     if (els.channel) {
       els.channel.dataset.muted = rt.muted ? '1' : '0'
       els.channel.dataset.idle = hasStream ? '0' : '1'
+      els.channel.dataset.noSignal = hasStream ? '0' : '1'
       if (meta.idleUnavailable) {
         els.channel.dataset.captureUnavailable = hasStream ? '0' : '1'
       } else {
@@ -221,8 +253,10 @@
       if (!hasStream) {
         els.channel.title =
           id === 'mic'
-            ? 'Microphone — waiting for stream'
-            : meta.name + ' — waiting for capture (idle)'
+            ? 'Microphone — no signal (pick a mic in Sources)'
+            : id === 'game'
+              ? 'Game Audio — no signal (share a browser tab with audio)'
+              : 'Desktop Audio — no signal (share a screen/window with system audio)'
       } else if (rt.muted) {
         els.channel.title = meta.name + ' muted (click name or Mute to unmute)'
       } else {
@@ -334,7 +368,8 @@
       '<div class="audio-meter-track" aria-hidden="true">' +
       '<div class="audio-meter" id="' +
       meta.meterId +
-      '"></div>' +
+      '" style="width:0%"></div>' +
+      '<span class="audio-meter-nosignal">No signal</span>' +
       '</div>' +
       '<button type="button" class="audio-channel-mute" id="' +
       meta.muteId +
@@ -412,6 +447,17 @@
         }
         if (wrap && !wrap.querySelector('.audio-db-scale')) {
           wrap.insertAdjacentHTML('beforeend', dbScaleHtml())
+        }
+        var meterTrack = channel.querySelector('.audio-meter-track')
+        if (meterTrack && !meterTrack.querySelector('.audio-meter-nosignal')) {
+          var nosignal = document.createElement('span')
+          nosignal.className = 'audio-meter-nosignal'
+          nosignal.textContent = 'No signal'
+          meterTrack.appendChild(nosignal)
+        }
+        var meterEl = document.getElementById(meta.meterId)
+        if (meterEl && !runtime[id].stream) {
+          setMeterWidth(meterEl, 0)
         }
       })
       return mixer

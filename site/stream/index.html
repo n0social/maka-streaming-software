@@ -337,12 +337,13 @@
         <div class="studio-block studio-block-compact">
           <h2>Audio Mixer</h2>
           <div class="audio-mixer" id="audio-mixer" data-maka-audio-mixer>
-            <div class="audio-channel-wrap">
-              <div class="audio-channel" id="audio-desktop" data-capture-unavailable="0">
+            <div class="audio-channel-wrap" data-channel="desktop">
+              <div class="audio-channel" id="audio-desktop" data-capture-unavailable="1" data-idle="1" data-no-signal="1" data-muted="0">
                 <span class="audio-channel-icon" aria-hidden="true">🔊</span>
                 <span class="audio-channel-name" id="audio-desktop-label">Desktop Audio</span>
                 <div class="audio-meter-track" aria-hidden="true">
-                  <div class="audio-meter" id="desktop-meter"></div>
+                  <div class="audio-meter" id="desktop-meter" style="width:0%"></div>
+                  <span class="audio-meter-nosignal">No signal</span>
                 </div>
                 <button type="button" class="audio-channel-settings" id="btn-desktop-audio-settings" title="Desktop output device" aria-label="Desktop audio settings" aria-expanded="false" aria-controls="desktop-audio-output">⚙</button>
               </div>
@@ -353,12 +354,13 @@
                 <span>-30</span><span>-24</span><span>-18</span><span>-12</span><span>-6</span><span>0</span>
               </div>
             </div>
-            <div class="audio-channel-wrap">
-              <div class="audio-channel" id="audio-mic">
+            <div class="audio-channel-wrap" data-channel="mic">
+              <div class="audio-channel" id="audio-mic" data-idle="1" data-no-signal="1" data-muted="0" data-capture-unavailable="0">
                 <span class="audio-channel-icon" aria-hidden="true">🎙</span>
-                <span class="audio-channel-name">Microphone</span>
+                <span class="audio-channel-name" id="audio-mic-label">Microphone</span>
                 <div class="audio-meter-track" aria-hidden="true">
-                  <div class="audio-meter" id="mic-meter"></div>
+                  <div class="audio-meter" id="mic-meter" style="width:0%"></div>
+                  <span class="audio-meter-nosignal">No signal</span>
                 </div>
                 <button type="button" class="audio-channel-settings" id="btn-mic-audio-settings" title="Microphone settings" aria-label="Microphone settings">⚙</button>
               </div>
@@ -366,12 +368,13 @@
                 <span>-30</span><span>-24</span><span>-18</span><span>-12</span><span>-6</span><span>0</span>
               </div>
             </div>
-            <div class="audio-channel-wrap">
-              <div class="audio-channel" id="audio-game" data-capture-unavailable="0">
+            <div class="audio-channel-wrap" data-channel="game">
+              <div class="audio-channel" id="audio-game" data-capture-unavailable="1" data-idle="1" data-no-signal="1" data-muted="0">
                 <span class="audio-channel-icon" aria-hidden="true">🎮</span>
                 <span class="audio-channel-name" id="audio-game-label">Game Audio</span>
                 <div class="audio-meter-track" aria-hidden="true">
-                  <div class="audio-meter" id="game-meter"></div>
+                  <div class="audio-meter" id="game-meter" style="width:0%"></div>
+                  <span class="audio-meter-nosignal">No signal</span>
                 </div>
                 <button type="button" class="audio-channel-settings" id="btn-game-audio-settings" title="Linked to gameplay capture source" aria-label="Game audio settings">⚙</button>
               </div>

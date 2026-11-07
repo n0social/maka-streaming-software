@@ -50,6 +50,61 @@ function stopTracks(stream) {
   });
 }
 
+function getAudioApi() {
+  if (typeof globalThis === 'undefined') return null;
+  return globalThis.MakaStreamAudio || null;
+}
+
+/**
+ * Route getDisplayMedia audio to mixer channels (kept separate):
+ *   browser tab → game; monitor / window / system loopback → desktop.
+ * @param {MediaStream | null} stream
+ * @param {string} [requestedSurface]
+ */
+function routeDisplayAudioToMixer(stream, requestedSurface) {
+  const audio = getAudioApi();
+  if (!audio || typeof audio.setStream !== 'function') return;
+
+  const clear = (id) => {
+    if (typeof audio.clearStream === 'function') audio.clearStream(id);
+    else audio.setStream(id, null);
+  };
+
+  clear('desktop');
+  clear('game');
+
+  if (!stream || typeof stream.getAudioTracks !== 'function') return;
+  const audioTracks = stream.getAudioTracks().filter((t) => t && t.readyState !== 'ended');
+  if (!audioTracks.length) return;
+
+  let surface = typeof requestedSurface === 'string' ? requestedSurface : '';
+  try {
+    const video = stream.getVideoTracks()[0];
+    const settings = video && typeof video.getSettings === 'function' ? video.getSettings() : null;
+    if (settings && typeof settings.displaySurface === 'string' && settings.displaySurface) {
+      surface = settings.displaySurface;
+    }
+  } catch (_) {
+    /* getSettings optional */
+  }
+
+  const channel = surface === 'browser' ? 'game' : 'desktop';
+  const audioOnly = new MediaStream(audioTracks);
+  audio.setStream(channel, audioOnly);
+}
+
+function clearDisplayAudioFromMixer() {
+  const audio = getAudioApi();
+  if (!audio) return;
+  if (typeof audio.clearStream === 'function') {
+    audio.clearStream('desktop');
+    audio.clearStream('game');
+  } else if (typeof audio.setStream === 'function') {
+    audio.setStream('desktop', null);
+    audio.setStream('game', null);
+  }
+}
+
 function $(root, sel) {
   return root.querySelector(sel);
 }
@@ -211,6 +266,8 @@ export function initPreview(root) {
   let screenStream = null;
   /** @type {MediaStream | null} */
   let webcamStream = null;
+  /** Last requested / observed displaySurface for audio routing. */
+  let lastDisplaySurface = 'browser';
   /** Show PIP chrome even without a live track (matches app mock). */
   let webcamPipDesired = true;
   let destroyed = false;
@@ -354,6 +411,7 @@ export function initPreview(root) {
     stopScreen();
     const surface =
       opts && typeof opts.displaySurface === 'string' ? opts.displaySurface : 'browser';
+    lastDisplaySurface = surface;
     try {
       // Prefer requested surface (tab / window / screen); fall back if the UA rejects constraints.
       let stream = null;
@@ -382,17 +440,28 @@ export function initPreview(root) {
       screenStream = stream;
       const track = stream.getVideoTracks()[0];
       if (track) {
+        try {
+          const settings = typeof track.getSettings === 'function' ? track.getSettings() : null;
+          if (settings && typeof settings.displaySurface === 'string' && settings.displaySurface) {
+            lastDisplaySurface = settings.displaySurface;
+          }
+        } catch (_) {
+          /* optional */
+        }
         track.addEventListener('ended', () => {
           if (screenStream === stream) {
             screenStream = null;
+            clearDisplayAudioFromMixer();
             syncUi();
           }
         });
       }
+      routeDisplayAudioToMixer(stream, lastDisplaySurface);
       syncUi();
       return stream;
     } catch (err) {
       console.warn('[preview] getDisplayMedia failed', err);
+      clearDisplayAudioFromMixer();
       syncUi();
       return null;
     }
@@ -445,6 +514,7 @@ export function initPreview(root) {
   function stopScreen() {
     stopTracks(screenStream);
     screenStream = null;
+    clearDisplayAudioFromMixer();
     if (els.program.srcObject) els.program.srcObject = null;
     syncUi();
   }
@@ -465,15 +535,30 @@ export function initPreview(root) {
     if (!opts.keepPreviousTracks) stopTracks(screenStream);
     screenStream = stream || null;
     if (screenStream) {
+      const surfaceHint =
+        opts && typeof opts.displaySurface === 'string' ? opts.displaySurface : lastDisplaySurface;
+      lastDisplaySurface = surfaceHint || lastDisplaySurface;
       const track = screenStream.getVideoTracks()[0];
       if (track) {
+        try {
+          const settings = typeof track.getSettings === 'function' ? track.getSettings() : null;
+          if (settings && typeof settings.displaySurface === 'string' && settings.displaySurface) {
+            lastDisplaySurface = settings.displaySurface;
+          }
+        } catch (_) {
+          /* optional */
+        }
         track.addEventListener('ended', () => {
           if (screenStream === stream) {
             screenStream = null;
+            clearDisplayAudioFromMixer();
             syncUi();
           }
         });
       }
+      routeDisplayAudioToMixer(screenStream, lastDisplaySurface);
+    } else {
+      clearDisplayAudioFromMixer();
     }
     syncUi();
     return screenStream;

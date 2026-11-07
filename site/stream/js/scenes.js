@@ -6,7 +6,8 @@
  *     (toggleLayerForSourceKind). Never starts getDisplayMedia / getUserMedia.
  *   - Source ⋯ menu ([data-source-menu]) → expand/collapse the device/tab picker.
  *     Picker picks start capture: Game → getDisplayMedia; Webcam → getUserMedia(deviceId);
- *     Mic → list audioinputs (capture handoff to mixer / layer 5).
+ *     Mic → list audioinputs; capture wired to MakaStreamAudio.setStream('mic').
+ *     Display share audio is routed by preview.js (browser tab → game; monitor/window → desktop).
  *   - Stage Share / Add webcam buttons still call preview.js directly. preview must not bind
  *     #studio-source-game / #studio-source-webcam row clicks for capture.
  *   - Scene row click → selectScene immediately (program overlay + maka:scene-change).
@@ -636,6 +637,14 @@
           track.addEventListener('ended', function () {
             if (micCaptureStream === stream) {
               micCaptureStream = null;
+              var audioEnded = getAudioApi();
+              if (audioEnded && typeof audioEnded.clearStream === 'function') {
+                try {
+                  audioEnded.clearStream('mic');
+                } catch (err) {
+                  /* ignore */
+                }
+              }
               markSourceActive('mic', false);
               selectedMicId = '';
               syncSourceRows();
@@ -734,7 +743,7 @@
         appendPickerStatus(picker, 'Not available');
         appendPickerStatus(
           picker,
-          'Row click still toggles mic layer visibility. Deep mixer wiring continues in a later pass.',
+          'Row click still toggles mic layer visibility. Pick a mic here to drive the mixer meter.',
         );
         return;
       }

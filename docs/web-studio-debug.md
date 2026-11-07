@@ -105,7 +105,7 @@ Asset 404s: **none** for studio modules/CSS. Transient `ERR_ABORTED` noise durin
 | --- | --- |
 | Mixer mount | `#audio-mixer` + `data-maka-audio-mixer` |
 | API | `window.MakaStreamAudio` with `setStream` / `getStream` / mute / gain / `channels: [desktop,mic,game]` |
-| Idle meters | Desktop **12%**, Mic **0%**, Game **12%**; `data-idle="1"`; desktop/game `data-capture-unavailable="1"` |
+| Idle meters | All channels **0%** + “No signal” when no stream (`data-idle="1"` / `data-no-signal="1"`); desktop/game also `data-capture-unavailable="1"`. No fake mid-level fill. |
 | CSS | `./css/audio.css` **is linked** in `index.html` |
 | Mic ⚙ id | Static HTML mic settings button lacks `id="btn-mic-audio-settings"`; after upgrade still `(no id)` — settings event for mic gear may not target correctly |
 
@@ -273,9 +273,22 @@ Layer 1 scenes/preview click contract unchanged (source rows = layers; Share scr
 1. **No “(mock)”** — Removed mock picker labels / status copy from Sources (`Mark as connected (mock)`, overlay mock label, refresh “Source lists refreshed (mock)”).
 2. **Game Capture ⋯** — Picker offers **Browser tab** / **Window** / **Screen**; selecting calls `preview.startScreen({ displaySurface })` → `getDisplayMedia` and binds the display stream to the program/game preview path. Stop sharing clears it. Row click still toggles layer visibility only.
 3. **Webcam ⋯** — `enumerateDevices` videoinputs; shows device names; empty list → **Not available**. Selecting calls `preview.startWebcam({ deviceId })` into the webcam PIP.
-4. **Mic ⋯** — Lists `audioinput` devices (or **Not available**); selecting starts `getUserMedia` audio and hands the stream to `MakaStreamAudio.setStream('mic')` when present. Deep mixer polish deferred.
+4. **Mic ⋯** — Lists `audioinput` devices (or **Not available**); selecting starts `getUserMedia` audio and hands the stream to `MakaStreamAudio.setStream('mic')` when present. Mixer honesty completed in sequential layer 5.
 5. **Files** — `site/stream/js/scenes.js`, `site/stream/js/preview.js` (`startScreen` / `startWebcam` options), small HTML id on `#studio-sources-list`.
 6. **Verify** — Headless: no `(mock)` in sources rail text; webcam picker status **Not available** when `devices=[]`; game/webcam picker UI present under ⋯.
+
+---
+
+## Sequential fix layer 5 — Audio mixer
+
+**Done** (this pass only; no deploy). Scope: Audio Mixer honesty + real stream levels. Sources pickers / scenes / live flash unchanged except mic → mixer handoff already present.
+
+1. **No fake idle meters** — Desktop / Mic / Game idle at **0%** with “No signal” overlay (`data-idle` / `data-no-signal`). Removed the previous 12% desktop/game placeholder that looked like live mid-level signal.
+2. **Mic** — Sources Mic ⋯ `getUserMedia` audio → `MakaStreamAudio.setStream('mic')`; track end / Stop clears the channel. `live.js` mic path still mirrors into the same bus.
+3. **Desktop vs Game (kept separate)** — Preview `getDisplayMedia` audio routes by `displaySurface` (track settings when available, else requested surface): **browser tab → game** channel; **monitor / window / system loopback → desktop** channel. Not combined into one OBS-style desktop bus (cloud-tab streaming keeps game audio distinct).
+4. **API** — `MakaStreamAudio.setStream` / `setStreams` / `clearStream` still drive Web Audio analysers; mute + faders unchanged. Channels clear when display share stops.
+5. **Files** — `site/stream/js/audio.js`, `preview.js`, `scenes.js`, `css/audio.css` (+ shell meter-track position), `index.html` idle markup.
+6. **Verify** — With no streams: meter widths `0%`, idle/no-signal attrs set, no mid-level fill. After `setStream` with an oscillator `MediaStreamDestination`, analyser RAF updates meter width above 0.
 
 ---
 
