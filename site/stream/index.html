@@ -38,6 +38,7 @@
     <link rel="stylesheet" href="./css/scenes.css" />
     <link rel="stylesheet" href="./css/audio.css" />
     <link rel="stylesheet" href="./css/live.css" />
+    <link rel="stylesheet" href="./css/settings.css" />
   </head>
   <body data-mode="studio" class="stream-studio">
     <div class="app" id="studio-app" data-shell="studio">
@@ -394,6 +395,18 @@
           </div>
         </div>
       </aside>
+
+      <!-- Settings mode (owned by settings.js) — mirrors Electron #settings-view -->
+      <section
+        id="studio-settings"
+        class="settings-view"
+        hidden
+        aria-label="Settings"
+        data-region="settings"
+        data-settings-tab="general"
+      >
+        <!-- Populated by ./js/settings.js to match exe General / Streaming / Audio / Video / Recording / Studio & Browser / Help -->
+      </section>
     </div>
 
     <div class="modal-backdrop" id="relay-modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-title">
@@ -424,5 +437,6 @@
     <script type="module" src="./js/preview.js"></script>
     <script type="module" src="./js/audio.js"></script>
     <script type="module" src="./js/live.js"></script>
+    <script type="module" src="./js/settings.js"></script>
   </body>
 </html>

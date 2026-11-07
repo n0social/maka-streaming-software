@@ -1,0 +1,395 @@
+/* Program / preview stage — 16:9 contained frame matching Electron studio. */
+
+/* Host wrappers must clip; never let the program frame grow the page. */
+.stream-stage-wrap.stage,
+.stage .program-column,
+.program-column {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#studio-preview.program-frame,
+.program.preview-stage-host,
+.program-frame.preview-stage-host,
+#studio-preview.preview-stage-host {
+  flex: 1 1 auto;
+  min-height: 0 !important;
+  max-height: 100%;
+  height: 100%;
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+/* When shell nests chrome inside #studio-preview, the inner .preview-stage is the 16:9 box. */
+#studio-preview > .preview-stage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  width: min(100cqw, calc(100cqh * 16 / 9));
+  height: min(100cqh, calc(100cqw * 9 / 16));
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: #0a0a0c;
+}
+
+#studio-preview > .preview-stage #program-video,
+#studio-preview > .preview-stage .preview-stage__program {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
+#studio-preview,
+.preview-stage-host {
+  --preview-bg: var(--bg, #faf8f4);
+  --preview-panel: var(--panel-2, #f6f3ec);
+  --preview-line: var(--line, #e6dfd0);
+  --preview-text: var(--text, #1a1408);
+  --preview-muted: var(--muted, #6b6256);
+  --preview-gold: var(--gold, #c9a227);
+  --preview-gold-bright: #ffc40c;
+  --preview-headline: var(--font-headline, "League Spartan", system-ui, sans-serif);
+
+  box-sizing: border-box;
+  container-type: size;
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(ellipse 100% 70% at 50% -20%, rgba(201, 162, 39, 0.08), transparent 55%),
+    var(--preview-panel);
+  color: var(--preview-text);
+}
+
+#studio-preview *,
+#studio-preview *::before,
+#studio-preview *::after,
+.preview-stage-host *,
+.preview-stage-host *::before,
+.preview-stage-host *::after {
+  box-sizing: border-box;
+}
+
+/* Contained 16:9 program frame — never expands the page. */
+.preview-stage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  width: min(100cqw, calc(100cqh * 16 / 9));
+  height: min(100cqh, calc(100cqw * 9 / 16));
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 0.65rem;
+  border: 1px solid var(--preview-line);
+  background: #0a0a0c;
+  box-shadow: 0 8px 28px rgba(26, 20, 8, 0.08);
+}
+
+.preview-stage__label {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.55rem;
+  z-index: 5;
+  font-family: var(--preview-headline);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  background: rgba(26, 20, 8, 0.62);
+  color: #faf8f4;
+  border-radius: 999px;
+  padding: 0.3rem 0.6rem;
+  font-weight: 800;
+  pointer-events: none;
+  backdrop-filter: blur(6px);
+}
+
+.preview-stage__mode {
+  margin-left: 0.35rem;
+  color: var(--preview-gold-bright);
+  font-weight: 800;
+}
+
+.preview-stage__scene-name {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.55rem;
+  z-index: 5;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--preview-headline);
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: #faf8f4;
+  background: rgba(26, 20, 8, 0.45);
+  border: 1px solid rgba(255, 196, 12, 0.35);
+  border-radius: 999px;
+  padding: 0.26rem 0.55rem;
+  pointer-events: none;
+  backdrop-filter: blur(6px);
+}
+
+.preview-stage__scene-name[hidden] {
+  display: none !important;
+}
+
+.preview-stage__program {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  background: #000;
+  display: block;
+}
+
+.preview-stage__program[hidden] {
+  display: none !important;
+}
+
+.preview-stage__empty {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  text-align: center;
+  color: var(--preview-muted);
+  font-size: 0.85rem;
+  line-height: 1.45;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 100% 70% at 50% -20%, rgba(201, 162, 39, 0.08), transparent 55%),
+    var(--preview-panel);
+}
+
+.preview-stage__empty[hidden] {
+  display: none !important;
+}
+
+/* Webcam PIP — matches Electron .program-cam */
+.preview-stage__cam {
+  position: absolute;
+  right: 4.5%;
+  bottom: 5.5%;
+  z-index: 4;
+  width: 22%;
+  aspect-ratio: 16 / 9;
+  border: 2px solid var(--preview-gold);
+  border-radius: 0.65rem;
+  overflow: hidden;
+  background: #000;
+  box-shadow:
+    0 8px 32px rgba(26, 20, 8, 0.18),
+    0 0 0 1px rgba(201, 162, 39, 0.35);
+}
+
+.preview-stage__cam[hidden] {
+  display: none !important;
+}
+
+.preview-stage__cam-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  background: #000;
+  display: block;
+}
+
+.preview-stage__cam-video[hidden] {
+  display: none !important;
+}
+
+.preview-stage__cam-offline {
+  margin: 0;
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #9a9288;
+  font-size: 0.72rem;
+  text-align: center;
+  padding: 0.35rem;
+  line-height: 1.35;
+  z-index: 1;
+  pointer-events: none;
+  background: #121214;
+}
+
+.preview-stage__cam-offline[hidden] {
+  display: none !important;
+}
+
+.preview-stage__cam-tag {
+  position: absolute;
+  left: 0.35rem;
+  top: 0.35rem;
+  z-index: 2;
+  font-family: var(--preview-headline);
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: var(--preview-gold-bright);
+  color: #1a1408;
+  border-radius: 999px;
+  padding: 0.14rem 0.38rem;
+  font-weight: 800;
+  pointer-events: none;
+}
+
+/* Scene card overlay (Starting Soon / Intermission / Ending) */
+.preview-stage__scene-card {
+  position: absolute;
+  inset: 0.55rem;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  border-radius: 0.65rem;
+  border: 2px solid rgba(201, 162, 39, 0.55);
+  background:
+    radial-gradient(ellipse 90% 60% at 50% 0%, rgba(201, 162, 39, 0.14), transparent 58%),
+    linear-gradient(165deg, #faf8f4 0%, #f3efe6 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.65);
+  pointer-events: none;
+}
+
+.preview-stage__scene-card[hidden] {
+  display: none !important;
+}
+
+.preview-stage__scene-card-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  text-align: center;
+  padding: 1rem 1.25rem;
+  max-width: 22rem;
+}
+
+.preview-stage__scene-card-mark {
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 0.55rem;
+  display: grid;
+  place-items: center;
+  font-family: var(--preview-headline);
+  font-weight: 900;
+  font-style: italic;
+  font-size: 1.15rem;
+  color: #1a1408;
+  background: var(--preview-gold-bright);
+  box-shadow: 0 0 0 1px rgba(201, 162, 39, 0.35);
+}
+
+.preview-stage__scene-card-title {
+  margin: 0.15rem 0 0;
+  font-family: var(--preview-headline);
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #1a1408;
+}
+
+.preview-stage__scene-card-subtitle {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--preview-muted);
+}
+
+.preview-stage__scene-card[data-scene='intermission'] .preview-stage__scene-card-mark {
+  background: rgba(201, 162, 39, 0.85);
+}
+
+.preview-stage__scene-card[data-scene='ending'] .preview-stage__scene-card-mark {
+  background: #a8861c;
+  color: #faf8f4;
+}
+
+/* Compact capture controls (shell may hide via [data-chrome='0']) */
+.preview-stage__controls {
+  position: absolute;
+  left: 0.55rem;
+  bottom: 0.55rem;
+  z-index: 6;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.preview-stage[data-chrome='0'] .preview-stage__controls {
+  display: none;
+}
+
+.preview-stage__btn {
+  appearance: none;
+  border: 1px solid rgba(230, 223, 208, 0.55);
+  border-radius: 0.45rem;
+  background: rgba(26, 20, 8, 0.72);
+  color: #faf8f4;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.32rem 0.55rem;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+
+.preview-stage__btn:hover {
+  border-color: var(--preview-gold-bright);
+  color: #fff;
+}
+
+.preview-stage__btn[data-on='1'] {
+  border-color: var(--preview-gold-bright);
+  background: rgba(201, 162, 39, 0.35);
+  color: #fffdf8;
+}
+
+.preview-stage__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media (max-width: 720px) {
+  .preview-stage__cam {
+    width: 28%;
+    right: 3.5%;
+    bottom: 4.5%;
+  }
+
+  .preview-stage__scene-name {
+    max-width: 38%;
+    font-size: 0.52rem;
+  }
+}
