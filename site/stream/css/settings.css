@@ -1,0 +1,418 @@
+/* Maka web studio — Settings mode (1:1 port of Electron src/renderer settings chrome).
+   Source: src/renderer/app.html #settings-view + src/renderer/app.css settings-* rules.
+   Mount: #studio-settings (alias #settings-view). Shown when body[data-mode='settings']. */
+
+#studio-settings,
+#settings-view.settings-view,
+.settings-view {
+  --settings-bg: var(--bg, #faf8f4);
+  --settings-panel: var(--panel, #ffffff);
+  --settings-line: var(--line, #e6dfd0);
+  --settings-text: var(--text, #1a1408);
+  --settings-muted: var(--muted, #6b6256);
+  --settings-gold: var(--gold, #ffc40c);
+  --settings-gold-dark: var(--gold-dark, #c99800);
+  --settings-radius: var(--radius, 1rem);
+  --settings-headline: var(--font-headline, "League Spartan", system-ui, sans-serif);
+  --settings-body: var(--font-body, "Inter", "Segoe UI", system-ui, sans-serif);
+
+  display: none;
+  box-sizing: border-box;
+  background: var(--settings-bg);
+  color: var(--settings-text);
+  font-family: var(--settings-body);
+  font-size: 0.88rem;
+  min-height: 0;
+  overflow: auto;
+}
+
+#studio-settings *,
+#studio-settings *::before,
+#studio-settings *::after,
+.settings-view *,
+.settings-view *::before,
+.settings-view *::after {
+  box-sizing: border-box;
+}
+
+/* Mirror Electron body[data-mode='settings'] chrome (src/renderer/app.css). */
+body[data-mode='settings'] .app {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'top'
+    'stage';
+}
+
+body[data-mode='settings'] .sidebar,
+body[data-mode='settings'] .studio-sidebar,
+body[data-mode='settings'] aside.sidebar,
+body[data-mode='settings'] .program-column,
+body[data-mode='settings'] .program,
+body[data-mode='settings'] .program-stats,
+body[data-mode='settings'] .stage,
+body[data-mode='settings'] .stage-frame {
+  display: none !important;
+}
+
+body[data-mode='settings'] #navrow,
+body[data-mode='settings'] #browsetabs {
+  display: none !important;
+}
+
+body[data-mode='settings'] #studio-settings,
+body[data-mode='settings'] #settings-view,
+body[data-mode='settings'] .settings-view {
+  display: block;
+  grid-area: stage;
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  overflow: auto;
+  z-index: 5;
+  background: var(--settings-bg);
+}
+
+body[data-mode='settings'] .topbar .relay-chip,
+body[data-mode='settings'] .topbar .go-live {
+  display: none !important;
+}
+
+body[data-mode='settings'] .topbar #btn-settings,
+body[data-mode='settings'] #btn-settings {
+  display: inline-flex !important;
+  border-color: var(--settings-gold);
+  background: rgba(201, 162, 39, 0.12);
+}
+
+body[data-mode='settings'] #brand-tag {
+  display: inline !important;
+}
+
+body:not([data-mode='settings']) #studio-settings,
+body:not([data-mode='settings']) #settings-view.settings-view {
+  display: none;
+}
+
+.settings-view-inner {
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: 1.25rem 1.35rem 1.5rem;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.settings-view-header {
+  min-width: 0;
+}
+
+.settings-view-title {
+  margin: 0;
+  font-family: var(--settings-headline);
+  font-size: 1.35rem;
+  font-weight: 900;
+  font-style: italic;
+  color: #1a1408;
+  letter-spacing: 0.01em;
+}
+
+.settings-view-lead {
+  margin: 0.35rem 0 0;
+  font-size: 0.88rem;
+  color: var(--settings-muted);
+}
+
+.settings-layout {
+  display: grid;
+  grid-template-columns: minmax(9rem, 11rem) minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.settings-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  position: sticky;
+  top: 0;
+}
+
+.settings-tab {
+  appearance: none;
+  text-align: left;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #1a1408;
+  border-radius: 0.65rem;
+  padding: 0.45rem 0.65rem;
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.settings-tab:hover {
+  background: var(--settings-panel);
+  border-color: var(--settings-line);
+}
+
+.settings-tab.active {
+  background: var(--settings-panel);
+  border-color: var(--settings-gold);
+  font-weight: 600;
+}
+
+.settings-panels {
+  min-width: 0;
+}
+
+.settings-panel {
+  display: none;
+  min-width: 0;
+}
+
+.settings-panel.active {
+  display: block;
+}
+
+.settings-panel[hidden] {
+  display: none !important;
+}
+
+.settings-panel h2 {
+  margin: 0 0 0.75rem;
+  font-family: var(--settings-headline);
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--settings-text);
+}
+
+#studio-settings .check,
+.settings-view .check {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.85rem;
+  margin: 0.55rem 0 0.35rem;
+  color: var(--settings-text);
+  cursor: pointer;
+  user-select: none;
+}
+
+#studio-settings .check input,
+.settings-view .check input {
+  width: 1rem;
+  height: 1rem;
+  accent-color: #2563eb;
+  flex: 0 0 auto;
+}
+
+#studio-settings .field-label,
+.settings-view .field-label {
+  display: block;
+  margin: 0.85rem 0 0.35rem;
+  font-family: var(--settings-headline);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--settings-muted);
+  font-weight: 800;
+}
+
+#studio-settings .field-label:first-of-type,
+.settings-view .settings-panel h2 + .field-label {
+  margin-top: 0.15rem;
+}
+
+#studio-settings .select,
+.settings-view .select {
+  display: block;
+  width: 100%;
+  max-width: 20rem;
+  height: 2.1rem;
+  margin-bottom: 0.65rem;
+  border-radius: 0.85rem;
+  border: 1px solid var(--settings-line);
+  background: var(--settings-panel);
+  color: var(--settings-text);
+  padding: 0 0.75rem;
+  font: inherit;
+  font-size: 0.88rem;
+}
+
+#studio-settings .select:focus,
+#studio-settings .key-input:focus,
+.settings-view .select:focus,
+.settings-view .key-input:focus {
+  outline: none;
+  border-color: var(--settings-gold);
+  box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.28);
+}
+
+#studio-settings .key-input,
+.settings-view .key-input {
+  display: block;
+  width: 100%;
+  max-width: 28rem;
+  height: 2.1rem;
+  border-radius: 0.85rem;
+  border: 1px solid var(--settings-line);
+  background: var(--settings-panel);
+  color: var(--settings-text);
+  padding: 0 0.75rem;
+  font: inherit;
+  font-size: 0.82rem;
+  margin-bottom: 0.15rem;
+}
+
+#studio-settings .hint,
+.settings-view .hint {
+  margin: 0 0 0.75rem;
+  color: var(--settings-muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+#studio-settings .hint.tight,
+.settings-view .hint.tight {
+  margin-top: 0.55rem;
+}
+
+.settings-version-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-top: 1rem;
+  font-size: 0.82rem;
+  color: var(--settings-text);
+}
+
+.settings-version-block .field-label {
+  margin-bottom: 0.15rem;
+}
+
+.settings-folder-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  max-width: 28rem;
+}
+
+.settings-folder-input {
+  flex: 1;
+  margin-bottom: 0 !important;
+  max-width: none !important;
+}
+
+.settings-folder-row button,
+#studio-settings .btn-block,
+.settings-view .btn-block {
+  appearance: none;
+  border: 1px solid var(--settings-line);
+  background: var(--settings-panel);
+  color: var(--settings-text);
+  border-radius: 0.85rem;
+  padding: 0.45rem 0.75rem;
+  font-family: var(--settings-headline);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.settings-folder-row button:hover,
+#studio-settings .btn-block:hover,
+.settings-view .btn-block:hover {
+  background: #f6f3ec;
+  border-color: var(--settings-gold);
+}
+
+#studio-settings .btn-block,
+.settings-view .btn-block {
+  width: 100%;
+  max-width: 22rem;
+  margin-bottom: 0.65rem;
+}
+
+#studio-settings .spaced-btn,
+.settings-view .spaced-btn {
+  margin-top: 0.55rem;
+}
+
+.settings-mode-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.75rem;
+  margin: 0.5rem 0;
+}
+
+.settings-mode-card {
+  border: 1px solid var(--settings-line);
+  border-radius: var(--settings-radius);
+  background: var(--settings-panel);
+  padding: 0.85rem 0.95rem;
+}
+
+.settings-mode-card h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.92rem;
+  font-family: var(--settings-headline);
+  font-weight: 800;
+}
+
+.settings-mode-card p {
+  margin: 0 0 0.65rem;
+  font-size: 0.8rem;
+  color: var(--settings-muted);
+  line-height: 1.45;
+}
+
+.settings-mode-card .btn-block {
+  margin-bottom: 0;
+}
+
+.settings-view-footer {
+  margin-top: auto;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--settings-line);
+  font-size: 0.72rem;
+  color: var(--settings-muted);
+}
+
+.settings-web-note {
+  margin: 0.85rem 0 0;
+  padding: 0.55rem 0.65rem;
+  border: 1px dashed var(--settings-line);
+  border-radius: 0.65rem;
+  background: rgba(255, 255, 255, 0.55);
+  color: var(--settings-muted);
+  font-size: 0.72rem;
+  line-height: 1.45;
+  max-width: 36rem;
+}
+
+@media (max-width: 720px) {
+  .settings-layout {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+
+  .settings-tabs {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .settings-tab {
+    flex: 0 0 auto;
+  }
+
+  .settings-view-inner {
+    padding: 1rem 0.85rem 1.25rem;
+  }
+}
