@@ -2,14 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <base href="https://makalive.stream.skydav.work/" />
+    <base href="https://makalive.stream/" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
       content="Maka — cream-and-gold streaming studio for Windows. Download the desktop app, try browser capture, or preview the studio UI."
     />
     <meta name="theme-color" content="#faf8f4" />
-    <link rel="canonical" href="https://makalive.stream.skydav.work/" />
+    <link rel="canonical" href="https://makalive.stream/" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Maka" />
     <meta property="og:title" content="Maka — stream lighter" />
@@ -17,17 +17,17 @@
       property="og:description"
       content="Download Maka for Windows — local relay, browser try, or studio preview."
     />
-    <meta property="og:url" content="https://makalive.stream.skydav.work/" />
-    <meta property="og:image" content="https://makalive.stream.skydav.work/marketing/feature-graphic-1024x500.png" />
+    <meta property="og:url" content="https://makalive.stream/" />
+    <meta property="og:image" content="https://makalive.stream/marketing/feature-graphic-1024x500.png" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Maka — stream lighter" />
     <meta
       name="twitter:description"
       content="Download Maka for Windows. Try browser capture or preview the redesigned studio."
     />
-    <meta name="twitter:image" content="https://makalive.stream.skydav.work/marketing/feature-graphic-1024x500.png" />
+    <meta name="twitter:image" content="https://makalive.stream/marketing/feature-graphic-1024x500.png" />
     <title>Maka — stream lighter</title>
-    <link rel="icon" type="image/png" href="/marketing/favicon-32.png" sizes="32x32" />
+    <link rel="icon" type="image/png" href="/marketing/favicon-32.png?v=maka-m" sizes="32x32" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -83,23 +83,61 @@
         gap: 2rem;
         width: 100%;
       }
-      /* Wordmark colors/foil live in maka.css only — avoid fighting external stylesheet */
+      /* Wordmark — must stay readable if maka.css fails (origin serves inline first) */
+      .hero-mvp__brand-stage {
+        display: grid;
+        place-items: center;
+        width: 100vw;
+        max-width: 100vw;
+        margin-left: calc(50% - 50vw);
+        margin-right: calc(50% - 50vw);
+      }
       .maka-wordmark {
+        position: relative;
+        grid-area: 1 / 1;
+        justify-self: center;
         margin: 0;
         font-family: var(--headline);
         font-weight: 900;
         font-style: italic;
-        font-size: clamp(3.5rem, 16vw, 9rem);
+        font-size: clamp(7.35rem, 20.5vw, 16.5rem);
         line-height: 0.9;
         letter-spacing: -0.04em;
         text-transform: uppercase;
+        width: fit-content;
+        text-align: center;
+      }
+      .maka-wordmark__svg {
+        display: block;
+        width: min(92vw, 78rem);
+        height: auto;
+        margin: 0 auto;
+        overflow: visible;
+      }
+      .maka-wordmark__svg text {
+        font-family: var(--headline);
+        font-weight: 900;
+        font-style: italic;
+        font-size: 188px;
+      }
+      .maka-svg-back {
+        fill: #ffffff;
+      }
+      .maka-svg-yellow {
+        fill: #ffc40c;
+      }
+      .maka-svg-foil {
+        fill: #f6f3ec;
       }
       .hero-mvp__actions {
         display: flex;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
         justify-content: center;
-        gap: 0.65rem;
-        max-width: 36rem;
+        align-items: stretch;
+        gap: 0.85rem;
+        width: min(100%, 25rem);
+        max-width: 25rem;
+        margin-inline: auto;
       }
       .btn {
         display: inline-flex;
@@ -130,14 +168,11 @@
         font-size: 0.78rem;
       }
     </style>
-    <link
-      rel="preload"
-      as="style"
-      href="https://makalive.stream.skydav.work/maka.css?v=dc6d035"
-    />
+    <link rel="preload" as="style" href="/maka.css?v=dc6d039" />
+    <link rel="stylesheet" href="/maka.css?v=dc6d039" />
     <link
       rel="stylesheet"
-      href="https://makalive.stream.skydav.work/maka.css?v=dc6d035"
+      href="https://makalive.stream/maka.css?v=dc6d039"
     />
   </head>
   <body class="page-home-mvp">
@@ -163,18 +198,46 @@
               />
             </div>
             <h1 class="maka-wordmark" aria-label="MAKA">
-              <span class="maka-wordmark__back" aria-hidden="true">MAKA</span>
-              <span class="maka-wordmark__front">MAKA</span>
+              <svg class="maka-wordmark__svg" viewBox="0 0 1000 280" overflow="visible" role="img" aria-hidden="true">
+                <defs>
+                  <clipPath id="maka-yellow-half" clipPathUnits="objectBoundingBox">
+                    <polygon points="0,0.60 1,0.22 1,1.2 0,1.2" />
+                  </clipPath>
+                  <clipPath id="maka-foil-half" clipPathUnits="objectBoundingBox">
+                    <polygon points="0,-0.2 1,-0.2 1,0.22 0,0.60" />
+                  </clipPath>
+                  <linearGradient id="maka-foil" gradientUnits="objectBoundingBox" x1="0" y1="0" x2="1" y2="0.45">
+                    <stop offset="0%" stop-color="#ffffff" />
+                    <stop offset="18%" stop-color="#c8f3ff" />
+                    <stop offset="40%" stop-color="#ffd6f2" />
+                    <stop offset="62%" stop-color="#fff3b0" />
+                    <stop offset="82%" stop-color="#e7fff6" />
+                    <stop offset="100%" stop-color="#ffffff" />
+                  </linearGradient>
+                  <linearGradient id="maka-shine" gradientUnits="objectBoundingBox" x1="0" y1="0" x2="1" y2="0.55">
+                    <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9" />
+                    <stop offset="16%" stop-color="#ffffff" stop-opacity="0.25" />
+                    <stop offset="34%" stop-color="#ffffff" stop-opacity="1" />
+                    <stop offset="48%" stop-color="#fff6d0" stop-opacity="0.35" />
+                    <stop offset="64%" stop-color="#ffffff" stop-opacity="0.95" />
+                    <stop offset="80%" stop-color="#ffffff" stop-opacity="0.3" />
+                    <stop offset="100%" stop-color="#ffffff" stop-opacity="0.85" />
+                  </linearGradient>
+                </defs>
+                <text class="maka-svg-back" x="512" y="214" text-anchor="middle">MAKA</text>
+                <text class="maka-svg-yellow" x="500" y="202" text-anchor="middle" clip-path="url(#maka-yellow-half)">MAKA</text>
+                <text class="maka-svg-foil" x="500" y="202" text-anchor="middle" clip-path="url(#maka-foil-half)">MAKA</text>
+                <text class="maka-svg-shine" x="500" y="202" text-anchor="middle" clip-path="url(#maka-foil-half)">MAKA</text>
+              </svg>
             </h1>
           </div>
 
           <nav class="hero-mvp__actions" aria-label="Primary actions">
-            <a class="btn btn-outline hero-mvp__btn" href="/stream/">Stream</a>
-            <a class="btn btn-outline hero-mvp__btn" href="/preview/">App preview</a>
+            <a class="btn btn-outline hero-mvp__btn" href="/stream/"><span>Stream</span></a>
             <a
               class="btn btn-primary hero-mvp__btn hero-mvp__btn--download"
-              href="https://github.com/n0social/maka-streaming-software/releases/download/maka.streaming.v.01/Maka-Setup-0.2.4.exe"
-              >Download</a
+              href="https://github.com/n0social/maka-streaming-software/releases/download/v0.2.6/Maka-Setup-0.2.6.exe"
+              ><span>Download</span></a
             >
           </nav>
         </div>

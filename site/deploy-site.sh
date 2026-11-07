@@ -1,13 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
-# HTML links: https://makalive.stream.skydav.work/maka.css?v=dc6d035 (absolute origin avoids apex redirect stripping /maka.css).
+# HTML links: https://makalive.stream/maka.css?v=dc6d039 (absolute origin avoids apex redirect stripping /maka.css).
 # nginx: site/tabcast-site-cache.conf + site/nginx/makalive.stream.skydav.work.conf
 
 WEB_ROOT="${WEB_ROOT:-/opt/tabcast/web}"
 SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
 SITE_HOST="${SITE_HOST:-makalive.stream.skydav.work}"
-CSS_BUILD="${CSS_BUILD:-dc6d035}"
+CSS_BUILD="${CSS_BUILD:-dc6d039}"
 
 echo "Publishing Maka site from ${SRC_DIR}…"
 

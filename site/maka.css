@@ -1,4 +1,4 @@
-/* MAKA_CSS_BUILD=dc6d035 — bump ?v= on /maka.css in site/**/*.html when this file changes */
+/* MAKA_CSS_BUILD=dc6d039 — bump the maka.css query in site HTML when this file changes */
 /* Maka marketing site — cream / Mikado Yellow tokens (matches Electron studio redesign) */
 :root {
   color-scheme: light;
@@ -302,20 +302,20 @@ svg {
 @keyframes mascot-float {
   0%,
   100% {
-    transform: scale(1.06) translateY(0);
+    transform: translateY(0);
   }
   50% {
-    transform: scale(1.06) translateY(-6px);
+    transform: translateY(-1.35rem);
   }
 }
 
 @keyframes mascot-float-mobile {
   0%,
   100% {
-    transform: scale(0.98) translateY(0);
+    transform: translateY(0);
   }
   50% {
-    transform: scale(0.98) translateY(-6px);
+    transform: translateY(-0.95rem);
   }
 }
 
@@ -419,12 +419,12 @@ svg {
   overflow: visible;
 }
 
+/* Locked hero: word min(94vw, 52rem); yellow clip 0,0.60 → 1,0.22; foil and shine above that line; buttons margin-top clamp(7.5rem, 18vh, 11rem); mascot left calc(50% + 12.5rem). */
 .hero-mvp__brand-stage {
   position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
+  display: grid;
+  place-items: center;
+  width: 100vw;
   max-width: 100vw;
   margin-left: calc(50% - 50vw);
   margin-right: calc(50% - 50vw);
@@ -437,187 +437,105 @@ svg {
 .maka-wordmark {
   position: relative;
   z-index: 2;
-  margin: 0 auto;
+  grid-area: 1 / 1;
+  justify-self: center;
+  align-self: center;
+  margin: 0;
   font-family: var(--headline);
   font-weight: 900;
   font-style: italic;
-  font-size: clamp(5.25rem, 19vw, 11rem);
+  font-size: clamp(7.35rem, 20.5vw, 16.5rem);
   line-height: 0.88;
   letter-spacing: -0.04em;
   text-transform: uppercase;
   width: fit-content;
-  max-width: none;
-  padding-inline: clamp(0.1em, 0.45vw, 0.18em);
+  max-width: min(96vw, 100%);
+  padding-inline: clamp(0.16em, 0.7vw, 0.28em);
   overflow: visible;
+  text-align: center;
 }
 
-.maka-wordmark__back,
-.maka-wordmark__front {
+.maka-wordmark__svg {
   display: block;
-}
-
-.maka-wordmark__back {
-  position: absolute;
-  left: 0;
-  top: 0.045em;
-  width: 100%;
-  padding-inline: 0.06em;
-  box-sizing: content-box;
-  transform: translate(0.045em, 0);
-  color: var(--white);
-  text-shadow:
-    0 0 0 var(--champagne),
-    0 2px 0 rgba(246, 243, 236, 0.95),
-    0 0 40px rgba(255, 255, 255, 0.35);
-  -webkit-text-stroke: 1px rgba(230, 223, 208, 0.65);
-  paint-order: stroke fill;
+  width: min(92vw, 78rem);
+  height: auto;
+  margin: 0 auto;
   overflow: visible;
-  white-space: nowrap;
-  z-index: 0;
-  user-select: none;
+  font-family: var(--headline);
 }
 
-.maka-wordmark__front {
-  position: relative;
-  z-index: 2;
-  /* ~35° upward split: top cream/white, bottom Mikado Yellow (#ffc40c) */
-  background: linear-gradient(
-    35deg,
-    var(--white) 0%,
-    var(--champagne) 38%,
-    var(--champagne) 46%,
-    var(--gold-light) 49%,
-    var(--gold) 52%,
-    var(--gold) 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
+.maka-wordmark__svg text {
+  font-family: var(--headline);
+  font-weight: 900;
+  font-style: italic;
+  font-size: 188px;
+  letter-spacing: -0.04em;
 }
 
-/* Holographic foil on cream/white upper split (35deg) — MTG/YGO diamond foil shimmer */
-.maka-wordmark::before {
-  content: "MAKA";
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: 3;
-  pointer-events: none;
-  font: inherit;
-  letter-spacing: inherit;
-  text-transform: inherit;
-  padding-inline: inherit;
-  box-sizing: border-box;
-  white-space: nowrap;
-  width: max-content;
-  max-width: 100%;
-  line-height: inherit;
-  background-image:
-    repeating-linear-gradient(
-      125deg,
-      transparent 0,
-      transparent 5px,
-      rgba(255, 255, 255, 0.42) 5px,
-      rgba(255, 255, 255, 0.06) 6px,
-      transparent 7px,
-      transparent 11px
-    ),
-    repeating-linear-gradient(
-      55deg,
-      transparent 0,
-      transparent 7px,
-      rgba(170, 210, 255, 0.14) 7px,
-      rgba(255, 175, 215, 0.1) 8px,
-      transparent 9px,
-      transparent 14px
-    ),
-    conic-gradient(
-      from 205deg at 38% 28%,
-      rgba(255, 110, 190, 0.28),
-      rgba(110, 195, 255, 0.24),
-      rgba(255, 245, 170, 0.22),
-      rgba(160, 255, 210, 0.18),
-      rgba(255, 110, 190, 0.28)
-    ),
-    linear-gradient(
-      118deg,
-      rgba(255, 255, 255, 0.65) 0%,
-      rgba(255, 255, 255, 0.08) 42%,
-      transparent 58%
-    );
-  background-size: 13px 13px, 15px 15px, 210% 210%, 100% 100%;
-  background-position: 0 0, 0 0, var(--maka-foil-shift, 12%) 36%, 0 0;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
-  -webkit-mask-image: linear-gradient(
-    35deg,
-    #000 0%,
-    #000 42%,
-    rgba(0, 0, 0, 0.8) 46%,
-    transparent 50%
-  );
-  mask-image: linear-gradient(
-    35deg,
-    #000 0%,
-    #000 42%,
-    rgba(0, 0, 0, 0.8) 46%,
-    transparent 50%
-  );
-  animation: maka-wordmark-foil 9s ease-in-out infinite;
+.maka-svg-back {
+  fill: #ffffff;
+  stroke: #e6dfd0;
+  stroke-width: 2px;
+  paint-order: stroke fill;
 }
 
-@keyframes maka-wordmark-foil {
-  0%,
-  100% {
-    background-position: 0 0, 0 0, 8% 34%, 0 0;
-    opacity: 0.82;
-  }
+.maka-svg-yellow {
+  fill: #ffc40c;
+}
 
-  50% {
-    background-position: 5px 3px, -4px 5px, 42% 40%, 0 0;
-    opacity: 0.95;
-  }
+.maka-svg-foil {
+  fill: url(#maka-foil);
+}
+
+.maka-svg-shine {
+  fill: url(#maka-shine);
+  mix-blend-mode: screen;
 }
 
 .hero-mvp__mascot-wrap {
   position: absolute;
-  z-index: 1;
+  left: calc(50% + 12.5rem);
   top: 50%;
-  left: clamp(58%, 62vw, 68%);
+  transform: translateY(-50%);
+  z-index: 4;
+  width: auto;
+  height: auto;
   margin: 0;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
+  display: block;
   pointer-events: none;
   background: none;
-  transform: translateY(-50%);
+  overflow: visible;
 }
 
 .hero-mvp__actions {
   display: flex;
   flex-direction: row;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: stretch;
   justify-content: center;
-  gap: 0.65rem 0.75rem;
-  width: 100%;
-  max-width: 36rem;
-  margin-top: clamp(1.25rem, 3.5vw, 2.25rem);
+  gap: 0.85rem;
+  width: min(100%, 25rem);
+  max-width: 25rem;
+  margin-inline: auto;
+  margin-top: clamp(1.75rem, 4vh, 2.75rem);
 }
 
 .hero-mvp__btn {
-  flex: 1 1 7.5rem;
-  min-width: 7.5rem;
-  max-width: 11.5rem;
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
+  max-width: none;
   padding: 0.95rem 1.1rem;
   font-size: 0.74rem;
   letter-spacing: 0.07em;
   position: relative;
   isolation: isolate;
   overflow: visible;
+}
+
+.hero-mvp__btn > span {
+  position: relative;
+  z-index: 1;
 }
 
 /* Manga focus lines — burst on hover, then subtle drift (hero CTAs only) */
@@ -634,7 +552,7 @@ svg {
   opacity: 0;
   transform: translate(-50%, -50%) scale(0.35);
   transition: opacity 0.15s ease;
-  z-index: -1;
+  z-index: 0;
   border-radius: 50%;
   background-repeat: no-repeat;
   background-position: center;
@@ -736,18 +654,17 @@ svg {
 
 .hero-mvp__mascot {
   position: relative;
-  z-index: 0;
+  left: auto;
+  top: auto;
+  z-index: 4;
   display: block;
   width: auto;
   max-width: none;
-  height: clamp(14rem, 32vw, 22rem);
-  min-height: 11rem;
-  max-height: 22rem;
-  opacity: 0.88;
+  height: clamp(16rem, 34vw, 23rem);
+  opacity: 0.92;
   object-fit: contain;
-  transform: scale(1.06);
-  transform-origin: center right;
-  animation: mascot-float 5s ease-in-out infinite;
+  transform: none;
+  animation: mascot-float 4.6s ease-in-out infinite;
   filter: drop-shadow(0 10px 22px rgba(26, 20, 8, 0.12));
 }
 
@@ -920,45 +837,47 @@ svg {
   }
 
   .hero-mvp__brand-stage {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    display: grid;
+    place-items: center;
+    width: 100vw;
+    max-width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
     min-height: clamp(9rem, 38vw, 14rem);
     padding-inline: clamp(0.65rem, 4vw, 1.25rem);
-    gap: 0;
   }
 
   .maka-wordmark {
     position: relative;
     z-index: 2;
     justify-self: center;
-    font-size: clamp(4.25rem, 20vw, 6.25rem);
+    font-size: clamp(5.75rem, 21vw, 9.25rem);
   }
 
   .hero-mvp__mascot-wrap {
     position: absolute;
-    inset: 0;
     left: auto;
-    top: 0;
-    transform: none;
-    justify-content: flex-end;
-    align-items: center;
-    padding-right: clamp(-3.5rem, -6vw, -1.25rem);
-    z-index: 1;
+    right: 0;
+    top: 50%;
+    transform: translateY(-42%);
+    width: auto;
+    height: auto;
+    z-index: 4;
   }
 
   .hero-mvp__mascot {
     height: clamp(11rem, 42vw, 15rem);
-    opacity: 0.82;
-    transform: scale(0.98);
-    animation: mascot-float-mobile 5s ease-in-out infinite;
+    opacity: 0.9;
+    animation: mascot-float-mobile 4.6s ease-in-out infinite;
   }
 
   .hero-mvp__actions {
     flex-direction: column;
+    flex-wrap: nowrap;
     align-items: stretch;
+    width: min(100%, 18rem);
     max-width: 18rem;
-    margin-top: 1rem;
+    margin-top: 2.25rem;
   }
 
   .hero-mvp__btn {
@@ -998,10 +917,6 @@ svg {
 
 @media (prefers-reduced-motion: reduce) {
   .hero-mvp__mascot {
-    animation: none;
-  }
-
-  .maka-wordmark::before {
     animation: none;
   }
 
