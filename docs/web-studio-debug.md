@@ -82,7 +82,7 @@ Asset 404s: **none** for studio modules/CSS. Transient `ERR_ABORTED` noise durin
 
 **Note:** Each intentional emit reaches `window` listeners **twice** (dispatch on `root` *and* `window`, with bubbling). Harmless today; noisy for subscribers.
 
-**Conflict:** `preview.js` also binds `#studio-source-game` / `#studio-source-webcam` clicks to `startScreen()` / `startWebcam()`, so a layer-toggle click also requests capture. See §9.
+**Conflict (resolved in wiring layer 1):** `preview.js` no longer binds `#studio-source-game` / `#studio-source-webcam` for capture; those rows only toggle layers. Capture is Share screen / Add webcam only.
 
 ---
 
@@ -170,7 +170,7 @@ Ordered by impact for the next wiring pass:
 
 | ID | Issue | Recommended first fix |
 | --- | --- | --- |
-| P1-1 | Game/Webcam source row click starts capture while also toggling layer | Split: row = layer; ⋯/Share = capture. Remove preview’s `#studio-source-*` capture listeners or gate them. |
+| P1-1 | ~~Game/Webcam source row click starts capture while also toggling layer~~ **FIXED** (wiring layer 1) | Row = layer only; Share screen / Add webcam = capture. preview no longer binds `#studio-source-*`. |
 | P1-2 | Start Recording / Virtual Camera / Browse addons / Twitch·YouTube chips / Studio Mode select are inert | Wire or explicitly disable + tooltip (“desktop only” / “coming soon”) so chrome is honest |
 | P1-3 | Marketplace button references missing `#marketplace-dialog` | Add dialog stub or remove `aria-controls` / hide button until ported |
 
@@ -187,9 +187,22 @@ Ordered by impact for the next wiring pass:
 
 ---
 
+## Wiring layer 1 — fixed
+
+**P1-1 done** (this pass only; no deploy):
+
+- Removed `preview.js` click listeners on `#studio-source-game` / `#studio-source-webcam` that called `startScreen()` / `startWebcam()` (and thus `getDisplayMedia` / `getUserMedia`).
+- Source rows remain **layer visibility toggles** only (`scenes.js` → `toggleLayerForSourceKind`). Capture stays on program-stage **Share screen** / **Add webcam** (`[data-preview="btn-screen"]` / `[data-preview="btn-webcam"]`), plus legacy `#btn-screen` / `#btn-webcam` if present.
+- Click contract documented at the top of `site/stream/js/scenes.js` and `site/stream/js/preview.js`.
+- Picker copy for game/webcam points users to the preview capture buttons.
+
+**Still open for later layers:** P1-2, P1-3, P2-*.
+
+---
+
 ## Wiring-pass priority (recommended order)
 
-1. **P1-1** source ↔ preview click semantics (stops surprising permission prompts).  
+1. ~~**P1-1** source ↔ preview click semantics~~ **FIXED** (wiring layer 1).  
 2. **P1-2 / P1-3** honesty pass on inert controls (disable + copy beats silent no-ops).  
 3. **P2-1** live ↔ preview API naming.  
 4. Optional: audio mic id, event emit once, CSS dedupe.

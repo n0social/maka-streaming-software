@@ -2,6 +2,14 @@
  * Browser program preview — ports Electron studio PROGRAM stage.
  * Screen via getDisplayMedia, webcam via getUserMedia, 16:9 contained frame.
  *
+ * Click contract (with scenes.js — do not double-bind):
+ *   - Capture ONLY via explicit controls: [data-preview="btn-screen"] /
+ *     [data-preview="btn-webcam"] (and legacy #btn-screen / #btn-webcam if present).
+ *   - Do NOT bind #studio-source-game / #studio-source-webcam (or any .studio-source-toggle)
+ *     for capture — those rows are scenes layer visibility toggles only.
+ *   - Scene cards / maka:scene-change update program chrome (name, stub card, webcam PIP);
+ *     they must not start getDisplayMedia / getUserMedia.
+ *
  * From shell:
  *   import { initPreview } from './preview.js'
  *   const preview = initPreview(document.getElementById('studio-preview'))
@@ -430,24 +438,11 @@ export function initPreview(root) {
   root.addEventListener('maka:scene-change', onSceneEvent);
   window.addEventListener('maka:scene-change', onSceneEvent);
 
+  // Legacy shell IDs only — never #studio-source-* (scenes owns those for layer toggle).
   const externalScreen = document.getElementById('btn-screen');
   const externalWebcam = document.getElementById('btn-webcam');
-  const sourceGame = document.getElementById('studio-source-game');
-  const sourceWebcam = document.getElementById('studio-source-webcam');
   if (externalScreen) externalScreen.addEventListener('click', onScreenClick);
   if (externalWebcam) externalWebcam.addEventListener('click', onWebcamClick);
-  if (sourceGame) {
-    sourceGame.addEventListener('click', (e) => {
-      if (e.target && e.target.closest && e.target.closest('[data-source-menu]')) return;
-      void startScreen();
-    });
-  }
-  if (sourceWebcam) {
-    sourceWebcam.addEventListener('click', (e) => {
-      if (e.target && e.target.closest && e.target.closest('[data-source-menu]')) return;
-      void startWebcam();
-    });
-  }
 
   // Scene list → scene name overlay
   document.querySelectorAll('[data-scene]').forEach((btn) => {

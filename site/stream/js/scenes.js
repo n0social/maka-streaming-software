@@ -1,6 +1,15 @@
 /**
  * Maka Stream — Scenes + Sources panel (browser port of Electron studio left rail).
  *
+ * Click contract (with preview.js — do not double-fire):
+ *   - Source row (.studio-source-toggle) click → toggle layer visibility / enabled only
+ *     (toggleLayerForSourceKind). Never starts getDisplayMedia / getUserMedia.
+ *   - Source ⋯ menu ([data-source-menu]) → expand/collapse the device picker only.
+ *   - Capture is owned by preview.js explicit controls (Share screen / Add webcam on the
+ *     program stage, or legacy #btn-screen / #btn-webcam). preview must not bind
+ *     #studio-source-game / #studio-source-webcam for capture.
+ *   - Scene row click → selectScene; scene ⋯ → context menu. No capture.
+ *
  * Expected DOM (shell may provide these; otherwise this module builds them under #studio-scenes):
  *
  *   #studio-scenes[data-region="scenes"]
@@ -637,7 +646,9 @@
     if (kind === 'game' || kind === 'webcam' || kind === 'mic') {
       appendPickerStatus(
         picker,
-        'Capture device lists are not available in this browser mock. Toggle the row to set visibility.',
+        kind === 'mic'
+          ? 'Capture device lists are not available in this browser mock. Toggle the row to set visibility.'
+          : 'Toggle the row to show/hide this layer. Start capture with Share screen / Add webcam on the program preview.',
       );
       appendPickerButton(picker, 'Mark as connected (mock)', !!sourceActive[kind], function () {
         sourceActive[kind] = !sourceActive[kind];
@@ -705,6 +716,10 @@
 
   function wireSourceToggle(kind, btn) {
     if (btn.dataset.scenesWired === '1') return;
+    // Row body = layer on/off only. Capture lives on preview Share/Webcam buttons.
+    if (!btn.title) {
+      btn.title = 'Toggle layer visibility';
+    }
     btn.addEventListener('click', function (event) {
       if (event.target.closest && event.target.closest('[data-source-menu]')) return;
       toggleLayerForSourceKind(kind);
