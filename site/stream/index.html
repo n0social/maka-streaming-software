@@ -106,37 +106,38 @@
             </li>
             <li>
               <button type="button" class="studio-list-item" id="scene-starting" data-scene="starting-soon">
-                <span class="studio-list-leading scene-icon" aria-hidden="true">📄</span>
+                <span class="studio-list-leading scene-icon" aria-hidden="true">▶</span>
                 <span class="studio-list-text">Starting Soon</span>
-                <span role="button" tabindex="0" class="studio-list-menu" data-scene-menu="starting-soon" aria-label="Scene options">⋯</span>
-              </button>
-            </li>
-            <li>
-              <button type="button" class="studio-list-item" id="scene-chatting" data-scene="desk-only">
-                <span class="studio-list-leading scene-icon" aria-hidden="true">▶️</span>
-                <span class="studio-list-text">Just Chatting</span>
-                <span role="button" tabindex="0" class="studio-list-menu" data-scene-menu="desk-only" aria-label="Scene options">⋯</span>
+                <span class="studio-list-menu studio-list-menu--static" aria-hidden="true">⋯</span>
               </button>
             </li>
             <li>
               <button type="button" class="studio-list-item" id="scene-intermission" data-scene="intermission">
-                <span class="studio-list-leading scene-icon" aria-hidden="true">⏸️</span>
+                <span class="studio-list-leading scene-icon" aria-hidden="true">❚❚</span>
                 <span class="studio-list-text">Intermission</span>
-                <span role="button" tabindex="0" class="studio-list-menu" data-scene-menu="intermission" aria-label="Scene options">⋯</span>
+                <span class="studio-list-menu studio-list-menu--static" aria-hidden="true">⋯</span>
               </button>
             </li>
             <li>
               <button type="button" class="studio-list-item" id="scene-ending" data-scene="ending">
-                <span class="studio-list-leading scene-icon" aria-hidden="true">🏠</span>
-                <span class="studio-list-text">Ending Scene</span>
-                <span role="button" tabindex="0" class="studio-list-menu" data-scene-menu="ending" aria-label="Scene options">⋯</span>
+                <span class="studio-list-leading scene-icon" aria-hidden="true">■</span>
+                <span class="studio-list-text">Ending</span>
+                <span class="studio-list-menu studio-list-menu--static" aria-hidden="true">⋯</span>
               </button>
             </li>
-            <li id="studio-add-scene-row">
-              <button type="button" class="studio-list-item studio-list-add" id="btn-add-scene-alt">
-                <span class="studio-list-leading scene-icon" aria-hidden="true">+</span>
-                <span class="studio-list-text">Add Scene</span>
-              </button>
+            <li id="studio-scenes-download-row">
+              <a
+                class="studio-list-item studio-list-download"
+                id="btn-scenes-download"
+                href="/download.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Download the exe for the full experience"
+                aria-label="Download the exe for the full experience"
+              >
+                <span class="studio-list-leading scene-icon" aria-hidden="true">↓</span>
+                <span class="studio-list-text">Download the exe for the full experience</span>
+              </a>
             </li>
           </ul>
         </div>
@@ -239,10 +240,11 @@
               </div>
               <div class="program-scene-card" id="program-scene-card" hidden>
                 <div class="program-scene-card-inner">
+                  <span class="program-scene-card-brand" aria-hidden="true">MAKA</span>
                   <span class="program-scene-card-mark" aria-hidden="true">M</span>
                   <p class="program-scene-card-title" id="program-scene-card-title">Starting Soon</p>
                   <p class="program-scene-card-subtitle" id="program-scene-card-subtitle">
-                    Hang tight — we’ll be live in a moment
+                    Maka is warming up — hang tight
                   </p>
                 </div>
               </div>

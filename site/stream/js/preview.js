@@ -106,6 +106,14 @@ function ensureMarkup(root) {
     if (emptyEl && /select a display or window/i.test(emptyEl.textContent || '')) {
       emptyEl.textContent = EMPTY_COPY;
     }
+    const sceneInner = $(root, '.program-scene-card-inner, .preview-stage__scene-card-inner');
+    if (sceneInner && !$(sceneInner, '.program-scene-card-brand, .preview-stage__scene-card-brand')) {
+      const brand = document.createElement('span');
+      brand.className = 'program-scene-card-brand preview-stage__scene-card-brand';
+      brand.setAttribute('aria-hidden', 'true');
+      brand.textContent = 'MAKA';
+      sceneInner.insertBefore(brand, sceneInner.firstChild);
+    }
     // Wrap content in .preview-stage for 16:9 containment when shell used a bare host.
     if (!$(root, '.preview-stage') && root.id === 'studio-preview') {
       const stage = document.createElement('div');
@@ -134,9 +142,10 @@ function ensureMarkup(root) {
     '  </div>',
     '  <div class="program-scene-card preview-stage__scene-card" id="program-scene-card" data-preview="scene-card" hidden>',
     '    <div class="program-scene-card-inner preview-stage__scene-card-inner">',
+    '      <span class="program-scene-card-brand preview-stage__scene-card-brand" aria-hidden="true">MAKA</span>',
     '      <span class="program-scene-card-mark preview-stage__scene-card-mark" aria-hidden="true">M</span>',
     '      <p class="program-scene-card-title preview-stage__scene-card-title" id="program-scene-card-title" data-preview="scene-title">Starting Soon</p>',
-    '      <p class="program-scene-card-subtitle preview-stage__scene-card-subtitle" id="program-scene-card-subtitle" data-preview="scene-subtitle">Hang tight — we’ll be live in a moment</p>',
+    '      <p class="program-scene-card-subtitle preview-stage__scene-card-subtitle" id="program-scene-card-subtitle" data-preview="scene-subtitle">Maka is warming up — hang tight</p>',
     '    </div>',
     '  </div>',
     '  <p class="program-empty preview-stage__empty" id="program-empty" data-preview="empty">' +
@@ -313,8 +322,12 @@ export function initPreview(root) {
     if (els.sceneTitle) els.sceneTitle.textContent = card.title || 'Starting Soon';
     if (els.sceneSubtitle) {
       els.sceneSubtitle.textContent =
-        card.subtitle || 'Hang tight — we’ll be live in a moment';
+        card.subtitle || 'Maka is warming up — hang tight';
     }
+    const brandEl =
+      els.sceneCard.querySelector('.program-scene-card-brand, [data-preview="scene-brand"]') ||
+      null;
+    if (brandEl) brandEl.textContent = card.brand || 'MAKA';
     if (id) els.sceneCard.setAttribute('data-scene', id);
     else els.sceneCard.removeAttribute('data-scene');
     els.sceneCard.hidden = false;
@@ -549,27 +562,8 @@ export function initPreview(root) {
   if (externalScreen) externalScreen.addEventListener('click', onScreenClick);
   if (externalWebcam) externalWebcam.addEventListener('click', onWebcamClick);
 
-  // Scene list → scene name overlay
-  document.querySelectorAll('[data-scene]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const text = btn.querySelector('.studio-list-text');
-      const name = (text && text.textContent) || btn.getAttribute('data-scene') || '';
-      setSceneName(name);
-      const sceneId = btn.getAttribute('data-scene') || '';
-      if (sceneId === 'starting-soon' || sceneId === 'intermission' || sceneId === 'ending') {
-        setSceneCard({
-          id: sceneId === 'starting-soon' ? 'starting' : sceneId,
-          title: name,
-          subtitle:
-            sceneId === 'ending'
-              ? 'Thanks for watching — see you next time'
-              : 'Hang tight — we’ll be live in a moment',
-        });
-      } else {
-        setSceneCard(null);
-      }
-    });
-  });
+  // Scene overlay updates come solely from maka:scene-change (scenes.js selectScene).
+  // Do not bind [data-scene] clicks here — that duplicated handlers and fought brand bumpers.
 
   setSceneName(root.dataset.sceneName || DEFAULT_SCENE);
   // Default: show webcam PIP mock like the exe (offline until capture).

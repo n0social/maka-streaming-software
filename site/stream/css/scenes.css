@@ -252,15 +252,42 @@
   opacity: 1;
 }
 
-#studio-scenes .studio-list--scenes .studio-list-add {
+#studio-scenes .studio-list--scenes .studio-list-download {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.32rem;
+  text-decoration: none;
   font-weight: 600;
-  opacity: 0.72;
+  opacity: 0.88;
   border-style: dashed;
-  background: transparent;
+  border-color: rgba(201, 162, 39, 0.55);
+  background: rgba(201, 162, 39, 0.06);
+  color: var(--scenes-gold-dark);
 }
 
-#studio-scenes .studio-list-add .studio-list-menu {
+#studio-scenes .studio-list--scenes .studio-list-download:hover {
+  opacity: 1;
+  border-color: var(--scenes-gold);
+  background: rgba(201, 162, 39, 0.14);
+  color: var(--scenes-text);
+}
+
+#studio-scenes .studio-list--scenes .studio-list-download .studio-list-text {
+  white-space: normal;
+  line-height: 1.25;
+  font-size: 0.7rem;
+}
+
+#studio-scenes .studio-list-download .studio-list-menu {
   display: none;
+}
+
+/* Legacy Add Scene control removed — hide if stale markup remains. */
+#studio-scenes #btn-add-scene-alt,
+#studio-scenes #studio-add-scene-row {
+  display: none !important;
 }
 
 #studio-scenes .studio-list-item[data-enabled='0'] {

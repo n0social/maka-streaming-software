@@ -233,6 +233,19 @@ Layer 1 scenes/preview click contract unchanged (source rows = layers; Share scr
 
 ---
 
+## Sequential fix layer 1 — scenes
+
+**Done** (this pass only; no deploy). Scope: `site/stream/` scenes rail + program bumper overlay. Sources pickers, audio meters, and GeForce copy unchanged.
+
+1. **Canonical scenes** — Fixed list only: **Gameplay**, **Starting Soon**, **Intermission**, **Ending**. Removed **Just Chatting** (`desk-only`) and all custom/`Add Scene` paths. Persistence (`maka.stream.scenes.v1`) keeps `activeSceneId` + layers; legacy custom scenes / non-canonical ids are ignored and cleared on write (falls back to Gameplay).
+2. **Download CTA** — `#btn-add-scene-alt` / Add Scene removed. Replaced with `#btn-scenes-download` → `/download.html` (“Download the exe for the full experience”).
+3. **Immediate scene switch** — Scene row click calls `selectScene` → updates active state, program scene-name overlay, Maka bumper card (Starting Soon / Intermission / Ending), and emits `maka:scene-change`. No “Scene options (desktop app)” context menu / dialog. Scene ⋯ menus are static (non-interactive). Preview no longer binds parallel `[data-scene]` clicks.
+4. **Branded bumpers** — Overlay card shows **MAKA** brand line + mark + scene title/subtitle (`Maka is warming up…` / `Be right back…` / `Thanks for watching with Maka…`).
+
+**Click-test:** open `/stream/` → confirm four scenes + download link (no Add Scene) → click Starting Soon → bumper appears, no modal → click Gameplay → bumper hides, scene name “Gameplay” → Ending / Intermission swap branded copy.
+
+---
+
 ## Evidence appendix
 
 ```text

@@ -8,7 +8,10 @@
  *   - Capture is owned by preview.js explicit controls (Share screen / Add webcam on the
  *     program stage, or legacy #btn-screen / #btn-webcam). preview must not bind
  *     #studio-source-game / #studio-source-webcam for capture.
- *   - Scene row click → selectScene; scene ⋯ → context menu. No capture.
+ *   - Scene row click → selectScene immediately (program overlay + maka:scene-change).
+ *     No desktop-app dialog. No Add Scene — download CTA instead.
+ *
+ * Canonical scenes (fixed): Gameplay, Starting Soon, Intermission, Ending.
  *
  * Expected DOM (shell may provide these; otherwise this module builds them under #studio-scenes):
  *
@@ -18,9 +21,9 @@
  *       #studio-scenes-list.studio-list.studio-list--scenes
  *         li > button.studio-list-item[data-scene][data-active]
  *           .studio-list-leading.scene-icon
- *           .studio-list-text  |  input.studio-scene-name-input.studio-list-text (custom)
- *           .studio-list-menu[data-scene-menu]  |  .studio-list-menu--static
- *         #studio-add-scene-row > #btn-add-scene-alt.studio-list-add
+ *           .studio-list-text
+ *           .studio-list-menu.studio-list-menu--static
+ *         #studio-scenes-download-row > a.studio-list-download
  *     .studio-block
  *       .studio-block-head > h2 (Sources) + #btn-refresh-sources.studio-icon-btn
  *       ul.studio-list.studio-source-list (#studio-sources-list)
@@ -33,44 +36,52 @@
  *
  * Events (bubbled on #studio-scenes and window):
  *   maka:scene-change   { sceneId, scene, name, card, webcamPip, layers }
- *   maka:scenes-change  { scenes, activeSceneId, customScenes }
+ *   maka:scenes-change  { scenes, activeSceneId, customScenes: [] }
  *   maka:sources-change { layers, active }
  *
- * Persists to localStorage key `maka.stream.scenes.v1`. No native capture.
+ * Persists to localStorage key `maka.stream.scenes.v1` (activeSceneId + layers only;
+ * custom scenes are ignored and dropped on write). No native capture.
  * Classic script: auto-boots. Module/shell callers: window.initScenes(root?).
  */
 (function (global) {
   'use strict';
 
   var STORAGE_KEY = 'maka.stream.scenes.v1';
-  var MAX_CUSTOM_SCENES = 3;
-  var CUSTOM_SCENE_ID_RE = /^custom-[1-3]$/;
+  var DOWNLOAD_HREF = '/download.html';
+  var DOWNLOAD_LABEL = 'Download the exe for the full experience';
 
   var BUILTIN_SCENES = [
-    { id: 'gaming-cam', name: 'Gameplay', icon: '🎮', builtin: true, menuStatic: true },
-    { id: 'starting-soon', name: 'Starting Soon', icon: '📄', builtin: true },
-    { id: 'desk-only', name: 'Just Chatting', icon: '▶️', builtin: true },
-    { id: 'intermission', name: 'Intermission', icon: '⏸️', builtin: true },
-    { id: 'ending', name: 'Ending Scene', icon: '🏠', builtin: true },
+    { id: 'gaming-cam', name: 'Gameplay', icon: '🎮', builtin: true },
+    { id: 'starting-soon', name: 'Starting Soon', icon: '▶', builtin: true },
+    { id: 'intermission', name: 'Intermission', icon: '❚❚', builtin: true },
+    { id: 'ending', name: 'Ending', icon: '■', builtin: true },
   ];
 
-  var STUB_PRESETS = {
+  /** Maka-branded on-program bumper cards (Starting Soon / Intermission / Ending). */
+  var BUMPER_PRESETS = {
     'starting-soon': {
       id: 'starting-soon',
       title: 'Starting Soon',
-      subtitle: 'Hang tight — we’ll be live in a moment',
+      subtitle: 'Maka is warming up — hang tight',
+      brand: 'MAKA',
     },
     intermission: {
       id: 'intermission',
       title: 'Intermission',
-      subtitle: 'Short break — back shortly',
+      subtitle: 'Be right back — Maka streams on',
+      brand: 'MAKA',
     },
     ending: {
       id: 'ending',
-      title: 'Ending Scene',
-      subtitle: 'Thanks for watching',
+      title: 'Ending',
+      subtitle: 'Thanks for watching with Maka — see you next stream',
+      brand: 'MAKA',
     },
   };
+
+  var CANONICAL_IDS = BUILTIN_SCENES.map(function (s) {
+    return s.id;
+  });
 
   var SOURCE_KINDS = ['game', 'webcam', 'mic', 'browser', 'chat', 'notifications'];
 
@@ -89,10 +100,9 @@
     },
   };
 
-  /** @type {{ id: string, name: string, icon: string, builtin?: boolean, menuStatic?: boolean }[]} */
+  /** @type {{ id: string, name: string, icon: string, builtin?: boolean }[]} */
   var scenes = BUILTIN_SCENES.map(cloneScene);
   var activeSceneId = 'gaming-cam';
-  var customOrder = [];
 
   var layers = {
     game: true,
@@ -116,43 +126,22 @@
   var expandedSourceKind = null;
   var root = null;
   var scenesList = null;
-  var contextMenu = null;
   var booted = false;
 
   function cloneScene(s) {
-    return { id: s.id, name: s.name, icon: s.icon, builtin: !!s.builtin, menuStatic: !!s.menuStatic };
+    return { id: s.id, name: s.name, icon: s.icon, builtin: !!s.builtin };
   }
 
-  function isCustomSceneId(id) {
-    return CUSTOM_SCENE_ID_RE.test(id);
+  function isCanonicalSceneId(id) {
+    return CANONICAL_IDS.indexOf(id) >= 0;
   }
 
-  function isStubSceneId(id) {
-    return Object.prototype.hasOwnProperty.call(STUB_PRESETS, id);
+  function isBumperSceneId(id) {
+    return Object.prototype.hasOwnProperty.call(BUMPER_PRESETS, id);
   }
 
-  function stubPreset(id) {
-    return STUB_PRESETS[id] || null;
-  }
-
-  function defaultCustomSceneName(id) {
-    return 'Custom Scene ' + String(id).replace('custom-', '');
-  }
-
-  function nextCustomSceneId(existing) {
-    for (var i = 1; i <= MAX_CUSTOM_SCENES; i++) {
-      var id = 'custom-' + i;
-      if (!existing.some(function (s) { return s.id === id; })) return id;
-    }
-    return null;
-  }
-
-  function customScenes() {
-    return scenes.filter(function (s) { return isCustomSceneId(s.id); });
-  }
-
-  function customCount() {
-    return customScenes().length;
+  function bumperPreset(id) {
+    return BUMPER_PRESETS[id] || null;
   }
 
   function findScene(id) {
@@ -175,10 +164,8 @@
   function writeStorage() {
     var payload = {
       activeSceneId: activeSceneId,
-      customScenes: customScenes().map(function (s) {
-        return { id: s.id, name: s.name };
-      }),
-      customOrder: customOrder.slice(),
+      customScenes: [],
+      customOrder: [],
       layers: {
         game: !!layers.game,
         cam: !!layers.cam,
@@ -205,39 +192,14 @@
   }
 
   function loadState() {
+    scenes = BUILTIN_SCENES.map(cloneScene);
+
     var data = readStorage();
     if (!data || typeof data !== 'object') return;
 
-    var nextCustoms = [];
-    var rawCustoms = Array.isArray(data.customScenes) ? data.customScenes : [];
-    for (var i = 0; i < rawCustoms.length; i++) {
-      var item = rawCustoms[i];
-      if (!item || typeof item !== 'object') continue;
-      var id = typeof item.id === 'string' ? item.id.trim() : '';
-      if (!isCustomSceneId(id)) continue;
-      if (nextCustoms.some(function (s) { return s.id === id; })) continue;
-      var nameRaw = typeof item.name === 'string' ? item.name : '';
-      var name = nameRaw.trim().slice(0, 80) || defaultCustomSceneName(id);
-      nextCustoms.push({ id: id, name: name, icon: '▶️', builtin: false });
-      if (nextCustoms.length >= MAX_CUSTOM_SCENES) break;
-    }
-
-    if (Array.isArray(data.customOrder)) {
-      customOrder = data.customOrder.filter(function (cid) {
-        return nextCustoms.some(function (s) { return s.id === cid; });
-      });
-    }
-    nextCustoms.forEach(function (s) {
-      if (customOrder.indexOf(s.id) < 0) customOrder.push(s.id);
-    });
-    nextCustoms.sort(function (a, b) {
-      return customOrder.indexOf(a.id) - customOrder.indexOf(b.id);
-    });
-
-    scenes = BUILTIN_SCENES.map(cloneScene).concat(nextCustoms);
-
     var wanted = typeof data.activeSceneId === 'string' ? data.activeSceneId : 'gaming-cam';
-    activeSceneId = findScene(wanted) ? wanted : 'gaming-cam';
+    // Drop legacy Just Chatting / custom-* active ids onto Gameplay.
+    activeSceneId = isCanonicalSceneId(wanted) ? wanted : 'gaming-cam';
 
     if (data.layers && typeof data.layers === 'object') {
       Object.keys(layers).forEach(function (key) {
@@ -258,15 +220,20 @@
   }
 
   function previewSceneDetail(scene) {
-    var stub = scene ? stubPreset(scene.id) : null;
-    var webcamPip = scene
-      ? scene.id === 'gaming-cam' || scene.id === 'desk-only' || isCustomSceneId(scene.id)
-      : false;
+    var bumper = scene ? bumperPreset(scene.id) : null;
+    var webcamPip = scene ? scene.id === 'gaming-cam' : false;
     return {
       sceneId: scene ? scene.id : activeSceneId,
       scene: scene ? cloneScene(scene) : null,
       name: scene ? scene.name : '',
-      card: stub ? { id: stub.id, title: stub.title, subtitle: stub.subtitle } : null,
+      card: bumper
+        ? {
+            id: bumper.id,
+            title: bumper.title,
+            subtitle: bumper.subtitle,
+            brand: bumper.brand,
+          }
+        : null,
       webcamPip: webcamPip && layers.cam,
       layers: {
         game: layers.game,
@@ -287,9 +254,7 @@
     emit('maka:scenes-change', {
       scenes: scenes.map(cloneScene),
       activeSceneId: activeSceneId,
-      customScenes: customScenes().map(function (s) {
-        return { id: s.id, name: s.name };
-      }),
+      customScenes: [],
     });
     emit('maka:sources-change', {
       layers: {
@@ -309,10 +274,7 @@
     if (sceneId === 'gaming-cam') {
       layers.game = true;
       layers.cam = true;
-    } else if (sceneId === 'desk-only' || isCustomSceneId(sceneId)) {
-      layers.game = false;
-      layers.cam = true;
-    } else if (isStubSceneId(sceneId)) {
+    } else if (isBumperSceneId(sceneId)) {
       layers.game = false;
       layers.cam = false;
     }
@@ -371,85 +333,6 @@
       '</footer>';
   }
 
-  function ensureContextMenu() {
-    if (contextMenu) return contextMenu;
-    contextMenu = document.createElement('ul');
-    contextMenu.className = 'scenes-context-menu';
-    contextMenu.hidden = true;
-    contextMenu.setAttribute('role', 'menu');
-    document.body.appendChild(contextMenu);
-    document.addEventListener('click', function (event) {
-      if (!contextMenu || contextMenu.hidden) return;
-      if (contextMenu.contains(event.target)) return;
-      closeContextMenu();
-    });
-    document.addEventListener('keydown', function (event) {
-      if (event.key === 'Escape') closeContextMenu();
-    });
-    return contextMenu;
-  }
-
-  function closeContextMenu() {
-    if (!contextMenu) return;
-    contextMenu.hidden = true;
-    contextMenu.innerHTML = '';
-  }
-
-  function openContextMenu(sceneId, anchor) {
-    var scene = findScene(sceneId);
-    if (!scene) return;
-    ensureContextMenu();
-    contextMenu.innerHTML = '';
-
-    function addItem(label, onSelect, disabled) {
-      var li = document.createElement('li');
-      li.setAttribute('role', 'none');
-      var btn = document.createElement('button');
-      btn.type = 'button';
-      btn.setAttribute('role', 'menuitem');
-      btn.textContent = label;
-      btn.disabled = !!disabled;
-      btn.addEventListener('click', function () {
-        closeContextMenu();
-        onSelect();
-      });
-      li.appendChild(btn);
-      contextMenu.appendChild(li);
-    }
-
-    if (isCustomSceneId(sceneId)) {
-      addItem('Rename', function () {
-        var input = scenesList.querySelector(
-          'button[data-scene="' + sceneId + '"] .studio-scene-name-input',
-        );
-        if (input) {
-          input.focus();
-          input.select();
-        }
-      });
-      var customs = customScenes();
-      var idx = customs.findIndex(function (s) { return s.id === sceneId; });
-      addItem('Move up', function () { reorderCustom(sceneId, -1); }, idx <= 0);
-      addItem('Move down', function () { reorderCustom(sceneId, 1); }, idx < 0 || idx >= customs.length - 1);
-      addItem(scenes.length <= 1 ? "Can't delete the last scene" : 'Delete scene', function () {
-        deleteScene(sceneId);
-      }, scenes.length <= 1);
-    } else if (scene.menuStatic) {
-      addItem('No options for Gameplay', function () {}, true);
-    } else {
-      addItem('Scene options (desktop app)', function () {}, true);
-      addItem('Cancel', function () {});
-    }
-
-    var rect = anchor.getBoundingClientRect();
-    contextMenu.hidden = false;
-    var menuWidth = contextMenu.offsetWidth || 176;
-    var left = Math.min(global.innerWidth - menuWidth - 8, Math.max(8, rect.right - menuWidth));
-    var top = Math.min(global.innerHeight - contextMenu.offsetHeight - 8, rect.bottom + 4);
-    contextMenu.style.left = left + 'px';
-    contextMenu.style.top = top + 'px';
-  }
-
   function highlightSceneSelection(sceneId) {
     if (!scenesList) return;
     var buttons = scenesList.querySelectorAll('.studio-list-item[data-scene]');
@@ -460,20 +343,9 @@
     }
   }
 
-  function syncAddSceneButton() {
-    var atMax = customCount() >= MAX_CUSTOM_SCENES;
-    var title = atMax ? 'Maximum of ' + MAX_CUSTOM_SCENES + ' custom scenes' : 'Add scene';
-    var btn = document.getElementById('btn-add-scene-alt');
-    if (btn) {
-      btn.disabled = atMax;
-      btn.title = title;
-    }
-  }
-
   function builtinButtonId(sceneId) {
     if (sceneId === 'gaming-cam') return 'scene-gameplay';
     if (sceneId === 'starting-soon') return 'scene-starting';
-    if (sceneId === 'desk-only') return 'scene-chatting';
     if (sceneId === 'intermission') return 'scene-intermission';
     if (sceneId === 'ending') return 'scene-ending';
     return '';
@@ -485,7 +357,6 @@
 
     scenes.forEach(function (scene) {
       var li = document.createElement('li');
-      if (isCustomSceneId(scene.id)) li.dataset.customSceneRow = '1';
 
       var btn = document.createElement('button');
       btn.type = 'button';
@@ -499,57 +370,19 @@
       var leading = document.createElement('span');
       leading.className = 'studio-list-leading scene-icon';
       leading.setAttribute('aria-hidden', 'true');
-      leading.textContent = scene.icon || '▶️';
+      leading.textContent = scene.icon || '▶';
+
+      var text = document.createElement('span');
+      text.className = 'studio-list-text';
+      text.textContent = scene.name;
 
       var menu = document.createElement('span');
+      menu.className = 'studio-list-menu studio-list-menu--static';
+      menu.setAttribute('aria-hidden', 'true');
       menu.textContent = '⋯';
-      if (scene.menuStatic) {
-        menu.className = 'studio-list-menu studio-list-menu--static';
-        menu.setAttribute('aria-hidden', 'true');
-        menu.title = 'No image for Gameplay';
-      } else {
-        menu.setAttribute('role', 'button');
-        menu.tabIndex = 0;
-        menu.className = 'studio-list-menu';
-        menu.dataset.sceneMenu = scene.id;
-        menu.setAttribute('aria-label', 'Scene options');
-        menu.title = 'Scene options';
-      }
 
-      if (isCustomSceneId(scene.id)) {
-        var nameInput = document.createElement('input');
-        nameInput.type = 'text';
-        nameInput.className = 'studio-scene-name-input studio-list-text';
-        nameInput.value = scene.name;
-        nameInput.spellcheck = false;
-        nameInput.setAttribute('aria-label', 'Scene name');
-        nameInput.title = 'Double-click to rename';
-        nameInput.addEventListener('click', function (event) {
-          event.stopPropagation();
-        });
-        nameInput.addEventListener('dblclick', function (event) {
-          event.stopPropagation();
-          nameInput.select();
-        });
-        nameInput.addEventListener('keydown', function (event) {
-          if (event.key === 'Enter') {
-            event.preventDefault();
-            nameInput.blur();
-          }
-        });
-        nameInput.addEventListener('blur', function () {
-          renameCustomScene(scene.id, nameInput.value);
-        });
-        btn.append(leading, nameInput, menu);
-      } else {
-        var text = document.createElement('span');
-        text.className = 'studio-list-text';
-        text.textContent = scene.name;
-        btn.append(leading, text, menu);
-      }
-
-      btn.addEventListener('click', function (event) {
-        if (event.target.closest && event.target.closest('[data-scene-menu]')) return;
+      btn.append(leading, text, menu);
+      btn.addEventListener('click', function () {
         selectScene(scene.id);
       });
 
@@ -557,21 +390,23 @@
       scenesList.appendChild(li);
     });
 
-    var addSceneRow = document.createElement('li');
-    addSceneRow.id = 'studio-add-scene-row';
-    var addBtn = document.createElement('button');
-    addBtn.type = 'button';
-    addBtn.className = 'studio-list-item studio-list-add';
-    addBtn.id = 'btn-add-scene-alt';
-    addBtn.innerHTML =
-      '<span class="studio-list-leading scene-icon" aria-hidden="true">+</span>' +
-      '<span class="studio-list-text">Add Scene</span>';
-    addBtn.addEventListener('click', function () {
-      addCustomScene();
-    });
-    addSceneRow.appendChild(addBtn);
-    scenesList.appendChild(addSceneRow);
-    syncAddSceneButton();
+    var downloadRow = document.createElement('li');
+    downloadRow.id = 'studio-scenes-download-row';
+    var downloadLink = document.createElement('a');
+    downloadLink.className = 'studio-list-item studio-list-download';
+    downloadLink.id = 'btn-scenes-download';
+    downloadLink.href = DOWNLOAD_HREF;
+    downloadLink.target = '_blank';
+    downloadLink.rel = 'noopener noreferrer';
+    downloadLink.title = DOWNLOAD_LABEL;
+    downloadLink.setAttribute('aria-label', DOWNLOAD_LABEL);
+    downloadLink.innerHTML =
+      '<span class="studio-list-leading scene-icon" aria-hidden="true">↓</span>' +
+      '<span class="studio-list-text">' +
+      DOWNLOAD_LABEL +
+      '</span>';
+    downloadRow.appendChild(downloadLink);
+    scenesList.appendChild(downloadRow);
   }
 
   function layerEnabledForKind(kind) {
@@ -870,103 +705,6 @@
     emitAll();
   }
 
-  function renameCustomScene(sceneId, rawName) {
-    if (!isCustomSceneId(sceneId)) return;
-    var scene = findScene(sceneId);
-    if (!scene) return;
-    var trimmed = String(rawName || '').trim().slice(0, 80) || defaultCustomSceneName(sceneId);
-    if (scene.name === trimmed) return;
-    scene.name = trimmed;
-    renderSceneList();
-    emitAll();
-  }
-
-  function addCustomScene() {
-    if (customCount() >= MAX_CUSTOM_SCENES) return;
-    var id = nextCustomSceneId(customScenes());
-    if (!id) return;
-    scenes.push({ id: id, name: defaultCustomSceneName(id), icon: '▶️', builtin: false });
-    customOrder.push(id);
-    renderSceneList();
-    selectScene(id);
-    var input = scenesList.querySelector(
-      'button[data-scene="' + id + '"] .studio-scene-name-input',
-    );
-    if (input) {
-      input.focus();
-      input.select();
-    }
-  }
-
-  function deleteScene(sceneId) {
-    if (scenes.length <= 1) return;
-    if (!isCustomSceneId(sceneId)) return;
-    var index = scenes.findIndex(function (s) { return s.id === sceneId; });
-    if (index < 0) return;
-    var wasActive = activeSceneId === sceneId;
-    scenes.splice(index, 1);
-    customOrder = customOrder.filter(function (id) { return id !== sceneId; });
-    if (wasActive) {
-      var neighbor = scenes[Math.min(index, scenes.length - 1)] || scenes[0];
-      activeSceneId = neighbor.id;
-      applySceneLayerDefaults(neighbor.id);
-    }
-    renderSceneList();
-    highlightSceneSelection(activeSceneId);
-    syncSourceRows();
-    emitAll();
-  }
-
-  function reorderCustom(sceneId, delta) {
-    var customs = customScenes();
-    var idx = customs.findIndex(function (s) { return s.id === sceneId; });
-    var next = idx + delta;
-    if (idx < 0 || next < 0 || next >= customs.length) return;
-    var order = customs.map(function (s) { return s.id; });
-    var tmp = order[idx];
-    order[idx] = order[next];
-    order[next] = tmp;
-    customOrder = order;
-    var builtins = BUILTIN_SCENES.map(cloneScene);
-    var reordered = order
-      .map(function (id) { return findScene(id); })
-      .filter(Boolean)
-      .map(function (s) {
-        return { id: s.id, name: s.name, icon: s.icon || '▶️', builtin: false };
-      });
-    scenes = builtins.concat(reordered);
-    renderSceneList();
-    emitAll();
-  }
-
-  function wireSceneMenus() {
-    if (!scenesList || scenesList.dataset.menuWired === '1') return;
-    scenesList.addEventListener(
-      'click',
-      function (event) {
-        var target = event.target.closest && event.target.closest('[data-scene-menu]');
-        if (!target || target.classList.contains('studio-list-menu--static')) return;
-        event.preventDefault();
-        event.stopPropagation();
-        openContextMenu(target.dataset.sceneMenu, target);
-      },
-      true,
-    );
-    scenesList.addEventListener(
-      'keydown',
-      function (event) {
-        if (event.key !== 'Enter' && event.key !== ' ') return;
-        var target = event.target.closest && event.target.closest('[data-scene-menu]');
-        if (!target || target.classList.contains('studio-list-menu--static')) return;
-        event.preventDefault();
-        event.stopPropagation();
-        openContextMenu(target.dataset.sceneMenu, target);
-      },
-      true,
-    );
-    scenesList.dataset.menuWired = '1';
-  }
-
   function api() {
     return {
       getState: function () {
@@ -978,15 +716,23 @@
         };
       },
       selectScene: selectScene,
-      addScene: addCustomScene,
-      deleteScene: deleteScene,
+      /** @deprecated Custom scenes removed — no-op for back-compat. */
+      addScene: function () {
+        return null;
+      },
+      /** @deprecated Custom scenes removed — no-op for back-compat. */
+      deleteScene: function () {
+        return false;
+      },
       toggleSource: toggleLayerForSourceKind,
       refresh: function () {
         renderSceneList();
         renderSourcesList();
         syncSourceRows();
       },
-      root: function () { return root; },
+      root: function () {
+        return root;
+      },
     };
   }
 
@@ -1000,7 +746,6 @@
     applySceneLayerDefaults(activeSceneId);
     renderSceneList();
     renderSourcesList();
-    wireSceneMenus();
     highlightSceneSelection(activeSceneId);
     syncSourceRows();
     emitAll();

@@ -298,6 +298,16 @@
   max-width: 22rem;
 }
 
+.preview-stage__scene-card-brand {
+  display: block;
+  font-family: var(--preview-headline);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--preview-gold-dark, #8a6d12);
+}
+
 .preview-stage__scene-card-mark {
   width: 2.35rem;
   height: 2.35rem;

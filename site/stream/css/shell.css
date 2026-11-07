@@ -737,6 +737,21 @@ body.stream-studio {
   text-align: center;
   color: #f6f3ec;
   padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.program-scene-card-brand {
+  display: block;
+  margin: 0 0 0.15rem;
+  font-family: var(--font-headline);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--champagne, #e8d5a3);
 }
 
 .program-scene-card-mark {
@@ -744,13 +759,24 @@ body.stream-studio {
   place-items: center;
   width: 2.5rem;
   height: 2.5rem;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.35rem;
   border-radius: 0.55rem;
   background: linear-gradient(145deg, var(--champagne), var(--gold));
   color: var(--text);
   font-family: var(--font-headline);
   font-weight: 900;
   font-size: 1.1rem;
+}
+
+.program-scene-card[data-scene='intermission'] .program-scene-card-mark {
+  background: linear-gradient(145deg, #c9a227, #8a6d12);
+  color: #faf8f4;
+}
+
+.program-scene-card[data-scene='ending'] .program-scene-card-mark {
+  background: #1a1408;
+  color: var(--champagne, #e8d5a3);
+  box-shadow: 0 0 0 1px rgba(201, 162, 39, 0.55);
 }
 
 .program-scene-card-title {
@@ -762,9 +788,10 @@ body.stream-studio {
 }
 
 .program-scene-card-subtitle {
-  margin: 0.45rem 0 0;
+  margin: 0.15rem 0 0;
   color: #a39888;
   font-size: 0.88rem;
+  max-width: 22rem;
 }
 
 .stage-frame {
