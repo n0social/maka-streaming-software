@@ -1,10 +1,14 @@
 .preview-page {
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100dvh;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .preview-banner {
+  flex-shrink: 0;
   padding: 0.55rem 1rem;
   text-align: center;
   font-size: 0.78rem;
@@ -14,15 +18,19 @@
 }
 
 .studio-mock {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
   display: grid;
-  grid-template-columns: 268px 1fr 300px;
-  grid-template-rows: 40px 1fr 52px;
+  grid-template-columns: 268px minmax(0, 1fr) 300px;
+  grid-template-rows: 40px minmax(0, 1fr) 52px;
   grid-template-areas:
     "top top top"
     "left stage right"
     "stats stats stats";
-  min-height: calc(100vh - 2rem);
+  overflow: hidden;
   background: var(--bg);
 }
 
@@ -31,13 +39,16 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  min-width: 0;
   padding: 0 0.75rem;
   border-bottom: 1px solid var(--line);
   background: var(--panel);
+  overflow: hidden;
 }
 
 .studio-mock-brand {
   gap: 0.45rem;
+  min-width: 0;
 }
 
 .studio-mock-mascot {
@@ -53,6 +64,7 @@
   display: flex;
   gap: 0.35rem;
   margin-left: auto;
+  flex-shrink: 0;
 }
 
 .studio-mock-top .tab {
@@ -80,6 +92,7 @@
   border-radius: 999px;
   border: 1px solid var(--line);
   color: var(--muted);
+  flex-shrink: 0;
 }
 
 .go-live-chip {
@@ -93,12 +106,16 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .studio-sidebar {
+  min-width: 0;
+  min-height: 0;
   padding: 0.65rem;
   border-right: 1px solid var(--line);
   background: var(--panel);
+  overflow-x: hidden;
   overflow-y: auto;
 }
 
@@ -162,18 +179,23 @@
   grid-area: stage;
   display: flex;
   flex-direction: column;
+  min-width: 0;
   min-height: 0;
+  max-height: 100%;
   padding: 0.65rem;
   gap: 0.55rem;
+  overflow: hidden;
+  contain: size layout;
 }
 
 .program-preview {
-  flex: 1;
+  flex: 1 1 auto;
   position: relative;
   border-radius: var(--radius);
   border: 1px solid var(--line);
   background: var(--program);
-  min-height: 12rem;
+  min-width: 0;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -205,6 +227,7 @@
   right: 0.75rem;
   bottom: 0.75rem;
   width: 22%;
+  max-width: 11rem;
   aspect-ratio: 16 / 9;
   border: 2px solid var(--gold);
   border-radius: 0.35rem;
@@ -217,11 +240,13 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem 1.25rem;
+  min-width: 0;
   padding: 0.55rem 1rem;
   border-top: 1px solid var(--line);
   background: var(--panel);
   font-size: 0.72rem;
   color: var(--muted);
+  overflow: hidden;
 }
 
 .stats-bar strong {
@@ -230,7 +255,7 @@
 
 .audio-row {
   display: grid;
-  grid-template-columns: 1.5rem 1fr 1.25rem;
+  grid-template-columns: 1.5rem minmax(0, 1fr) 1.25rem;
   gap: 0.4rem;
   align-items: center;
   margin-bottom: 0.55rem;
@@ -242,6 +267,7 @@
   border-radius: 999px;
   background: var(--line);
   overflow: hidden;
+  min-width: 0;
 }
 
 .audio-meter {
@@ -273,15 +299,28 @@
 }
 
 @media (max-width: 960px) {
+  .preview-page {
+    height: auto;
+    max-height: none;
+    overflow: auto;
+  }
+
   .studio-mock {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto 1fr auto auto;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(16rem, 50vh) auto auto;
     grid-template-areas:
       "top"
       "left"
       "stage"
       "right"
       "stats";
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .studio-stage {
+    contain: none;
   }
 
   .studio-sidebar {
