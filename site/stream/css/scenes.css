@@ -146,6 +146,30 @@
   cursor: not-allowed;
 }
 
+/* Desktop-only sources (Overlay / Chat / Notifications) — visible, greyed, non-clickable. */
+#studio-scenes .studio-source-group[data-desktop-only='1'] .studio-source-toggle,
+#studio-scenes .studio-source-toggle[data-desktop-only='1'],
+#studio-scenes .studio-source-toggle[aria-disabled='true'] {
+  opacity: 0.42;
+  cursor: not-allowed;
+  pointer-events: none;
+  filter: grayscale(0.35);
+  border-color: rgba(230, 223, 208, 0.55);
+  background: rgba(246, 243, 236, 0.55);
+  color: var(--scenes-muted);
+}
+
+#studio-scenes .studio-source-group[data-desktop-only='1'] .studio-list-leading {
+  opacity: 0.7;
+  background: rgba(107, 98, 86, 0.12);
+}
+
+#studio-scenes .studio-source-group[data-desktop-only='1'] .studio-list-menu {
+  opacity: 0.4;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
 #studio-scenes .studio-list-leading {
   display: grid;
   place-items: center;

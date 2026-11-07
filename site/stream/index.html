@@ -172,27 +172,27 @@
               </button>
               <ul class="studio-source-picker" id="source-picker-mic" hidden role="list" aria-label="Microphones"></ul>
             </li>
-            <li class="studio-source-group">
-              <button type="button" class="studio-list-item studio-source-toggle" id="studio-source-browser" data-source-kind="browser" aria-expanded="false" aria-controls="source-picker-browser">
+            <li class="studio-source-group" data-desktop-only="1">
+              <button type="button" class="studio-list-item studio-source-toggle" id="studio-source-browser" data-source-kind="browser" data-desktop-only="1" disabled aria-disabled="true" title="Overlay requires Maka desktop (exe)">
                 <span class="studio-list-leading source-icon" aria-hidden="true">🌐</span>
                 <span class="studio-list-text">Overlay</span>
-                <span role="button" tabindex="0" class="studio-list-menu" data-source-menu="browser" aria-label="Overlay options">⋯</span>
+                <span class="studio-list-menu studio-list-menu--static" aria-hidden="true">⋯</span>
               </button>
               <ul class="studio-source-picker" id="source-picker-browser" hidden role="list" aria-label="Overlay layout presets"></ul>
             </li>
-            <li class="studio-source-group">
-              <button type="button" class="studio-list-item studio-source-toggle" id="studio-source-chat" data-source-kind="chat" aria-expanded="false" aria-controls="source-picker-chat">
+            <li class="studio-source-group" data-desktop-only="1">
+              <button type="button" class="studio-list-item studio-source-toggle" id="studio-source-chat" data-source-kind="chat" data-desktop-only="1" disabled aria-disabled="true" title="Chat overlay requires Maka desktop (exe)">
                 <span class="studio-list-leading source-icon" aria-hidden="true">💬</span>
                 <span class="studio-list-text">Chat</span>
-                <span role="button" tabindex="0" class="studio-list-menu" data-source-menu="chat" aria-label="Pick chat source">⋯</span>
+                <span class="studio-list-menu studio-list-menu--static" aria-hidden="true">⋯</span>
               </button>
               <ul class="studio-source-picker" id="source-picker-chat" hidden role="list" aria-label="Chat sources"></ul>
             </li>
-            <li class="studio-source-group">
-              <button type="button" class="studio-list-item studio-source-toggle" id="studio-source-notifications" data-source-kind="notifications" aria-expanded="false" aria-controls="source-picker-notifications">
+            <li class="studio-source-group" data-desktop-only="1">
+              <button type="button" class="studio-list-item studio-source-toggle" id="studio-source-notifications" data-source-kind="notifications" data-desktop-only="1" disabled aria-disabled="true" title="Notifications require Maka desktop (exe)">
                 <span class="studio-list-leading source-icon" aria-hidden="true">🔔</span>
                 <span class="studio-list-text">Notifications</span>
-                <span role="button" tabindex="0" class="studio-list-menu" data-source-menu="notifications" aria-label="Notification options">⋯</span>
+                <span class="studio-list-menu studio-list-menu--static" aria-hidden="true">⋯</span>
               </button>
               <ul class="studio-source-picker" id="source-picker-notifications" hidden role="list" aria-label="Notification overlays"></ul>
             </li>
@@ -250,18 +250,6 @@
               </div>
               <p class="program-empty" id="program-empty">
                 Share a browser tab or window to preview cloud gameplay
-              </p>
-              <div class="preview-stage__controls" data-preview="controls">
-                <button type="button" class="preview-stage__btn" data-preview="btn-screen">
-                  Share browser tab / window
-                </button>
-                <button type="button" class="preview-stage__btn" data-preview="btn-webcam">
-                  Add webcam
-                </button>
-              </div>
-              <p class="preview-capture-hint" id="preview-capture-hint">
-                In the browser picker, choose the browser <strong>tab</strong> or
-                <strong>window</strong> — not an unrelated display unless you want the whole monitor.
               </p>
             </div>
           </section>

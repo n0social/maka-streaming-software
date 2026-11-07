@@ -3,13 +3,13 @@
  * Screen via getDisplayMedia, webcam via getUserMedia, 16:9 contained frame.
  *
  * Click contract (with scenes.js — do not double-bind):
- *   - Capture via explicit stage controls: [data-preview="btn-screen"] /
- *     [data-preview="btn-webcam"] (and legacy #btn-screen / #btn-webcam if present),
- *     OR via the Sources ⋯ pickers calling startScreen / startWebcam on this API.
+ *   - Capture via the Sources ⋯ pickers calling startScreen / startWebcam on this API
+ *     (and legacy #btn-screen / #btn-webcam if present). Stage Share / Add webcam
+ *     buttons are removed — Sources is the only capture entry point.
  *   - Do NOT bind #studio-source-game / #studio-source-webcam (or any .studio-source-toggle)
  *     for capture — those rows are scenes layer visibility toggles only.
- *   - Scene cards / maka:scene-change update program chrome (name, stub card, webcam PIP);
- *     they must not start getDisplayMedia / getUserMedia.
+ *   - Scene cards / maka:scene-change update program chrome (stub card, webcam PIP);
+ *     they must not start getDisplayMedia / getUserMedia. Scene name is not overlaid.
  *
  * From shell:
  *   import { initPreview } from './preview.js'
@@ -18,12 +18,7 @@
  * Public API: window.MakaStreamPreview (canonical); window.MakaPreview is an alias; host._makaPreview is the same instance.
  */
 const EMPTY_COPY = 'Share a browser tab or window to preview cloud gameplay';
-const SHARE_BTN_LABEL = 'Share browser tab / window';
-const SHARE_BTN_ACTIVE = 'Stop sharing';
 const WEBCAM_OFFLINE = 'video is offline';
-const DEFAULT_SCENE = 'Gameplay';
-const CAPTURE_HINT =
-  'In the browser picker, choose the browser tab or window — not an unrelated display unless you want the whole monitor.';
 
 function ensureStylesheet() {
   const href = new URL('../css/preview-stage.css', import.meta.url).pathname;
@@ -109,6 +104,10 @@ function $(root, sel) {
   return root.querySelector(sel);
 }
 
+function $all(root, sel) {
+  return Array.from(root.querySelectorAll(sel));
+}
+
 /**
  * Ensure PROGRAM chrome exists inside root (matches exe labels).
  * Reuses shell markup when present; otherwise builds a contained stage.
@@ -117,47 +116,17 @@ function ensureMarkup(root) {
   root.classList.add('preview-stage-host');
   if (!root.id) root.id = 'studio-preview';
 
+  // Declutter: Sources pickers own capture — strip stage Share / webcam / bottom hint.
+  $all(root, '.preview-stage__controls, [data-preview="controls"]').forEach((el) => el.remove());
+  $all(
+    root,
+    '.preview-capture-hint, [data-preview="capture-hint"], #preview-capture-hint',
+  ).forEach((el) => el.remove());
+  // Scene name pill removed from program preview.
+  $all(root, '.preview-stage__scene-name, [data-preview="scene-name"]').forEach((el) => el.remove());
+
   let program = $(root, '#program-video, [data-preview="program"], .preview-stage__program');
   if (program) {
-    // Shell already shipped exe-shaped chrome — add scene-name overlay + controls if missing.
-    if (!$(root, '.preview-stage__scene-name, [data-preview="scene-name"]')) {
-      const name = document.createElement('div');
-      name.className = 'preview-stage__scene-name';
-      name.dataset.preview = 'scene-name';
-      name.hidden = true;
-      const label = $(root, '.program-label');
-      if (label && label.parentElement) label.parentElement.insertBefore(name, label.nextSibling);
-      else root.appendChild(name);
-    }
-    if (!$(root, '.preview-stage__controls, [data-preview="controls"]')) {
-      const controls = document.createElement('div');
-      controls.className = 'preview-stage__controls';
-      controls.dataset.preview = 'controls';
-      controls.innerHTML =
-        '<button type="button" class="preview-stage__btn" data-preview="btn-screen">' +
-        SHARE_BTN_LABEL +
-        '</button>' +
-        '<button type="button" class="preview-stage__btn" data-preview="btn-webcam">Add webcam</button>';
-      root.appendChild(controls);
-    } else {
-      const screenBtn = $(root, '[data-preview="btn-screen"]');
-      if (screenBtn && /share screen/i.test(screenBtn.textContent || '')) {
-        screenBtn.textContent = SHARE_BTN_LABEL;
-      }
-    }
-    if (!$(root, '.preview-capture-hint, [data-preview="capture-hint"], #preview-capture-hint')) {
-      const hint = document.createElement('p');
-      hint.className = 'preview-capture-hint';
-      hint.dataset.preview = 'capture-hint';
-      hint.id = 'preview-capture-hint';
-      hint.textContent = CAPTURE_HINT;
-      const controlsEl = $(root, '.preview-stage__controls, [data-preview="controls"]');
-      if (controlsEl && controlsEl.parentElement) {
-        controlsEl.parentElement.insertBefore(hint, controlsEl.nextSibling);
-      } else {
-        root.appendChild(hint);
-      }
-    }
     const emptyEl = $(root, '#program-empty, [data-preview="empty"], .program-empty');
     if (emptyEl && /select a display or window/i.test(emptyEl.textContent || '')) {
       emptyEl.textContent = EMPTY_COPY;
@@ -169,6 +138,16 @@ function ensureMarkup(root) {
       brand.setAttribute('aria-hidden', 'true');
       brand.textContent = 'MAKA';
       sceneInner.insertBefore(brand, sceneInner.firstChild);
+    }
+    const cam = $(root, '#program-cam, .program-cam, [data-preview="cam"]');
+    if (cam) {
+      cam.classList.add('preview-stage__cam');
+      const camVideo = $(cam, '#program-cam-video, video');
+      if (camVideo) camVideo.classList.add('preview-stage__cam-video');
+      const camOffline = $(cam, '#program-cam-offline, .program-cam-offline');
+      if (camOffline) camOffline.classList.add('preview-stage__cam-offline');
+      const camTag = $(cam, '.program-cam-tag');
+      if (camTag) camTag.classList.add('preview-stage__cam-tag');
     }
     // Wrap content in .preview-stage for 16:9 containment when shell used a bare host.
     if (!$(root, '.preview-stage') && root.id === 'studio-preview') {
@@ -187,7 +166,6 @@ function ensureMarkup(root) {
     '    Program',
     '    <span class="program-mode preview-stage__mode">• Live Output</span>',
     '  </div>',
-    '  <div class="preview-stage__scene-name" data-preview="scene-name" hidden></div>',
     '  <video id="program-video" class="preview-stage__program" data-preview="program" autoplay muted playsinline hidden></video>',
     '  <div class="program-cam preview-stage__cam" id="program-cam" data-preview="cam" hidden>',
     '    <video id="program-cam-video" class="preview-stage__cam-video" data-preview="cam-video" autoplay muted playsinline hidden></video>',
@@ -207,13 +185,6 @@ function ensureMarkup(root) {
     '  <p class="program-empty preview-stage__empty" id="program-empty" data-preview="empty">' +
       EMPTY_COPY +
       '</p>',
-    '  <div class="preview-stage__controls" data-preview="controls">',
-    '    <button type="button" class="preview-stage__btn" data-preview="btn-screen">' +
-      SHARE_BTN_LABEL +
-      '</button>',
-    '    <button type="button" class="preview-stage__btn" data-preview="btn-webcam">Add webcam</button>',
-    '  </div>',
-    '  <p class="preview-capture-hint" data-preview="capture-hint">' + CAPTURE_HINT + '</p>',
     '</div>',
   ].join('\n');
 }
@@ -222,7 +193,6 @@ function collectEls(root) {
   const scope = $(root, '.preview-stage') || root;
   return {
     stage: $(root, '.preview-stage') || root,
-    sceneName: $(root, '[data-preview="scene-name"], .preview-stage__scene-name'),
     program: $(root, '#program-video, [data-preview="program"], .preview-stage__program'),
     cam: $(root, '#program-cam, [data-preview="cam"], .preview-stage__cam, .program-cam'),
     camVideo: $(root, '#program-cam-video, [data-preview="cam-video"], .preview-stage__cam-video'),
@@ -231,9 +201,6 @@ function collectEls(root) {
     sceneTitle: $(root, '#program-scene-card-title, [data-preview="scene-title"]'),
     sceneSubtitle: $(root, '#program-scene-card-subtitle, [data-preview="scene-subtitle"]'),
     empty: $(root, '#program-empty, [data-preview="empty"], .program-empty'),
-    btnScreen: $(root, '[data-preview="btn-screen"]'),
-    btnWebcam: $(root, '[data-preview="btn-webcam"]'),
-    captureHint: $(root, '[data-preview="capture-hint"], #preview-capture-hint, .preview-capture-hint'),
     scope,
   };
 }
@@ -271,6 +238,17 @@ export function initPreview(root) {
   /** Show PIP chrome even without a live track (matches app mock). */
   let webcamPipDesired = true;
   let destroyed = false;
+  /** @type {MutationObserver | null} */
+  let liveClassObserver = null;
+
+  function isProgramLive() {
+    const program =
+      root.closest('.program') ||
+      (typeof document !== 'undefined' ? document.getElementById('program') : null);
+    if (program && program.classList.contains('is-live')) return true;
+    if (els.stage && els.stage.classList.contains('is-live')) return true;
+    return false;
+  }
 
   function syncUi() {
     if (destroyed) return;
@@ -280,25 +258,11 @@ export function initPreview(root) {
     const hasCam = Boolean(
       webcamStream && webcamStream.getVideoTracks().some((t) => t.readyState === 'live'),
     );
-    const hasMain = hasScreen || hasCam;
+    const live = isProgramLive();
 
-    if (els.btnScreen) {
-      els.btnScreen.textContent = hasScreen ? SHARE_BTN_ACTIVE : SHARE_BTN_LABEL;
-      els.btnScreen.title = hasScreen
-        ? 'Stop sharing the browser tab or window'
-        : 'Share a browser tab or window (getDisplayMedia)';
-    }
-    if (els.captureHint) {
-      els.captureHint.hidden = hasScreen;
-      if (!els.captureHint.textContent.trim()) els.captureHint.textContent = CAPTURE_HINT;
-    }
-
+    // Game Capture owns the full program bed. Webcam never fills the stage alone.
     if (hasScreen) {
       if (els.program.srcObject !== screenStream) els.program.srcObject = screenStream;
-      els.program.hidden = false;
-      void els.program.play().catch(() => undefined);
-    } else if (hasCam) {
-      if (els.program.srcObject !== webcamStream) els.program.srcObject = webcamStream;
       els.program.hidden = false;
       void els.program.play().catch(() => undefined);
     } else {
@@ -309,7 +273,7 @@ export function initPreview(root) {
     if (els.cam) {
       if (webcamPipDesired) {
         els.cam.hidden = false;
-        if (hasCam && hasScreen && els.camVideo) {
+        if (hasCam && els.camVideo) {
           if (els.camVideo.srcObject !== webcamStream) els.camVideo.srcObject = webcamStream;
           els.camVideo.hidden = false;
           if (els.camOffline) els.camOffline.hidden = true;
@@ -319,8 +283,7 @@ export function initPreview(root) {
           els.camVideo.hidden = true;
           if (els.camOffline) {
             els.camOffline.hidden = false;
-            els.camOffline.textContent =
-              hasCam && !hasScreen ? 'Webcam · program' : WEBCAM_OFFLINE;
+            els.camOffline.textContent = WEBCAM_OFFLINE;
           }
         }
       } else {
@@ -330,42 +293,25 @@ export function initPreview(root) {
     }
 
     const cardVisible = Boolean(els.sceneCard && !els.sceneCard.hidden);
-    els.empty.hidden = hasMain || cardVisible;
-    if (!hasMain && !cardVisible) {
+    // Keep empty-state copy until there is capture, a bumper card, or live chrome.
+    els.empty.hidden = hasScreen || hasCam || cardVisible || live;
+    if (!els.empty.hidden) {
       els.empty.textContent = EMPTY_COPY;
-    }
-
-    if (els.btnScreen) {
-      els.btnScreen.dataset.on = hasScreen ? '1' : '0';
-      // Keep browser-tab share copy (do not overwrite with generic "Share screen").
-      els.btnScreen.textContent = hasScreen ? SHARE_BTN_ACTIVE : SHARE_BTN_LABEL;
-    }
-    if (els.btnWebcam) {
-      els.btnWebcam.dataset.on = hasCam ? '1' : '0';
-      els.btnWebcam.textContent = hasCam ? 'Stop webcam' : 'Add webcam';
     }
 
     const detail = {
       hasScreen,
       hasWebcam: hasCam,
       hasCapture: hasScreen || hasCam,
-      sceneName: els.sceneName && !els.sceneName.hidden ? els.sceneName.textContent || '' : '',
+      sceneName: '',
     };
     root.dispatchEvent(new CustomEvent('maka:preview-change', { bubbles: true, detail }));
     // Mirror on window so live.js listeners fire even if a parent stops propagation.
     window.dispatchEvent(new CustomEvent('maka:preview-change', { detail }));
   }
 
-  function setSceneName(name) {
-    if (!els.sceneName) return;
-    const label = String(name || '').trim();
-    if (!label) {
-      els.sceneName.hidden = true;
-      els.sceneName.textContent = '';
-      return;
-    }
-    els.sceneName.textContent = label;
-    els.sceneName.hidden = false;
+  function setSceneName(_name) {
+    // Scene name overlay removed — keep API for callers but never show chrome.
   }
 
   function setSceneCard(card) {
@@ -607,21 +553,6 @@ export function initPreview(root) {
       ctx.drawImage(video, dx + (dw - tw) / 2, dy + (dh - th) / 2, tw, th);
     };
 
-    const drawCover = (video, dx, dy, dw, dh) => {
-      if (!video || video.readyState < 2 || !video.videoWidth) return;
-      const vw = video.videoWidth;
-      const vh = video.videoHeight;
-      const scale = Math.max(dw / vw, dh / vh);
-      const tw = vw * scale;
-      const th = vh * scale;
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(dx, dy, dw, dh);
-      ctx.clip();
-      ctx.drawImage(video, dx + (dw - tw) / 2, dy + (dh - th) / 2, tw, th);
-      ctx.restore();
-    };
-
     if (!els.program.hidden) drawContain(els.program, 0, 0, canvas.width, canvas.height);
 
     if (els.cam && !els.cam.hidden && els.camVideo && !els.camVideo.hidden) {
@@ -632,7 +563,8 @@ export function initPreview(root) {
       ctx.strokeStyle = '#c9a227';
       ctx.lineWidth = 3;
       ctx.strokeRect(x - 1.5, y - 1.5, pipW + 3, pipH + 3);
-      drawCover(els.camVideo, x, y, pipW, pipH);
+      // Match CSS object-fit: contain so the full webcam frame is visible.
+      drawContain(els.camVideo, x, y, pipW, pipH);
     }
 
     return canvas;
@@ -651,13 +583,11 @@ export function initPreview(root) {
   function onSceneEvent(ev) {
     const detail = ev && ev.detail;
     if (!detail) return;
-    if (typeof detail.name === 'string') setSceneName(detail.name);
+    // Ignore detail.name — scene name overlay is intentionally not shown.
     if (detail.card !== undefined) setSceneCard(detail.card);
     if (typeof detail.webcamPip === 'boolean') setWebcamPipVisible(detail.webcamPip);
   }
 
-  if (els.btnScreen) els.btnScreen.addEventListener('click', onScreenClick);
-  if (els.btnWebcam) els.btnWebcam.addEventListener('click', onWebcamClick);
   root.addEventListener('maka:scene-change', onSceneEvent);
   window.addEventListener('maka:scene-change', onSceneEvent);
 
@@ -667,10 +597,16 @@ export function initPreview(root) {
   if (externalScreen) externalScreen.addEventListener('click', onScreenClick);
   if (externalWebcam) externalWebcam.addEventListener('click', onWebcamClick);
 
-  // Scene overlay updates come solely from maka:scene-change (scenes.js selectScene).
-  // Do not bind [data-scene] clicks here — that duplicated handlers and fought brand bumpers.
+  const programHost =
+    root.closest('.program') ||
+    (typeof document !== 'undefined' ? document.getElementById('program') : null);
+  if (programHost && typeof MutationObserver === 'function') {
+    liveClassObserver = new MutationObserver(() => {
+      if (!destroyed) syncUi();
+    });
+    liveClassObserver.observe(programHost, { attributes: true, attributeFilter: ['class'] });
+  }
 
-  setSceneName(root.dataset.sceneName || DEFAULT_SCENE);
   // Default: show webcam PIP mock like the exe (offline until capture).
   if (els.cam) els.cam.hidden = false;
   if (els.camOffline) {
@@ -696,12 +632,14 @@ export function initPreview(root) {
     destroy() {
       if (destroyed) return;
       destroyed = true;
-      if (els.btnScreen) els.btnScreen.removeEventListener('click', onScreenClick);
-      if (els.btnWebcam) els.btnWebcam.removeEventListener('click', onWebcamClick);
       if (externalScreen) externalScreen.removeEventListener('click', onScreenClick);
       if (externalWebcam) externalWebcam.removeEventListener('click', onWebcamClick);
       root.removeEventListener('maka:scene-change', onSceneEvent);
       window.removeEventListener('maka:scene-change', onSceneEvent);
+      if (liveClassObserver) {
+        liveClassObserver.disconnect();
+        liveClassObserver = null;
+      }
       stopScreen();
       stopWebcam();
       delete root.dataset.previewReady;

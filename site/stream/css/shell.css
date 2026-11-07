@@ -653,6 +653,19 @@ body.stream-studio {
   box-shadow: 0 8px 32px rgba(26, 20, 8, 0.12), 0 0 0 1px rgba(255, 196, 12, 0.35);
 }
 
+.program-cam video,
+#program-cam-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  background: #000;
+  display: block;
+  transform: none;
+}
+
 .program-cam-tag,
 .program-browser-tag {
   position: absolute;
