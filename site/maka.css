@@ -1,4 +1,4 @@
-/* MAKA_CSS_BUILD=dc6d3a1 — bump the maka.css query in site HTML when this file changes */
+/* MAKA_CSS_BUILD=dc6d3a2 — bump the maka.css query in site HTML when this file changes */
 /* Maka marketing site — cream / Mikado Yellow tokens (matches Electron studio redesign) */
 :root {
   color-scheme: light;
@@ -518,11 +518,18 @@ svg {
 .maka-wordmark__sweep-band {
   fill: #ffffff;
   fill-opacity: 0.95;
+  stroke: #1a1408;
+  stroke-opacity: 0.35;
+  stroke-width: 10px;
+  paint-order: stroke fill;
   mix-blend-mode: normal;
   transform-box: fill-box;
   transform-origin: center center;
   opacity: 0;
   pointer-events: none;
+  /* Soft bloom so the pass reads on both foil (light) and yellow halves */
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.95))
+    drop-shadow(0 0 2px rgba(26, 20, 8, 0.45));
 }
 
 .maka-wordmark--play .maka-wordmark__sweep-band {
