@@ -8,7 +8,7 @@ Studio branding uses an **original fan-inspired anime streamer mascot** (blonde 
 
 Maka is **free streaming software** for Windows: a desktop **Electron studio** for game capture, scenes, and **Go Live** without wiring up OBS first. A local **TabcastRelay** on `127.0.0.1:38473` takes WHIP from the app, encodes with FFmpeg, and pushes **RTMP** to Twitch, YouTube, or a custom RTMP endpoint. Stream keys stay in relay RAM — not written to disk by the UI.
 
-**Website:** [tabcast.live.skydav.work](https://tabcast.live.skydav.work)
+**Website:** [makalive.stream.skydav.work](https://makalive.stream.skydav.work)
 
 ---
 

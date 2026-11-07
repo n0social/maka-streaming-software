@@ -75,7 +75,7 @@ The marketplace is **developer-curated** (not user submissions). See [community-
 
 Bundled catalog: `src/shared/marketplace-catalog.ts`
 
-Remote feed (optional): `https://tabcast.live.skydav.work/marketplace.json` — merged with bundled entries, cached 1h.
+Remote feed (optional): `https://makalive.stream.skydav.work/marketplace.json` — merged with bundled entries, cached 1h.
 
 Install copies manifest + optional `files` to user addons folder.
 
