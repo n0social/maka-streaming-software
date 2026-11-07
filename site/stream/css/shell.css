@@ -1415,36 +1415,7 @@ body.stream-studio {
   font-weight: 700;
 }
 
-/* Studio ↔ Browser layout hint on .app */
-.app[data-output-mode="browse"] {
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-areas:
-    "top"
-    "stage";
-}
-
-.app[data-output-mode="browse"] .sidebar.left,
-.app[data-output-mode="browse"] .sidebar.right {
-  display: none;
-}
-
-.app[data-output-mode="browse"]::after {
-  content: "Browser Mode (web layout hint) — built-in browser tabs require the desktop app";
-  position: absolute;
-  left: 50%;
-  top: 42px;
-  transform: translateX(-50%);
-  z-index: 20;
-  max-width: min(36rem, calc(100% - 2rem));
-  padding: 0.35rem 0.75rem;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.92);
-  color: var(--muted);
-  font-size: 0.68rem;
-  text-align: center;
-  pointer-events: none;
-}
+/* Web client is Studio-only — no browse layout that hides sidebars. */
 
 .stream-info {
   display: flex;

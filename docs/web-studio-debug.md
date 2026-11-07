@@ -128,7 +128,7 @@ Asset 404s: **none** for studio modules/CSS. Transient `ERR_ABORTED` noise durin
 | Check | Result |
 | --- | --- |
 | Open via `#btn-settings` | `body[data-mode=settings]`, `#studio-settings` unhidden, `aria-pressed=true` |
-| Tabs | General, Streaming, Audio, Video / System, Recording, Studio & Browser, Help — all panels real copy |
+| Tabs | General, Streaming, Audio, Video / System, Recording, Help — all panels real copy (web is Studio-only; no Studio & Browser tab) |
 | Persistence | `maka.stream.settings.v1` (+ shared `maka.stream.streamTitle` / `streamCategory` / `bitrateProfile`) |
 | Gibberish placeholders | **None** (`lorem` / `TODO stub` / `[object Object]` not found) |
 | Close | `#tab-stream` restores studio mode |
@@ -289,6 +289,17 @@ Layer 1 scenes/preview click contract unchanged (source rows = layers; Share scr
 4. **API** — `MakaStreamAudio.setStream` / `setStreams` / `clearStream` still drive Web Audio analysers; mute + faders unchanged. Channels clear when display share stops.
 5. **Files** — `site/stream/js/audio.js`, `preview.js`, `scenes.js`, `css/audio.css` (+ shell meter-track position), `index.html` idle markup.
 6. **Verify** — With no streams: meter widths `0%`, idle/no-signal attrs set, no mid-level fill. After `setStream` with an oscillator `MediaStreamDestination`, analyser RAF updates meter width above 0.
+
+---
+
+## Studio-only (web)
+
+**Done** (this pass only; no deploy). Web client stays Studio mode only:
+
+- Removed `#program-output-mode` Studio/Browser select from the program stats bar.
+- Removed Settings **Studio & Browser** tab/cards and the General “Open chat pop-out when entering Browser Mode” checkbox.
+- `shell.js` always applies studio layout (no browse sidebar-hiding / program-browser mock); `startupMode` coerced to `studio`.
+- Dropped `.app[data-output-mode="browse"]` CSS rules in `shell.css`.
 
 ---
 

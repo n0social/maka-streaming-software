@@ -3,7 +3,7 @@
  * Boots program preview via initPreview(root); other modules own their hooks.
  *
  * Wiring layer 2 (P1-2 / P1-3):
- *   - #program-output-mode ↔ .app[data-output-mode] + body mode hint + settings.startupMode
+ *   - Studio layout only (web client has no Browser Mode)
  *   - #marketplace-dialog catalog (bundled /marketplace.json or remote feed)
  */
 
@@ -224,148 +224,62 @@ function initMarketplace(doc = document) {
   return { load, dialog };
 }
 
+/** Web client is Studio-only — always return studio. */
 function readStartupMode() {
-  try {
-    if (window.MakaStudioSettings && typeof window.MakaStudioSettings.getSettings === "function") {
-      const mode = window.MakaStudioSettings.getSettings().startupMode;
-      if (mode === "studio" || mode === "browse") return mode;
-    }
-    const raw = localStorage.getItem("maka.stream.settings.v1");
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && (parsed.startupMode === "studio" || parsed.startupMode === "browse")) {
-        return parsed.startupMode;
-      }
-    }
-  } catch {
-    /* ignore */
-  }
-  const hint = document.documentElement.dataset.makaStartupMode;
-  if (hint === "browse" || hint === "studio") return hint;
   return "studio";
 }
 
-function persistStartupMode(mode) {
-  if (mode !== "studio" && mode !== "browse") return;
-  document.documentElement.dataset.makaStartupMode = mode;
-  if (window.MakaStudioSettings && typeof window.MakaStudioSettings.setSettings === "function") {
-    window.MakaStudioSettings.setSettings({ startupMode: mode });
-    return;
-  }
-  try {
-    const raw = localStorage.getItem("maka.stream.settings.v1");
-    const base = raw ? JSON.parse(raw) : {};
-    const next = base && typeof base === "object" ? base : {};
-    next.startupMode = mode;
-    localStorage.setItem("maka.stream.settings.v1", JSON.stringify(next));
-  } catch {
-    /* ignore */
-  }
-}
-
 /**
- * Apply studio vs browser layout hint on .app / body without faking a real browser webview.
- * @param {'studio' | 'browse'} mode
- * @param {{ persist?: boolean, fromSettings?: boolean }} [opts]
+ * Lock the three-column studio layout. Browser Mode is not offered on web.
+ * @param {'studio' | 'browse'} [_mode] Ignored; always studio.
+ * @param {{ persist?: boolean, fromSettings?: boolean }} [_opts]
  */
-function applyOutputMode(mode, opts = {}) {
-  if (mode !== "studio" && mode !== "browse") return;
+function applyOutputMode(_mode, _opts = {}) {
+  const mode = "studio";
   const app = document.getElementById("studio-app") || document.querySelector(".app");
   const body = document.body;
-  const select = document.getElementById("program-output-mode");
   const brandTag = document.getElementById("brand-tag");
+
+  document.documentElement.dataset.makaStartupMode = mode;
 
   if (app) {
     app.dataset.outputMode = mode;
-    app.dataset.shell = mode === "browse" ? "browse" : "studio";
+    app.dataset.shell = "studio";
   }
 
-  // Don't clobber Settings mode; restore browse/studio when leaving settings.
+  // Don't clobber Settings mode; restore studio when leaving settings.
   if (body.dataset.mode !== "settings") {
     body.dataset.mode = mode;
   } else {
     body.dataset.outputModePending = mode;
   }
 
-  if (select && select.value !== mode) select.value = mode;
-
   if (brandTag && body.dataset.mode !== "settings") {
     brandTag.hidden = false;
-    brandTag.textContent =
-      mode === "browse"
-        ? "Browser Mode (web preview)"
-        : "Streaming studio";
+    brandTag.textContent = "Streaming studio";
   }
 
-  // Honest browser-mode surface: show program-browser slot with copy, not a fake webview.
+  // Keep program-browser slot hidden (desktop built-in browser is not available here).
   const programBrowser = document.getElementById("program-browser");
-  const browserVideo = document.getElementById("program-browser-video");
   if (programBrowser) {
-    if (mode === "browse") {
-      programBrowser.hidden = false;
-      programBrowser.dataset.webMock = "1";
-      if (browserVideo) browserVideo.hidden = true;
-      let note = programBrowser.querySelector(".program-browser-web-note");
-      if (!note) {
-        note = document.createElement("p");
-        note.className = "program-browser-web-note";
-        programBrowser.appendChild(note);
-      }
-      note.textContent =
-        "Browser Mode on web is a layout hint — built-in tabs need the Maka desktop app.";
-    } else {
-      programBrowser.hidden = true;
-      delete programBrowser.dataset.webMock;
-      const note = programBrowser.querySelector(".program-browser-web-note");
-      if (note) note.remove();
-    }
+    programBrowser.hidden = true;
+    delete programBrowser.dataset.webMock;
+    const note = programBrowser.querySelector(".program-browser-web-note");
+    if (note) note.remove();
   }
 
   window.dispatchEvent(
     new CustomEvent("maka:output-mode-change", { detail: { mode } }),
   );
-
-  if (opts.persist) persistStartupMode(mode);
 }
 
-function initOutputMode(doc = document) {
-  const select = doc.getElementById("program-output-mode");
-  const initial = readStartupMode();
-  applyOutputMode(initial, { persist: false, fromSettings: true });
+function initOutputMode() {
+  applyOutputMode("studio", { persist: false, fromSettings: true });
 
-  select?.addEventListener("change", () => {
-    const mode = select.value;
-    if (mode !== "studio" && mode !== "browse") return;
-    applyOutputMode(mode, { persist: true });
-  });
-
-  window.addEventListener("maka:startup-mode-change", (event) => {
-    const mode = event?.detail?.mode;
-    if (mode !== "studio" && mode !== "browse") return;
-    applyOutputMode(mode, { persist: false, fromSettings: true });
-  });
-
-  window.addEventListener("maka:settings-change", (event) => {
-    const mode = event?.detail?.startupMode;
-    if (mode !== "studio" && mode !== "browse") return;
-    if (select && document.activeElement === select) return;
-    applyOutputMode(mode, { persist: false, fromSettings: true });
-  });
-
-  // When settings closes, re-apply studio/browse chrome (brand tag, .app dataset).
-  window.addEventListener("maka:close-settings-done", (event) => {
-    const fromEvent = event?.detail?.mode;
-    const pending = document.body.dataset.outputModePending;
-    const mode =
-      fromEvent === "browse" || fromEvent === "studio"
-        ? fromEvent
-        : pending === "browse" || pending === "studio"
-          ? pending
-          : document.getElementById("studio-app")?.dataset.outputMode || "studio";
+  // Settings close always restores studio chrome (brand tag, .app dataset).
+  window.addEventListener("maka:close-settings-done", () => {
     delete document.body.dataset.outputModePending;
-    if (mode === "browse" || mode === "studio") {
-      applyOutputMode(mode, { persist: false });
-    }
+    applyOutputMode("studio", { persist: false });
   });
 
   return { applyOutputMode, readStartupMode };
