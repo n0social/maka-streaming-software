@@ -209,6 +209,25 @@
       return h > 0 ? h + ':' + mm + ':' + ss : mm + ':' + ss;
     }
 
+    function syncProgramLiveChrome(isLive) {
+      // Toggle .is-live on program stage chrome so CSS can flash “Live Output” when WHIP is up.
+      var live = Boolean(isLive);
+      var program = doc.getElementById('program');
+      if (program) program.classList.toggle('is-live', live);
+      var host = els.previewHost || doc.getElementById('studio-preview');
+      if (host) {
+        var stage = host.querySelector('.preview-stage');
+        if (stage) stage.classList.toggle('is-live', live);
+        var labels = host.querySelectorAll('.program-label, .preview-stage__label');
+        for (var i = 0; i < labels.length; i++) {
+          labels[i].classList.toggle('is-live', live);
+        }
+        var scenePill = host.querySelector('.preview-stage__scene-name');
+        if (scenePill) scenePill.classList.toggle('is-live', live);
+      }
+      if (els.livePill) els.livePill.classList.toggle('is-live', live);
+    }
+
     function setLiveUi(isLive) {
       if (els.livePill) {
         els.livePill.dataset.live = isLive ? 'true' : 'false';
@@ -230,6 +249,7 @@
           ? 'Publishing WHIP to the local sidecar — not a CDN viewer count'
           : 'Viewer count only appears after a real platform ingest';
       }
+      syncProgramLiveChrome(isLive);
       if (!isLive) {
         liveStartedAt = 0;
         if (durationTimer) {
@@ -1641,6 +1661,8 @@
       isLive: function () {
         return Boolean(whipPublisher);
       },
+      /** Applies program chrome .is-live (also used by headless checks). Prefer goLive/endLive. */
+      _setLiveUi: setLiveUi,
       isRelayDetected: function () {
         return relayDetected;
       },
@@ -1669,6 +1691,7 @@
           void whipPublisher.close();
           whipPublisher = null;
         }
+        setLiveUi(false);
         stopMedia(screenStream);
         stopMedia(webcamStream);
         stopMedia(micStream);

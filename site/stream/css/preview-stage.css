@@ -133,6 +133,46 @@
   font-weight: 800;
 }
 
+/* Live output flash — only while WHIP / studio isLive (class from live.js setLiveUi). */
+@keyframes program-live-flash {
+  0%,
+  100% {
+    opacity: 1;
+    color: var(--preview-gold-bright, #ffc40c);
+  }
+  50% {
+    opacity: 0.42;
+    color: #ffe08a;
+  }
+}
+
+.preview-stage .program-label.is-live .program-mode,
+.preview-stage .program-label.is-live .preview-stage__mode,
+.preview-stage__label.is-live .program-mode,
+.preview-stage__label.is-live .preview-stage__mode,
+.program.is-live .program-label .program-mode {
+  animation: program-live-flash 1.35s ease-in-out infinite;
+}
+
+.preview-stage.is-live .preview-stage__scene-name.is-live,
+.preview-stage__scene-name.is-live {
+  border-color: rgba(255, 196, 12, 0.85);
+  animation: program-live-flash 1.35s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .preview-stage .program-label.is-live .program-mode,
+  .preview-stage .program-label.is-live .preview-stage__mode,
+  .preview-stage__label.is-live .program-mode,
+  .preview-stage__label.is-live .preview-stage__mode,
+  .program.is-live .program-label .program-mode,
+  .preview-stage.is-live .preview-stage__scene-name.is-live,
+  .preview-stage__scene-name.is-live {
+    animation: none;
+    opacity: 1;
+  }
+}
+
 .preview-stage__scene-name {
   position: absolute;
   top: 0.5rem;

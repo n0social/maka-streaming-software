@@ -295,6 +295,36 @@
   color: #dc2626;
 }
 
+/* Gold blink on LIVE pill while studio isLive (.is-live from live.js). */
+@keyframes stream-live-pill-flash {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: none;
+  }
+  50% {
+    opacity: 0.55;
+    box-shadow: 0 0 0 1px rgba(201, 162, 39, 0.55);
+  }
+}
+
+.stream-live-pill.is-live[data-live='true'] {
+  background: rgba(255, 196, 12, 0.22);
+  color: #8a6d12;
+  animation: stream-live-pill-flash 1.35s ease-in-out infinite;
+}
+
+.stream-live-pill.is-live[data-live='true']::before {
+  color: var(--gold, #ffc40c);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stream-live-pill.is-live[data-live='true'] {
+    animation: none;
+    opacity: 1;
+  }
+}
+
 .stream-viewers,
 .stream-duration {
   color: #6b7280;

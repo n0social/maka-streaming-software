@@ -596,6 +596,31 @@ body.stream-studio {
   font-weight: normal;
 }
 
+/* Fallback when preview-stage.css is not the active label skin */
+@keyframes program-live-flash-shell {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.program-label.is-live .program-mode,
+.program.is-live .program-label .program-mode {
+  animation: program-live-flash-shell 1.35s ease-in-out infinite;
+  font-weight: 800;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .program-label.is-live .program-mode,
+  .program.is-live .program-label .program-mode {
+    animation: none;
+    opacity: 0.7;
+  }
+}
+
 #program-video {
   position: absolute;
   inset: 0;

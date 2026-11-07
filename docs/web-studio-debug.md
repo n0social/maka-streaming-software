@@ -246,6 +246,16 @@ Layer 1 scenes/preview click contract unchanged (source rows = layers; Share scr
 
 ---
 
+## Sequential fix layer 2 — live flash
+
+**Done** (this pass only; no deploy). Scope: program live-output indicator flash only. Sources pickers, audio, and browser-tab copy unchanged.
+
+1. **Wire** — `live.js` `setLiveUi(isLive)` (from Go Live / WHIP / `updateButtons`) calls `syncProgramLiveChrome`, toggling `.is-live` on `#program`, `.preview-stage`, `.program-label` / `.preview-stage__label`, `.preview-stage__scene-name`, and `#stream-live-pill`.
+2. **CSS** — When `.is-live` is present, “• Live Output” (and scene pill / LIVE pill) use a subtle gold opacity blink (`program-live-flash` / `stream-live-pill-flash`). Offline / not live: class absent, static (no animation). Honors `prefers-reduced-motion`.
+3. **Verify** — Headless: class absent when `MakaLive.isLive() === false`; present on program label + live pill after `MakaLive._setLiveUi(true)`; cleared after `_setLiveUi(false)`.
+
+---
+
 ## Evidence appendix
 
 ```text
