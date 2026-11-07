@@ -648,12 +648,9 @@ async function openSettings() {
     priorMode = fromApp || (mode === 'browse' ? 'browse' : 'studio')
   }
 
+  // Paint Settings chrome first — do not await device enumeration before mode switch
+  // (enumerateDevices can hang ~1.5s in headless / locked-down browsers).
   applySettingsToForm()
-  const micSelect = document.getElementById('set-mic-device')
-  if (micSelect instanceof HTMLSelectElement) {
-    await populateMicDevices(micSelect)
-    micSelect.value = settings.preferredMicDeviceId || ''
-  }
   refreshVersionLabels()
 
   document.body.dataset.mode = 'settings'
@@ -667,6 +664,16 @@ async function openSettings() {
   const tab = root.dataset.settingsTab || settings.settingsActiveTab || 'general'
   setActiveSettingsTab(isSettingsTabId(tab) ? tab : 'general')
   syncLiveDomFields()
+
+  const micSelect = document.getElementById('set-mic-device')
+  if (micSelect instanceof HTMLSelectElement) {
+    try {
+      await populateMicDevices(micSelect)
+      if (settings.preferredMicDeviceId) micSelect.value = settings.preferredMicDeviceId
+    } catch {
+      /* ignore — Settings UI already visible */
+    }
+  }
 }
 
 function closeSettings() {

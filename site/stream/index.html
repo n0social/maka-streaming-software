@@ -67,6 +67,15 @@
         <div class="relay-chip" id="relay-chip" data-state="stopped" data-hook="relay">
           <span class="dot status-dot" id="relay-status-dot" data-state="warn"></span>
           <span id="relay-label"><span id="relay-status-text">Relay offline</span></span>
+          <button
+            type="button"
+            class="relay-refresh"
+            id="btn-relay-refresh"
+            title="Re-check local relay on 127.0.0.1:38473"
+            aria-label="Refresh relay status"
+          >
+            ↻
+          </button>
         </div>
         <button type="button" class="ghost" id="btn-settings" title="Settings" aria-pressed="false">
           Settings
@@ -349,7 +358,7 @@
                 <div class="audio-meter-track" aria-hidden="true">
                   <div class="audio-meter" id="mic-meter"></div>
                 </div>
-                <button type="button" class="audio-channel-settings" title="Microphone settings" aria-label="Microphone settings">⚙</button>
+                <button type="button" class="audio-channel-settings" id="btn-mic-audio-settings" title="Microphone settings" aria-label="Microphone settings">⚙</button>
               </div>
               <div class="audio-db-scale" aria-hidden="true">
                 <span>-30</span><span>-24</span><span>-18</span><span>-12</span><span>-6</span><span>0</span>

@@ -270,23 +270,23 @@ export function initPreview(root) {
 
     if (els.btnScreen) {
       els.btnScreen.dataset.on = hasScreen ? '1' : '0';
-      els.btnScreen.textContent = hasScreen ? 'Stop screen' : 'Share screen';
+      // Keep GeForce Now share copy (do not overwrite with generic "Share screen").
+      els.btnScreen.textContent = hasScreen ? SHARE_BTN_ACTIVE : SHARE_BTN_LABEL;
     }
     if (els.btnWebcam) {
       els.btnWebcam.dataset.on = hasCam ? '1' : '0';
       els.btnWebcam.textContent = hasCam ? 'Stop webcam' : 'Add webcam';
     }
 
-    root.dispatchEvent(
-      new CustomEvent('maka:preview-change', {
-        bubbles: true,
-        detail: {
-          hasScreen,
-          hasWebcam: hasCam,
-          sceneName: els.sceneName && !els.sceneName.hidden ? els.sceneName.textContent || '' : '',
-        },
-      }),
-    );
+    const detail = {
+      hasScreen,
+      hasWebcam: hasCam,
+      hasCapture: hasScreen || hasCam,
+      sceneName: els.sceneName && !els.sceneName.hidden ? els.sceneName.textContent || '' : '',
+    };
+    root.dispatchEvent(new CustomEvent('maka:preview-change', { bubbles: true, detail }));
+    // Mirror on window so live.js listeners fire even if a parent stops propagation.
+    window.dispatchEvent(new CustomEvent('maka:preview-change', { detail }));
   }
 
   function setSceneName(name) {
@@ -423,6 +423,49 @@ export function initPreview(root) {
     syncUi();
   }
 
+  /**
+   * Attach an existing MediaStream as the gameplay / screen bed (tests, helpers).
+   * Does not stop tracks on replace when opts.keepPreviousTracks is true.
+   */
+  function setScreenStream(stream, opts = {}) {
+    if (destroyed) return null;
+    if (!opts.keepPreviousTracks) stopTracks(screenStream);
+    screenStream = stream || null;
+    if (screenStream) {
+      const track = screenStream.getVideoTracks()[0];
+      if (track) {
+        track.addEventListener('ended', () => {
+          if (screenStream === stream) {
+            screenStream = null;
+            syncUi();
+          }
+        });
+      }
+    }
+    syncUi();
+    return screenStream;
+  }
+
+  function setWebcamStream(stream, opts = {}) {
+    if (destroyed) return null;
+    if (!opts.keepPreviousTracks) stopTracks(webcamStream);
+    webcamStream = stream || null;
+    if (webcamStream) webcamPipDesired = true;
+    if (webcamStream) {
+      const track = webcamStream.getVideoTracks()[0];
+      if (track) {
+        track.addEventListener('ended', () => {
+          if (webcamStream === stream) {
+            webcamStream = null;
+            syncUi();
+          }
+        });
+      }
+    }
+    syncUi();
+    return webcamStream;
+  }
+
   function getStreams() {
     return { screen: screenStream, webcam: webcamStream };
   }
@@ -547,6 +590,8 @@ export function initPreview(root) {
     startWebcam,
     stopScreen,
     stopWebcam,
+    setScreenStream,
+    setWebcamStream,
     getStreams,
     captureFrameCanvas,
     destroy() {

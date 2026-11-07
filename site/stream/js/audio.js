@@ -390,6 +390,10 @@
           if (settings) channel.insertBefore(mute, settings)
           else channel.appendChild(mute)
         }
+        var settingsBtn = channel.querySelector('.audio-channel-settings')
+        if (settingsBtn && !settingsBtn.id && meta.settingsId) {
+          settingsBtn.id = meta.settingsId
+        }
         var wrap = channel.closest('.audio-channel-wrap') || channel.parentElement
         if (wrap && !document.getElementById(meta.faderId)) {
           var fader = document.createElement('input')

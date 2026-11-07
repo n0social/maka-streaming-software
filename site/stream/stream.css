@@ -1,2 +1,3 @@
-/* Stream page stylesheet — studio chrome lives in css/shell.css */
-@import url("./css/shell.css");
+/* Stream page stylesheet — feature CSS is linked from index.html.
+   shell.css is loaded via <link href="./css/shell.css">; keep this file as a
+   thin entry for caches / older bookmarks that still request ./stream.css. */

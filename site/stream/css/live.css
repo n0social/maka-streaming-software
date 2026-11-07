@@ -43,6 +43,27 @@
   font-size: 0.72rem;
 }
 
+.relay-chip .relay-refresh,
+#btn-relay-refresh {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 0.1rem 0.2rem;
+  margin-left: 0.15rem;
+  border-radius: 0.25rem;
+  opacity: 0.7;
+}
+
+.relay-chip .relay-refresh:hover,
+#btn-relay-refresh:hover {
+  opacity: 1;
+  background: rgba(26, 20, 8, 0.06);
+}
+
 .stream-top {
   display: flex;
   align-items: center;
