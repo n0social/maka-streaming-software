@@ -405,7 +405,7 @@
   display: none;
 }
 
-/* Leave room for GeForce Now capture hint under the share buttons. */
+/* Leave room for browser-tab capture hint under the share buttons. */
 .preview-stage:has(.preview-capture-hint:not([hidden])) .preview-stage__controls,
 #studio-preview:has(.preview-capture-hint:not([hidden])) > .preview-stage__controls {
   bottom: 2.55rem;

@@ -235,7 +235,7 @@ Layer 1 scenes/preview click contract unchanged (source rows = layers; Share scr
 
 ## Sequential fix layer 1 — scenes
 
-**Done** (this pass only; no deploy). Scope: `site/stream/` scenes rail + program bumper overlay. Sources pickers, audio meters, and GeForce copy unchanged.
+**Done** (this pass only; no deploy). Scope: `site/stream/` scenes rail + program bumper overlay. Sources pickers, audio meters, and browser-tab copy unchanged.
 
 1. **Canonical scenes** — Fixed list only: **Gameplay**, **Starting Soon**, **Intermission**, **Ending**. Removed **Just Chatting** (`desk-only`) and all custom/`Add Scene` paths. Persistence (`maka.stream.scenes.v1`) keeps `activeSceneId` + layers; legacy custom scenes / non-canonical ids are ignored and cleared on write (falls back to Gameplay).
 2. **Download CTA** — `#btn-add-scene-alt` / Add Scene removed. Replaced with `#btn-scenes-download` → `/download.html` (“Download the exe for the full experience”).
@@ -253,6 +253,16 @@ Layer 1 scenes/preview click contract unchanged (source rows = layers; Share scr
 1. **Wire** — `live.js` `setLiveUi(isLive)` (from Go Live / WHIP / `updateButtons`) calls `syncProgramLiveChrome`, toggling `.is-live` on `#program`, `.preview-stage`, `.program-label` / `.preview-stage__label`, `.preview-stage__scene-name`, and `#stream-live-pill`.
 2. **CSS** — When `.is-live` is present, “• Live Output” (and scene pill / LIVE pill) use a subtle gold opacity blink (`program-live-flash` / `stream-live-pill-flash`). Offline / not live: class absent, static (no animation). Honors `prefers-reduced-motion`.
 3. **Verify** — Headless: class absent when `MakaLive.isLive() === false`; present on program label + live pill after `MakaLive._setLiveUi(true)`; cleared after `_setLiveUi(false)`.
+
+---
+
+## Sequential fix layer 3 — browser-tab copy
+
+**Done** (this pass only; no deploy). Scope: user-facing labels/hints/docs only. Sources device pickers and audio meters unchanged. `getDisplayMedia` still prefers tab/window (`displaySurface: 'browser'`).
+
+1. **No brand sponsorship** — Removed “Share GeForce Now tab” / GeForce Now / NVIDIA pitch from `site/stream/` UI copy. Button + empty state + capture hint now say **Share browser tab / window** (and equivalent “browser tab or window” wording).
+2. **Files** — `site/stream/index.html`, `js/preview.js` (labels/titles/hints/comments), `js/live.js` (relay-missing modal), `css/preview-stage.css` (comment). Docs: `docs/web-studio-cloud-streaming.md` capture path + workflow + capability table use generic browser-tab / cloud-gaming language (no NVIDIA sponsorship claim).
+3. **Verify** — `rg -i 'geforce|nvidia' site/stream` → no matches. Product may still mention cloud gaming generically.
 
 ---
 

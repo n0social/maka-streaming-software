@@ -1,7 +1,7 @@
 # Web client cloud streaming (makalive.stream/stream/)
 
 **Primary surface:** the **browser studio** at [`https://makalive.stream/stream/`](https://makalive.stream/stream/) (`site/stream/`).  
-Capture GeForce Now (or similar) in the tab, preview locally, then publish **WHIP** to a **local relay helper** on the streamer’s PC for encode + Twitch/YouTube RTMP.
+Capture a cloud-gaming (or other) browser tab, preview locally, then publish **WHIP** to a **local relay helper** on the streamer’s PC for encode + Twitch/YouTube RTMP.
 
 This doc is about the **web client workflow**. The Electron exe (`src/renderer`) is a behavior/UI reference only — do not treat the desktop app as the deliverable for this path.
 
@@ -20,7 +20,7 @@ Relay listens on **`http://127.0.0.1:38473`** only. Stream keys and RTMP never l
 ## Web client workflow (browser + local relay)
 
 1. Open **`https://makalive.stream/stream/`** (or local `site/` → `/stream/`).
-2. In **Program**, click **Share GeForce Now tab / window** → pick the cloud-game tab/window in the browser picker.
+2. In **Program**, click **Share browser tab / window** → pick the cloud-game (or other) tab/window in the browser picker.
 3. Optional: **Add webcam**, tune **Audio Mixer**, switch **Scenes**.
 4. Pick encode profile (`720p30`…`4k60`) in the stats bar or **Settings → Streaming**.
 5. Arm **Twitch** / **YouTube**; paste stream key(s) when shown (or keep keys only in the local relay).
@@ -41,10 +41,10 @@ Local relay :38473  ──encode (profile)──►  RTMP(S) ──► Twitch / 
 
 ---
 
-## Capture path (GeForce Now)
+## Capture path (browser tab)
 
-1. Open GeForce Now (or similar) in Chrome / Edge — typically a **browser tab** or dedicated window.
-2. In Maka **web** studio Program preview, click **Share GeForce Now tab / window**.
+1. Open cloud gaming (or any content) in Chrome / Edge — typically a **browser tab** or dedicated window.
+2. In Maka **web** studio Program preview, click **Share browser tab / window**.
 3. Choose that **tab** or **window** in `getDisplayMedia` (not an unrelated display unless intended).
 4. Preview attaches the stream (`preview.js` → `MakaStreamPreview.getStreams().screen`). Webcam is a separate `getUserMedia` track (PiP).
 5. Capture stays **local** until Go Live publishes WHIP. The website alone does not ingest to a CDN.
@@ -97,7 +97,7 @@ Web persistence: `localStorage['maka.stream.bitrateProfile']`, mirrored in `maka
 
 | Capability | Status |
 |------------|--------|
-| Share GeForce Now tab/window + webcam preview | Yes |
+| Share browser tab/window + webcam preview | Yes |
 | Scenes / sources / settings / mixer chrome | Yes |
 | Local recording (MediaRecorder → download) | Yes (preview quality) |
 | Virtual camera as an OS device | No — preview mock only |

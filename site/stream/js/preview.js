@@ -16,13 +16,13 @@
  *
  * Public API: window.MakaStreamPreview (canonical); window.MakaPreview is an alias; host._makaPreview is the same instance.
  */
-const EMPTY_COPY = 'Share the GeForce Now tab or window to preview cloud gameplay';
-const SHARE_BTN_LABEL = 'Share GeForce Now tab / window';
+const EMPTY_COPY = 'Share a browser tab or window to preview cloud gameplay';
+const SHARE_BTN_LABEL = 'Share browser tab / window';
 const SHARE_BTN_ACTIVE = 'Stop sharing';
 const WEBCAM_OFFLINE = 'video is offline';
 const DEFAULT_SCENE = 'Gameplay';
 const CAPTURE_HINT =
-  'In the browser picker, choose the GeForce Now tab or window — not an unrelated display unless you want the whole monitor.';
+  'In the browser picker, choose the browser tab or window — not an unrelated display unless you want the whole monitor.';
 
 function ensureStylesheet() {
   const href = new URL('../css/preview-stage.css', import.meta.url).pathname;
@@ -227,8 +227,8 @@ export function initPreview(root) {
     if (els.btnScreen) {
       els.btnScreen.textContent = hasScreen ? SHARE_BTN_ACTIVE : SHARE_BTN_LABEL;
       els.btnScreen.title = hasScreen
-        ? 'Stop sharing the GeForce Now tab or window'
-        : 'Share the GeForce Now tab or window (getDisplayMedia)';
+        ? 'Stop sharing the browser tab or window'
+        : 'Share a browser tab or window (getDisplayMedia)';
     }
     if (els.captureHint) {
       els.captureHint.hidden = hasScreen;
@@ -279,7 +279,7 @@ export function initPreview(root) {
 
     if (els.btnScreen) {
       els.btnScreen.dataset.on = hasScreen ? '1' : '0';
-      // Keep GeForce Now share copy (do not overwrite with generic "Share screen").
+      // Keep browser-tab share copy (do not overwrite with generic "Share screen").
       els.btnScreen.textContent = hasScreen ? SHARE_BTN_ACTIVE : SHARE_BTN_LABEL;
     }
     if (els.btnWebcam) {
@@ -347,7 +347,7 @@ export function initPreview(root) {
     if (destroyed) return null;
     stopScreen();
     try {
-      // Prefer browser tab / window for GeForce Now; fall back if the UA rejects constraints.
+      // Prefer browser tab / window for cloud gameplay; fall back if the UA rejects constraints.
       let stream = null;
       try {
         stream = await navigator.mediaDevices.getDisplayMedia({

@@ -811,7 +811,7 @@
         showRelayModal(
           'No local relay at 127.0.0.1:' +
             RELAY_PORT +
-            '. Install or run Maka desktop so MAKArelay.exe is listening — the browser captures GeForce Now and publishes WHIP; the sidecar encodes (profiles up to 4K) and RTMPs to Twitch / YouTube with your stream keys. This website cannot start the encoder or claim a cloud stream. Preview stays local.',
+            '. Install or run Maka desktop so MAKArelay.exe is listening — the browser captures a browser tab and publishes WHIP; the sidecar encodes (profiles up to 4K) and RTMPs to Twitch / YouTube with your stream keys. This website cannot start the encoder or claim a cloud stream. Preview stays local.',
         );
         if (destHint) {
           destHint.textContent =
