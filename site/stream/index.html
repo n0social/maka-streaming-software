@@ -6,24 +6,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Try Maka in your browser — webcam and screen share preview with optional WHIP to a local Tabcast relay."
+      content="Maka Stream — cream and gold studio mock with scenes, program, mixer, and stream controls."
     />
     <meta name="theme-color" content="#faf8f4" />
     <link rel="canonical" href="https://makalive.stream/stream/" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Maka" />
-    <meta property="og:title" content="Maka — browser stream try" />
+    <meta property="og:title" content="Maka — Stream" />
     <meta
       property="og:description"
-      content="One-session browser capture. Full RTMP uses TabcastRelay on localhost:38473."
+      content="Interactive studio mock of the redesigned Maka streaming UI."
     />
     <meta property="og:url" content="https://makalive.stream/stream/" />
     <meta property="og:image" content="https://makalive.stream/marketing/screenshot-desktop-1280x800.png" />
-    <meta
-      http-equiv="Content-Security-Policy"
-      content="default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://makalive.stream; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:38473 http://localhost:38473"
-    />
-    <title>Maka — browser stream</title>
+    <title>Maka — Stream</title>
     <link rel="icon" type="image/png" href="/marketing/favicon-32.png" sizes="32x32" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -42,85 +38,157 @@
     />
     <link rel="stylesheet" href="/stream/stream.css" />
   </head>
-  <body>
-    <div class="stream-app site-shell--full">
-      <header class="stream-top stream-top--minimal">
-        <div class="stream-status" aria-live="polite">
-          <span class="status-dot" id="relay-status-dot" data-state="warn"></span>
-          <span id="relay-status-text">Checking relay…</span>
+  <body class="preview-page stream-page">
+    <p class="preview-banner">
+      Stream studio mock — controls are for demo layout, not connected to capture or stream keys.
+      <a href="/download.html">Get the real app</a>
+    </p>
+
+    <div class="studio-mock" id="studio-mock">
+      <header class="studio-mock-top">
+        <a class="site-logo studio-mock-brand" href="/">
+          <span class="site-logo-mark" aria-hidden="true">M</span>
+          <span class="site-logo-text">Maka Studio</span>
+          <img
+            class="studio-mock-mascot"
+            src="/assets/mascot/maka-mascot.png"
+            alt=""
+            width="36"
+            height="36"
+            decoding="async"
+          />
+        </a>
+        <span class="relay-chip" id="relay-chip" data-on="true">Relay · localhost</span>
+        <div class="tabs" role="tablist" aria-label="Modes">
+          <button type="button" class="tab is-on" data-tab="studio">Stream</button>
+          <button type="button" class="tab" data-tab="search">Search</button>
         </div>
+        <button type="button" class="go-live-chip" id="toggle-live">Go Live</button>
       </header>
 
-      <div class="stream-main">
-        <div class="stream-stage-wrap">
-          <div class="program-frame">
-            <span class="program-label">Program</span>
-            <canvas id="program-canvas" class="program-canvas" aria-label="Program preview"></canvas>
-            <p class="program-empty" id="program-empty">
-              Add webcam or share your screen to build a layout.<br />
-              Screen fills the frame; webcam appears as a gold picture-in-picture.
-            </p>
-          </div>
+      <aside class="studio-sidebar studio-sidebar--left" aria-label="Scenes and sources">
+        <div class="studio-block">
+          <div class="studio-block-head"><span>Scenes</span></div>
+          <ul class="studio-list" id="scene-list">
+            <li><button type="button" class="studio-list-item is-on" data-scene="gameplay">🎮 Gameplay</button></li>
+            <li><button type="button" class="studio-list-item" data-scene="starting">⏳ Starting Soon</button></li>
+            <li><button type="button" class="studio-list-item" data-scene="chat">💬 Just Chatting</button></li>
+            <li><button type="button" class="studio-list-item" data-scene="break">☕ Intermission</button></li>
+          </ul>
         </div>
-
-        <aside class="stream-sidebar" aria-label="Stream controls">
-          <div class="stream-block">
-            <h2>Sources</h2>
-            <p>Capture stays in your browser until you publish to a local relay.</p>
-            <div class="stream-actions">
-              <button type="button" class="btn btn-secondary" id="btn-webcam">Add webcam</button>
-              <button type="button" class="btn btn-secondary" id="btn-screen">Share screen</button>
-              <button type="button" class="btn btn-secondary" id="btn-mic">Add microphone</button>
-            </div>
-          </div>
-
-          <div class="stream-block">
-            <h2>Go live</h2>
-            <p>
-              WHIP to <code>127.0.0.1:38473</code> when TabcastRelay is running. Without it, preview
-              only — no RTMP from this page alone.
-            </p>
-            <div class="stream-actions">
-              <button type="button" class="btn btn-primary" id="btn-start">Start stream</button>
-              <button type="button" class="btn btn-ghost" id="btn-stop" disabled>Stop stream</button>
-            </div>
-          </div>
-
-          <div class="stream-block">
-            <h2>Log</h2>
-            <pre class="stream-log" id="stream-log"></pre>
-          </div>
-        </aside>
-      </div>
-
-      <footer class="stream-footer">
-        <span>Encode + platform keys → desktop Maka or TabcastRelay.exe</span>
-        <span>
-          <a href="/download.html">Download</a> · <a href="/preview/">Studio preview</a> ·
-          <a href="/">Home</a>
-        </span>
-      </footer>
-    </div>
-
-    <div class="modal-backdrop" id="relay-modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-title">
-      <div class="modal">
-        <h2 id="modal-title">Relay required for go-live</h2>
-        <p>
-          This page previews capture in the browser. RTMP encoding runs in
-          <strong>TabcastRelay</strong> on your PC (port 38473). Install Maka, verify the relay, add
-          stream keys in the app — then WHIP from here or use the full studio.
+        <div class="studio-block">
+          <div class="studio-block-head"><span>Sources</span></div>
+          <ul class="studio-list">
+            <li><button type="button" class="studio-list-item is-on">🖥 Game Capture</button></li>
+            <li><button type="button" class="studio-list-item is-on">📷 Webcam</button></li>
+            <li><button type="button" class="studio-list-item">🎙 Microphone</button></li>
+          </ul>
+        </div>
+        <p class="studio-footer-note">
+          <span class="status-dot-sm" aria-hidden="true"></span>
+          All systems nominal
         </p>
-        <div class="modal-actions">
-          <a class="btn btn-primary" href="/download.html">Download Maka</a>
-          <button type="button" class="btn btn-ghost" id="modal-close">Keep previewing</button>
+      </aside>
+
+      <section class="studio-stage" aria-label="Program">
+        <div class="program-preview">
+          <span class="program-preview-label">Program · Live Output</span>
+          <div class="program-placeholder" id="program-label">Gameplay scene · mock HUD layout</div>
+          <div class="program-pip" aria-hidden="true"></div>
         </div>
+      </section>
+
+      <aside class="studio-sidebar studio-sidebar--right" aria-label="Mixer and stream">
+        <div class="studio-block">
+          <div class="studio-block-head"><span>Audio mixer</span></div>
+          <div class="audio-row dim">
+            <span aria-hidden="true">🔊</span>
+            <div class="audio-meter-track"><div class="audio-meter" style="--level: 12%"></div></div>
+            <span aria-hidden="true">⚙</span>
+          </div>
+          <div class="audio-row">
+            <span aria-hidden="true">🎙</span>
+            <div class="audio-meter-track">
+              <div class="audio-meter" id="mic-meter" style="--level: 38%"></div>
+            </div>
+            <span aria-hidden="true">⚙</span>
+          </div>
+          <div class="audio-row dim">
+            <span aria-hidden="true">🎮</span>
+            <div class="audio-meter-track"><div class="audio-meter" style="--level: 12%"></div></div>
+            <span aria-hidden="true">⚙</span>
+          </div>
+        </div>
+        <div class="studio-block">
+          <div class="studio-block-head"><span>Stream controls</span></div>
+          <button type="button" class="btn btn-primary" id="sidebar-live" style="width: 100%">Start Streaming</button>
+        </div>
+        <div class="studio-block">
+          <div class="studio-block-head"><span>Stream info</span></div>
+          <p style="margin: 0; font-size: 0.78rem; color: var(--muted); line-height: 1.5">
+            Title · category · viewers — placeholder only. Keys are never stored on this page.
+          </p>
+        </div>
+      </aside>
+
+      <div class="stats-bar">
+        <span><strong>Quality</strong> 720p @ 30fps</span>
+        <span><strong>Dropped</strong> 0</span>
+        <span><strong>FPS</strong> 30</span>
+        <span><strong>Resolution</strong> 1280×720</span>
+        <span id="live-pill"><strong>Status</strong> Offline</span>
       </div>
     </div>
 
-    <div class="mascot-corner" aria-hidden="true">
-      <img src="/assets/mascot/maka-mascot.svg" alt="" width="52" height="52" />
-    </div>
+    <script>
+      (function () {
+        var live = false;
+        var goLive = document.getElementById('toggle-live');
+        var sidebarLive = document.getElementById('sidebar-live');
+        var livePill = document.getElementById('live-pill');
+        var programLabel = document.getElementById('program-label');
+        var micMeter = document.getElementById('mic-meter');
+        var relayChip = document.getElementById('relay-chip');
 
-    <script src="/stream/stream.js" defer></script>
+        function setLive(next) {
+          live = next;
+          goLive.textContent = live ? 'End Live' : 'Go Live';
+          sidebarLive.textContent = live ? 'End Streaming' : 'Start Streaming';
+          livePill.innerHTML = live ? '<strong>Status</strong> Live (mock)' : '<strong>Status</strong> Offline';
+          relayChip.dataset.on = live ? 'true' : 'true';
+        }
+
+        goLive.addEventListener('click', function () {
+          setLive(!live);
+        });
+        sidebarLive.addEventListener('click', function () {
+          setLive(!live);
+        });
+
+        document.querySelectorAll('.tab').forEach(function (tab) {
+          tab.addEventListener('click', function () {
+            document.querySelectorAll('.tab').forEach(function (t) {
+              t.classList.toggle('is-on', t === tab);
+            });
+          });
+        });
+
+        document.querySelectorAll('#scene-list .studio-list-item').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            document.querySelectorAll('#scene-list .studio-list-item').forEach(function (b) {
+              b.classList.toggle('is-on', b === btn);
+            });
+            programLabel.textContent =
+              btn.textContent.trim().replace(/^[^\s]+\s/, '') + ' · mock program frame';
+          });
+        });
+
+        setInterval(function () {
+          if (!live) return;
+          var level = 25 + Math.random() * 55;
+          micMeter.style.setProperty('--level', level + '%');
+        }, 400);
+      })();
+    </script>
   </body>
 </html>
