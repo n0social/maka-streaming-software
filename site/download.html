@@ -40,6 +40,7 @@
     <style>
       .download-main {
         max-width: 40rem;
+        text-align: center;
       }
       .download-main h1 {
         margin: 0 0 0.85rem;
@@ -48,6 +49,15 @@
         font-style: italic;
         font-size: clamp(2rem, 5vw, 2.75rem);
         letter-spacing: -0.03em;
+      }
+      .download-main .site-header,
+      .download-main .site-nav,
+      .download-main .cta-row,
+      .download-main .site-footer {
+        justify-content: center;
+      }
+      .download-main .eyebrow {
+        text-align: center;
       }
       .meta-block {
         margin-top: 2rem;
@@ -61,7 +71,6 @@
       <header class="site-header site-header--nav-only">
         <nav class="site-nav site-nav--compact">
           <a href="/stream/">Stream</a>
-          <a href="/preview/">App preview</a>
           <a href="/">Home</a>
         </nav>
       </header>
@@ -69,10 +78,6 @@
       <main>
         <p class="eyebrow">Windows · v0.2.4</p>
         <h1>Download Maka</h1>
-        <p class="hero-lead">
-          Desktop studio with game capture, cream-and-gold layout, and TabcastRelay on
-          <code>127.0.0.1:38473</code> — WHIP in, RTMP to your platforms. Stream keys stay local.
-        </p>
 
         <div class="cta-row">
           <a
