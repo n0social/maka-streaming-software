@@ -7,6 +7,6 @@
 
 ### Windows installer
 
-Download **[Maka-Setup-{{version}}.exe](https://github.com/n0social/maka-streaming-software/releases/download/{{tag_name}}/Maka-Setup-{{version}}.exe)** from this release, or from the site: [makalive.stream.skydav.work/download.html](https://makalive.stream.skydav.work/download.html).
+Download **[Maka-Setup-{{version}}.exe](https://github.com/n0social/maka-streaming-software/releases/download/{{tag_name}}/Maka-Setup-{{version}}.exe)** from this release, or from the site: [makalive.stream/download.html](https://makalive.stream/download.html).
 
 **Windows SmartScreen** may warn because builds are **unsigned** until code signing is configured — choose *More info* → *Run anyway* if you trust this release.

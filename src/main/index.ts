@@ -607,7 +607,7 @@ function registerIpc(): void {
   })
 
   ipcMain.handle('shell:open-home', () => {
-    void shell.openExternal('https://makalive.stream.skydav.work/')
+    void shell.openExternal('https://makalive.stream/')
   })
 
   ipcMain.handle('settings:get', (event) => {

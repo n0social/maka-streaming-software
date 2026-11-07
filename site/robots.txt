@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://makalive.stream.skydav.work/sitemap.xml
+Sitemap: https://makalive.stream/sitemap.xml

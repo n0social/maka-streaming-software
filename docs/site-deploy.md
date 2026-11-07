@@ -6,10 +6,13 @@ Consolidated runbook for marketing HTML, `maka.css`, downloads, `/stream/`, and 
 
 | Layer | Host | Role |
 | --- | --- | --- |
-| **Public apex** | `tabcast.live`, `www.tabcast.live` (Caddy on **45.77.x**) | TLS + redirect to origin; **must preserve `{uri}`** |
-| **Origin** | `makalive.stream.skydav.work` on DO droplet **`104.131.164.94`** | nginx serves **`/opt/tabcast/web`** |
+| **Public site** | `makalive.stream`, `www.makalive.stream` | DNS A → droplet **`104.131.164.94`**. nginx serves **`/opt/maka/web`** with TLS for both names. |
+| **Same tree** | `/opt/tabcast` → `/opt/maka` | Symlink. `/opt/tabcast/web` and `/opt/maka/web` are one directory. |
+| **Not a public URL** | `makalive.stream.skydav.work` | Same IP, but that name is not on the live site vhost, so certificate verification fails. Do not use it for canonical, Open Graph, sitemap, robots, or CSS. |
 
-Deploy target user: **`root@104.131.164.94`** (hostname `skydav`).
+Deploy target user: **`root@104.131.164.94`** (hostname `skydav`). Do not write **`/var/www/portfolio`**.
+
+The live vhost file stays **`/etc/nginx/sites-enabled/tabcast.live.skydav.work`**. Its `server_name` is `tabcast.live.skydav.work makalive.stream www.makalive.stream`, and the certificate directory is `/etc/letsencrypt/live/tabcast.live.skydav.work/`. Leave that filename and the legacy hostname in `server_name` in place.
 
 ## Cloud Agent environment
 
@@ -48,83 +51,46 @@ rsync -avz --delete \
 ssh root@104.131.164.94 'WEB_ROOT=/opt/tabcast/web bash /opt/tabcast/site-src/deploy-site.sh'
 ```
 
-`site/deploy-site.sh` copies assets into `/opt/tabcast/web`, installs nginx site + cache snippet, reloads nginx. Default CSS cache bust: **`CSS_BUILD=dc6d035`** (override with env if needed).
+`site/deploy-site.sh` copies assets into `/opt/tabcast/web` (the `/opt/maka/web` tree), installs nginx site + cache snippet, and reloads nginx. Default CSS cache bust: **`CSS_BUILD=dc6d039`** (override with env if needed). Skip that script when you only need to publish HTML: copy the site files into `/opt/maka/web` and leave nginx and `/var/www/portfolio` alone.
 
 Alternative: copy `site/` into `/opt/tabcast/site-src` on the server and run the same `deploy-site.sh` there.
 
-## Branch / repo state (studio redesign)
+## Branch / repo state
 
-On **`cursor/studio-redesign-continue-dc6d`**:
+Public site host is **`makalive.stream`**. **`www.makalive.stream`** serves the same tree.
 
-- Wordmark: **35°** cream/Mikado Yellow split + holographic foil in **`site/maka.css`** (build **`dc6d035`**)
-- HTML uses absolute stylesheet URLs to **`https://makalive.stream.skydav.work/maka.css?v=dc6d035`**
-- Home has critical inline CSS fallback if external CSS fails; wordmark colors/foil are **only** in `maka.css` (commit `a4eee92`)
-- Apex CSS breakage when Caddy strips paths: mitigated in repo by absolute origin URLs + inline fallback; **still broken for relative `/maka.css` on www** until Caddy is fixed
-
-Key commits: **`e4cc8e2`** (Caddy/path/nginx), **`a4eee92`** (wordmark 35° + foil).
+- Stylesheet build **`dc6d039`** in **`site/maka.css`**
+- Absolute stylesheet URLs use **`https://makalive.stream/maka.css?v=dc6d039`**
+- Home `<base href>` is **`https://makalive.stream/`** and also preloads `/maka.css?v=dc6d039`
+- Checked 7 Nov 2026: `makalive.stream` and `www.makalive.stream` both answer `HTTP/1.1 200` with a valid certificate. `makalive.stream.skydav.work` fails TLS (name mismatch), so public links do not use it.
 
 Handoff summary: **`docs/agent-handoff-tabcast.md`**.
 
-## Caddy on 45.77.x (tabcast.live / www) — preserve `{uri}`
+## Public host
 
-**Root cause of “black Arial MAKA”:** apex/www redirects that send every path to `https://makalive.stream.skydav.work/` (homepage only). Browsers then load **`index.html` as the stylesheet** when `/maka.css` (or cached relative URL) hits Caddy (MIME mismatch → stylesheet discarded → unstyled hero).
+Canonical, Open Graph, sitemap, robots, in-app “open home”, and absolute CSS links use **`https://makalive.stream/`**. nginx on **`104.131.164.94`** serves that name directly, so `/maka.css` is the stylesheet (no redirect in front).
 
-Required Caddy v2 redirect (path **and** query preserved):
-
-```caddy
-tabcast.live, www.tabcast.live {
-	redir https://makalive.stream.skydav.work{uri} permanent
-}
-```
-
-Avoid `handle_path` or a single target URL without `{uri}`.
-
-After editing on the **45.77.x** host:
-
-```bash
-caddy validate --config /etc/caddy/Caddyfile
-systemctl reload caddy
-```
+An older front stripped every path to a homepage URL, and browsers then parsed `index.html` as CSS (“black Arial MAKA”). That path is not how `makalive.stream` is served. Keep absolute `https://makalive.stream/maka.css?v=…` links so a cached page still requests the stylesheet by the name that has a working certificate.
 
 ## Live verification (curl)
 
-**Origin CSS (should pass after deploy):**
-
 ```bash
-curl -sI 'https://makalive.stream.skydav.work/maka.css?v=dc6d035' | grep -iE '^(HTTP|content-type)'
+dig +short makalive.stream A
+dig +short www.makalive.stream A
+# both 104.131.164.94
+
+curl -sI 'https://makalive.stream/' | grep -iE '^(HTTP|content-type)'
+curl -sI 'https://www.makalive.stream/' | grep -iE '^(HTTP|content-type)'
+curl -sI 'https://makalive.stream/maka.css?v=dc6d039' | grep -iE '^(HTTP|content-type)'
 # HTTP/1.1 200 OK
 # Content-Type: text/css
 ```
 
-**Apex redirect must preserve path (often failing until Caddy fix):**
+## nginx on the droplet
 
-```bash
-curl -sI 'https://www.tabcast.live/maka.css?v=TEST' | grep -i location
-# WANT: location: https://makalive.stream.skydav.work/maka.css?v=TEST
-# BAD:  location: https://makalive.stream.skydav.work/
-```
+Leave the live vhost file **`tabcast.live.skydav.work`** enabled. It is the server block for `makalive.stream` and `www.makalive.stream`. Do not point certbot at `makalive.stream.skydav.work` for this site, and do not reload nginx just to publish HTML.
 
-As of last agent check, www still returned the **BAD** location (path stripped). Re-run after Caddy reload.
-
-**Homepage redirect chain:**
-
-```bash
-curl -sI 'https://tabcast.live/' | grep -i location
-# Typically redirects to www, then Caddy → origin
-```
-
-## nginx on origin
-
-**First-time TLS** for `makalive.stream.skydav.work` (DNS A → `104.131.164.94`):
-
-```bash
-ssh root@104.131.164.94
-certbot certonly --nginx -d makalive.stream.skydav.work
-```
-
-Then run `deploy-site.sh`. Keep or disable the legacy `tabcast.live.skydav.work` vhost under `/etc/nginx/sites-enabled/` as needed.
-
-`site/deploy-site.sh` installs:
+`site/deploy-site.sh` installs, when you choose to run it:
 
 - `/etc/nginx/sites-available/makalive.stream.skydav.work` (from `site/nginx/makalive.stream.skydav.work.conf`)
 - `/etc/nginx/snippets/tabcast-site-cache.conf` (from `site/tabcast-site-cache.conf`) — exact `/maka.css` handling, `text/css`, no SPA fallback for CSS

@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto'
 import { Readable } from 'node:stream'
 import { fileURLToPath } from 'node:url'
 
-const MANIFEST_URL = 'https://makalive.stream.skydav.work/downloads/relay-manifest.json'
+const MANIFEST_URL = 'https://makalive.stream/downloads/relay-manifest.json'
 const OUT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'vendor', 'relay')
 const OUT_FILE = join(OUT_DIR, 'TabcastRelay.exe')
 
@@ -26,7 +26,7 @@ async function main() {
 
   console.log('Fetching relay manifest…')
   const manifest = await (await fetch(MANIFEST_URL)).json()
-  const artifactUrl = `https://makalive.stream.skydav.work/downloads/${manifest.artifact}`
+  const artifactUrl = `https://makalive.stream/downloads/${manifest.artifact}`
   const expectedSha = String(manifest.sha256 || '').toLowerCase()
   const expectedSize = Number(manifest.size || 0)
   const force = process.argv.includes('--force')

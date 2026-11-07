@@ -6,7 +6,7 @@ set -euo pipefail
 
 WEB_ROOT="${WEB_ROOT:-/opt/tabcast/web}"
 SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
-SITE_HOST="${SITE_HOST:-makalive.stream.skydav.work}"
+SITE_HOST="${SITE_HOST:-makalive.stream}"
 CSS_BUILD="${CSS_BUILD:-dc6d039}"
 
 echo "Publishing Maka site from ${SRC_DIR}…"

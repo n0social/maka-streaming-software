@@ -7,8 +7,8 @@ import { MARKETPLACE_CATALOG } from '../shared/marketplace-catalog'
 import { recordDiagnostic } from './diagnostics'
 
 const FEED_URLS = [
-  'https://makalive.stream.skydav.work/marketplace.json',
-  'https://tabcast.live/marketplace.json',
+  'https://makalive.stream/marketplace.json',
+  'https://www.makalive.stream/marketplace.json',
 ]
 const CACHE_TTL_MS = 60 * 60 * 1000
 

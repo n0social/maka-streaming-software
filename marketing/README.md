@@ -38,7 +38,7 @@ python scripts/generate-marketing.py
 
 ## Site copies (`site/marketing/`)
 
-Same assets copied for deployment to `makalive.stream.skydav.work/marketing/`.
+Same assets copied for deployment to `makalive.stream/marketing/`.
 
 ## Design language
 
@@ -46,13 +46,13 @@ CREW Neon Four on Court Black — cyan `#2AF5FF`, pink `#FF2AD4`, lime `#C6FF2A`
 
 ## Production host (DigitalOcean)
 
-Maka static site and **`makalive.stream.skydav.work`** deploy to **`/opt/tabcast/web`** on the same droplet as **`skydav.work`** (portfolio Next.js). Repo does not store DO API keys or SSH keys — deploy is manual from your machine.
+Maka static site and **`makalive.stream`** (same site as **`www.makalive.stream`**) deploy to **`/opt/maka/web`** on the same droplet as **`skydav.work`** (portfolio Next.js). **`/opt/tabcast`** is a symlink to **`/opt/maka`**. Repo does not store DO API keys or SSH keys — deploy is manual from your machine.
 
 | Host | Role |
 |------|------|
-| `104.131.164.94` | nginx + static Tabcast tree + portfolio app |
-| `makalive.stream.skydav.work` | Maka landing, downloads, legacy `/stream/` |
-| `skydav.work` | Portfolio (not in this repo) |
+| `104.131.164.94` | nginx + static Maka tree + portfolio app |
+| `makalive.stream`, `www.makalive.stream` | Public site: landing, downloads, legacy `/stream/` |
+| `skydav.work` | Portfolio (not in this repo). Do not write `/var/www/portfolio`. |
 
 **Check RAM and disk** (run with your SSH key):
 

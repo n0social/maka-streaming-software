@@ -219,7 +219,7 @@ Ship in the first post-0.2 minor (0.2.x or 0.3.0).
 ### Site & release hygiene
 
 - Single deploy script; **`browser-manifest.json`** drives version/SHA on landing page.
-- “Try our browser” CTA → latest GitHub Release (already partially on tabcast.live).
+- “Try our browser” CTA → latest GitHub Release (already partially on makalive.stream).
 
 ---
 

@@ -36,7 +36,7 @@ Tabcast Browser follows the same product shape as **VS Code**: a **stable core s
 | Editor + terminal + sidebar | Studio + Browse + relay + program monitor |
 | Extension API (`vscode.*`) | Addon API (`tabcast.addons.*`) |
 | Activity bar / panels | Left sources · center stage · right scene/destinations/addons |
-| Extension marketplace | tabcast.live/addons (curated catalog) |
+| Extension marketplace | makalive.stream/addons (curated catalog) |
 | Built-in language support | Built-in capture, WHIP, Twitch/YouTube RTMP |
 
 **Core (never an addon):** local relay, WHIP publish, display/window/browse capture, scene layout contract, browse security model, go-live lifecycle.
@@ -109,7 +109,7 @@ Tabcast does **not** ship every platform; the marketplace lets creators own nich
 | **A1** | `AddonHost` + manifest loader + 3 permissions | ✅ 0.3 (`addon-api.ts`, declarative actions) |
 | **A2** | Addon marketplace folder + enable/disable UI in Settings | ✅ 0.3 (marketplace dialog + install) |
 | **A2.5** | Sandboxed webview runtime + `tabcast.addons` preload bridge | ✅ 0.3.6 |
-| **A3** | Signed addon catalog (GitHub repo / tabcast.live/addons) | 1.0 |
+| **A3** | Signed addon catalog (GitHub repo / makalive.stream/addons) | 1.0 |
 | **A4** | Creator SDK docs + CLI `tabcast-addon init` | 1.1 |
 
 ### Hook surface (what addons can attach to)
@@ -288,7 +288,7 @@ Beyond user addons, **built-in integrations** ship with the app and may share co
 0.4.5  Instant replay buffer · audio routing improvements
 0.5.0  Addon marketplace (curated) · YouTube chat · Discord webhook integration
 1.0.0  Signed installer · auto-update · CI — GA
-1.1.0  Creator SDK · `tabcast-addon` CLI · community catalog on tabcast.live
+1.1.0  Creator SDK · `tabcast-addon` CLI · community catalog on makalive.stream
 1.2.0  Collaborative lab mode · multi-profile · restream fan-out
 2.0.0  “Ultimate” tier: mobile companion, cross-platform relay, plugin economy
 ```
