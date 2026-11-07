@@ -13,6 +13,8 @@
  * From shell:
  *   import { initPreview } from './preview.js'
  *   const preview = initPreview(document.getElementById('studio-preview'))
+ *
+ * Public API: window.MakaStreamPreview (canonical); window.MakaPreview is an alias; host._makaPreview is the same instance.
  */
 const EMPTY_COPY = 'Select a display or window to start streaming';
 const WEBCAM_OFFLINE = 'video is offline';
@@ -500,13 +502,19 @@ export function initPreview(root) {
       stopWebcam();
       delete root.dataset.previewReady;
       delete root._makaPreview;
+      if (typeof globalThis !== 'undefined') {
+        if (globalThis.MakaStreamPreview === api) delete globalThis.MakaStreamPreview;
+        if (globalThis.MakaPreview === api) delete globalThis.MakaPreview;
+      }
     },
   };
 
   root.dataset.previewReady = '1';
   root._makaPreview = api;
   if (typeof globalThis !== 'undefined') {
+    // Canonical public name; MakaPreview kept as a back-compat alias (same object).
     globalThis.MakaStreamPreview = api;
+    globalThis.MakaPreview = api;
   }
   return api;
 }

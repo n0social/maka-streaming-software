@@ -13,7 +13,7 @@
 
 The page **boots cleanly**. All six modules initialize. Layout containment holds at 1440×900 and 1100×700 (center does **not** expand over sidebars). Scenes, preview chrome, audio mixer, live probe honesty, and settings persistence are largely present.
 
-Wiring layers 1–2 addressed source-row ↔ preview capture conflicts and dead Stream Controls chrome (recording / vcam / marketplace / platform chips / studio↔browser mode). Remaining: **live’s secondary preview global name** (`MakaPreview` vs `MakaStreamPreview`) and other P2 polish. Nothing found that blocks first paint.
+Wiring layers 1–3 addressed source-row ↔ preview capture conflicts, dead Stream Controls chrome (recording / vcam / marketplace / platform chips / studio↔browser mode), and the live ↔ preview API name (`MakaStreamPreview` canonical + `MakaPreview` alias). Remaining: other P2 polish (mic id, event emit, CSS dedupe, etc.). Nothing found that blocks first paint.
 
 ---
 
@@ -142,7 +142,7 @@ Ordered by impact for the next wiring pass:
 
 1. **Source row ↔ preview capture collision** — Row click toggles scene layers *and* kicks `getDisplayMedia`/`getUserMedia`. Capture should follow picker / explicit Share buttons, not layer toggle.
 2. ~~**Dead Stream Controls / stats chrome**~~ **FIXED** (wiring layer 2) — recording / vcam / marketplace / platform chips / `#program-output-mode` wired. Encode select sync beyond hidden `#cfg-profile` / settings still optional polish.
-3. **Live preview API alias** — `live.js` `getPreviewApi()` falls back to `window.MakaPreview`, but preview publishes `window.MakaStreamPreview`. Host `_makaPreview` works today; alias mismatch is a landmine if the host is remounted.
+3. ~~**Live preview API alias**~~ **FIXED** (wiring layer 3) — `preview.js` publishes `window.MakaStreamPreview` (canonical) and `window.MakaPreview` (alias); `live.js` `getPreviewApi()` resolves host `_makaPreview` → `MakaStreamPreview` → `MakaPreview`.
 4. **Audio mic settings id** — Missing `btn-mic-audio-settings` on the mic ⚙ control after mount upgrade.
 5. **Scenes event double-fire** — `emit()` dispatches on both `root` and `window`.
 6. **Redundant CSS load** — `stream.css` `@import` shell + direct `<link>` to shell.css.
@@ -173,7 +173,7 @@ Ordered by impact for the next wiring pass:
 
 | ID | Issue |
 | --- | --- |
-| P2-1 | `live.js` should accept `MakaStreamPreview` (or set alias) |
+| P2-1 | ~~`live.js` should accept `MakaStreamPreview` (or set alias)~~ **FIXED** (wiring layer 3) |
 | P2-2 | Mic channel settings button missing stable id |
 | P2-3 | Duplicate `maka:scene-change` deliveries |
 | P2-4 | Drop `stream.css` `@import` **or** the extra shell `<link>` |
@@ -191,7 +191,7 @@ Ordered by impact for the next wiring pass:
 - Click contract documented at the top of `site/stream/js/scenes.js` and `site/stream/js/preview.js`.
 - Picker copy for game/webcam points users to the preview capture buttons.
 
-**Still open for later layers:** P2-*.
+**Still open for later layers:** remaining P2-* (P2-1 done in layer 3).
 
 ---
 
@@ -207,7 +207,20 @@ Ordered by impact for the next wiring pass:
 
 Layer 1 scenes/preview click contract unchanged (source rows = layers; Share screen / Add webcam = capture).
 
-**Still open:** P2-* only.
+**Still open:** remaining P2-* (P2-1 done in layer 3).
+
+---
+
+## Wiring layer 3 — fixed
+
+**P2-1 done** (this pass only; no deploy):
+
+- Canonical public API: `window.MakaStreamPreview` (same object as `#studio-preview._makaPreview`).
+- Back-compat alias: `window.MakaPreview = MakaStreamPreview` (cleared on `destroy` when it was this instance).
+- `live.js` `getPreviewApi()` resolves host → `MakaStreamPreview` → `MakaPreview`; used by Go Live / WHIP (`readPreviewStreams` / `hasCapture` / `buildPublishSources`), Recording (`pickPreviewRecordStream`), and Virtual Cam (`paintVcamFrame`).
+- One-line contract comment on `preview.js` export header.
+
+**Still open:** P2-2 … P2-6.
 
 ---
 
@@ -215,7 +228,7 @@ Layer 1 scenes/preview click contract unchanged (source rows = layers; Share scr
 
 1. ~~**P1-1** source ↔ preview click semantics~~ **FIXED** (wiring layer 1).  
 2. ~~**P1-2 / P1-3** honesty pass on inert controls~~ **FIXED** (wiring layer 2).  
-3. **P2-1** live ↔ preview API naming.  
+3. ~~**P2-1** live ↔ preview API naming~~ **FIXED** (wiring layer 3).  
 4. Optional: audio mic id, event emit once, CSS dedupe.
 
 ---

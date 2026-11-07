@@ -11,7 +11,8 @@
  * user's encoder (keys stay on the streamer's PC).
  *
  * Contract: src/shared/tabcast.ts, src/renderer/relay-client.ts, src/renderer/whip.ts
- * Optional preview handoff: window.initPreview / #studio-preview._makaPreview
+ * Preview handoff (same instance): #studio-preview._makaPreview |
+ * window.MakaStreamPreview (canonical) | window.MakaPreview (alias).
  */
 (function (global) {
   'use strict';
@@ -237,7 +238,9 @@
     }
 
     function getPreviewApi() {
+      // Shared getter for Go Live / WHIP, Recording, and Virtual Cam.
       if (els.previewHost && els.previewHost._makaPreview) return els.previewHost._makaPreview;
+      if (global.MakaStreamPreview) return global.MakaStreamPreview;
       if (global.MakaPreview) return global.MakaPreview;
       return null;
     }
