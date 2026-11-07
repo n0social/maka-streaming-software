@@ -1,4 +1,4 @@
-/* MAKA_CSS_BUILD=dc6d039 — bump the maka.css query in site HTML when this file changes */
+/* MAKA_CSS_BUILD=dc6d0c7 — bump the maka.css query in site HTML when this file changes */
 /* Maka marketing site — cream / Mikado Yellow tokens (matches Electron studio redesign) */
 :root {
   color-scheme: light;
@@ -538,7 +538,8 @@ svg {
   z-index: 1;
 }
 
-/* Manga focus lines — burst on hover, then subtle drift (hero CTAs only) */
+/* Manga speed lines — one static burst that opens outward, then closes inward.
+   Resting transform/opacity match the 0% keyframe so hover starts the expansion. */
 .hero-mvp__btn::before,
 .hero-mvp__btn::after {
   content: "";
@@ -550,8 +551,7 @@ svg {
   margin: 0;
   pointer-events: none;
   opacity: 0;
-  transform: translate(-50%, -50%) scale(0.35);
-  transition: opacity 0.15s ease;
+  transform: translate(-50%, -50%) scale(0.3);
   z-index: 0;
   border-radius: 50%;
   background-repeat: no-repeat;
@@ -571,76 +571,25 @@ svg {
 .hero-mvp__btn:focus-visible::before,
 .hero-mvp__btn:hover::after,
 .hero-mvp__btn:focus-visible::after {
-  opacity: 1;
+  /* 2.2s full open-close. backwards holds the closed 0% frame if the effect starts late. */
+  animation: hero-btn-manga-openclose 2.2s ease-in-out infinite backwards;
 }
 
-.hero-mvp__btn:hover::before,
-.hero-mvp__btn:focus-visible::before {
-  animation: hero-btn-manga-burst 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards,
-    hero-btn-manga-flow 2.8s ease-in-out 0.42s infinite;
-}
-
-.hero-mvp__btn:hover::after,
-.hero-mvp__btn:focus-visible::after {
-  animation: hero-btn-manga-burst-alt 0.48s cubic-bezier(0.22, 1, 0.36, 1) forwards,
-    hero-btn-manga-flow-alt 3.2s ease-in-out 0.48s infinite;
-}
-
-@keyframes hero-btn-manga-burst {
-  0% {
-    transform: translate(-50%, -50%) scale(0.2);
+@keyframes hero-btn-manga-openclose {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(0.3);
     opacity: 0;
   }
 
-  35% {
+  14%,
+  86% {
     opacity: 1;
   }
 
-  100% {
-    transform: translate(-50%, -50%) scale(1.05);
-    opacity: 0.92;
-  }
-}
-
-@keyframes hero-btn-manga-burst-alt {
-  0% {
-    transform: translate(-50%, -50%) scale(0.15) rotate(-6deg);
-    opacity: 0;
-  }
-
-  40% {
-    opacity: 0.85;
-  }
-
-  100% {
-    transform: translate(-50%, -50%) scale(1.12) rotate(4deg);
-    opacity: 0.75;
-  }
-}
-
-@keyframes hero-btn-manga-flow {
-  0%,
-  100% {
-    transform: translate(-50%, -50%) scale(1.02) rotate(0deg);
-    opacity: 0.88;
-  }
-
   50% {
-    transform: translate(-50%, -50%) scale(1.08) rotate(2deg);
-    opacity: 0.72;
-  }
-}
-
-@keyframes hero-btn-manga-flow-alt {
-  0%,
-  100% {
-    transform: translate(-50%, -50%) scale(1.06) rotate(3deg);
-    opacity: 0.65;
-  }
-
-  50% {
-    transform: translate(-50%, -50%) scale(1.01) rotate(-2deg);
-    opacity: 0.8;
+    transform: translate(-50%, -50%) scale(1.06);
+    opacity: 1;
   }
 }
 
@@ -650,6 +599,13 @@ svg {
 
 .hero-mvp__btn--download:hover {
   box-shadow: 0 14px 36px rgba(255, 196, 12, 0.4);
+}
+
+.hero-mvp__btn--download:hover,
+.hero-mvp__btn--download:focus-visible,
+.hero-mvp__btn--download:hover > span,
+.hero-mvp__btn--download:focus-visible > span {
+  color: #ffffff;
 }
 
 .hero-mvp__mascot {
@@ -930,8 +886,9 @@ svg {
   .hero-mvp__btn:focus-visible::before,
   .hero-mvp__btn:hover::after,
   .hero-mvp__btn:focus-visible::after {
-    opacity: 0.55;
-    transform: translate(-50%, -50%) scale(1);
+    animation: none !important;
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.06);
   }
 
   .btn:hover {
