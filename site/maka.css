@@ -1,4 +1,4 @@
-/* MAKA_CSS_BUILD=dc6d1a3 — bump the maka.css query in site HTML when this file changes */
+/* MAKA_CSS_BUILD=dc6d1c9 — bump the maka.css query in site HTML when this file changes */
 /* Maka marketing site — cream / Mikado Yellow tokens (matches Electron studio redesign) */
 :root {
   color-scheme: light;
@@ -299,24 +299,15 @@ svg {
   line-height: 1.55;
 }
 
-/* Bob only. Placement translateY(-50%) stays on .hero-mvp__mascot-wrap. */
+/* Bob only. Placement translateY(-50%) stays on .hero-mvp__mascot-wrap.
+   This element must not also set a static transform — that would replace the keyframes. */
 @keyframes mascot-float {
   0%,
   100% {
     transform: translate3d(0, 0, 0);
   }
   50% {
-    transform: translate3d(0, -22px, 0);
-  }
-}
-
-@keyframes mascot-float-mobile {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(0, -18px, 0);
+    transform: translate3d(0, -24px, 0);
   }
 }
 
@@ -478,7 +469,7 @@ svg {
 .maka-wordmark__front {
   transform-box: fill-box;
   transform-origin: center center;
-  animation: maka-wordmark-slam 0.66s cubic-bezier(0.16, 0.84, 0.24, 1) both;
+  animation: maka-wordmark-slam 0.6s cubic-bezier(0.16, 0.84, 0.24, 1) both;
 }
 
 @keyframes maka-wordmark-slam {
@@ -493,24 +484,28 @@ svg {
   }
 }
 
-/* Sweep rect is clipped to the front glyphs. Foil fill stays on .maka-svg-foil. */
+/* Sweep rect is clipped to the front glyphs. Paint a solid white band:
+   the old gradient was mostly transparent, and mix-blend-mode: screen
+   dropped the rest into the light foil/gold so the pass never showed. */
 .maka-wordmark__sweep {
   pointer-events: none;
 }
 
 .maka-wordmark__sweep-band {
+  fill: #ffffff;
+  fill-opacity: 0.9;
+  mix-blend-mode: normal;
   transform-box: fill-box;
-  transform-origin: center center;
+  transform-origin: 0 0;
   opacity: 0;
-  mix-blend-mode: screen;
   pointer-events: none;
-  animation: maka-wordmark-shine 0.8s linear 0.66s 1 both;
+  animation: maka-wordmark-shine 0.75s linear 0.6s 1 both;
 }
 
 @keyframes maka-wordmark-shine {
   0% {
     opacity: 0;
-    transform: translate3d(-140%, 0, 0);
+    transform: translate3d(-40%, 0, 0);
   }
 
   12% {
@@ -523,7 +518,7 @@ svg {
 
   100% {
     opacity: 0;
-    transform: translate3d(520%, 0, 0);
+    transform: translate3d(720%, 0, 0);
   }
 }
 
@@ -564,8 +559,7 @@ svg {
 
 .hero-mvp__mascot-bob {
   display: block;
-  animation: mascot-float 4s ease-in-out infinite;
-  will-change: transform;
+  animation: mascot-float 3.2s ease-in-out infinite;
 }
 
 .hero-mvp__actions {
@@ -882,7 +876,7 @@ svg {
   }
 
   .hero-mvp__mascot-bob {
-    animation: mascot-float-mobile 4s ease-in-out infinite;
+    animation: mascot-float 3.2s ease-in-out infinite;
   }
 
   .hero-mvp__mascot {
