@@ -8,8 +8,9 @@
  *     Picker picks start capture: Game → getDisplayMedia; Webcam → getUserMedia(deviceId);
  *     Mic → list audioinputs; capture wired to MakaStreamAudio.setStream('mic').
  *     Display share audio is routed by preview.js (browser tab → game; monitor/window → desktop).
- *   - Stage Share / Add webcam buttons still call preview.js directly. preview must not bind
- *     #studio-source-game / #studio-source-webcam row clicks for capture.
+ *   - Capture starts only from Sources ⋯ pickers (preview stage Share / Add webcam removed).
+ *     preview must not bind #studio-source-game / #studio-source-webcam row clicks for capture.
+ *   - Overlay / Chat / Notifications are desktop-only: visible but greyed out and non-clickable.
  *   - Scene row click → selectScene immediately (program overlay + maka:scene-change).
  *     No desktop-app dialog. No Add Scene — download CTA instead.
  *
@@ -86,6 +87,9 @@
   });
 
   var SOURCE_KINDS = ['game', 'webcam', 'mic', 'browser', 'chat', 'notifications'];
+  /** Visible but non-interactive — full experience is desktop exe only. */
+  var DESKTOP_ONLY_SOURCES = ['browser', 'chat', 'notifications'];
+  var DESKTOP_ONLY_TITLE = 'Available in Maka desktop (exe) — download for the full experience';
 
   var SOURCE_META = {
     game: { id: 'studio-source-game', label: 'Game Capture', icon: '🎮', picker: 'source-picker-game', menuLabel: 'Pick display or window' },
@@ -101,6 +105,10 @@
       menuLabel: 'Notification options',
     },
   };
+
+  function isDesktopOnlySource(kind) {
+    return DESKTOP_ONLY_SOURCES.indexOf(kind) >= 0;
+  }
 
   /** @type {{ id: string, name: string, icon: string, builtin?: boolean }[]} */
   var scenes = BUILTIN_SCENES.map(cloneScene);
@@ -431,10 +439,41 @@
     return false;
   }
 
+  function applyDesktopOnlySourceUi(kind, btn) {
+    if (!btn || !isDesktopOnlySource(kind)) return;
+    btn.disabled = true;
+    btn.setAttribute('aria-disabled', 'true');
+    btn.dataset.desktopOnly = '1';
+    btn.title = DESKTOP_ONLY_TITLE;
+    btn.setAttribute('aria-expanded', 'false');
+    if (btn.parentElement && btn.parentElement.classList.contains('studio-source-group')) {
+      btn.parentElement.dataset.desktopOnly = '1';
+    }
+    var menu = btn.querySelector('[data-source-menu], .studio-list-menu');
+    if (menu) {
+      menu.classList.add('studio-list-menu--static');
+      menu.removeAttribute('role');
+      menu.removeAttribute('tabindex');
+      menu.removeAttribute('data-source-menu');
+      menu.setAttribute('aria-hidden', 'true');
+    }
+    var picker = document.getElementById(SOURCE_META[kind].picker);
+    if (picker) {
+      picker.hidden = true;
+      picker.innerHTML = '';
+    }
+  }
+
   function syncSourceRows() {
     SOURCE_KINDS.forEach(function (kind) {
       var el = document.getElementById(SOURCE_META[kind].id);
       if (!el) return;
+      if (isDesktopOnlySource(kind)) {
+        applyDesktopOnlySourceUi(kind, el);
+        el.dataset.enabled = '0';
+        el.dataset.active = '0';
+        return;
+      }
       el.dataset.enabled = layerEnabledForKind(kind) ? '1' : '0';
       el.dataset.active = sourceActive[kind] ? '1' : '0';
       el.setAttribute('aria-expanded', expandedSourceKind === kind ? 'true' : 'false');
@@ -447,6 +486,10 @@
     SOURCE_KINDS.forEach(function (kind) {
       var picker = document.getElementById(SOURCE_META[kind].picker);
       if (!picker) return;
+      if (isDesktopOnlySource(kind)) {
+        picker.hidden = true;
+        return;
+      }
       var open = expandedSourceKind === kind;
       picker.hidden = !open;
       if (open) renderSourcePicker(kind);
@@ -785,60 +828,21 @@
       return;
     }
 
-    if (kind === 'browser') {
-      appendPickerSection(picker, 'Layout presets');
-      appendPickerButton(picker, 'Follow scene layout', !layers.overlay && !layers.browser, function () {
-        layers.overlay = false;
-        layers.browser = false;
-        sourceActive.browser = false;
-        syncSourcePickerVisibility();
-        emitAll();
-      });
-      appendPickerButton(picker, 'Overlay on', !!(layers.overlay || layers.browser), function () {
-        layers.overlay = true;
-        sourceActive.browser = true;
-        syncSourcePickerVisibility();
-        emitAll();
-      });
-      appendPickerStatus(picker, 'Native search-tab overlay capture is desktop-only.');
+    // Overlay / Chat / Notifications are desktop-only — no picker UI on web.
+    if (isDesktopOnlySource(kind)) {
+      picker.hidden = true;
       return;
-    }
-
-    if (kind === 'chat') {
-      appendPickerButton(picker, 'Chat off', !layers.chat, function () {
-        layers.chat = false;
-        sourceActive.chat = false;
-        syncSourcePickerVisibility();
-        emitAll();
-      });
-      appendPickerButton(picker, 'Placeholder chat', layers.chat, function () {
-        layers.chat = true;
-        sourceActive.chat = true;
-        syncSourcePickerVisibility();
-        emitAll();
-      });
-      return;
-    }
-
-    if (kind === 'notifications') {
-      appendPickerButton(picker, 'Notifications off', !layers.notifications, function () {
-        layers.notifications = false;
-        sourceActive.notifications = false;
-        syncSourcePickerVisibility();
-        emitAll();
-      });
-      appendPickerButton(picker, 'Placeholder overlay', layers.notifications, function () {
-        layers.notifications = true;
-        sourceActive.notifications = true;
-        syncSourcePickerVisibility();
-        emitAll();
-      });
     }
   }
 
   function wireSourceToggle(kind, btn) {
     if (btn.dataset.scenesWired === '1') return;
-    // Row body = layer on/off only. Capture starts from the ⋯ picker (or stage Share/Webcam).
+    if (isDesktopOnlySource(kind)) {
+      applyDesktopOnlySourceUi(kind, btn);
+      btn.dataset.scenesWired = '1';
+      return;
+    }
+    // Row body = layer on/off only. Capture starts from the ⋯ picker.
     if (!btn.title) {
       btn.title = 'Toggle layer visibility';
     }
@@ -892,8 +896,10 @@
     list.innerHTML = '';
     SOURCE_KINDS.forEach(function (kind) {
       var meta = SOURCE_META[kind];
+      var desktopOnly = isDesktopOnlySource(kind);
       var li = document.createElement('li');
       li.className = 'studio-source-group';
+      if (desktopOnly) li.dataset.desktopOnly = '1';
 
       var btn = document.createElement('button');
       btn.type = 'button';
@@ -912,13 +918,17 @@
       text.textContent = meta.label;
 
       var menu = document.createElement('span');
-      menu.setAttribute('role', 'button');
-      menu.tabIndex = 0;
-      menu.className = 'studio-list-menu';
-      menu.dataset.sourceMenu = kind;
-      menu.setAttribute('aria-label', meta.menuLabel);
-      menu.title = meta.menuLabel;
+      menu.className = desktopOnly ? 'studio-list-menu studio-list-menu--static' : 'studio-list-menu';
       menu.textContent = '⋯';
+      if (desktopOnly) {
+        menu.setAttribute('aria-hidden', 'true');
+      } else {
+        menu.setAttribute('role', 'button');
+        menu.tabIndex = 0;
+        menu.dataset.sourceMenu = kind;
+        menu.setAttribute('aria-label', meta.menuLabel);
+        menu.title = meta.menuLabel;
+      }
 
       btn.append(leading, text, menu);
 
@@ -988,11 +998,13 @@
   }
 
   function toggleSourcePicker(kind) {
+    if (isDesktopOnlySource(kind)) return;
     expandedSourceKind = expandedSourceKind === kind ? null : kind;
     syncSourcePickerVisibility();
   }
 
   function toggleLayerForSourceKind(kind) {
+    if (isDesktopOnlySource(kind)) return;
     if (kind === 'game') {
       layers.game = !layers.game;
     } else if (kind === 'webcam') {

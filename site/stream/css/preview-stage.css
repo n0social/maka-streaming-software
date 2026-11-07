@@ -154,49 +154,20 @@
   animation: program-live-flash 1.35s ease-in-out infinite;
 }
 
-.preview-stage.is-live .preview-stage__scene-name.is-live,
-.preview-stage__scene-name.is-live {
-  border-color: rgba(255, 196, 12, 0.85);
-  animation: program-live-flash 1.35s ease-in-out infinite;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .preview-stage .program-label.is-live .program-mode,
   .preview-stage .program-label.is-live .preview-stage__mode,
   .preview-stage__label.is-live .program-mode,
   .preview-stage__label.is-live .preview-stage__mode,
-  .program.is-live .program-label .program-mode,
-  .preview-stage.is-live .preview-stage__scene-name.is-live,
-  .preview-stage__scene-name.is-live {
+  .program.is-live .program-label .program-mode {
     animation: none;
     opacity: 1;
   }
 }
 
-.preview-stage__scene-name {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.55rem;
-  z-index: 5;
-  max-width: 45%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: var(--preview-headline);
-  font-size: 0.58rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  font-weight: 800;
-  color: #faf8f4;
-  background: rgba(26, 20, 8, 0.45);
-  border: 1px solid rgba(255, 196, 12, 0.35);
-  border-radius: 999px;
-  padding: 0.26rem 0.55rem;
-  pointer-events: none;
-  backdrop-filter: blur(6px);
-}
-
-.preview-stage__scene-name[hidden] {
+/* Scene name overlay removed from program preview (declutter). */
+.preview-stage__scene-name,
+[data-preview='scene-name'] {
   display: none !important;
 }
 
@@ -237,8 +208,10 @@
   display: none !important;
 }
 
-/* Webcam PIP — matches Electron .program-cam */
-.preview-stage__cam {
+/* Webcam PIP — matches Electron .program-cam; always corner, never full stage alone. */
+.preview-stage__cam,
+.program-cam,
+#program-cam {
   position: absolute;
   right: 4.5%;
   bottom: 5.5%;
@@ -254,20 +227,32 @@
     0 0 0 1px rgba(201, 162, 39, 0.35);
 }
 
-.preview-stage__cam[hidden] {
+.preview-stage__cam[hidden],
+.program-cam[hidden],
+#program-cam[hidden] {
   display: none !important;
 }
 
-.preview-stage__cam-video {
+/* Full webcam frame in PIP — contain avoids extreme crop of face / frame. */
+.preview-stage__cam-video,
+.program-cam video,
+#program-cam-video {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
   object-position: center;
   background: #000;
   display: block;
+  transform: none;
 }
 
-.preview-stage__cam-video[hidden] {
+.preview-stage__cam-video[hidden],
+.program-cam video[hidden],
+#program-cam-video[hidden] {
   display: none !important;
 }
 
@@ -389,92 +374,21 @@
   color: #faf8f4;
 }
 
-/* Compact capture controls (shell may hide via [data-chrome='0']) */
+/* Stage Share / Add webcam + bottom capture hint removed — Sources pickers only. */
 .preview-stage__controls,
-#studio-preview > .preview-stage__controls {
-  position: absolute;
-  left: 0.55rem;
-  bottom: 0.55rem;
-  z-index: 6;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-}
-
-.preview-stage[data-chrome='0'] .preview-stage__controls {
-  display: none;
-}
-
-/* Leave room for browser-tab capture hint under the share buttons. */
-.preview-stage:has(.preview-capture-hint:not([hidden])) .preview-stage__controls,
-#studio-preview:has(.preview-capture-hint:not([hidden])) > .preview-stage__controls {
-  bottom: 2.55rem;
-}
-
-.preview-stage__btn {
-  appearance: none;
-  border: 1px solid rgba(230, 223, 208, 0.55);
-  border-radius: 0.45rem;
-  background: rgba(26, 20, 8, 0.72);
-  color: #faf8f4;
-  font: inherit;
-  font-size: 0.68rem;
-  font-weight: 600;
-  padding: 0.32rem 0.55rem;
-  cursor: pointer;
-  backdrop-filter: blur(6px);
-}
-
-.preview-stage__btn:hover {
-  border-color: var(--preview-gold-bright);
-  color: #fff;
-}
-
-.preview-stage__btn[data-on='1'] {
-  border-color: var(--preview-gold-bright);
-  background: rgba(201, 162, 39, 0.35);
-  color: #fffdf8;
-}
-
+#studio-preview > .preview-stage__controls,
 .preview-capture-hint,
 #preview-capture-hint,
 #studio-preview > .preview-capture-hint {
-  position: absolute;
-  left: 50%;
-  bottom: 0.45rem;
-  z-index: 5;
-  translate: -50% 0;
-  width: min(92%, 30rem);
-  margin: 0;
-  padding: 0.35rem 0.55rem;
-  text-align: center;
-  font-size: 0.68rem;
-  line-height: 1.35;
-  color: rgba(250, 248, 244, 0.92);
-  background: rgba(10, 10, 12, 0.62);
-  border-radius: 0.35rem;
-  pointer-events: none;
-}
-
-.preview-capture-hint[hidden],
-#preview-capture-hint[hidden] {
   display: none !important;
 }
 
-.preview-stage__btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
 @media (max-width: 720px) {
-  .preview-stage__cam {
+  .preview-stage__cam,
+  .program-cam,
+  #program-cam {
     width: 28%;
     right: 3.5%;
     bottom: 4.5%;
-  }
-
-  .preview-stage__scene-name {
-    max-width: 38%;
-    font-size: 0.52rem;
   }
 }
