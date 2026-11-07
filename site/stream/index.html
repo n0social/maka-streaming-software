@@ -266,19 +266,7 @@
             </div>
           </section>
           <div class="program-stats" id="program-stats" aria-label="Program stream stats">
-            <div class="program-stats-left">
-              <label class="program-stats-field">
-                <span class="sr-only">Studio or browser layout</span>
-                <select
-                  id="program-output-mode"
-                  class="program-stats-select"
-                  title="Studio Mode shows the program and sidebars; Browser Mode opens the built-in browser"
-                >
-                  <option value="studio" selected>Studio Mode</option>
-                  <option value="browse">Browser Mode</option>
-                </select>
-              </label>
-            </div>
+            <div class="program-stats-left" aria-hidden="true"></div>
             <div class="program-stats-center" aria-live="polite">
               <span class="program-stat program-stat-recording" id="stat-recording" data-recording="0">Not recording</span>
               <span class="program-stat program-stat-vcam" id="stat-vcam" data-vcam="0" hidden>Virtual cam off</span>
@@ -499,7 +487,7 @@
         data-region="settings"
         data-settings-tab="general"
       >
-        <!-- Populated by ./js/settings.js to match exe General / Streaming / Audio / Video / Recording / Studio & Browser / Help -->
+        <!-- Populated by ./js/settings.js to match exe General / Streaming / Audio / Video / Recording / Help (web is Studio-only) -->
       </section>
     </div>
 

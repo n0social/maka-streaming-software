@@ -16,13 +16,14 @@
  *   maka.stream.bitrateProfile   ↔ settings.bitrateProfile / #cfg-profile / #set-encode-profile
  *
  * Mapping summary (settings.json → localStorage):
- *   minimizeToTrayWhileLive, openChatOnBrowse, labMode, autoCheckUpdatesOnStartup,
+ *   minimizeToTrayWhileLive, labMode, autoCheckUpdatesOnStartup,
  *   bitrateProfile, lastStreamPlatform, streamTitle, streamCategory,
  *   preferredMicDeviceId, audioMicBitrateKbps, audioDesktopBitrateKbps,
- *   videoEncoderPreference, gpuPreference, recordingSaveFolder, startupMode,
+ *   videoEncoderPreference, gpuPreference, recordingSaveFolder,
  *   settingsActiveTab
  *   → stored in maka.stream.settings.v1 (same property names)
  *   + streamTitle / streamCategory / bitrateProfile mirrored to shared keys above
+ *   Web is Studio-only: startupMode always "studio"; Browser Mode UI removed.
  *
  * Shell hooks:
  *   window.MakaStudio.registerView('settings', { open, close, isOpen, getSettings, setSettings })
@@ -45,7 +46,6 @@ const SETTINGS_TAB_IDS = [
   'audio',
   'video',
   'recording',
-  'modes',
   'help',
 ]
 
@@ -65,7 +65,6 @@ const DEFAULT_SETTINGS = {
   bitrateProfile: '720p30',
   startupMode: 'studio',
   minimizeToTrayWhileLive: true,
-  openChatOnBrowse: false,
   labMode: false,
   autoCheckUpdatesOnStartup: true,
   recordingSaveFolder: '',
@@ -85,7 +84,7 @@ const DEFAULT_SETTINGS = {
 let settings = { ...DEFAULT_SETTINGS }
 /** @type {HTMLElement | null} */
 let root = null
-/** @type {'studio' | 'browse' | string} */
+/** Web client always restores Studio after Settings. */
 let priorMode = 'studio'
 let openState = false
 
@@ -114,7 +113,6 @@ function coerceSettings(raw) {
   if (typeof raw.minimizeToTrayWhileLive === 'boolean') {
     out.minimizeToTrayWhileLive = raw.minimizeToTrayWhileLive
   }
-  if (typeof raw.openChatOnBrowse === 'boolean') out.openChatOnBrowse = raw.openChatOnBrowse
   if (typeof raw.labMode === 'boolean') out.labMode = raw.labMode
   if (typeof raw.autoCheckUpdatesOnStartup === 'boolean') {
     out.autoCheckUpdatesOnStartup = raw.autoCheckUpdatesOnStartup
@@ -140,7 +138,8 @@ function coerceSettings(raw) {
   }
   if (typeof raw.gpuPreference === 'string' && raw.gpuPreference) out.gpuPreference = raw.gpuPreference
   if (typeof raw.recordingSaveFolder === 'string') out.recordingSaveFolder = raw.recordingSaveFolder
-  if (raw.startupMode === 'studio' || raw.startupMode === 'browse') out.startupMode = raw.startupMode
+  // Web client is Studio-only — ignore legacy browse startupMode from localStorage.
+  out.startupMode = 'studio'
   if (isSettingsTabId(raw.settingsActiveTab)) out.settingsActiveTab = raw.settingsActiveTab
   return out
 }
@@ -211,7 +210,6 @@ function syncLiveDomFields() {
   const category = document.getElementById('stream-category-input')
   const profile = document.getElementById('cfg-profile')
   const quality = document.getElementById('program-quality-select')
-  const outputMode = document.getElementById('program-output-mode')
 
   populateEncodeSelect(profile)
   populateEncodeSelect(quality)
@@ -232,11 +230,6 @@ function syncLiveDomFields() {
       quality.value = settings.bitrateProfile
     }
   }
-  if (outputMode instanceof HTMLSelectElement && document.activeElement !== outputMode) {
-    if (settings.startupMode === 'studio' || settings.startupMode === 'browse') {
-      outputMode.value = settings.startupMode
-    }
-  }
 }
 
 function settingsMarkup() {
@@ -251,7 +244,7 @@ function settingsMarkup() {
         <div class="settings-view-inner">
           <header class="settings-view-header">
             <h1 class="settings-view-title">Settings</h1>
-            <p class="settings-view-lead">Preferences for streaming, recording, and workspace layout.</p>
+            <p class="settings-view-lead">Preferences for streaming, recording, and the Studio workspace.</p>
           </header>
           <div class="settings-layout">
             <nav class="settings-tabs" aria-label="Settings categories">
@@ -260,7 +253,6 @@ function settingsMarkup() {
               <button type="button" class="settings-tab" data-settings-tab="audio">Audio</button>
               <button type="button" class="settings-tab" data-settings-tab="video">Video / System</button>
               <button type="button" class="settings-tab" data-settings-tab="recording">Recording</button>
-              <button type="button" class="settings-tab" data-settings-tab="modes">Studio &amp; Browser</button>
               <button type="button" class="settings-tab" data-settings-tab="help">Help</button>
             </nav>
             <div class="settings-panels">
@@ -269,10 +261,6 @@ function settingsMarkup() {
                 <label class="check">
                   <input type="checkbox" id="set-tray-live" />
                   Minimize to tray while live
-                </label>
-                <label class="check">
-                  <input type="checkbox" id="set-open-chat" />
-                  Open chat pop-out when entering Browser Mode
                 </label>
                 <label class="check">
                   <input type="checkbox" id="set-lab-mode" />
@@ -369,23 +357,6 @@ function settingsMarkup() {
                   In the browser, Choose… uses the File System Access API when available; otherwise a folder label is stored for display only.
                 </p>
               </div>
-              <div class="settings-panel" id="settings-panel-modes" data-settings-panel="modes" hidden>
-                <h2>Studio &amp; Browser</h2>
-                <p class="hint tight">Pick which workspace opens when you launch Maka. You can switch anytime from the program stats bar.</p>
-                <div class="settings-mode-cards">
-                  <article class="settings-mode-card" data-workspace-mode="studio">
-                    <h3>Studio Mode</h3>
-                    <p>Three-column layout with scenes, program preview, mixer, and go-live controls. Best for composing your stream.</p>
-                    <button type="button" class="btn-block" data-set-startup="studio">Use Studio on startup</button>
-                  </article>
-                  <article class="settings-mode-card" data-workspace-mode="browse">
-                    <h3>Browser Mode</h3>
-                    <p>Full-window built-in browser for Twitch, YouTube Studio, and chat. Studio sidebars are hidden until you switch back.</p>
-                    <button type="button" class="btn-block" data-set-startup="browse">Use Browser on startup</button>
-                  </article>
-                </div>
-                <p class="hint tight" id="settings-startup-label">Startup: Studio Mode</p>
-              </div>
               <div class="settings-panel" id="settings-panel-help" data-settings-panel="help" hidden>
                 <h2>Help</h2>
                 <button type="button" class="btn-block spaced-btn" id="btn-replay-setup">Replay setup wizard</button>
@@ -451,12 +422,6 @@ function setActiveSettingsTab(tabId) {
     panel.classList.toggle('active', active)
     panel.hidden = !active
   }
-}
-
-function updateStartupLabel(mode) {
-  const el = document.getElementById('settings-startup-label')
-  if (!el) return
-  el.textContent = mode === 'browse' ? 'Startup: Browser Mode' : 'Startup: Studio Mode'
 }
 
 function refreshVersionLabels() {
@@ -579,11 +544,9 @@ function applySettingsToForm() {
   const byId = (id) => document.getElementById(id)
 
   const tray = byId('set-tray-live')
-  const chat = byId('set-open-chat')
   const lab = byId('set-lab-mode')
   const auto = byId('set-auto-update')
   if (tray instanceof HTMLInputElement) tray.checked = settings.minimizeToTrayWhileLive
-  if (chat instanceof HTMLInputElement) chat.checked = settings.openChatOnBrowse
   if (lab instanceof HTMLInputElement) lab.checked = settings.labMode
   if (auto instanceof HTMLInputElement) auto.checked = settings.autoCheckUpdatesOnStartup
 
@@ -629,7 +592,6 @@ function applySettingsToForm() {
     folder.value = settings.recordingSaveFolder || ''
     folder.placeholder = settings.recordingSaveFolder ? '' : 'Choose a folder…'
   }
-  updateStartupLabel(settings.startupMode)
   if (isSettingsTabId(settings.settingsActiveTab)) {
     setActiveSettingsTab(settings.settingsActiveTab)
   }
@@ -641,11 +603,7 @@ async function openSettings() {
   settings = loadSettings()
   const mode = document.body.dataset.mode || 'studio'
   if (mode !== 'settings') {
-    const app = document.getElementById('studio-app')
-    const fromApp = app && (app.dataset.outputMode === 'browse' || app.dataset.outputMode === 'studio')
-      ? app.dataset.outputMode
-      : null
-    priorMode = fromApp || (mode === 'browse' ? 'browse' : 'studio')
+    priorMode = 'studio'
   }
 
   // Paint Settings chrome first — do not await device enumeration before mode switch
@@ -680,11 +638,11 @@ function closeSettings() {
   if (!root) root = ensureRoot()
   openState = false
   root.hidden = true
-  const restore = priorMode === 'browse' ? 'browse' : 'studio'
-  document.body.dataset.mode = restore
+  priorMode = 'studio'
+  document.body.dataset.mode = 'studio'
   const btn = document.getElementById('btn-settings')
   if (btn) btn.setAttribute('aria-pressed', 'false')
-  window.dispatchEvent(new CustomEvent('maka:close-settings-done', { detail: { mode: restore } }))
+  window.dispatchEvent(new CustomEvent('maka:close-settings-done', { detail: { mode: 'studio' } }))
 }
 
 function toggleSettings() {
@@ -737,7 +695,6 @@ function wireForm() {
     })
   }
   persistCheckbox('set-tray-live', 'minimizeToTrayWhileLive')
-  persistCheckbox('set-open-chat', 'openChatOnBrowse')
   persistCheckbox('set-lab-mode', 'labMode')
   persistCheckbox('set-auto-update', 'autoCheckUpdatesOnStartup')
 
@@ -844,18 +801,6 @@ function wireForm() {
 
   const pickBtn = document.getElementById('btn-pick-recording-folder')
   if (pickBtn) pickBtn.addEventListener('click', () => void pickRecordingFolder())
-
-  for (const btn of root.querySelectorAll('[data-set-startup]')) {
-    btn.addEventListener('click', () => {
-      const mode = btn.dataset.setStartup
-      if (mode !== 'studio' && mode !== 'browse') return
-      saveSettings({ startupMode: mode })
-      updateStartupLabel(mode)
-      const outputMode = document.getElementById('program-output-mode')
-      if (outputMode instanceof HTMLSelectElement) outputMode.value = mode
-      window.dispatchEvent(new CustomEvent('maka:startup-mode-change', { detail: { mode } }))
-    })
-  }
 
   const replaySetup = document.getElementById('btn-replay-setup')
   if (replaySetup) {
@@ -1007,8 +952,8 @@ function init() {
   syncLiveDomFields()
   refreshVersionLabels()
 
-  // Apply startup mode hint for shell (does not force-hide studio on first paint).
-  document.documentElement.dataset.makaStartupMode = settings.startupMode
+  // Web client is Studio-only.
+  document.documentElement.dataset.makaStartupMode = 'studio'
   return api
 }
 
