@@ -1,4 +1,4 @@
-/* MAKA_CSS_BUILD=dc6d2c0 — bump the maka.css query in site HTML when this file changes */
+/* MAKA_CSS_BUILD=dc6d3a1 — bump the maka.css query in site HTML when this file changes */
 /* Maka marketing site — cream / Mikado Yellow tokens (matches Electron studio redesign) */
 :root {
   color-scheme: light;
@@ -300,14 +300,15 @@ svg {
 }
 
 /* Bob only. Placement translateY(-50%) stays on .hero-mvp__mascot-wrap.
-   This element must not also set a static transform — that would replace the keyframes. */
+   This element must not also set a static transform — that would replace the keyframes.
+   32px / 2.4s is intentional — smaller travel read as "not moving" on real devices. */
 @keyframes mascot-float {
   0%,
   100% {
     transform: translate3d(0, 0, 0);
   }
   50% {
-    transform: translate3d(0, -24px, 0);
+    transform: translate3d(0, -32px, 0);
   }
 }
 
@@ -478,61 +479,73 @@ svg {
   letter-spacing: -0.04em;
 }
 
-/* Back + front slam in together, then hold the centered SVG layout. */
+/*
+  Wordmark entrance is gated behind .maka-wordmark--play so a tiny boot script can
+  remove/reflow/add the class after first paint. Otherwise the 0.7s slam + shine can
+  finish before the user looks (or before CSS finishes applying), which reads as "zero animation".
+  Slam the whole SVG (not only <g>) — SVG group transforms are flaky on Safari/iOS.
+*/
+.maka-wordmark--play .maka-wordmark__svg {
+  transform-box: view-box;
+  transform-origin: center center;
+  animation: maka-wordmark-slam 0.7s cubic-bezier(0.16, 0.84, 0.24, 1) both;
+}
+
 .maka-wordmark__back,
 .maka-wordmark__front {
   transform-box: fill-box;
   transform-origin: center center;
-  animation: maka-wordmark-slam 0.6s cubic-bezier(0.16, 0.84, 0.24, 1) both;
 }
 
 @keyframes maka-wordmark-slam {
   0% {
-    opacity: 0.72;
-    transform: translate3d(-46vw, 0, 0);
+    opacity: 0.55;
+    transform: translate3d(-52vw, 0, 0) scale(0.92);
   }
 
   100% {
     opacity: 1;
-    transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0) scale(1);
   }
 }
 
-/* Sweep rect is clipped to the front glyphs. Paint a solid white band:
-   the old gradient was mostly transparent, and mix-blend-mode: screen
-   dropped the rest into the light foil/gold so the pass never showed. */
+/* Sweep rect is clipped to the front glyphs. Bright opaque skewed white band —
+   prior passes used low-opacity / screen blend and vanished into light foil/gold. */
 .maka-wordmark__sweep {
   pointer-events: none;
 }
 
 .maka-wordmark__sweep-band {
   fill: #ffffff;
-  fill-opacity: 0.9;
+  fill-opacity: 0.95;
   mix-blend-mode: normal;
   transform-box: fill-box;
-  transform-origin: 0 0;
+  transform-origin: center center;
   opacity: 0;
   pointer-events: none;
-  animation: maka-wordmark-shine 0.75s linear 0.6s 1 both;
+}
+
+.maka-wordmark--play .maka-wordmark__sweep-band {
+  animation: maka-wordmark-shine 1.05s linear 0.55s 1 both;
 }
 
 @keyframes maka-wordmark-shine {
   0% {
     opacity: 0;
-    transform: translate3d(-40%, 0, 0);
+    transform: translate3d(-55%, 0, 0) skewX(-24deg);
   }
 
-  12% {
-    opacity: 1;
+  8% {
+    opacity: 0.95;
   }
 
   88% {
-    opacity: 1;
+    opacity: 0.95;
   }
 
   100% {
     opacity: 0;
-    transform: translate3d(720%, 0, 0);
+    transform: translate3d(760%, 0, 0) skewX(-24deg);
   }
 }
 
@@ -573,7 +586,8 @@ svg {
 
 .hero-mvp__mascot-bob {
   display: block;
-  animation: mascot-float 3.2s ease-in-out infinite;
+  animation: mascot-float 2.4s ease-in-out infinite;
+  will-change: transform;
 }
 
 .hero-mvp__actions {
@@ -629,11 +643,11 @@ svg {
 }
 
 .hero-mvp__btn::before {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-50 -50 100 100'%3E%3Cg fill='none' stroke='%231a1408' stroke-width='2.15' stroke-linecap='round' opacity='0.9'%3E%3Cpath d='M0 -49 L0 -16'/%3E%3Cpath d='M0 16 L0 49'/%3E%3Cpath d='M-49 0 L-16 0'/%3E%3Cpath d='M16 0 L49 0'/%3E%3Cpath d='M-35 -35 L-14 -14'/%3E%3Cpath d='M14 14 L35 35'/%3E%3Cpath d='M35 -35 L14 -14'/%3E%3Cpath d='M-14 14 L-35 35'/%3E%3C/g%3E%3Cg fill='none' stroke='%23ffc40c' stroke-width='1.45' stroke-linecap='round' opacity='0.95'%3E%3Cpath d='M0 -40 L0 -8'/%3E%3Cpath d='M0 8 L0 40'/%3E%3Cpath d='M-40 0 L-8 0'/%3E%3Cpath d='M8 0 L40 0'/%3E%3Cpath d='M-28 -28 L-9 -9'/%3E%3Cpath d='M9 9 L28 28'/%3E%3Cpath d='M28 -28 L9 -9'/%3E%3Cpath d='M-9 9 L-28 28'/%3E%3C/g%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-50 -50 100 100'%3E%3Cg fill='none' stroke='%231a1408' stroke-width='4.2' stroke-linecap='round' opacity='1'%3E%3Cpath d='M0 -49 L0 -16'/%3E%3Cpath d='M0 16 L0 49'/%3E%3Cpath d='M-49 0 L-16 0'/%3E%3Cpath d='M16 0 L49 0'/%3E%3Cpath d='M-35 -35 L-14 -14'/%3E%3Cpath d='M14 14 L35 35'/%3E%3Cpath d='M35 -35 L14 -14'/%3E%3Cpath d='M-14 14 L-35 35'/%3E%3C/g%3E%3Cg fill='none' stroke='%23ffc40c' stroke-width='3.1' stroke-linecap='round' opacity='1'%3E%3Cpath d='M0 -40 L0 -8'/%3E%3Cpath d='M0 8 L0 40'/%3E%3Cpath d='M-40 0 L-8 0'/%3E%3Cpath d='M8 0 L40 0'/%3E%3Cpath d='M-28 -28 L-9 -9'/%3E%3Cpath d='M9 9 L28 28'/%3E%3Cpath d='M28 -28 L9 -9'/%3E%3Cpath d='M-9 9 L-28 28'/%3E%3C/g%3E%3C/svg%3E");
 }
 
 .hero-mvp__btn::after {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-50 -50 100 100'%3E%3Cg fill='none' stroke='%231a1408' stroke-width='1.35' stroke-linecap='round' opacity='0.72'%3E%3Cpath d='M-8 -48 L-3 -18'/%3E%3Cpath d='M8 48 L3 18'/%3E%3Cpath d='M-48 -8 L-18 -3'/%3E%3Cpath d='M48 8 L18 3'/%3E%3Cpath d='M-42 16 L-18 8'/%3E%3Cpath d='M42 -16 L18 -8'/%3E%3Cpath d='M16 42 L8 18'/%3E%3Cpath d='M-16 -42 L-8 -18'/%3E%3Cpath d='M-34 -34 L-16 -16'/%3E%3Cpath d='M34 34 L16 16'/%3E%3Cpath d='M34 -34 L16 -16'/%3E%3Cpath d='M-34 34 L-16 16'/%3E%3C/g%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-50 -50 100 100'%3E%3Cg fill='none' stroke='%231a1408' stroke-width='3.2' stroke-linecap='round' opacity='0.95'%3E%3Cpath d='M-8 -48 L-3 -18'/%3E%3Cpath d='M8 48 L3 18'/%3E%3Cpath d='M-48 -8 L-18 -3'/%3E%3Cpath d='M48 8 L18 3'/%3E%3Cpath d='M-42 16 L-18 8'/%3E%3Cpath d='M42 -16 L18 -8'/%3E%3Cpath d='M16 42 L8 18'/%3E%3Cpath d='M-16 -42 L-8 -18'/%3E%3Cpath d='M-34 -34 L-16 -16'/%3E%3Cpath d='M34 34 L16 16'/%3E%3Cpath d='M34 -34 L16 -16'/%3E%3Cpath d='M-34 34 L-16 16'/%3E%3C/g%3E%3C/svg%3E");
 }
 
 .hero-mvp__btn:hover::before,
@@ -890,7 +904,7 @@ svg {
   }
 
   .hero-mvp__mascot-bob {
-    animation: mascot-float 3.2s ease-in-out infinite;
+    animation: mascot-float 2.4s ease-in-out infinite;
   }
 
   .hero-mvp__mascot {
@@ -943,23 +957,24 @@ svg {
   }
 }
 
+/*
+  Reduce Motion: kill continuous loops (bob + button manga), but keep a short
+  one-shot wordmark entrance so the hero still feels alive once on load.
+*/
 @media (prefers-reduced-motion: reduce) {
   .hero-mvp__mascot-bob,
   .hero-mvp__mascot {
-    animation: none;
-    transform: none;
-  }
-
-  .maka-wordmark__back,
-  .maka-wordmark__front {
-    animation: none;
-    transform: none;
-    opacity: 1;
-  }
-
-  .maka-wordmark__sweep-band {
     animation: none !important;
-    opacity: 0;
+    transform: none;
+    will-change: auto;
+  }
+
+  .maka-wordmark--play .maka-wordmark__svg {
+    animation: maka-wordmark-slam-reduced 0.45s ease-out both;
+  }
+
+  .maka-wordmark--play .maka-wordmark__sweep-band {
+    animation: maka-wordmark-shine-reduced 0.7s linear 0.2s 1 both;
   }
 
   .hero-mvp__btn::before,
@@ -979,5 +994,33 @@ svg {
 
   .btn:hover {
     transform: none;
+  }
+}
+
+@keyframes maka-wordmark-slam-reduced {
+  0% {
+    opacity: 0.7;
+    transform: translate3d(-14vw, 0, 0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes maka-wordmark-shine-reduced {
+  0% {
+    opacity: 0;
+    transform: translate3d(-20%, 0, 0) skewX(-18deg);
+  }
+
+  35% {
+    opacity: 0.85;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(420%, 0, 0) skewX(-18deg);
   }
 }
