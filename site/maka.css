@@ -1,4 +1,4 @@
-/* MAKA_CSS_BUILD=dc6d0c7 — bump the maka.css query in site HTML when this file changes */
+/* MAKA_CSS_BUILD=dc6d1a3 — bump the maka.css query in site HTML when this file changes */
 /* Maka marketing site — cream / Mikado Yellow tokens (matches Electron studio redesign) */
 :root {
   color-scheme: light;
@@ -299,23 +299,24 @@ svg {
   line-height: 1.55;
 }
 
+/* Bob only. Placement translateY(-50%) stays on .hero-mvp__mascot-wrap. */
 @keyframes mascot-float {
   0%,
   100% {
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
   50% {
-    transform: translateY(-1.35rem);
+    transform: translate3d(0, -22px, 0);
   }
 }
 
 @keyframes mascot-float-mobile {
   0%,
   100% {
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
   50% {
-    transform: translateY(-0.95rem);
+    transform: translate3d(0, -18px, 0);
   }
 }
 
@@ -472,6 +473,60 @@ svg {
   letter-spacing: -0.04em;
 }
 
+/* Back + front slam in together, then hold the centered SVG layout. */
+.maka-wordmark__back,
+.maka-wordmark__front {
+  transform-box: fill-box;
+  transform-origin: center center;
+  animation: maka-wordmark-slam 0.66s cubic-bezier(0.16, 0.84, 0.24, 1) both;
+}
+
+@keyframes maka-wordmark-slam {
+  0% {
+    opacity: 0.72;
+    transform: translate3d(-46vw, 0, 0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* Sweep rect is clipped to the front glyphs. Foil fill stays on .maka-svg-foil. */
+.maka-wordmark__sweep {
+  pointer-events: none;
+}
+
+.maka-wordmark__sweep-band {
+  transform-box: fill-box;
+  transform-origin: center center;
+  opacity: 0;
+  mix-blend-mode: screen;
+  pointer-events: none;
+  animation: maka-wordmark-shine 0.8s linear 0.66s 1 both;
+}
+
+@keyframes maka-wordmark-shine {
+  0% {
+    opacity: 0;
+    transform: translate3d(-140%, 0, 0);
+  }
+
+  12% {
+    opacity: 1;
+  }
+
+  88% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(520%, 0, 0);
+  }
+}
+
 .maka-svg-back {
   fill: #ffffff;
   stroke: #e6dfd0;
@@ -507,6 +562,12 @@ svg {
   overflow: visible;
 }
 
+.hero-mvp__mascot-bob {
+  display: block;
+  animation: mascot-float 4s ease-in-out infinite;
+  will-change: transform;
+}
+
 .hero-mvp__actions {
   display: flex;
   flex-direction: row;
@@ -535,50 +596,49 @@ svg {
 
 .hero-mvp__btn > span {
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
 
-/* Manga speed lines — one static burst that opens outward, then closes inward.
-   Resting transform/opacity match the 0% keyframe so hover starts the expansion. */
+/* Square burst, not 220% of the short pill — that squashed the lines into a tiny mark.
+   Resting transform matches the 0% keyframe so hover starts closed and opens outward. */
 .hero-mvp__btn::before,
 .hero-mvp__btn::after {
   content: "";
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 220%;
-  height: 220%;
+  width: 18rem;
+  height: 18rem;
   margin: 0;
   pointer-events: none;
   opacity: 0;
-  transform: translate(-50%, -50%) scale(0.3);
-  z-index: 0;
-  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0.18);
+  z-index: 1;
+  border-radius: 0;
   background-repeat: no-repeat;
   background-position: center;
-  background-size: 100% 100%;
+  background-size: contain;
 }
 
 .hero-mvp__btn::before {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-50 -50 100 100'%3E%3Cg fill='none' stroke='%231a1408' stroke-width='1.15' stroke-linecap='round' opacity='0.55'%3E%3Cpath d='M0 -46 L0 -18'/%3E%3Cpath d='M0 18 L0 46'/%3E%3Cpath d='M-46 0 L-18 0'/%3E%3Cpath d='M18 0 L46 0'/%3E%3Cpath d='M-33 -33 L-13 -13'/%3E%3Cpath d='M13 13 L33 33'/%3E%3Cpath d='M33 -33 L13 -13'/%3E%3Cpath d='M-13 13 L-33 33'/%3E%3Cpath d='M0 -38 L4 -22 L-4 -22 Z'/%3E%3Cpath d='M0 38 L4 22 L-4 22 Z'/%3E%3Cpath d='M-38 0 L-22 4 L-22 -4 Z'/%3E%3Cpath d='M38 0 L22 4 L22 -4 Z'/%3E%3C/g%3E%3Cg fill='none' stroke='%23ffc40c' stroke-width='0.85' stroke-linecap='round' opacity='0.7'%3E%3Cpath d='M0 -34 L0 -8'/%3E%3Cpath d='M0 8 L0 34'/%3E%3Cpath d='M-34 0 L-8 0'/%3E%3Cpath d='M8 0 L34 0'/%3E%3Cpath d='M-24 -24 L-8 -8'/%3E%3Cpath d='M8 8 L24 24'/%3E%3Cpath d='M24 -24 L8 -8'/%3E%3Cpath d='M-8 8 L-24 24'/%3E%3C/g%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-50 -50 100 100'%3E%3Cg fill='none' stroke='%231a1408' stroke-width='2.15' stroke-linecap='round' opacity='0.9'%3E%3Cpath d='M0 -49 L0 -16'/%3E%3Cpath d='M0 16 L0 49'/%3E%3Cpath d='M-49 0 L-16 0'/%3E%3Cpath d='M16 0 L49 0'/%3E%3Cpath d='M-35 -35 L-14 -14'/%3E%3Cpath d='M14 14 L35 35'/%3E%3Cpath d='M35 -35 L14 -14'/%3E%3Cpath d='M-14 14 L-35 35'/%3E%3C/g%3E%3Cg fill='none' stroke='%23ffc40c' stroke-width='1.45' stroke-linecap='round' opacity='0.95'%3E%3Cpath d='M0 -40 L0 -8'/%3E%3Cpath d='M0 8 L0 40'/%3E%3Cpath d='M-40 0 L-8 0'/%3E%3Cpath d='M8 0 L40 0'/%3E%3Cpath d='M-28 -28 L-9 -9'/%3E%3Cpath d='M9 9 L28 28'/%3E%3Cpath d='M28 -28 L9 -9'/%3E%3Cpath d='M-9 9 L-28 28'/%3E%3C/g%3E%3C/svg%3E");
 }
 
 .hero-mvp__btn::after {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-50 -50 100 100'%3E%3Cg fill='none' stroke='%231a1408' stroke-width='0.65' stroke-linecap='round' opacity='0.35'%3E%3Cpath d='M-6 -44 L-2 -20 L2 -28'/%3E%3Cpath d='M6 44 L2 20 L-2 28'/%3E%3Cpath d='M-44 -6 L-20 -2 L-28 2'/%3E%3Cpath d='M44 6 L20 2 L28 -2'/%3E%3Cpath d='M-40 12 L-18 8'/%3E%3Cpath d='M40 -12 L18 -8'/%3E%3Cpath d='M12 40 L8 18'/%3E%3Cpath d='M-12 -40 L-8 -18'/%3E%3C/g%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-50 -50 100 100'%3E%3Cg fill='none' stroke='%231a1408' stroke-width='1.35' stroke-linecap='round' opacity='0.72'%3E%3Cpath d='M-8 -48 L-3 -18'/%3E%3Cpath d='M8 48 L3 18'/%3E%3Cpath d='M-48 -8 L-18 -3'/%3E%3Cpath d='M48 8 L18 3'/%3E%3Cpath d='M-42 16 L-18 8'/%3E%3Cpath d='M42 -16 L18 -8'/%3E%3Cpath d='M16 42 L8 18'/%3E%3Cpath d='M-16 -42 L-8 -18'/%3E%3Cpath d='M-34 -34 L-16 -16'/%3E%3Cpath d='M34 34 L16 16'/%3E%3Cpath d='M34 -34 L16 -16'/%3E%3Cpath d='M-34 34 L-16 16'/%3E%3C/g%3E%3C/svg%3E");
 }
 
 .hero-mvp__btn:hover::before,
 .hero-mvp__btn:focus-visible::before,
 .hero-mvp__btn:hover::after,
 .hero-mvp__btn:focus-visible::after {
-  /* 2.2s full open-close. backwards holds the closed 0% frame if the effect starts late. */
-  animation: hero-btn-manga-openclose 2.2s ease-in-out infinite backwards;
+  animation: hero-btn-manga-openclose 2.2s ease-in-out infinite;
 }
 
 @keyframes hero-btn-manga-openclose {
   0%,
   100% {
-    transform: translate(-50%, -50%) scale(0.3);
+    transform: translate(-50%, -50%) scale(0.18);
     opacity: 0;
   }
 
@@ -588,7 +648,7 @@ svg {
   }
 
   50% {
-    transform: translate(-50%, -50%) scale(1.06);
+    transform: translate(-50%, -50%) scale(1.12);
     opacity: 1;
   }
 }
@@ -620,7 +680,7 @@ svg {
   opacity: 0.92;
   object-fit: contain;
   transform: none;
-  animation: mascot-float 4.6s ease-in-out infinite;
+  animation: none;
   filter: drop-shadow(0 10px 22px rgba(26, 20, 8, 0.12));
 }
 
@@ -821,10 +881,14 @@ svg {
     z-index: 4;
   }
 
+  .hero-mvp__mascot-bob {
+    animation: mascot-float-mobile 4s ease-in-out infinite;
+  }
+
   .hero-mvp__mascot {
     height: clamp(11rem, 42vw, 15rem);
     opacity: 0.9;
-    animation: mascot-float-mobile 4.6s ease-in-out infinite;
+    animation: none;
   }
 
   .hero-mvp__actions {
@@ -872,8 +936,22 @@ svg {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .hero-mvp__mascot-bob,
   .hero-mvp__mascot {
     animation: none;
+    transform: none;
+  }
+
+  .maka-wordmark__back,
+  .maka-wordmark__front {
+    animation: none;
+    transform: none;
+    opacity: 1;
+  }
+
+  .maka-wordmark__sweep-band {
+    animation: none !important;
+    opacity: 0;
   }
 
   .hero-mvp__btn::before,
@@ -887,8 +965,8 @@ svg {
   .hero-mvp__btn:hover::after,
   .hero-mvp__btn:focus-visible::after {
     animation: none !important;
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1.06);
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.18);
   }
 
   .btn:hover {
