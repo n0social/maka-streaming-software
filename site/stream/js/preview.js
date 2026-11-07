@@ -16,9 +16,13 @@
  *
  * Public API: window.MakaStreamPreview (canonical); window.MakaPreview is an alias; host._makaPreview is the same instance.
  */
-const EMPTY_COPY = 'Select a display or window to start streaming';
+const EMPTY_COPY = 'Share the GeForce Now tab or window to preview cloud gameplay';
+const SHARE_BTN_LABEL = 'Share GeForce Now tab / window';
+const SHARE_BTN_ACTIVE = 'Stop sharing';
 const WEBCAM_OFFLINE = 'video is offline';
 const DEFAULT_SCENE = 'Gameplay';
+const CAPTURE_HINT =
+  'In the browser picker, choose the GeForce Now tab or window — not an unrelated display unless you want the whole monitor.';
 
 function ensureStylesheet() {
   const href = new URL('../css/preview-stage.css', import.meta.url).pathname;
@@ -74,9 +78,33 @@ function ensureMarkup(root) {
       controls.className = 'preview-stage__controls';
       controls.dataset.preview = 'controls';
       controls.innerHTML =
-        '<button type="button" class="preview-stage__btn" data-preview="btn-screen">Share screen</button>' +
+        '<button type="button" class="preview-stage__btn" data-preview="btn-screen">' +
+        SHARE_BTN_LABEL +
+        '</button>' +
         '<button type="button" class="preview-stage__btn" data-preview="btn-webcam">Add webcam</button>';
       root.appendChild(controls);
+    } else {
+      const screenBtn = $(root, '[data-preview="btn-screen"]');
+      if (screenBtn && /share screen/i.test(screenBtn.textContent || '')) {
+        screenBtn.textContent = SHARE_BTN_LABEL;
+      }
+    }
+    if (!$(root, '.preview-capture-hint, [data-preview="capture-hint"], #preview-capture-hint')) {
+      const hint = document.createElement('p');
+      hint.className = 'preview-capture-hint';
+      hint.dataset.preview = 'capture-hint';
+      hint.id = 'preview-capture-hint';
+      hint.textContent = CAPTURE_HINT;
+      const controlsEl = $(root, '.preview-stage__controls, [data-preview="controls"]');
+      if (controlsEl && controlsEl.parentElement) {
+        controlsEl.parentElement.insertBefore(hint, controlsEl.nextSibling);
+      } else {
+        root.appendChild(hint);
+      }
+    }
+    const emptyEl = $(root, '#program-empty, [data-preview="empty"], .program-empty');
+    if (emptyEl && /select a display or window/i.test(emptyEl.textContent || '')) {
+      emptyEl.textContent = EMPTY_COPY;
     }
     // Wrap content in .preview-stage for 16:9 containment when shell used a bare host.
     if (!$(root, '.preview-stage') && root.id === 'studio-preview') {
@@ -115,9 +143,12 @@ function ensureMarkup(root) {
       EMPTY_COPY +
       '</p>',
     '  <div class="preview-stage__controls" data-preview="controls">',
-    '    <button type="button" class="preview-stage__btn" data-preview="btn-screen">Share screen</button>',
+    '    <button type="button" class="preview-stage__btn" data-preview="btn-screen">' +
+      SHARE_BTN_LABEL +
+      '</button>',
     '    <button type="button" class="preview-stage__btn" data-preview="btn-webcam">Add webcam</button>',
     '  </div>',
+    '  <p class="preview-capture-hint" data-preview="capture-hint">' + CAPTURE_HINT + '</p>',
     '</div>',
   ].join('\n');
 }
@@ -137,6 +168,7 @@ function collectEls(root) {
     empty: $(root, '#program-empty, [data-preview="empty"], .program-empty'),
     btnScreen: $(root, '[data-preview="btn-screen"]'),
     btnWebcam: $(root, '[data-preview="btn-webcam"]'),
+    captureHint: $(root, '[data-preview="capture-hint"], #preview-capture-hint, .preview-capture-hint'),
     scope,
   };
 }
@@ -182,6 +214,17 @@ export function initPreview(root) {
       webcamStream && webcamStream.getVideoTracks().some((t) => t.readyState === 'live'),
     );
     const hasMain = hasScreen || hasCam;
+
+    if (els.btnScreen) {
+      els.btnScreen.textContent = hasScreen ? SHARE_BTN_ACTIVE : SHARE_BTN_LABEL;
+      els.btnScreen.title = hasScreen
+        ? 'Stop sharing the GeForce Now tab or window'
+        : 'Share the GeForce Now tab or window (getDisplayMedia)';
+    }
+    if (els.captureHint) {
+      els.captureHint.hidden = hasScreen;
+      if (!els.captureHint.textContent.trim()) els.captureHint.textContent = CAPTURE_HINT;
+    }
 
     if (hasScreen) {
       if (els.program.srcObject !== screenStream) els.program.srcObject = screenStream;
@@ -291,13 +334,30 @@ export function initPreview(root) {
     if (destroyed) return null;
     stopScreen();
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: {
-          displaySurface: 'monitor',
-          frameRate: { ideal: 30 },
-        },
-        audio: false,
-      });
+      // Prefer browser tab / window for GeForce Now; fall back if the UA rejects constraints.
+      let stream = null;
+      try {
+        stream = await navigator.mediaDevices.getDisplayMedia({
+          video: {
+            displaySurface: 'browser',
+            frameRate: { ideal: 60 },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+          },
+          audio: true,
+          preferCurrentTab: false,
+          selfBrowserSurface: 'exclude',
+          surfaceSwitching: 'include',
+          systemAudio: 'include',
+        });
+      } catch (_constrained) {
+        stream = await navigator.mediaDevices.getDisplayMedia({
+          video: {
+            frameRate: { ideal: 30 },
+          },
+          audio: true,
+        });
+      }
       screenStream = stream;
       const track = stream.getVideoTracks()[0];
       if (track) {

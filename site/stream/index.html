@@ -237,7 +237,21 @@
                   </p>
                 </div>
               </div>
-              <p class="program-empty" id="program-empty">Select a display or window to start streaming</p>
+              <p class="program-empty" id="program-empty">
+                Share the GeForce Now tab or window to preview cloud gameplay
+              </p>
+              <div class="preview-stage__controls" data-preview="controls">
+                <button type="button" class="preview-stage__btn" data-preview="btn-screen">
+                  Share GeForce Now tab / window
+                </button>
+                <button type="button" class="preview-stage__btn" data-preview="btn-webcam">
+                  Add webcam
+                </button>
+              </div>
+              <p class="preview-capture-hint" id="preview-capture-hint">
+                In the browser picker, choose the GeForce Now <strong>tab</strong> or
+                <strong>window</strong> — not an unrelated display unless you want the whole monitor.
+              </p>
             </div>
           </section>
           <div class="program-stats" id="program-stats" aria-label="Program stream stats">
@@ -269,7 +283,7 @@
                   id="plat-twitch"
                   data-state="off"
                   aria-pressed="false"
-                  title="Toggle Twitch as a preferred stream destination (saved locally)"
+                  title="Arm Twitch — then paste your stream key for local relay /config (or set keys in Maka desktop)"
                 >
                   Twitch
                 </button>
@@ -280,7 +294,7 @@
                   id="plat-youtube"
                   data-state="off"
                   aria-pressed="false"
-                  title="Toggle YouTube as a preferred stream destination (saved locally)"
+                  title="Arm YouTube — then paste your stream key for local relay /config (or set keys in Maka desktop)"
                 >
                   YouTube
                 </button>
@@ -292,9 +306,14 @@
                   id="program-quality-select"
                   class="program-stats-select program-stats-select-encode"
                   aria-label="Encode profile"
-                  title="Stream resolution, frame rate, and target bitrate"
+                  title="Relay encode profile (applied by local MAKArelay — not browser NVENC)"
                 >
-                  <option value="720p30" selected>720p @ 30fps</option>
+                  <option value="720p30" selected>720p @ 30fps · 3 Mbps</option>
+                  <option value="720p60">720p @ 60fps · 4.5 Mbps</option>
+                  <option value="1080p30">1080p @ 30fps · 4.5 Mbps</option>
+                  <option value="1080p60">1080p @ 60fps · 6 Mbps</option>
+                  <option value="2k60">2K @ 60fps · 10 Mbps</option>
+                  <option value="4k60">4K @ 60fps · 16 Mbps</option>
                 </select>
               </label>
             </div>
@@ -360,7 +379,9 @@
               <span id="btn-go-live-label">Start Streaming</span>
             </button>
             <p class="relay-guidance" id="relay-detail">
-              Probes <code>127.0.0.1:38473</code> — desktop relay sidecar is local-only.
+              Encoding (incl. up to 4K) runs in the local MAKArelay sidecar on
+              <code>127.0.0.1:38473</code> — WHIP in, RTMP out on this PC. The browser
+              alone cannot NVENC to Twitch / YouTube.
             </p>
             <button
               type="button"
@@ -416,6 +437,34 @@
                 <input type="text" id="stream-title-input" class="stream-title-input" maxlength="140" autocomplete="off" placeholder="Stream title" aria-label="Stream title" />
                 <input type="text" id="stream-category-input" class="stream-category-input" maxlength="100" autocomplete="off" placeholder="Category or game" aria-label="Stream category" />
                 <p class="stream-destinations" id="stream-destinations-hint"></p>
+                <div class="stream-dest-keys" id="stream-dest-keys" hidden>
+                  <label class="stream-dest-key-field" id="dest-twitch-field" hidden>
+                    <span class="field-label">Twitch stream key</span>
+                    <input
+                      type="password"
+                      id="web-twitch-key"
+                      class="key-input"
+                      autocomplete="off"
+                      spellcheck="false"
+                      placeholder="live_… from Twitch Dashboard → Settings → Stream"
+                      aria-label="Twitch stream key"
+                    />
+                    <span class="hint tight">Paste your Twitch stream key. Sent only to local relay <code>/config</code> — never to this website’s CDN.</span>
+                  </label>
+                  <label class="stream-dest-key-field" id="dest-youtube-field" hidden>
+                    <span class="field-label">YouTube stream key</span>
+                    <input
+                      type="password"
+                      id="web-youtube-key"
+                      class="key-input"
+                      autocomplete="off"
+                      spellcheck="false"
+                      placeholder="YouTube Studio → Go live → Stream key"
+                      aria-label="YouTube stream key"
+                    />
+                    <span class="hint tight">Paste your YouTube key, or configure it in Maka desktop relay settings (same as the exe).</span>
+                  </label>
+                </div>
                 <div class="stream-status-row">
                   <span class="stream-live-pill" id="stream-live-pill" data-live="false">Offline</span>
                   <span class="stream-viewers" id="stream-viewers" title="Viewer count when you go live">Offline</span>
@@ -442,10 +491,13 @@
 
     <div class="modal-backdrop" id="relay-modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div class="modal">
-        <h2 id="modal-title">Relay required for go-live</h2>
+        <h2 id="modal-title">Local relay required for go-live</h2>
         <p id="modal-body">
-          This page previews capture in the browser. RTMP encoding runs in
-          <strong>MAKA.relay</strong> on your PC (port 38473). The sidecar is local-only.
+          Capture and preview stay in the browser. Encoding (including up to 4K) and
+          Twitch / YouTube RTMP run in the <strong>MAKArelay</strong> sidecar on your PC
+          (<code>127.0.0.1:38473</code>). Install or run Maka desktop so the relay is
+          listening, then try Go Live again. This website cannot start the encoder or
+          claim a cloud stream without it.
         </p>
         <div class="modal-actions">
           <a class="btn btn-primary" href="/download.html">Download Maka</a>
@@ -455,11 +507,13 @@
     </div>
 
     <pre class="stream-log" id="stream-log" hidden aria-hidden="true"></pre>
-    <select id="cfg-profile" hidden aria-hidden="true">
+    <select id="cfg-profile" hidden aria-hidden="true" aria-label="Encode profile for relay config">
       <option value="720p30" selected>720p30</option>
       <option value="720p60">720p60</option>
       <option value="1080p30">1080p30</option>
       <option value="1080p60">1080p60</option>
+      <option value="2k60">2k60</option>
+      <option value="4k60">4k60</option>
     </select>
 
     <dialog id="marketplace-dialog" class="marketplace-dialog" aria-labelledby="marketplace-dialog-title">

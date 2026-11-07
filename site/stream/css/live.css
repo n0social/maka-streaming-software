@@ -280,6 +280,52 @@
   font-variant-numeric: tabular-nums;
 }
 
+.stream-dest-keys {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin: 0.35rem 0 0.15rem;
+  padding: 0.55rem 0.6rem;
+  border-radius: 0.45rem;
+  border: 1px solid var(--line, #e8e2d6);
+  background: var(--panel-2, #f6f3ec);
+}
+
+.stream-dest-keys[hidden] {
+  display: none !important;
+}
+
+.stream-dest-key-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--muted, #6b6256);
+}
+
+.stream-dest-key-field[hidden] {
+  display: none !important;
+}
+
+.stream-dest-key-field .key-input {
+  width: 100%;
+  font: inherit;
+  font-size: 0.78rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 0.35rem;
+  border: 1px solid var(--line, #e8e2d6);
+  background: var(--panel, #faf8f4);
+  color: var(--text, #1a1408);
+}
+
+.stream-dest-key-field .hint {
+  margin: 0;
+  font-size: 0.65rem;
+  line-height: 1.35;
+  color: var(--muted, #6b6256);
+}
+
 .stream-field {
   display: flex;
   flex-direction: column;

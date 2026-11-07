@@ -340,7 +340,8 @@
 }
 
 /* Compact capture controls (shell may hide via [data-chrome='0']) */
-.preview-stage__controls {
+.preview-stage__controls,
+#studio-preview > .preview-stage__controls {
   position: absolute;
   left: 0.55rem;
   bottom: 0.55rem;
@@ -352,6 +353,12 @@
 
 .preview-stage[data-chrome='0'] .preview-stage__controls {
   display: none;
+}
+
+/* Leave room for GeForce Now capture hint under the share buttons. */
+.preview-stage:has(.preview-capture-hint:not([hidden])) .preview-stage__controls,
+#studio-preview:has(.preview-capture-hint:not([hidden])) > .preview-stage__controls {
+  bottom: 2.55rem;
 }
 
 .preview-stage__btn {
@@ -377,6 +384,31 @@
   border-color: var(--preview-gold-bright);
   background: rgba(201, 162, 39, 0.35);
   color: #fffdf8;
+}
+
+.preview-capture-hint,
+#preview-capture-hint,
+#studio-preview > .preview-capture-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 0.45rem;
+  z-index: 5;
+  translate: -50% 0;
+  width: min(92%, 30rem);
+  margin: 0;
+  padding: 0.35rem 0.55rem;
+  text-align: center;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  color: rgba(250, 248, 244, 0.92);
+  background: rgba(10, 10, 12, 0.62);
+  border-radius: 0.35rem;
+  pointer-events: none;
+}
+
+.preview-capture-hint[hidden],
+#preview-capture-hint[hidden] {
+  display: none !important;
 }
 
 .preview-stage__btn:disabled {

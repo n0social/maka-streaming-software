@@ -29,6 +29,16 @@
     whip: '/whip',
   };
   var TRACK_IDS = { gameplay: 'gameplay', webcam: 'webcam', mic: 'mic' };
+  var DEST_STORAGE_KEY = 'maka.stream.destinations.v1';
+  /** Mirror src/shared/stream-encode-profiles.ts — relay `profile` + bitrateMbps. */
+  var ENCODE_PROFILE_MAP = {
+    '720p30': { bitrateMbps: 3 },
+    '720p60': { bitrateMbps: 4.5 },
+    '1080p30': { bitrateMbps: 4.5 },
+    '1080p60': { bitrateMbps: 6 },
+    '2k60': { bitrateMbps: 10 },
+    '4k60': { bitrateMbps: 16 },
+  };
 
   function resolveRelayCandidates() {
     var params = new URLSearchParams(window.location.search);
@@ -386,13 +396,161 @@
       }
     }
 
-    async function postRelayConfig() {
-      if (!relayHealth) throw new Error('Relay not connected');
-      var body = { profile: (els.cfgProfile && els.cfgProfile.value) || '720p30' };
+    function readBitrateProfile() {
+      var fromCfg = els.cfgProfile && els.cfgProfile.value;
+      var fromQuality = doc.getElementById('program-quality-select');
+      var fromSelect = fromQuality && fromQuality.value;
+      var fromStorage = '';
+      try {
+        fromStorage = localStorage.getItem('maka.stream.bitrateProfile') || '';
+      } catch (_err) {
+        /* ignore */
+      }
+      var raw = fromCfg || fromSelect || fromStorage || '720p30';
+      if (!ENCODE_PROFILE_MAP[raw]) {
+        if (raw === '720p') return '720p30';
+        if (raw === '1080p') return '1080p60';
+        return '720p30';
+      }
+      return raw;
+    }
+
+    function readDestinations() {
+      var out = { destTwitch: false, destYoutube: false, twitchKey: '', youtubeKey: '' };
+      if (global.MakaStudioSettings && typeof global.MakaStudioSettings.getDestinations === 'function') {
+        try {
+          var fromSettings = global.MakaStudioSettings.getDestinations();
+          if (fromSettings && typeof fromSettings === 'object') {
+            out.destTwitch = Boolean(fromSettings.destTwitch);
+            out.destYoutube = Boolean(fromSettings.destYoutube);
+            if (typeof fromSettings.twitchKey === 'string') out.twitchKey = fromSettings.twitchKey;
+            if (typeof fromSettings.youtubeKey === 'string') out.youtubeKey = fromSettings.youtubeKey;
+          }
+        } catch (_err) {
+          /* fall through */
+        }
+      }
+      try {
+        var raw = localStorage.getItem(DEST_STORAGE_KEY);
+        if (raw) {
+          var parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object') {
+            if (typeof parsed.destTwitch === 'boolean') out.destTwitch = parsed.destTwitch;
+            if (typeof parsed.destYoutube === 'boolean') out.destYoutube = parsed.destYoutube;
+            if (typeof parsed.twitchKey === 'string') out.twitchKey = parsed.twitchKey;
+            if (typeof parsed.youtubeKey === 'string') out.youtubeKey = parsed.youtubeKey;
+          }
+        }
+      } catch (_err2) {
+        /* ignore */
+      }
+      var twitchInput = doc.getElementById('web-twitch-key');
+      var youtubeInput = doc.getElementById('web-youtube-key');
+      if (twitchInput && twitchInput.value) out.twitchKey = String(twitchInput.value).trim();
+      if (youtubeInput && youtubeInput.value) out.youtubeKey = String(youtubeInput.value).trim();
+      return out;
+    }
+
+    function persistDestinations(partial) {
+      var next = Object.assign(readDestinations(), partial || {});
+      try {
+        localStorage.setItem(DEST_STORAGE_KEY, JSON.stringify(next));
+      } catch (_err) {
+        /* ignore */
+      }
+      if (global.MakaStudioSettings && typeof global.MakaStudioSettings.setDestinations === 'function') {
+        try {
+          global.MakaStudioSettings.setDestinations(next);
+        } catch (_err2) {
+          /* ignore */
+        }
+      }
+      var twitchInput = doc.getElementById('web-twitch-key');
+      var youtubeInput = doc.getElementById('web-youtube-key');
+      if (twitchInput && document.activeElement !== twitchInput) twitchInput.value = next.twitchKey || '';
+      if (youtubeInput && document.activeElement !== youtubeInput) {
+        youtubeInput.value = next.youtubeKey || '';
+      }
+      return next;
+    }
+
+    function readStudioAudioVideoPrefs() {
+      var prefs = {
+        audioMicBitrateKbps: 160,
+        audioDesktopBitrateKbps: 160,
+        videoEncoderPreference: 'system',
+        gpuPreference: 'default',
+      };
+      try {
+        if (global.MakaStudioSettings && typeof global.MakaStudioSettings.getSettings === 'function') {
+          var s = global.MakaStudioSettings.getSettings();
+          if (s) {
+            if (Number.isFinite(s.audioMicBitrateKbps)) prefs.audioMicBitrateKbps = s.audioMicBitrateKbps;
+            if (Number.isFinite(s.audioDesktopBitrateKbps)) {
+              prefs.audioDesktopBitrateKbps = s.audioDesktopBitrateKbps;
+            }
+            if (s.videoEncoderPreference) prefs.videoEncoderPreference = s.videoEncoderPreference;
+            if (s.gpuPreference) prefs.gpuPreference = s.gpuPreference;
+          }
+        }
+      } catch (_err) {
+        /* ignore */
+      }
+      return prefs;
+    }
+
+    function buildRelayConfigBody() {
+      var profile = readBitrateProfile();
+      var spec = ENCODE_PROFILE_MAP[profile] || ENCODE_PROFILE_MAP['720p30'];
+      var body = {
+        profile: profile,
+        bitrateMbps: spec.bitrateMbps,
+      };
       var title = sanitizeTitle(els.streamTitle && els.streamTitle.value);
       var category = sanitizeCategory(els.streamCategory && els.streamCategory.value);
+      if (!title) {
+        try {
+          title = sanitizeTitle(localStorage.getItem('maka.stream.streamTitle'));
+        } catch (_err) {
+          /* ignore */
+        }
+      }
+      if (!category) {
+        try {
+          category = sanitizeCategory(localStorage.getItem('maka.stream.streamCategory'));
+        } catch (_err2) {
+          /* ignore */
+        }
+      }
       if (title) body.streamTitle = title;
       if (category) body.streamCategory = category;
+
+      var dest = readDestinations();
+      // Prefer armed chips; fall back to stored dest flags.
+      var wantTwitch = Boolean(platformPref.twitch || dest.destTwitch);
+      var wantYoutube = Boolean(platformPref.youtube || dest.destYoutube);
+      if (wantTwitch && dest.twitchKey) body.twitchKey = String(dest.twitchKey).trim();
+      if (wantYoutube && dest.youtubeKey) body.youtubeKey = String(dest.youtubeKey).trim();
+
+      var prefs = readStudioAudioVideoPrefs();
+      body.audioMicBitrateKbps = prefs.audioMicBitrateKbps;
+      body.audioDesktopBitrateKbps = prefs.audioDesktopBitrateKbps;
+      body.videoEncoderPreference = prefs.videoEncoderPreference;
+      if (prefs.gpuPreference) body.gpuPreference = prefs.gpuPreference;
+      return body;
+    }
+
+    async function postRelayConfig() {
+      if (!relayHealth) throw new Error('Relay not connected');
+      var body = buildRelayConfigBody();
+      if (els.cfgProfile && body.profile) els.cfgProfile.value = body.profile;
+      var quality = doc.getElementById('program-quality-select');
+      if (quality && body.profile) quality.value = body.profile;
+      try {
+        localStorage.setItem('maka.stream.bitrateProfile', body.profile);
+      } catch (_err) {
+        /* ignore */
+      }
       var res = await relayFetch(PATHS.config, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -404,7 +562,20 @@
         })).trim();
         throw new Error('Config failed (' + res.status + ')' + (detail ? ': ' + detail : ''));
       }
-      log('POST /config applied (title/category → relay RAM).');
+      var keyBits = [];
+      if (body.twitchKey) keyBits.push('twitchKey');
+      if (body.youtubeKey) keyBits.push('youtubeKey');
+      log(
+        'POST /config applied (profile=' +
+          body.profile +
+          ' @ ' +
+          body.bitrateMbps +
+          ' Mbps' +
+          (body.streamTitle ? ', title' : '') +
+          (body.streamCategory ? ', category' : '') +
+          (keyBits.length ? ', ' + keyBits.join('+') : ', keys via relay settings if unset') +
+          ' → relay RAM).',
+      );
     }
 
     async function postSceneLayout() {
@@ -620,10 +791,36 @@
         showRelayModal(
           'No local relay at 127.0.0.1:' +
             RELAY_PORT +
-            '. The desktop app launches MAKArelay.exe for you; this browser page only publishes WHIP when that sidecar is already running on this PC. Preview stays local — we will not claim a cloud stream.',
+            '. Install or run Maka desktop so MAKArelay.exe is listening — the browser captures GeForce Now and publishes WHIP; the sidecar encodes (profiles up to 4K) and RTMPs to Twitch / YouTube with your stream keys. This website cannot start the encoder or claim a cloud stream. Preview stays local.',
         );
+        if (destHint) {
+          destHint.textContent =
+            'Relay missing — download / run Maka desktop for encoding offload on port ' +
+            RELAY_PORT +
+            '.';
+        }
         updateButtons();
         return;
+      }
+
+      // Soft gate: armed platforms without keys still go live (keys may live in desktop relay settings).
+      var dest = readDestinations();
+      if (platformPref.twitch && !dest.twitchKey) {
+        log(
+          'Twitch armed without a key in this page — relay will use a key already configured in desktop relay settings, or RTMP will fail until one is set.',
+        );
+        syncDestKeyPanel(platformPref);
+      }
+      if (platformPref.youtube && !dest.youtubeKey) {
+        log(
+          'YouTube armed without a key in this page — paste a key below or configure it in Maka desktop relay settings.',
+        );
+        syncDestKeyPanel(platformPref);
+      }
+      if (!platformPref.twitch && !platformPref.youtube) {
+        log(
+          'No Twitch/YouTube chip armed — WHIP will still publish to the relay; configure platform keys in relay settings for RTMP out.',
+        );
       }
 
       try {
@@ -648,7 +845,7 @@
               'Live via local relay',
               'WHIP session active on ' +
                 relayBase +
-                '. Platform RTMP only happens if keys were configured in the local sidecar — not via this website CDN.',
+                '. Relay encodes with your selected profile and RTMPs to platforms only if keys are in relay RAM — not via this website CDN.',
             );
           } else if (state === 'failed' || state === 'disconnected' || state === 'closed') {
             setRelayChrome('warn', 'WHIP ' + state, null);
@@ -657,7 +854,7 @@
         setRelayChrome(
           'live',
           'Live via local relay',
-          'WHIP published to the local sidecar. This is not a CDN “live” badge.',
+          'WHIP → local relay encode → platform RTMP when keys are set. Not a CDN “live” badge.',
         );
         log('WHIP active — check relay /status for encode / platform state.');
         updateButtons();
@@ -668,7 +865,7 @@
         showRelayModal(
           'Could not publish WHIP to the local relay. Confirm MAKArelay.exe (or a mock relay) is healthy on port ' +
             RELAY_PORT +
-            ', then try again. Preview remains local until WHIP succeeds.',
+            ', then try again. Preview remains local until WHIP succeeds — the browser does not encode 4K NVENC by itself.',
         );
         updateButtons();
       }
@@ -1083,14 +1280,62 @@
       return 'none';
     }
 
+    function syncDestKeyPanel(pref) {
+      var keysHost = doc.getElementById('stream-dest-keys');
+      var twitchField = doc.getElementById('dest-twitch-field');
+      var youtubeField = doc.getElementById('dest-youtube-field');
+      var showTwitch = Boolean(pref && pref.twitch);
+      var showYoutube = Boolean(pref && pref.youtube);
+      if (twitchField) twitchField.hidden = !showTwitch;
+      if (youtubeField) youtubeField.hidden = !showYoutube;
+      if (keysHost) keysHost.hidden = !(showTwitch || showYoutube);
+      var dest = readDestinations();
+      var twitchInput = doc.getElementById('web-twitch-key');
+      var youtubeInput = doc.getElementById('web-youtube-key');
+      if (twitchInput && !twitchInput.value && dest.twitchKey) twitchInput.value = dest.twitchKey;
+      if (youtubeInput && !youtubeInput.value && dest.youtubeKey) {
+        youtubeInput.value = dest.youtubeKey;
+      }
+      if (showTwitch && twitchInput) {
+        window.setTimeout(function () {
+          try {
+            twitchInput.focus({ preventScroll: true });
+          } catch (_err) {
+            twitchInput.focus();
+          }
+        }, 0);
+      } else if (showYoutube && youtubeInput) {
+        window.setTimeout(function () {
+          try {
+            youtubeInput.focus({ preventScroll: true });
+          } catch (_err2) {
+            youtubeInput.focus();
+          }
+        }, 0);
+      }
+    }
+
     function syncPlatformHint(pref) {
       if (!destHint) return;
       var parts = [];
       if (pref.twitch) parts.push('Twitch');
       if (pref.youtube) parts.push('YouTube');
-      destHint.textContent = parts.length
-        ? 'Preferred destinations: ' + parts.join(' · ')
-        : 'No stream destination selected';
+      var dest = readDestinations();
+      if (!parts.length) {
+        destHint.textContent =
+          'No stream destination selected — arm Twitch / YouTube, then paste a stream key (or set keys in Maka desktop relay settings).';
+        return;
+      }
+      var next = [];
+      if (pref.twitch) {
+        next.push(dest.twitchKey ? 'Twitch (key saved)' : 'Twitch — paste stream key below');
+      }
+      if (pref.youtube) {
+        next.push(dest.youtubeKey ? 'YouTube (key saved)' : 'YouTube — paste stream key below');
+      }
+      destHint.textContent =
+        next.join(' · ') +
+        '. Flow: capture → WHIP → local relay encode → RTMP. Browser cannot RTMP alone.';
     }
 
     function applyPlatformChips(pref) {
@@ -1106,6 +1351,11 @@
         platYoutube.dataset.state = platformPref.youtube ? 'armed' : 'off';
         platYoutube.setAttribute('aria-pressed', platformPref.youtube ? 'true' : 'false');
       }
+      persistDestinations({
+        destTwitch: platformPref.twitch,
+        destYoutube: platformPref.youtube,
+      });
+      syncDestKeyPanel(platformPref);
       syncPlatformHint(platformPref);
     }
 
@@ -1148,11 +1398,52 @@
       var next = { twitch: platformPref.twitch, youtube: platformPref.youtube };
       next[name] = !next[name];
       persistPlatformPref(next);
-      log(
-        (next[name] ? 'Selected ' : 'Cleared ') +
-          (name === 'twitch' ? 'Twitch' : 'YouTube') +
-          ' destination preference.',
-      );
+      if (next[name]) {
+        log(
+          'Armed ' +
+            (name === 'twitch' ? 'Twitch' : 'YouTube') +
+            ' — paste your stream key below (or use Maka desktop relay settings). Keys go to local /config only.',
+        );
+        syncDestKeyPanel(next);
+      } else {
+        log('Cleared ' + (name === 'twitch' ? 'Twitch' : 'YouTube') + ' destination.');
+      }
+    }
+
+    function wireDestKeyInputs() {
+      var twitchInput = doc.getElementById('web-twitch-key');
+      var youtubeInput = doc.getElementById('web-youtube-key');
+      var commit = function (platform) {
+        var partial = {};
+        if (platform === 'twitch' && twitchInput) {
+          partial.twitchKey = String(twitchInput.value || '').trim().slice(0, 256);
+        }
+        if (platform === 'youtube' && youtubeInput) {
+          partial.youtubeKey = String(youtubeInput.value || '').trim().slice(0, 256);
+        }
+        persistDestinations(partial);
+        syncPlatformHint(platformPref);
+        log(
+          (platform === 'twitch' ? 'Twitch' : 'YouTube') +
+            ' stream key saved locally for relay /config.',
+        );
+      };
+      if (twitchInput) {
+        twitchInput.addEventListener('change', function () {
+          commit('twitch');
+        });
+        twitchInput.addEventListener('blur', function () {
+          commit('twitch');
+        });
+      }
+      if (youtubeInput) {
+        youtubeInput.addEventListener('change', function () {
+          commit('youtube');
+        });
+        youtubeInput.addEventListener('blur', function () {
+          commit('youtube');
+        });
+      }
     }
 
     function onSettingsPlatformSync(ev) {
@@ -1197,11 +1488,36 @@
       });
     }
     window.addEventListener('maka:settings-platform-sync', onSettingsPlatformSync);
+    wireDestKeyInputs();
 
     applyPlatformChips(readPlatformPref());
     setRecordingUi(false);
     setVcamUi(false);
     syncRecordingAvailability();
+
+    // Keep cfg-profile + quality select aligned with shared bitrateProfile on boot.
+    (function syncEncodeSelectsOnBoot() {
+      var profile = readBitrateProfile();
+      if (els.cfgProfile) {
+        if (![...els.cfgProfile.options].some(function (o) {
+          return o.value === '4k60';
+        })) {
+          ;['2k60', '4k60'].forEach(function (id) {
+            if (![...els.cfgProfile.options].some(function (o) {
+              return o.value === id;
+            })) {
+              var opt = document.createElement('option');
+              opt.value = id;
+              opt.textContent = id;
+              els.cfgProfile.appendChild(opt);
+            }
+          });
+        }
+        els.cfgProfile.value = profile;
+      }
+      var quality = doc.getElementById('program-quality-select');
+      if (quality) quality.value = profile;
+    })();
 
     // --- Capture fallback (when preview module not owning the canvas) ---
     if (ownsCapture) {
@@ -1319,12 +1635,16 @@
       probeRelay: probeRelay,
       goLive: onGoLive,
       endLive: onEndLive,
+      buildRelayConfigBody: buildRelayConfigBody,
+      readBitrateProfile: readBitrateProfile,
+      readDestinations: readDestinations,
       isLive: function () {
         return Boolean(whipPublisher);
       },
       isRelayDetected: function () {
         return relayDetected;
       },
+      encodeProfiles: Object.keys(ENCODE_PROFILE_MAP),
       destroy: function () {
         if (destroyed) return;
         destroyed = true;

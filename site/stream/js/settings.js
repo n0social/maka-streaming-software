@@ -49,14 +49,17 @@ const SETTINGS_TAB_IDS = [
   'help',
 ]
 
+/** Mirror src/shared/stream-encode-profiles.ts — ids are relay `profile` keys. */
 const ENCODE_PROFILES = [
-  { id: '720p30', label: '720p @ 30fps' },
-  { id: '720p60', label: '720p @ 60fps' },
-  { id: '1080p30', label: '1080p @ 30fps' },
-  { id: '1080p60', label: '1080p @ 60fps' },
-  { id: '2k60', label: '2K @ 60fps' },
-  { id: '4k60', label: '4K @ 60fps' },
+  { id: '720p30', label: '720p @ 30fps · 3 Mbps', bitrateMbps: 3 },
+  { id: '720p60', label: '720p @ 60fps · 4.5 Mbps', bitrateMbps: 4.5 },
+  { id: '1080p30', label: '1080p @ 30fps · 4.5 Mbps', bitrateMbps: 4.5 },
+  { id: '1080p60', label: '1080p @ 60fps · 6 Mbps', bitrateMbps: 6 },
+  { id: '2k60', label: '2K @ 60fps · 10 Mbps', bitrateMbps: 10 },
+  { id: '4k60', label: '4K @ 60fps · 16 Mbps', bitrateMbps: 16 },
 ]
+
+const DEST_STORAGE_KEY = 'maka.stream.destinations.v1'
 
 const DEFAULT_SETTINGS = {
   bitrateProfile: '720p30',
@@ -210,6 +213,9 @@ function syncLiveDomFields() {
   const quality = document.getElementById('program-quality-select')
   const outputMode = document.getElementById('program-output-mode')
 
+  populateEncodeSelect(profile)
+  populateEncodeSelect(quality)
+
   if (title instanceof HTMLInputElement && document.activeElement !== title) {
     title.value = settings.streamTitle
   }
@@ -290,7 +296,11 @@ function settingsMarkup() {
                 <h2>Streaming</h2>
                 <label class="field-label" for="set-encode-profile">Default encode quality</label>
                 <select id="set-encode-profile" class="select">${profileOptions}</select>
-                <p class="hint tight">Same preset as the program stats bar. Used for relay and local recording.</p>
+                <p class="hint tight">
+                  Relay <code>profile</code> keys (<code>720p30</code>…<code>4k60</code>) matching the desktop exe.
+                  Synced to <code>maka.stream.bitrateProfile</code> for live.js <code>POST /config</code>.
+                  Encoding (incl. 4K) runs in the local MAKArelay sidecar — not in this browser.
+                </p>
                 <label class="field-label" for="set-last-platform">Last go-live platform</label>
                 <select id="set-last-platform" class="select">
                   <option value="none">Not set</option>
@@ -301,6 +311,15 @@ function settingsMarkup() {
                 <input id="set-stream-title" class="key-input" type="text" maxlength="140" autocomplete="off" />
                 <label class="field-label" for="set-stream-category">Category / game</label>
                 <input id="set-stream-category" class="key-input" type="text" maxlength="100" autocomplete="off" />
+                <label class="field-label" for="set-twitch-key">Twitch stream key</label>
+                <input id="set-twitch-key" class="key-input" type="password" autocomplete="off" spellcheck="false" placeholder="live_…" />
+                <label class="field-label" for="set-youtube-key">YouTube stream key</label>
+                <input id="set-youtube-key" class="key-input" type="password" autocomplete="off" spellcheck="false" placeholder="YouTube Studio stream key" />
+                <p class="hint tight">
+                  Keys are stored in this browser’s localStorage and sent only to
+                  <code>127.0.0.1:38473/config</code> when you Go Live. You can also set them in
+                  Maka desktop relay settings. Browsers cannot RTMP to Twitch / YouTube directly.
+                </p>
               </div>
               <div class="settings-panel" id="settings-panel-audio" data-settings-panel="audio" hidden>
                 <h2>Audio</h2>
@@ -463,13 +482,73 @@ function refreshVersionLabels() {
 
 function populateEncodeSelect(select) {
   if (!(select instanceof HTMLSelectElement)) return
-  if (select.options.length > 0) return
-  for (const p of ENCODE_PROFILES) {
-    const opt = document.createElement('option')
-    opt.value = p.id
-    opt.textContent = p.label
-    select.appendChild(opt)
+  const current = select.value
+  const needed = ENCODE_PROFILES.map((p) => p.id)
+  const existing = [...select.options].map((o) => o.value)
+  const incomplete =
+    needed.some((id) => !existing.includes(id)) ||
+    existing.some((id) => id && !needed.includes(id))
+  if (incomplete || select.options.length === 0) {
+    select.innerHTML = ''
+    for (const p of ENCODE_PROFILES) {
+      const opt = document.createElement('option')
+      opt.value = p.id
+      opt.textContent = p.label
+      select.appendChild(opt)
+    }
+  } else {
+    for (const p of ENCODE_PROFILES) {
+      const opt = [...select.options].find((o) => o.value === p.id)
+      if (opt && opt.textContent !== p.label) opt.textContent = p.label
+    }
   }
+  if (current && needed.includes(current)) select.value = current
+}
+
+function readDestinations() {
+  const out = { destTwitch: false, destYoutube: false, twitchKey: '', youtubeKey: '' }
+  try {
+    const raw = localStorage.getItem(DEST_STORAGE_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (parsed && typeof parsed === 'object') {
+        out.destTwitch = Boolean(parsed.destTwitch)
+        out.destYoutube = Boolean(parsed.destYoutube)
+        if (typeof parsed.twitchKey === 'string') out.twitchKey = parsed.twitchKey.slice(0, 256)
+        if (typeof parsed.youtubeKey === 'string') out.youtubeKey = parsed.youtubeKey.slice(0, 256)
+      }
+    }
+  } catch {
+    /* private mode */
+  }
+  return out
+}
+
+function saveDestinations(partial) {
+  const next = { ...readDestinations(), ...(partial || {}) }
+  try {
+    localStorage.setItem(DEST_STORAGE_KEY, JSON.stringify(next))
+  } catch {
+    /* ignore */
+  }
+  const twitch = document.getElementById('web-twitch-key')
+  const youtube = document.getElementById('web-youtube-key')
+  const setTwitch = document.getElementById('set-twitch-key')
+  const setYoutube = document.getElementById('set-youtube-key')
+  if (twitch instanceof HTMLInputElement && document.activeElement !== twitch) {
+    twitch.value = next.twitchKey
+  }
+  if (youtube instanceof HTMLInputElement && document.activeElement !== youtube) {
+    youtube.value = next.youtubeKey
+  }
+  if (setTwitch instanceof HTMLInputElement && document.activeElement !== setTwitch) {
+    setTwitch.value = next.twitchKey
+  }
+  if (setYoutube instanceof HTMLInputElement && document.activeElement !== setYoutube) {
+    setYoutube.value = next.youtubeKey
+  }
+  window.dispatchEvent(new CustomEvent('maka:destinations-change', { detail: { ...next } }))
+  return next
 }
 
 async function populateMicDevices(select) {
@@ -513,12 +592,19 @@ function applySettingsToForm() {
     populateEncodeSelect(encodeSelect)
     encodeSelect.value = settings.bitrateProfile
   }
+  populateEncodeSelect(byId('program-quality-select'))
+  populateEncodeSelect(byId('cfg-profile'))
   const platform = byId('set-last-platform')
   if (platform instanceof HTMLSelectElement) platform.value = settings.lastStreamPlatform
   const title = byId('set-stream-title')
   if (title instanceof HTMLInputElement) title.value = settings.streamTitle
   const category = byId('set-stream-category')
   if (category instanceof HTMLInputElement) category.value = settings.streamCategory
+  const dest = readDestinations()
+  const setTwitch = byId('set-twitch-key')
+  const setYoutube = byId('set-youtube-key')
+  if (setTwitch instanceof HTMLInputElement) setTwitch.value = dest.twitchKey
+  if (setYoutube instanceof HTMLInputElement) setYoutube.value = dest.youtubeKey
 
   const micBitrate = byId('set-mic-bitrate')
   if (micBitrate instanceof HTMLSelectElement) micBitrate.value = String(settings.audioMicBitrateKbps)
@@ -655,6 +741,18 @@ function wireForm() {
       saveSettings({ bitrateProfile: value })
     })
   }
+
+  const persistKeyField = (id, key) => {
+    const el = document.getElementById(id)
+    if (!(el instanceof HTMLInputElement)) return
+    const commit = () => {
+      saveDestinations({ [key]: String(el.value || '').trim().slice(0, 256) })
+    }
+    el.addEventListener('change', commit)
+    el.addEventListener('blur', commit)
+  }
+  persistKeyField('set-twitch-key', 'twitchKey')
+  persistKeyField('set-youtube-key', 'youtubeKey')
 
   const platform = document.getElementById('set-last-platform')
   if (platform) {
@@ -873,6 +971,9 @@ function registerWithShell() {
     window.MakaStudio.registerView('settings', api)
   }
   window.MakaStudioSettings = api
+  api.getDestinations = () => readDestinations()
+  api.setDestinations = (partial) => saveDestinations(partial || {})
+  api.encodeProfiles = ENCODE_PROFILES.slice()
   return api
 }
 
@@ -910,9 +1011,14 @@ export {
   APP_VERSION,
   STORAGE_KEY,
   SHARED,
+  ENCODE_PROFILES,
+  DEST_STORAGE_KEY,
   openSettings,
   closeSettings,
   toggleSettings,
   loadSettings,
   saveSettings,
+  readDestinations,
+  saveDestinations,
+  populateEncodeSelect,
 }
