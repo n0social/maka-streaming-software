@@ -208,6 +208,7 @@ function syncLiveDomFields() {
   const category = document.getElementById('stream-category-input')
   const profile = document.getElementById('cfg-profile')
   const quality = document.getElementById('program-quality-select')
+  const outputMode = document.getElementById('program-output-mode')
 
   if (title instanceof HTMLInputElement && document.activeElement !== title) {
     title.value = settings.streamTitle
@@ -223,6 +224,11 @@ function syncLiveDomFields() {
   if (quality instanceof HTMLSelectElement && document.activeElement !== quality) {
     if ([...quality.options].some((o) => o.value === settings.bitrateProfile)) {
       quality.value = settings.bitrateProfile
+    }
+  }
+  if (outputMode instanceof HTMLSelectElement && document.activeElement !== outputMode) {
+    if (settings.startupMode === 'studio' || settings.startupMode === 'browse') {
+      outputMode.value = settings.startupMode
     }
   }
 }
@@ -548,7 +554,13 @@ async function openSettings() {
   root = ensureRoot()
   settings = loadSettings()
   const mode = document.body.dataset.mode || 'studio'
-  if (mode !== 'settings') priorMode = mode
+  if (mode !== 'settings') {
+    const app = document.getElementById('studio-app')
+    const fromApp = app && (app.dataset.outputMode === 'browse' || app.dataset.outputMode === 'studio')
+      ? app.dataset.outputMode
+      : null
+    priorMode = fromApp || (mode === 'browse' ? 'browse' : 'studio')
+  }
 
   applySettingsToForm()
   const micSelect = document.getElementById('set-mic-device')
@@ -579,6 +591,7 @@ function closeSettings() {
   document.body.dataset.mode = restore
   const btn = document.getElementById('btn-settings')
   if (btn) btn.setAttribute('aria-pressed', 'false')
+  window.dispatchEvent(new CustomEvent('maka:close-settings-done', { detail: { mode: restore } }))
 }
 
 function toggleSettings() {
@@ -646,9 +659,35 @@ function wireForm() {
   const platform = document.getElementById('set-last-platform')
   if (platform) {
     platform.addEventListener('change', (event) => {
-      saveSettings({ lastStreamPlatform: event.target.value })
+      const value = event.target.value
+      saveSettings({ lastStreamPlatform: value })
+      // Exclusive sync for Twitch/YouTube chips (settings dropdown is single-select).
+      window.dispatchEvent(
+        new CustomEvent('maka:settings-platform-sync', {
+          detail: { lastStreamPlatform: value },
+        }),
+      )
     })
   }
+
+  // Chips → settings form: keep #set-last-platform aligned with primary preference.
+  window.addEventListener('maka:platform-pref-change', (event) => {
+    const last = event?.detail?.lastStreamPlatform
+    if (last !== 'twitch' && last !== 'youtube' && last !== 'none') return
+    const select = document.getElementById('set-last-platform')
+    if (select instanceof HTMLSelectElement && document.activeElement !== select) {
+      select.value = last
+    }
+    // Persist without re-emitting exclusive chip sync (chips already updated).
+    if (settings.lastStreamPlatform !== last) {
+      settings = coerceSettings({ ...settings, lastStreamPlatform: last })
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
+      } catch {
+        /* ignore */
+      }
+    }
+  })
 
   const persistStreamMeta = (key, raw) => {
     const value = key === 'streamTitle' ? sanitizeTitle(raw) : sanitizeCategory(raw)
@@ -707,6 +746,8 @@ function wireForm() {
       if (mode !== 'studio' && mode !== 'browse') return
       saveSettings({ startupMode: mode })
       updateStartupLabel(mode)
+      const outputMode = document.getElementById('program-output-mode')
+      if (outputMode instanceof HTMLSelectElement) outputMode.value = mode
       window.dispatchEvent(new CustomEvent('maka:startup-mode-change', { detail: { mode } }))
     })
   }

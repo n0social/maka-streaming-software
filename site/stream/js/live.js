@@ -744,7 +744,461 @@
 
     function onPreviewChange() {
       updateButtons();
+      syncRecordingAvailability();
+      if (vcamActive) paintVcamFrame();
     }
+
+    // --- P1-2 Stream Controls: Recording / Virtual Cam / platform chips ---
+    var REC_MIME_CANDIDATES = [
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,opus',
+      'video/webm',
+    ];
+    var PLATFORM_PREF_KEY = 'maka.stream.platformPref.v1';
+    var mediaRecorder = null;
+    var recordingChunks = [];
+    var recordingActive = false;
+    var vcamActive = false;
+    var vcamRaf = 0;
+    var platformPref = { twitch: false, youtube: false };
+    var lastPlatformClick = 'none';
+
+    var btnRecording = doc.getElementById('btn-start-recording');
+    var btnRecordingLabel = doc.getElementById('btn-recording-label');
+    var statRecording = doc.getElementById('stat-recording');
+    var btnVcam = doc.getElementById('btn-start-vcam');
+    var btnVcamLabel = doc.getElementById('btn-vcam-label');
+    var statVcam = doc.getElementById('stat-vcam');
+    var vcamMock = doc.getElementById('vcam-preview-mock');
+    var vcamCanvas = doc.getElementById('vcam-preview-canvas');
+    var vcamNote = doc.getElementById('vcam-preview-note');
+    var platTwitch = doc.getElementById('plat-twitch');
+    var platYoutube = doc.getElementById('plat-youtube');
+    var destHint = doc.getElementById('stream-destinations-hint');
+
+    function pickRecorderMime() {
+      if (typeof MediaRecorder === 'undefined') return '';
+      for (var i = 0; i < REC_MIME_CANDIDATES.length; i++) {
+        if (MediaRecorder.isTypeSupported(REC_MIME_CANDIDATES[i])) return REC_MIME_CANDIDATES[i];
+      }
+      return '';
+    }
+
+    function liveTrack(stream) {
+      return Boolean(
+        stream &&
+          stream.getVideoTracks &&
+          stream.getVideoTracks().some(function (t) {
+            return t.readyState === 'live';
+          }),
+      );
+    }
+
+    function pickPreviewRecordStream() {
+      var streams = readPreviewStreams();
+      if (!streams) return null;
+      if (liveTrack(streams.screen)) return streams.screen;
+      if (liveTrack(streams.webcam)) return streams.webcam;
+      return null;
+    }
+
+    function setRecordingUi(active) {
+      recordingActive = active;
+      if (btnRecording) btnRecording.dataset.recording = active ? '1' : '0';
+      if (btnRecordingLabel) {
+        btnRecordingLabel.textContent = active ? 'Stop Recording' : 'Start Recording';
+      }
+      if (statRecording) {
+        statRecording.dataset.recording = active ? '1' : '0';
+        statRecording.textContent = active ? 'Now recording' : 'Not recording';
+      }
+    }
+
+    function syncRecordingAvailability() {
+      if (!btnRecording || recordingActive) return;
+      var stream = pickPreviewRecordStream();
+      var supported = typeof MediaRecorder !== 'undefined';
+      if (!supported) {
+        btnRecording.disabled = true;
+        btnRecording.title =
+          'MediaRecorder is not supported in this browser. Recording is unavailable.';
+        return;
+      }
+      if (!stream) {
+        btnRecording.disabled = false;
+        btnRecording.title =
+          'Add a webcam or screen share preview first, then Start Recording. Records the local preview stream (download on stop).';
+        return;
+      }
+      btnRecording.disabled = false;
+      btnRecording.title =
+        'Record the preview stream locally (MediaRecorder). Stop to download a WebM. Not streaming.';
+    }
+
+    function downloadRecordingBlob(blob) {
+      var ext = blob.type && blob.type.indexOf('mp4') !== -1 ? 'mp4' : 'webm';
+      var profile = '720p30';
+      try {
+        var cfg = doc.getElementById('cfg-profile');
+        if (cfg && cfg.value) profile = cfg.value;
+      } catch (_err) {
+        /* ignore */
+      }
+      var ts = new Date().toISOString().replace(/[:.]/g, '-');
+      var name = 'maka-recording-' + ts + '-' + profile + '.' + ext;
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.setTimeout(function () {
+        URL.revokeObjectURL(url);
+      }, 2000);
+      log('Recording saved: ' + name);
+      if (destHint) destHint.textContent = 'Recording downloaded: ' + name;
+    }
+
+    async function stopRecordingAndSave() {
+      if (!mediaRecorder || !recordingActive) return;
+      var rec = mediaRecorder;
+      mediaRecorder = null;
+      setRecordingUi(false);
+      var blob = await new Promise(function (resolve) {
+        rec.onstop = function () {
+          var type = rec.mimeType || 'video/webm';
+          resolve(recordingChunks.length ? new Blob(recordingChunks, { type: type }) : null);
+        };
+        try {
+          rec.stop();
+        } catch (_err) {
+          resolve(null);
+        }
+      });
+      recordingChunks = [];
+      syncRecordingAvailability();
+      if (!blob || !blob.size) {
+        log('Recording produced no data.');
+        if (destHint) destHint.textContent = 'Recording produced no data.';
+        return;
+      }
+      downloadRecordingBlob(blob);
+    }
+
+    async function startRecording() {
+      var stream = pickPreviewRecordStream();
+      if (!stream) {
+        log('Cannot record — add a webcam or screen share preview first.');
+        if (destHint) {
+          destHint.textContent = 'Add a webcam or screen share before recording.';
+        }
+        syncRecordingAvailability();
+        return;
+      }
+      if (typeof MediaRecorder === 'undefined') {
+        log('MediaRecorder not supported in this browser.');
+        return;
+      }
+      var mime = pickRecorderMime();
+      recordingChunks = [];
+      try {
+        mediaRecorder = mime
+          ? new MediaRecorder(stream, { mimeType: mime })
+          : new MediaRecorder(stream);
+      } catch (err) {
+        log('Could not start recorder: ' + (err instanceof Error ? err.message : err));
+        mediaRecorder = null;
+        return;
+      }
+      mediaRecorder.ondataavailable = function (ev) {
+        if (ev.data && ev.data.size > 0) recordingChunks.push(ev.data);
+      };
+      mediaRecorder.onerror = function () {
+        log('MediaRecorder error — recording stopped.');
+        void stopRecordingAndSave();
+      };
+      try {
+        mediaRecorder.start(1000);
+      } catch (err) {
+        log('Recorder start failed: ' + (err instanceof Error ? err.message : err));
+        mediaRecorder = null;
+        return;
+      }
+      setRecordingUi(true);
+      log('Recording preview stream locally (stop to download).');
+      if (destHint) {
+        destHint.textContent = 'Recording local preview… stop to download WebM.';
+      }
+    }
+
+    function setVcamUi(active) {
+      vcamActive = active;
+      if (btnVcam) btnVcam.dataset.vcam = active ? '1' : '0';
+      if (btnVcamLabel) {
+        btnVcamLabel.textContent = active ? 'Stop Virtual Camera' : 'Start Virtual Camera';
+      }
+      if (statVcam) {
+        statVcam.hidden = !active;
+        statVcam.dataset.vcam = active ? '1' : '0';
+        statVcam.textContent = active ? 'Virtual cam preview' : 'Virtual cam off';
+      }
+      if (vcamMock) vcamMock.hidden = !active;
+      if (btnVcam) {
+        btnVcam.title = active
+          ? 'Stop preview-only Virtual Cam mirror. Web cannot install a system virtual camera.'
+          : 'Web cannot install a system virtual camera. Opens a labeled preview-only PiP that mirrors the program frame.';
+      }
+    }
+
+    function paintVcamFrame() {
+      if (!vcamActive || !vcamCanvas) return;
+      var ctx = vcamCanvas.getContext('2d');
+      if (!ctx) return;
+      var w = vcamCanvas.width;
+      var h = vcamCanvas.height;
+      ctx.fillStyle = '#0a0a0a';
+      ctx.fillRect(0, 0, w, h);
+
+      var previewApi = getPreviewApi();
+      var programVideo = doc.getElementById('program-video');
+      var camVideo = doc.getElementById('program-cam-video');
+      var drew = false;
+
+      function drawContain(video) {
+        if (!video || video.readyState < 2 || !video.videoWidth || video.hidden) return false;
+        var vw = video.videoWidth;
+        var vh = video.videoHeight;
+        var scale = Math.min(w / vw, h / vh);
+        var tw = vw * scale;
+        var th = vh * scale;
+        ctx.drawImage(video, (w - tw) / 2, (h - th) / 2, tw, th);
+        return true;
+      }
+
+      if (programVideo && !programVideo.hidden) drew = drawContain(programVideo) || drew;
+      if (!drew && camVideo) drew = drawContain(camVideo) || drew;
+
+      if (!drew && previewApi && typeof previewApi.captureFrameCanvas === 'function') {
+        try {
+          var frame = previewApi.captureFrameCanvas();
+          if (frame) {
+            ctx.drawImage(frame, 0, 0, w, h);
+            drew = true;
+          }
+        } catch (_err) {
+          /* ignore */
+        }
+      }
+
+      if (vcamNote) {
+        vcamNote.textContent = drew
+          ? 'Preview only — not a system camera'
+          : 'No program frame yet — share screen or add webcam';
+      }
+    }
+
+    function stopVcamLoop() {
+      if (vcamRaf) {
+        cancelAnimationFrame(vcamRaf);
+        vcamRaf = 0;
+      }
+    }
+
+    function startVcamLoop() {
+      stopVcamLoop();
+      var tick = function () {
+        if (!vcamActive) return;
+        paintVcamFrame();
+        vcamRaf = requestAnimationFrame(tick);
+      };
+      vcamRaf = requestAnimationFrame(tick);
+    }
+
+    function toggleVcam() {
+      if (vcamActive) {
+        stopVcamLoop();
+        setVcamUi(false);
+        log('Virtual Cam preview stopped (web mock only).');
+        if (destHint) destHint.textContent = 'Virtual Cam preview stopped.';
+        return;
+      }
+      setVcamUi(true);
+      startVcamLoop();
+      log(
+        'Virtual Cam preview only — browsers cannot install a system virtual camera. Other apps will not see Maka as a device.',
+      );
+      if (destHint) {
+        destHint.textContent =
+          'Virtual Cam is preview-only in the browser (no OS camera device).';
+      }
+    }
+
+    function readPlatformPref() {
+      var out = { twitch: false, youtube: false };
+      try {
+        var raw = localStorage.getItem(PLATFORM_PREF_KEY);
+        if (raw) {
+          var parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object') {
+            out.twitch = Boolean(parsed.twitch);
+            out.youtube = Boolean(parsed.youtube);
+          }
+        }
+      } catch (_err) {
+        /* private mode */
+      }
+      // Fall back / reconcile with settings lastStreamPlatform when pref empty.
+      if (!out.twitch && !out.youtube) {
+        var last = 'none';
+        try {
+          if (global.MakaStudioSettings && typeof global.MakaStudioSettings.getSettings === 'function') {
+            last = global.MakaStudioSettings.getSettings().lastStreamPlatform || 'none';
+          } else {
+            var blob = localStorage.getItem('maka.stream.settings.v1');
+            if (blob) {
+              var s = JSON.parse(blob);
+              if (s && s.lastStreamPlatform) last = s.lastStreamPlatform;
+            }
+          }
+        } catch (_err2) {
+          /* ignore */
+        }
+        if (last === 'twitch') out.twitch = true;
+        if (last === 'youtube') out.youtube = true;
+      }
+      return out;
+    }
+
+    function primaryPlatformFromPref(pref) {
+      if (pref.twitch && !pref.youtube) return 'twitch';
+      if (pref.youtube && !pref.twitch) return 'youtube';
+      if (pref.twitch && pref.youtube) {
+        return lastPlatformClick === 'youtube' ? 'youtube' : 'twitch';
+      }
+      return 'none';
+    }
+
+    function syncPlatformHint(pref) {
+      if (!destHint) return;
+      var parts = [];
+      if (pref.twitch) parts.push('Twitch');
+      if (pref.youtube) parts.push('YouTube');
+      destHint.textContent = parts.length
+        ? 'Preferred destinations: ' + parts.join(' · ')
+        : 'No stream destination selected';
+    }
+
+    function applyPlatformChips(pref) {
+      platformPref = {
+        twitch: Boolean(pref.twitch),
+        youtube: Boolean(pref.youtube),
+      };
+      if (platTwitch) {
+        platTwitch.dataset.state = platformPref.twitch ? 'armed' : 'off';
+        platTwitch.setAttribute('aria-pressed', platformPref.twitch ? 'true' : 'false');
+      }
+      if (platYoutube) {
+        platYoutube.dataset.state = platformPref.youtube ? 'armed' : 'off';
+        platYoutube.setAttribute('aria-pressed', platformPref.youtube ? 'true' : 'false');
+      }
+      syncPlatformHint(platformPref);
+    }
+
+    function persistPlatformPref(pref, options) {
+      var opts = options || {};
+      applyPlatformChips(pref);
+      try {
+        localStorage.setItem(PLATFORM_PREF_KEY, JSON.stringify(platformPref));
+      } catch (_err) {
+        /* ignore */
+      }
+      var last = primaryPlatformFromPref(platformPref);
+      if (!opts.skipSettings) {
+        if (global.MakaStudioSettings && typeof global.MakaStudioSettings.setSettings === 'function') {
+          global.MakaStudioSettings.setSettings({ lastStreamPlatform: last });
+        } else {
+          try {
+            var raw = localStorage.getItem('maka.stream.settings.v1');
+            var base = raw ? JSON.parse(raw) : {};
+            if (!base || typeof base !== 'object') base = {};
+            base.lastStreamPlatform = last;
+            localStorage.setItem('maka.stream.settings.v1', JSON.stringify(base));
+          } catch (_err2) {
+            /* ignore */
+          }
+          var select = doc.getElementById('set-last-platform');
+          if (select) select.value = last;
+        }
+      }
+      window.dispatchEvent(
+        new CustomEvent('maka:platform-pref-change', {
+          detail: { twitch: platformPref.twitch, youtube: platformPref.youtube, lastStreamPlatform: last },
+        }),
+      );
+    }
+
+    function togglePlatform(name) {
+      if (name !== 'twitch' && name !== 'youtube') return;
+      lastPlatformClick = name;
+      var next = { twitch: platformPref.twitch, youtube: platformPref.youtube };
+      next[name] = !next[name];
+      persistPlatformPref(next);
+      log(
+        (next[name] ? 'Selected ' : 'Cleared ') +
+          (name === 'twitch' ? 'Twitch' : 'YouTube') +
+          ' destination preference.',
+      );
+    }
+
+    function onSettingsPlatformSync(ev) {
+      var detail = (ev && ev.detail) || {};
+      var last = detail.lastStreamPlatform;
+      if (last !== 'twitch' && last !== 'youtube' && last !== 'none') return;
+      // When settings dropdown changes, treat as exclusive selection.
+      var next = {
+        twitch: last === 'twitch',
+        youtube: last === 'youtube',
+      };
+      lastPlatformClick = last === 'youtube' ? 'youtube' : last === 'twitch' ? 'twitch' : 'none';
+      applyPlatformChips(next);
+      try {
+        localStorage.setItem(PLATFORM_PREF_KEY, JSON.stringify(next));
+      } catch (_err) {
+        /* ignore */
+      }
+    }
+
+    if (btnRecording) {
+      btnRecording.addEventListener('click', function () {
+        void (async function () {
+          if (recordingActive) await stopRecordingAndSave();
+          else await startRecording();
+        })();
+      });
+    }
+    if (btnVcam) {
+      btnVcam.addEventListener('click', function () {
+        toggleVcam();
+      });
+    }
+    if (platTwitch) {
+      platTwitch.addEventListener('click', function () {
+        togglePlatform('twitch');
+      });
+    }
+    if (platYoutube) {
+      platYoutube.addEventListener('click', function () {
+        togglePlatform('youtube');
+      });
+    }
+    window.addEventListener('maka:settings-platform-sync', onSettingsPlatformSync);
+
+    applyPlatformChips(readPlatformPref());
+    setRecordingUi(false);
+    setVcamUi(false);
+    syncRecordingAvailability();
 
     // --- Capture fallback (when preview module not owning the canvas) ---
     if (ownsCapture) {
@@ -874,9 +1328,20 @@
         if (raf) cancelAnimationFrame(raf);
         stopStatusPoll();
         if (durationTimer) clearInterval(durationTimer);
+        stopVcamLoop();
+        if (recordingActive && mediaRecorder) {
+          try {
+            mediaRecorder.stop();
+          } catch (_err) {
+            /* ignore */
+          }
+          mediaRecorder = null;
+          recordingActive = false;
+        }
         window.removeEventListener('maka:preview-change', onPreviewChange);
         document.removeEventListener('maka:preview-change', onPreviewChange);
         window.removeEventListener('resize', resizeCanvas);
+        window.removeEventListener('maka:settings-platform-sync', onSettingsPlatformSync);
         if (whipPublisher) {
           void whipPublisher.close();
           whipPublisher = null;

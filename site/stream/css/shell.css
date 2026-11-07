@@ -68,6 +68,7 @@ body.stream-studio {
 
 /* --- App grid: header / left / center / right (stats sit under program) --- */
 .app {
+  position: relative;
   flex: 1 1 auto;
   height: 100%;
   max-height: 100%;
@@ -1079,6 +1080,317 @@ body.stream-studio {
 .marketplace-sidebar-preview:not(:empty) {
   margin-bottom: 0.45rem;
   min-height: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 11rem;
+  overflow: auto;
+}
+
+.marketplace-sidebar-preview .marketplace-card--compact {
+  padding: 0.45rem 0.55rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+}
+
+.marketplace-sidebar-preview .marketplace-card-head strong {
+  font-size: 0.78rem;
+}
+
+.marketplace-sidebar-preview .marketplace-card-blurb {
+  margin: 0.2rem 0 0;
+  font-size: 0.68rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.marketplace-sidebar-preview .marketplace-card-actions {
+  margin-top: 0.25rem;
+}
+
+/* Marketplace dialog (web port of desktop #marketplace-dialog) */
+.marketplace-dialog {
+  width: min(560px, calc(100vw - 2rem));
+  max-height: min(82vh, 720px);
+  border: 1px solid rgba(201, 152, 0, 0.35);
+  border-radius: 14px;
+  padding: 0;
+  background: linear-gradient(165deg, #ffffff, #f6f3ec);
+  color: var(--text);
+  box-shadow: 0 24px 64px rgba(26, 20, 8, 0.18);
+}
+
+.marketplace-dialog::backdrop {
+  background: rgba(26, 20, 8, 0.45);
+}
+
+.marketplace-header {
+  padding: 1rem 1.1rem 0.5rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.marketplace-header h2 {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-headline);
+  font-weight: 800;
+}
+
+.marketplace-header .hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.marketplace-list {
+  padding: 0.75rem 1.1rem;
+  overflow: auto;
+  max-height: min(58vh, 520px);
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.marketplace-footer {
+  padding: 0.65rem 1.1rem 1rem;
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.marketplace-footer button {
+  appearance: none;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.45rem;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.marketplace-footer button:hover {
+  background: var(--panel-2);
+}
+
+.marketplace-section-title {
+  margin: 0.35rem 0 0.15rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold-dark);
+}
+
+.marketplace-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.75rem 0.85rem;
+  background: var(--panel);
+}
+
+.marketplace-card.featured {
+  border-color: rgba(201, 152, 0, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(255, 196, 12, 0.2);
+}
+
+.marketplace-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-bottom: 0.35rem;
+}
+
+.marketplace-card-head strong {
+  display: block;
+  font-size: 0.95rem;
+}
+
+.marketplace-meta {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.marketplace-badge {
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.15rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.marketplace-badge[data-kind="platform"] {
+  border-color: rgba(80, 120, 180, 0.45);
+  color: #3a5f8a;
+}
+
+.marketplace-badge[data-kind="production"] {
+  border-color: rgba(201, 152, 0, 0.45);
+  color: var(--gold-dark);
+}
+
+.marketplace-perms {
+  margin: 0.35rem 0 0.5rem;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.marketplace-perms code {
+  font-size: 0.68rem;
+  padding: 0.05rem 0.25rem;
+  border-radius: 4px;
+  background: var(--panel-2);
+  margin-right: 0.2rem;
+}
+
+.marketplace-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.marketplace-status {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.marketplace-source-note {
+  margin: 0.25rem 0 0;
+}
+
+/* Virtual Cam preview-only mock (not an OS camera device) */
+.program-vcam-mock {
+  position: absolute;
+  left: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 4;
+  width: 28%;
+  min-width: 160px;
+  aspect-ratio: 16 / 9;
+  border: 2px solid var(--gold);
+  border-radius: 0.65rem;
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 8px 32px rgba(26, 20, 8, 0.12), 0 0 0 1px rgba(255, 196, 12, 0.35);
+}
+
+.program-vcam-mock[hidden] {
+  display: none !important;
+}
+
+.program-vcam-mock canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.program-vcam-tag {
+  position: absolute;
+  left: 0.35rem;
+  top: 0.35rem;
+  font-family: var(--font-headline);
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: var(--gold);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0.14rem 0.38rem;
+  font-weight: 800;
+}
+
+.program-vcam-note {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: 0;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.62rem;
+  text-align: center;
+  color: #faf8f4;
+  background: rgba(10, 10, 12, 0.72);
+}
+
+.program-browser-web-note {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  padding: 0.75rem;
+  text-align: center;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: #faf8f4;
+  background: rgba(10, 10, 12, 0.82);
+  z-index: 2;
+}
+
+/* Recording / Virtual Cam control states */
+#btn-start-recording[data-recording="1"] .btn-icon-rec {
+  color: #c0392b;
+}
+
+#btn-start-recording[data-recording="1"] {
+  border-color: #e07a6a;
+}
+
+#btn-start-vcam[data-vcam="1"] {
+  border-color: var(--gold-dark);
+}
+
+.program-stat-recording[data-recording="1"] {
+  color: #9a3b3b;
+  font-weight: 700;
+}
+
+.program-stat-vcam[data-vcam="1"] {
+  color: var(--gold-dark);
+  font-weight: 700;
+}
+
+/* Studio ↔ Browser layout hint on .app */
+.app[data-output-mode="browse"] {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "top"
+    "stage";
+}
+
+.app[data-output-mode="browse"] .sidebar.left,
+.app[data-output-mode="browse"] .sidebar.right {
+  display: none;
+}
+
+.app[data-output-mode="browse"]::after {
+  content: "Browser Mode (web layout hint) — built-in browser tabs require the desktop app";
+  position: absolute;
+  left: 50%;
+  top: 42px;
+  transform: translateX(-50%);
+  z-index: 20;
+  max-width: min(36rem, calc(100% - 2rem));
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--muted);
+  font-size: 0.68rem;
+  text-align: center;
+  pointer-events: none;
 }
 
 .stream-info {

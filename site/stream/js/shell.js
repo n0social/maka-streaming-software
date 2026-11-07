@@ -1,11 +1,20 @@
 /**
  * Studio shell — layout init and overflow containment.
  * Boots program preview via initPreview(root); other modules own their hooks.
+ *
+ * Wiring layer 2 (P1-2 / P1-3):
+ *   - #program-output-mode ↔ .app[data-output-mode] + body mode hint + settings.startupMode
+ *   - #marketplace-dialog catalog (bundled /marketplace.json or remote feed)
  */
 
 import { initPreview } from "./preview.js";
 
 const NARROW_MQ = "(max-width: 960px)";
+const MARKETPLACE_URLS = [
+  "/marketplace.json",
+  "https://tabcast.live.skydav.work/marketplace.json",
+  "https://tabcast.live/marketplace.json",
+];
 
 function resolvePreviewRoot(root) {
   return (
@@ -15,6 +24,351 @@ function resolvePreviewRoot(root) {
     root.querySelector(".program-frame") ||
     null
   );
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+function normalizeCatalogEntries(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const manifest = item.manifest && typeof item.manifest === "object" ? item.manifest : item;
+    const catalogId = String(item.catalogId || manifest.id || "").trim();
+    if (!catalogId) continue;
+    out.push({
+      catalogId,
+      featured: Boolean(item.featured),
+      name: String(manifest.name || catalogId),
+      version: String(manifest.version || ""),
+      author: String(manifest.author || "Community"),
+      category: String(manifest.category || "utility"),
+      description: String(manifest.description || ""),
+      permissions: Array.isArray(manifest.permissions) ? manifest.permissions.map(String) : [],
+      builtin: Boolean(manifest.builtin || item.builtin),
+    });
+  }
+  return out;
+}
+
+async function fetchMarketplaceCatalog() {
+  for (const url of MARKETPLACE_URLS) {
+    try {
+      const res = await fetch(url, { cache: "no-store", mode: "cors" });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const entries = normalizeCatalogEntries(data);
+      if (entries.length) return { entries, source: url };
+    } catch {
+      /* try next */
+    }
+  }
+  return { entries: [], source: null };
+}
+
+function renderMarketplaceCard(item, compact) {
+  const card = document.createElement("article");
+  card.className =
+    "marketplace-card" +
+    (item.featured ? " featured" : "") +
+    (compact ? " marketplace-card--compact" : "");
+  card.dataset.catalogId = item.catalogId;
+  card.setAttribute("role", "listitem");
+
+  const perms =
+    item.permissions.length > 0
+      ? item.permissions.map((p) => `<code>${escapeHtml(p)}</code>`).join(" ")
+      : '<span class="hint tight">No special permissions</span>';
+
+  const description = escapeHtml(item.description);
+  const descBlock = compact
+    ? `<p class="hint tight marketplace-card-blurb">${description}</p>`
+    : `<p class="hint tight">${description}</p>`;
+
+  card.innerHTML = `
+    <header class="marketplace-card-head">
+      <div>
+        <strong>${escapeHtml(item.name)}</strong>
+        <span class="marketplace-meta">${escapeHtml(item.version)} · ${escapeHtml(item.author)}</span>
+      </div>
+      <span class="marketplace-badge" data-kind="${escapeHtml(item.category)}">${escapeHtml(item.category)}</span>
+    </header>
+    ${descBlock}
+    ${compact ? "" : `<p class="marketplace-perms">${perms}</p>`}
+    <div class="marketplace-card-actions"></div>
+  `;
+
+  const actions = card.querySelector(".marketplace-card-actions");
+  const tag = document.createElement("span");
+  tag.className = "marketplace-status";
+  tag.textContent = item.builtin
+    ? compact
+      ? "Core"
+      : "Built into core"
+    : compact
+      ? "Browse"
+      : "Desktop install only";
+  actions.appendChild(tag);
+  return card;
+}
+
+function paintMarketplaceList(root, entries, options) {
+  const compact = Boolean(options && options.compact);
+  const sections = Boolean(options && options.sections);
+  root.innerHTML = "";
+  if (!entries.length) {
+    root.innerHTML = compact
+      ? '<p class="hint tight marketplace-preview-empty">No addons in catalog.</p>'
+      : '<p class="hint tight">Marketplace catalog is empty or could not be loaded.</p>';
+    return;
+  }
+
+  const append = (items) => {
+    for (const item of items) root.appendChild(renderMarketplaceCard(item, compact));
+  };
+
+  if (sections) {
+    const featured = entries.filter((i) => i.featured);
+    const rest = entries.filter((i) => !i.featured);
+    if (featured.length) {
+      const h = document.createElement("h3");
+      h.className = "marketplace-section-title";
+      h.textContent = "Featured";
+      root.appendChild(h);
+      append(featured);
+    }
+    if (rest.length) {
+      const h = document.createElement("h3");
+      h.className = "marketplace-section-title";
+      h.textContent = "All extensions";
+      root.appendChild(h);
+      append(rest);
+    }
+    return;
+  }
+
+  const ordered = [...entries.filter((i) => i.featured), ...entries.filter((i) => !i.featured)];
+  append(ordered.slice(0, compact ? 4 : ordered.length));
+}
+
+function initMarketplace(doc = document) {
+  const dialog = doc.getElementById("marketplace-dialog");
+  const list = doc.getElementById("marketplace-list");
+  const preview = doc.getElementById("marketplace-sidebar-list");
+  const openBtn = doc.getElementById("btn-open-marketplace");
+  const closeBtn = doc.getElementById("marketplace-close");
+  const refreshBtn = doc.getElementById("marketplace-refresh");
+  if (!dialog || !list) return null;
+
+  let cache = [];
+  let loading = false;
+
+  const setLoading = (message) => {
+    list.textContent = message;
+    if (preview) preview.textContent = message;
+  };
+
+  const paint = (entries) => {
+    cache = entries;
+    paintMarketplaceList(list, entries, { compact: false, sections: true });
+    if (preview) paintMarketplaceList(preview, entries, { compact: true, sections: false });
+  };
+
+  const load = async () => {
+    if (loading) return;
+    loading = true;
+    setLoading("Loading catalog…");
+    const { entries, source } = await fetchMarketplaceCatalog();
+    paint(entries);
+    if (!entries.length) {
+      setLoading("Could not load marketplace catalog.");
+    } else if (source && source.indexOf("http") === 0) {
+      const note = document.createElement("p");
+      note.className = "hint tight marketplace-source-note";
+      note.textContent = "Feed: " + source;
+      list.appendChild(note);
+    }
+    loading = false;
+  };
+
+  openBtn?.addEventListener("click", () => {
+    if (typeof dialog.showModal === "function") dialog.showModal();
+    else dialog.setAttribute("open", "");
+    if (!cache.length) void load();
+  });
+
+  closeBtn?.addEventListener("click", () => {
+    if (typeof dialog.close === "function") dialog.close();
+    else dialog.removeAttribute("open");
+  });
+
+  dialog.addEventListener("click", (event) => {
+    if (event.target === dialog) {
+      if (typeof dialog.close === "function") dialog.close();
+      else dialog.removeAttribute("open");
+    }
+  });
+
+  refreshBtn?.addEventListener("click", () => {
+    void load();
+  });
+
+  void load();
+
+  return { load, dialog };
+}
+
+function readStartupMode() {
+  try {
+    if (window.MakaStudioSettings && typeof window.MakaStudioSettings.getSettings === "function") {
+      const mode = window.MakaStudioSettings.getSettings().startupMode;
+      if (mode === "studio" || mode === "browse") return mode;
+    }
+    const raw = localStorage.getItem("maka.stream.settings.v1");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && (parsed.startupMode === "studio" || parsed.startupMode === "browse")) {
+        return parsed.startupMode;
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  const hint = document.documentElement.dataset.makaStartupMode;
+  if (hint === "browse" || hint === "studio") return hint;
+  return "studio";
+}
+
+function persistStartupMode(mode) {
+  if (mode !== "studio" && mode !== "browse") return;
+  document.documentElement.dataset.makaStartupMode = mode;
+  if (window.MakaStudioSettings && typeof window.MakaStudioSettings.setSettings === "function") {
+    window.MakaStudioSettings.setSettings({ startupMode: mode });
+    return;
+  }
+  try {
+    const raw = localStorage.getItem("maka.stream.settings.v1");
+    const base = raw ? JSON.parse(raw) : {};
+    const next = base && typeof base === "object" ? base : {};
+    next.startupMode = mode;
+    localStorage.setItem("maka.stream.settings.v1", JSON.stringify(next));
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Apply studio vs browser layout hint on .app / body without faking a real browser webview.
+ * @param {'studio' | 'browse'} mode
+ * @param {{ persist?: boolean, fromSettings?: boolean }} [opts]
+ */
+function applyOutputMode(mode, opts = {}) {
+  if (mode !== "studio" && mode !== "browse") return;
+  const app = document.getElementById("studio-app") || document.querySelector(".app");
+  const body = document.body;
+  const select = document.getElementById("program-output-mode");
+  const brandTag = document.getElementById("brand-tag");
+
+  if (app) {
+    app.dataset.outputMode = mode;
+    app.dataset.shell = mode === "browse" ? "browse" : "studio";
+  }
+
+  // Don't clobber Settings mode; restore browse/studio when leaving settings.
+  if (body.dataset.mode !== "settings") {
+    body.dataset.mode = mode;
+  } else {
+    body.dataset.outputModePending = mode;
+  }
+
+  if (select && select.value !== mode) select.value = mode;
+
+  if (brandTag && body.dataset.mode !== "settings") {
+    brandTag.hidden = false;
+    brandTag.textContent =
+      mode === "browse"
+        ? "Browser Mode (web preview)"
+        : "Streaming studio";
+  }
+
+  // Honest browser-mode surface: show program-browser slot with copy, not a fake webview.
+  const programBrowser = document.getElementById("program-browser");
+  const browserVideo = document.getElementById("program-browser-video");
+  if (programBrowser) {
+    if (mode === "browse") {
+      programBrowser.hidden = false;
+      programBrowser.dataset.webMock = "1";
+      if (browserVideo) browserVideo.hidden = true;
+      let note = programBrowser.querySelector(".program-browser-web-note");
+      if (!note) {
+        note = document.createElement("p");
+        note.className = "program-browser-web-note";
+        programBrowser.appendChild(note);
+      }
+      note.textContent =
+        "Browser Mode on web is a layout hint — built-in tabs need the Maka desktop app.";
+    } else {
+      programBrowser.hidden = true;
+      delete programBrowser.dataset.webMock;
+      const note = programBrowser.querySelector(".program-browser-web-note");
+      if (note) note.remove();
+    }
+  }
+
+  window.dispatchEvent(
+    new CustomEvent("maka:output-mode-change", { detail: { mode } }),
+  );
+
+  if (opts.persist) persistStartupMode(mode);
+}
+
+function initOutputMode(doc = document) {
+  const select = doc.getElementById("program-output-mode");
+  const initial = readStartupMode();
+  applyOutputMode(initial, { persist: false, fromSettings: true });
+
+  select?.addEventListener("change", () => {
+    const mode = select.value;
+    if (mode !== "studio" && mode !== "browse") return;
+    applyOutputMode(mode, { persist: true });
+  });
+
+  window.addEventListener("maka:startup-mode-change", (event) => {
+    const mode = event?.detail?.mode;
+    if (mode !== "studio" && mode !== "browse") return;
+    applyOutputMode(mode, { persist: false, fromSettings: true });
+  });
+
+  window.addEventListener("maka:settings-change", (event) => {
+    const mode = event?.detail?.startupMode;
+    if (mode !== "studio" && mode !== "browse") return;
+    if (select && document.activeElement === select) return;
+    applyOutputMode(mode, { persist: false, fromSettings: true });
+  });
+
+  // When settings closes, re-apply studio/browse chrome (brand tag, .app dataset).
+  window.addEventListener("maka:close-settings-done", (event) => {
+    const fromEvent = event?.detail?.mode;
+    const pending = document.body.dataset.outputModePending;
+    const mode =
+      fromEvent === "browse" || fromEvent === "studio"
+        ? fromEvent
+        : pending === "browse" || pending === "studio"
+          ? pending
+          : document.getElementById("studio-app")?.dataset.outputMode || "studio";
+    delete document.body.dataset.outputModePending;
+    if (mode === "browse" || mode === "studio") {
+      applyOutputMode(mode, { persist: false });
+    }
+  });
+
+  return { applyOutputMode, readStartupMode };
 }
 
 /**
@@ -86,11 +440,22 @@ export function initShell(root = document) {
   // Program / preview capture (getDisplayMedia + getUserMedia), contained 16:9.
   const preview = program ? initPreview(program) : null;
 
+  const outputMode = initOutputMode(document);
+  const marketplace = initMarketplace(document);
+
   if (app && app.dataset) app.dataset.shellReady = "1";
+
+  window.MakaShell = {
+    applyOutputMode,
+    readStartupMode,
+    marketplace,
+  };
 
   return {
     app,
     preview,
+    outputMode,
+    marketplace,
     teardown() {
       window.removeEventListener("resize", onResize);
       if (typeof mq.removeEventListener === "function") mq.removeEventListener("change", onMq);

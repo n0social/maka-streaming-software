@@ -13,7 +13,7 @@
 
 The page **boots cleanly**. All six modules initialize. Layout containment holds at 1440×900 and 1100×700 (center does **not** expand over sidebars). Scenes, preview chrome, audio mixer, live probe honesty, and settings persistence are largely present.
 
-The wiring pass should prioritize **source-row ↔ preview capture conflicts**, **dead Stream Controls chrome** (recording / vcam / marketplace / platform chips / studio↔browser mode), and **live’s secondary preview global name** (`MakaPreview` vs `MakaStreamPreview`). Nothing found that blocks first paint; no 5-line load-blocker was patched in this pass.
+Wiring layers 1–2 addressed source-row ↔ preview capture conflicts and dead Stream Controls chrome (recording / vcam / marketplace / platform chips / studio↔browser mode). Remaining: **live’s secondary preview global name** (`MakaPreview` vs `MakaStreamPreview`) and other P2 polish. Nothing found that blocks first paint.
 
 ---
 
@@ -27,7 +27,7 @@ The wiring pass should prioritize **source-row ↔ preview capture conflicts**, 
 | Duplicate IDs in `index.html` | **None** (99 unique) |
 | Required hooks | Present: `#studio-preview`, `#audio-mixer`, `#btn-settings`, `#studio-settings`, `#btn-go-live`, `#btn-go-live-sidebar`, `#relay-chip`, `#studio-scenes`, `#program` |
 | Orphan shim | `stream.js` exists (live.js loader shim) but is **not** referenced by `index.html` (harmless; modules already load live.js) |
-| Marketplace dialog | `#btn-open-marketplace` has `aria-controls="marketplace-dialog"` but **`#marketplace-dialog` is missing** |
+| Marketplace dialog | `#marketplace-dialog` present (wiring layer 2); Browse opens / Close works |
 
 ---
 
@@ -141,12 +141,7 @@ Asset 404s: **none** for studio modules/CSS. Transient `ERR_ABORTED` noise durin
 Ordered by impact for the next wiring pass:
 
 1. **Source row ↔ preview capture collision** — Row click toggles scene layers *and* kicks `getDisplayMedia`/`getUserMedia`. Capture should follow picker / explicit Share buttons, not layer toggle.
-2. **Dead Stream Controls / stats chrome (HTML only)** — No handlers in `site/stream/js/*` for:
-   - `#btn-start-recording`, `#btn-start-vcam`, `#stat-recording` / `#stat-vcam`
-   - `#btn-open-marketplace` (and missing `#marketplace-dialog`)
-   - `#plat-twitch`, `#plat-youtube`
-   - `#program-output-mode` (Studio ↔ Browser)
-   - Encode select sync beyond hidden `#cfg-profile` / settings
+2. ~~**Dead Stream Controls / stats chrome**~~ **FIXED** (wiring layer 2) — recording / vcam / marketplace / platform chips / `#program-output-mode` wired. Encode select sync beyond hidden `#cfg-profile` / settings still optional polish.
 3. **Live preview API alias** — `live.js` `getPreviewApi()` falls back to `window.MakaPreview`, but preview publishes `window.MakaStreamPreview`. Host `_makaPreview` works today; alias mismatch is a landmine if the host is remounted.
 4. **Audio mic settings id** — Missing `btn-mic-audio-settings` on the mic ⚙ control after mount upgrade.
 5. **Scenes event double-fire** — `emit()` dispatches on both `root` and `window`.
@@ -154,7 +149,7 @@ Ordered by impact for the next wiring pass:
 7. **Orphan `stream.js`** — Not in script tags; either delete or document as unused.
 8. **Preview ↔ scenes scene-card race** — Preview also listens to raw `[data-scene]` clicks in parallel with `maka:scene-change` (works, but dual paths).
 9. **Chat / notifications program slots** — Intentionally placeholder (“not wired yet”); leave until feed exists.
-10. **Recording / vcam / marketplace** — Expected exe parity gaps on web; do not fake CDN or file-system recording without a defined browser strategy.
+10. ~~**Recording / vcam / marketplace**~~ **FIXED** (wiring layer 2) with honest web strategies (MediaRecorder download; VCam preview-only PiP; browse-only marketplace). Still no fake CDN / OS VCam.
 
 **Already OK (do not re-litigate as missing):** `audio.css` is linked; `settings.js` is in script tags; `#studio-preview` receives `maka:scene-change` and updates scene name / card.
 
@@ -171,8 +166,8 @@ Ordered by impact for the next wiring pass:
 | ID | Issue | Recommended first fix |
 | --- | --- | --- |
 | P1-1 | ~~Game/Webcam source row click starts capture while also toggling layer~~ **FIXED** (wiring layer 1) | Row = layer only; Share screen / Add webcam = capture. preview no longer binds `#studio-source-*`. |
-| P1-2 | Start Recording / Virtual Camera / Browse addons / Twitch·YouTube chips / Studio Mode select are inert | Wire or explicitly disable + tooltip (“desktop only” / “coming soon”) so chrome is honest |
-| P1-3 | Marketplace button references missing `#marketplace-dialog` | Add dialog stub or remove `aria-controls` / hide button until ported |
+| P1-2 | ~~Start Recording / Virtual Camera / Browse addons / Twitch·YouTube chips / Studio Mode select are inert~~ **FIXED** (wiring layer 2) | MediaRecorder + download; VCam preview-only PiP; platform chips ↔ localStorage/settings; Studio/Browser mode on `.app` |
+| P1-3 | ~~Marketplace button references missing `#marketplace-dialog`~~ **FIXED** (wiring layer 2) | `#marketplace-dialog` + catalog from `/marketplace.json` (remote feed fallback) |
 
 ### P2 — polish
 
@@ -196,14 +191,30 @@ Ordered by impact for the next wiring pass:
 - Click contract documented at the top of `site/stream/js/scenes.js` and `site/stream/js/preview.js`.
 - Picker copy for game/webcam points users to the preview capture buttons.
 
-**Still open for later layers:** P1-2, P1-3, P2-*.
+**Still open for later layers:** P2-*.
+
+---
+
+## Wiring layer 2 — fixed
+
+**P1-2 / P1-3 done** (this pass only; no deploy):
+
+1. **Recording** (`#btn-start-recording` / `#stat-recording`) — `MediaRecorder` on the preview stream (screen preferred, else webcam) when available; stop downloads a timestamped WebM; idle/recording UI synced. No stream → honest hint, does not fake a recording.
+2. **Virtual Cam** (`#btn-start-vcam` / `#stat-vcam` / `#vcam-preview-mock`) — web cannot install an OS virtual camera; button toggles a labeled **preview-only** PiP canvas that mirrors the program frame. Tooltip/copy state that clearly. Does **not** claim a system camera device.
+3. **Marketplace** — added `#marketplace-dialog` (+ list/refresh/close). Browse opens dialog; Close works. Catalog from `/marketplace.json` with optional remote feed URLs (`tabcast.live` / `skydav.work`); sidebar preview fills from the same list. Install actions are browse-only (desktop installs).
+4. **Twitch / YouTube chips** — toggle `data-state` armed/off; persist `maka.stream.platformPref.v1`; sync primary into settings `lastStreamPlatform` / `#set-last-platform`. Settings dropdown exclusive-syncs chips via `maka:settings-platform-sync`.
+5. **Studio Mode** (`#program-output-mode`) — switches `.app[data-output-mode]` + `body[data-mode]` studio/browse layout hint; persists as `startupMode`; matches Settings → Studio & Browser startup buttons via `maka:startup-mode-change`.
+
+Layer 1 scenes/preview click contract unchanged (source rows = layers; Share screen / Add webcam = capture).
+
+**Still open:** P2-* only.
 
 ---
 
 ## Wiring-pass priority (recommended order)
 
 1. ~~**P1-1** source ↔ preview click semantics~~ **FIXED** (wiring layer 1).  
-2. **P1-2 / P1-3** honesty pass on inert controls (disable + copy beats silent no-ops).  
+2. ~~**P1-2 / P1-3** honesty pass on inert controls~~ **FIXED** (wiring layer 2).  
 3. **P2-1** live ↔ preview API naming.  
 4. Optional: audio mic id, event emit once, CSS dedupe.
 

@@ -21,7 +21,7 @@
     <meta property="og:image" content="https://makalive.stream/marketing/screenshot-desktop-1280x800.png" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:38473 http://localhost:38473 ws://127.0.0.1:* ws://localhost:*"
+      content="default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:38473 http://localhost:38473 ws://127.0.0.1:* ws://localhost:* https://tabcast.live https://tabcast.live.skydav.work"
     />
     <title>Maka — Stream</title>
     <link rel="icon" type="image/png" href="/marketing/favicon-32.png" sizes="32x32" />
@@ -215,6 +215,11 @@
                 <video id="program-browser-video" autoplay muted playsinline></video>
                 <span class="program-browser-tag">Search tab</span>
               </div>
+              <div class="program-vcam-mock" id="vcam-preview-mock" hidden aria-label="Virtual camera preview mock">
+                <canvas id="vcam-preview-canvas" width="320" height="180"></canvas>
+                <span class="program-vcam-tag">Virtual Cam · preview only</span>
+                <p class="program-vcam-note" id="vcam-preview-note">Not a system camera device</p>
+              </div>
               <div class="program-overlay-slot program-chat-slot" id="program-chat-slot" hidden>
                 <span class="program-overlay-slot-label">Chat</span>
                 <span class="program-overlay-slot-hint">Placeholder until chat feed is wired</span>
@@ -258,11 +263,25 @@
               <span class="program-stat" id="stat-fps">FPS: 30</span>
               <span class="program-stat program-stat-latency" id="stat-latency" title="Stream latency">—</span>
               <div class="program-stats-platforms" role="group" aria-label="Stream destinations">
-                <button type="button" class="platform-chip platform-chip-btn" id="plat-twitch" data-state="off" aria-haspopup="dialog">
+                <button
+                  type="button"
+                  class="platform-chip platform-chip-btn"
+                  id="plat-twitch"
+                  data-state="off"
+                  aria-pressed="false"
+                  title="Toggle Twitch as a preferred stream destination (saved locally)"
+                >
                   Twitch
                 </button>
                 <span class="program-stats-platform-sep" aria-hidden="true">|</span>
-                <button type="button" class="platform-chip platform-chip-btn" id="plat-youtube" data-state="off" aria-haspopup="dialog">
+                <button
+                  type="button"
+                  class="platform-chip platform-chip-btn"
+                  id="plat-youtube"
+                  data-state="off"
+                  aria-pressed="false"
+                  title="Toggle YouTube as a preferred stream destination (saved locally)"
+                >
                   YouTube
                 </button>
               </div>
@@ -343,11 +362,23 @@
             <p class="relay-guidance" id="relay-detail">
               Probes <code>127.0.0.1:38473</code> — desktop relay sidecar is local-only.
             </p>
-            <button type="button" class="btn-block btn-secondary" id="btn-start-recording" title="Record program output locally (not streaming)">
+            <button
+              type="button"
+              class="btn-block btn-secondary"
+              id="btn-start-recording"
+              data-recording="0"
+              title="Record the preview stream locally in this browser (MediaRecorder). Not streaming."
+            >
               <span class="btn-icon btn-icon-rec" id="btn-recording-icon" aria-hidden="true">●</span>
               <span id="btn-recording-label">Start Recording</span>
             </button>
-            <button type="button" class="btn-block btn-secondary" id="btn-start-vcam" title="Send program output to a virtual camera (preview mode on this build)">
+            <button
+              type="button"
+              class="btn-block btn-secondary"
+              id="btn-start-vcam"
+              data-vcam="0"
+              title="Web cannot install a system virtual camera. Opens a labeled preview-only PiP that mirrors the program frame."
+            >
               <span class="btn-icon btn-icon-vcam" id="btn-vcam-icon" aria-hidden="true">▢</span>
               <span id="btn-vcam-label">Start Virtual Camera</span>
             </button>
@@ -430,6 +461,20 @@
       <option value="1080p30">1080p30</option>
       <option value="1080p60">1080p60</option>
     </select>
+
+    <dialog id="marketplace-dialog" class="marketplace-dialog" aria-labelledby="marketplace-dialog-title">
+      <header class="marketplace-header">
+        <h2 id="marketplace-dialog-title">Addon Marketplace</h2>
+        <p class="hint">
+          Community addons for the streaming shell. Install/enable requires the desktop app; this web catalog is browse-only.
+        </p>
+      </header>
+      <div id="marketplace-list" class="marketplace-list" role="list"></div>
+      <footer class="marketplace-footer">
+        <button type="button" id="marketplace-refresh">Refresh catalog</button>
+        <button type="button" id="marketplace-close">Close</button>
+      </footer>
+    </dialog>
 
     <!-- Module hooks (feature modules owned elsewhere) -->
     <script type="module" src="./js/shell.js"></script>
