@@ -106,7 +106,8 @@
   box-shadow: 0 8px 28px rgba(26, 20, 8, 0.08);
 }
 
-.preview-stage__label {
+.preview-stage__label,
+.preview-stage .program-label {
   position: absolute;
   top: 0.5rem;
   left: 0.55rem;
@@ -124,9 +125,11 @@
   backdrop-filter: blur(6px);
 }
 
-.preview-stage__mode {
+.preview-stage__mode,
+.preview-stage .program-mode {
   margin-left: 0.35rem;
   color: var(--preview-gold-bright);
+  opacity: 1;
   font-weight: 800;
 }
 
