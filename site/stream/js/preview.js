@@ -3,8 +3,9 @@
  * Screen via getDisplayMedia, webcam via getUserMedia, 16:9 contained frame.
  *
  * Click contract (with scenes.js — do not double-bind):
- *   - Capture ONLY via explicit controls: [data-preview="btn-screen"] /
- *     [data-preview="btn-webcam"] (and legacy #btn-screen / #btn-webcam if present).
+ *   - Capture via explicit stage controls: [data-preview="btn-screen"] /
+ *     [data-preview="btn-webcam"] (and legacy #btn-screen / #btn-webcam if present),
+ *     OR via the Sources ⋯ pickers calling startScreen / startWebcam on this API.
  *   - Do NOT bind #studio-source-game / #studio-source-webcam (or any .studio-source-toggle)
  *     for capture — those rows are scenes layer visibility toggles only.
  *   - Scene cards / maka:scene-change update program chrome (name, stub card, webcam PIP);
@@ -343,16 +344,23 @@ export function initPreview(root) {
     if (els.stage && els.stage.dataset) els.stage.dataset.chrome = show ? '1' : '0';
   }
 
-  async function startScreen() {
+  /**
+   * @param {{ displaySurface?: 'browser' | 'window' | 'monitor' }} [opts]
+   * displaySurface is a UA hint when supported; the browser share dialog still lists
+   * tab / window / screen as the platform allows.
+   */
+  async function startScreen(opts = {}) {
     if (destroyed) return null;
     stopScreen();
+    const surface =
+      opts && typeof opts.displaySurface === 'string' ? opts.displaySurface : 'browser';
     try {
-      // Prefer browser tab / window for cloud gameplay; fall back if the UA rejects constraints.
+      // Prefer requested surface (tab / window / screen); fall back if the UA rejects constraints.
       let stream = null;
       try {
         stream = await navigator.mediaDevices.getDisplayMedia({
           video: {
-            displaySurface: 'browser',
+            displaySurface: surface,
             frameRate: { ideal: 60 },
             width: { ideal: 1920 },
             height: { ideal: 1080 },
@@ -390,16 +398,28 @@ export function initPreview(root) {
     }
   }
 
-  async function startWebcam() {
+  /**
+   * @param {string | { deviceId?: string }} [opts]
+   * Pass a deviceId (from enumerateDevices) to bind that camera into the webcam PIP.
+   */
+  async function startWebcam(opts = {}) {
     if (destroyed) return null;
     stopWebcam();
+    const deviceId =
+      typeof opts === 'string'
+        ? opts
+        : opts && typeof opts.deviceId === 'string'
+          ? opts.deviceId
+          : '';
     try {
+      const video = {
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        frameRate: { ideal: 30 },
+      };
+      if (deviceId) video.deviceId = { exact: deviceId };
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          frameRate: { ideal: 30 },
-        },
+        video,
         audio: false,
       });
       webcamStream = stream;

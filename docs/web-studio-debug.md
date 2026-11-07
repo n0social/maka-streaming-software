@@ -78,11 +78,11 @@ Asset 404s: **none** for studio modules/CSS. Transient `ERR_ABORTED` noise durin
 | Add scene (`#btn-add-scene-alt`) | Scene count 5 → 6 (`custom-1`); persists |
 | localStorage | Key **`maka.stream.scenes.v1`** written with `activeSceneId`, `customScenes`, `layers`, `sourceActive` |
 | Source row click | Toggles layer visibility (`toggleLayerForSourceKind`) — **does not** expand picker |
-| Source ⋯ menu | Expands picker (`aria-expanded=true`); mock copy: “Capture device lists are not available in this browser mock…” |
+| Source ⋯ menu | Expands picker (`aria-expanded=true`); Game = Browser tab / Window / Screen (`getDisplayMedia`); Webcam = enumerated cameras or **Not available**; Mic = audioinputs (or Not available) |
 
 **Note:** Each intentional emit reaches `window` listeners **twice** (dispatch on `root` *and* `window`, with bubbling). Harmless today; noisy for subscribers.
 
-**Conflict (resolved in wiring layer 1):** `preview.js` no longer binds `#studio-source-game` / `#studio-source-webcam` for capture; those rows only toggle layers. Capture is Share screen / Add webcam only.
+**Conflict (resolved in wiring layer 1 + sequential layer 4):** `preview.js` does not bind `#studio-source-game` / `#studio-source-webcam` **row** clicks for capture; rows only toggle layers. Capture starts from Sources ⋯ pickers (calls preview API) or stage Share / Add webcam buttons.
 
 ---
 
@@ -263,6 +263,19 @@ Layer 1 scenes/preview click contract unchanged (source rows = layers; Share scr
 1. **No brand sponsorship** — Removed “Share GeForce Now tab” / GeForce Now / NVIDIA pitch from `site/stream/` UI copy. Button + empty state + capture hint now say **Share browser tab / window** (and equivalent “browser tab or window” wording).
 2. **Files** — `site/stream/index.html`, `js/preview.js` (labels/titles/hints/comments), `js/live.js` (relay-missing modal), `css/preview-stage.css` (comment). Docs: `docs/web-studio-cloud-streaming.md` capture path + workflow + capability table use generic browser-tab / cloud-gaming language (no NVIDIA sponsorship claim).
 3. **Verify** — `rg -i 'geforce|nvidia' site/stream` → no matches. Product may still mention cloud gaming generically.
+
+---
+
+## Sequential fix layer 4 — Sources pickers
+
+**Done** (this pass only; no deploy). Scope: Sources rail device/tab pickers only. Audio mixer meters unchanged.
+
+1. **No “(mock)”** — Removed mock picker labels / status copy from Sources (`Mark as connected (mock)`, overlay mock label, refresh “Source lists refreshed (mock)”).
+2. **Game Capture ⋯** — Picker offers **Browser tab** / **Window** / **Screen**; selecting calls `preview.startScreen({ displaySurface })` → `getDisplayMedia` and binds the display stream to the program/game preview path. Stop sharing clears it. Row click still toggles layer visibility only.
+3. **Webcam ⋯** — `enumerateDevices` videoinputs; shows device names; empty list → **Not available**. Selecting calls `preview.startWebcam({ deviceId })` into the webcam PIP.
+4. **Mic ⋯** — Lists `audioinput` devices (or **Not available**); selecting starts `getUserMedia` audio and hands the stream to `MakaStreamAudio.setStream('mic')` when present. Deep mixer polish deferred.
+5. **Files** — `site/stream/js/scenes.js`, `site/stream/js/preview.js` (`startScreen` / `startWebcam` options), small HTML id on `#studio-sources-list`.
+6. **Verify** — Headless: no `(mock)` in sources rail text; webcam picker status **Not available** when `devices=[]`; game/webcam picker UI present under ⋯.
 
 ---
 

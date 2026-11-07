@@ -4,10 +4,11 @@
  * Click contract (with preview.js — do not double-fire):
  *   - Source row (.studio-source-toggle) click → toggle layer visibility / enabled only
  *     (toggleLayerForSourceKind). Never starts getDisplayMedia / getUserMedia.
- *   - Source ⋯ menu ([data-source-menu]) → expand/collapse the device picker only.
- *   - Capture is owned by preview.js explicit controls (Share screen / Add webcam on the
- *     program stage, or legacy #btn-screen / #btn-webcam). preview must not bind
- *     #studio-source-game / #studio-source-webcam for capture.
+ *   - Source ⋯ menu ([data-source-menu]) → expand/collapse the device/tab picker.
+ *     Picker picks start capture: Game → getDisplayMedia; Webcam → getUserMedia(deviceId);
+ *     Mic → list audioinputs (capture handoff to mixer / layer 5).
+ *   - Stage Share / Add webcam buttons still call preview.js directly. preview must not bind
+ *     #studio-source-game / #studio-source-webcam row clicks for capture.
  *   - Scene row click → selectScene immediately (program overlay + maka:scene-change).
  *     No desktop-app dialog. No Add Scene — download CTA instead.
  *
@@ -40,7 +41,7 @@
  *   maka:sources-change { layers, active }
  *
  * Persists to localStorage key `maka.stream.scenes.v1` (activeSceneId + layers only;
- * custom scenes are ignored and dropped on write). No native capture.
+ * custom scenes are ignored and dropped on write). Capture uses browser APIs via preview.
  * Classic script: auto-boots. Module/shell callers: window.initScenes(root?).
  */
 (function (global) {
@@ -127,6 +128,16 @@
   var root = null;
   var scenesList = null;
   var booted = false;
+
+  /** @type {'browser' | 'window' | 'monitor' | null} */
+  var selectedDisplaySurface = null;
+  /** @type {string} */
+  var selectedCameraId = '';
+  /** @type {string} */
+  var selectedMicId = '';
+  /** @type {MediaStream | null} */
+  var micCaptureStream = null;
+  var previewSyncWired = false;
 
   function cloneScene(s) {
     return { id: s.id, name: s.name, icon: s.icon, builtin: !!s.builtin };
@@ -473,28 +484,295 @@
     picker.appendChild(li);
   }
 
+  function getPreviewApi() {
+    if (typeof global === 'undefined') return null;
+    return global.MakaStreamPreview || global.MakaPreview || null;
+  }
+
+  function getAudioApi() {
+    if (typeof global === 'undefined') return null;
+    return global.MakaStreamAudio || null;
+  }
+
+  function stopMicCapture() {
+    if (micCaptureStream) {
+      micCaptureStream.getTracks().forEach(function (t) {
+        try {
+          t.stop();
+        } catch (err) {
+          /* ignore */
+        }
+      });
+      micCaptureStream = null;
+    }
+    var audio = getAudioApi();
+    if (audio && typeof audio.clearStream === 'function') {
+      try {
+        audio.clearStream('mic');
+      } catch (err) {
+        /* ignore */
+      }
+    }
+  }
+
+  function listMediaInputs(kind) {
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.enumerateDevices !== 'function') {
+      return Promise.resolve([]);
+    }
+    return Promise.race([
+      navigator.mediaDevices.enumerateDevices(),
+      new Promise(function (_, reject) {
+        setTimeout(function () {
+          reject(new Error('enumerateDevices timeout'));
+        }, 1500);
+      }),
+    ])
+      .then(function (devices) {
+        var out = [];
+        for (var i = 0; i < devices.length; i++) {
+          if (devices[i].kind === kind) out.push(devices[i]);
+        }
+        return out;
+      })
+      .catch(function () {
+        return [];
+      });
+  }
+
+  function deviceLabel(device, fallbackPrefix, index) {
+    var label = device && device.label ? String(device.label).trim() : '';
+    if (label) return label;
+    return fallbackPrefix + ' ' + (index + 1);
+  }
+
+  function markSourceActive(kind, active) {
+    sourceActive[kind] = !!active;
+    if (active) {
+      if (kind === 'game') layers.game = true;
+      if (kind === 'webcam') layers.cam = true;
+      if (kind === 'mic') layers.mic = true;
+    }
+  }
+
+  function pickGameSurface(surface) {
+    var preview = getPreviewApi();
+    selectedDisplaySurface = surface;
+    if (!preview || typeof preview.startScreen !== 'function') {
+      console.warn('[scenes] preview API missing — cannot start display capture');
+      selectedDisplaySurface = null;
+      return;
+    }
+    void preview.startScreen({ displaySurface: surface }).then(function (stream) {
+      if (stream) {
+        markSourceActive('game', true);
+      } else {
+        // User cancelled or UA denied — keep prior state unless no live screen.
+        var streams = typeof preview.getStreams === 'function' ? preview.getStreams() : null;
+        markSourceActive('game', Boolean(streams && streams.screen));
+        if (!streams || !streams.screen) selectedDisplaySurface = null;
+      }
+      syncSourcePickerVisibility();
+      emitAll();
+    });
+  }
+
+  function stopGameCapture() {
+    var preview = getPreviewApi();
+    if (preview && typeof preview.stopScreen === 'function') preview.stopScreen();
+    selectedDisplaySurface = null;
+    markSourceActive('game', false);
+    syncSourcePickerVisibility();
+    emitAll();
+  }
+
+  function pickWebcamDevice(deviceId) {
+    var preview = getPreviewApi();
+    selectedCameraId = deviceId || '';
+    if (!preview || typeof preview.startWebcam !== 'function') {
+      return;
+    }
+    void preview.startWebcam({ deviceId: deviceId || undefined }).then(function (stream) {
+      if (stream) {
+        markSourceActive('webcam', true);
+      } else {
+        var streams = typeof preview.getStreams === 'function' ? preview.getStreams() : null;
+        markSourceActive('webcam', Boolean(streams && streams.webcam));
+        if (!streams || !streams.webcam) selectedCameraId = '';
+      }
+      syncSourcePickerVisibility();
+      emitAll();
+    });
+  }
+
+  function stopWebcamCapture() {
+    var preview = getPreviewApi();
+    if (preview && typeof preview.stopWebcam === 'function') preview.stopWebcam();
+    selectedCameraId = '';
+    markSourceActive('webcam', false);
+    syncSourcePickerVisibility();
+    emitAll();
+  }
+
+  function pickMicDevice(deviceId) {
+    selectedMicId = deviceId || '';
+    stopMicCapture();
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+      console.warn('[scenes] getUserMedia unavailable for microphone');
+      selectedMicId = '';
+      markSourceActive('mic', false);
+      syncSourcePickerVisibility();
+      emitAll();
+      return;
+    }
+    var constraints = deviceId
+      ? { audio: { deviceId: { exact: deviceId } }, video: false }
+      : { audio: true, video: false };
+    void navigator.mediaDevices
+      .getUserMedia(constraints)
+      .then(function (stream) {
+        micCaptureStream = stream;
+        var track = stream.getAudioTracks()[0];
+        if (track) {
+          track.addEventListener('ended', function () {
+            if (micCaptureStream === stream) {
+              micCaptureStream = null;
+              markSourceActive('mic', false);
+              selectedMicId = '';
+              syncSourceRows();
+              emitAll();
+            }
+          });
+        }
+        var audio = getAudioApi();
+        if (audio && typeof audio.setStream === 'function') {
+          audio.setStream('mic', stream);
+        }
+        markSourceActive('mic', true);
+        syncSourcePickerVisibility();
+        emitAll();
+      })
+      .catch(function (err) {
+        console.warn('[scenes] mic getUserMedia failed', err);
+        selectedMicId = '';
+        markSourceActive('mic', false);
+        syncSourcePickerVisibility();
+        emitAll();
+      });
+  }
+
+  function stopMicSource() {
+    stopMicCapture();
+    selectedMicId = '';
+    markSourceActive('mic', false);
+    syncSourcePickerVisibility();
+    emitAll();
+  }
+
+  function renderGamePicker(picker) {
+    appendPickerSection(picker, 'Share');
+    appendPickerStatus(
+      picker,
+      'Opens the browser share dialog. Labels match what the browser allows (tab / window / screen).',
+    );
+    var options = [
+      { label: 'Browser tab', surface: 'browser' },
+      { label: 'Window', surface: 'window' },
+      { label: 'Screen', surface: 'monitor' },
+    ];
+    options.forEach(function (opt) {
+      appendPickerButton(
+        picker,
+        opt.label,
+        sourceActive.game && selectedDisplaySurface === opt.surface,
+        function () {
+          pickGameSurface(opt.surface);
+        },
+      );
+    });
+    if (sourceActive.game) {
+      appendPickerButton(picker, 'Stop sharing', false, function () {
+        stopGameCapture();
+      });
+    }
+  }
+
+  function renderWebcamPicker(picker) {
+    appendPickerStatus(picker, 'Looking for cameras…');
+    void listMediaInputs('videoinput').then(function (devices) {
+      if (expandedSourceKind !== 'webcam') return;
+      picker.innerHTML = '';
+      if (!devices.length) {
+        appendPickerStatus(picker, 'Not available');
+        return;
+      }
+      appendPickerSection(picker, 'Cameras');
+      devices.forEach(function (device, index) {
+        var id = device.deviceId || '';
+        appendPickerButton(
+          picker,
+          deviceLabel(device, 'Camera', index),
+          sourceActive.webcam && selectedCameraId === id,
+          function () {
+            pickWebcamDevice(id);
+          },
+        );
+      });
+      if (sourceActive.webcam) {
+        appendPickerButton(picker, 'Stop webcam', false, function () {
+          stopWebcamCapture();
+        });
+      }
+    });
+  }
+
+  function renderMicPicker(picker) {
+    appendPickerStatus(picker, 'Looking for microphones…');
+    void listMediaInputs('audioinput').then(function (devices) {
+      if (expandedSourceKind !== 'mic') return;
+      picker.innerHTML = '';
+      if (!devices.length) {
+        appendPickerStatus(picker, 'Not available');
+        appendPickerStatus(
+          picker,
+          'Row click still toggles mic layer visibility. Deep mixer wiring continues in a later pass.',
+        );
+        return;
+      }
+      appendPickerSection(picker, 'Microphones');
+      devices.forEach(function (device, index) {
+        var id = device.deviceId || '';
+        appendPickerButton(
+          picker,
+          deviceLabel(device, 'Microphone', index),
+          sourceActive.mic && selectedMicId === id,
+          function () {
+            pickMicDevice(id);
+          },
+        );
+      });
+      if (sourceActive.mic) {
+        appendPickerButton(picker, 'Stop microphone', false, function () {
+          stopMicSource();
+        });
+      }
+    });
+  }
+
   function renderSourcePicker(kind) {
     var picker = document.getElementById(SOURCE_META[kind].picker);
     if (!picker) return;
     picker.innerHTML = '';
 
-    if (kind === 'game' || kind === 'webcam' || kind === 'mic') {
-      appendPickerStatus(
-        picker,
-        kind === 'mic'
-          ? 'Capture device lists are not available in this browser mock. Toggle the row to set visibility.'
-          : 'Toggle the row to show/hide this layer. Start capture with Share screen / Add webcam on the program preview.',
-      );
-      appendPickerButton(picker, 'Mark as connected (mock)', !!sourceActive[kind], function () {
-        sourceActive[kind] = !sourceActive[kind];
-        if (sourceActive[kind]) {
-          if (kind === 'game') layers.game = true;
-          if (kind === 'webcam') layers.cam = true;
-          if (kind === 'mic') layers.mic = true;
-        }
-        syncSourcePickerVisibility();
-        emitAll();
-      });
+    if (kind === 'game') {
+      renderGamePicker(picker);
+      return;
+    }
+    if (kind === 'webcam') {
+      renderWebcamPicker(picker);
+      return;
+    }
+    if (kind === 'mic') {
+      renderMicPicker(picker);
       return;
     }
 
@@ -507,7 +785,7 @@
         syncSourcePickerVisibility();
         emitAll();
       });
-      appendPickerButton(picker, 'Overlay on (mock)', !!(layers.overlay || layers.browser), function () {
+      appendPickerButton(picker, 'Overlay on', !!(layers.overlay || layers.browser), function () {
         layers.overlay = true;
         sourceActive.browser = true;
         syncSourcePickerVisibility();
@@ -551,7 +829,7 @@
 
   function wireSourceToggle(kind, btn) {
     if (btn.dataset.scenesWired === '1') return;
-    // Row body = layer on/off only. Capture lives on preview Share/Webcam buttons.
+    // Row body = layer on/off only. Capture starts from the ⋯ picker (or stage Share/Webcam).
     if (!btn.title) {
       btn.title = 'Toggle layer visibility';
     }
@@ -652,7 +930,7 @@
       refresh.addEventListener('click', function () {
         if (expandedSourceKind) renderSourcePicker(expandedSourceKind);
         var status = document.getElementById('studio-status-text');
-        if (status) status.textContent = 'Source lists refreshed (mock)';
+        if (status) status.textContent = 'Source lists refreshed';
         setTimeout(function () {
           if (status) status.textContent = 'All systems nominal';
         }, 1600);
@@ -661,6 +939,43 @@
     }
 
     syncSourcePickerVisibility();
+  }
+
+  function wirePreviewSync() {
+    if (previewSyncWired || typeof global === 'undefined' || !global.addEventListener) return;
+    previewSyncWired = true;
+    global.addEventListener('maka:preview-change', function (ev) {
+      var detail = (ev && ev.detail) || {};
+      var changed = false;
+      if (typeof detail.hasScreen === 'boolean' && sourceActive.game !== detail.hasScreen) {
+        sourceActive.game = detail.hasScreen;
+        if (!detail.hasScreen) selectedDisplaySurface = null;
+        changed = true;
+      }
+      if (typeof detail.hasWebcam === 'boolean' && sourceActive.webcam !== detail.hasWebcam) {
+        sourceActive.webcam = detail.hasWebcam;
+        if (!detail.hasWebcam) selectedCameraId = '';
+        changed = true;
+      }
+      if (!changed) return;
+      syncSourceRows();
+      if (expandedSourceKind === 'game' || expandedSourceKind === 'webcam') {
+        renderSourcePicker(expandedSourceKind);
+      }
+      writeStorage();
+      emit('maka:sources-change', {
+        layers: {
+          game: layers.game,
+          cam: layers.cam,
+          mic: layers.mic,
+          browser: layers.browser,
+          overlay: layers.overlay,
+          chat: layers.chat,
+          notifications: layers.notifications,
+        },
+        active: Object.assign({}, sourceActive),
+      });
+    });
   }
 
   function toggleSourcePicker(kind) {
@@ -748,6 +1063,7 @@
     renderSourcesList();
     highlightSceneSelection(activeSceneId);
     syncSourceRows();
+    wirePreviewSync();
     emitAll();
     booted = true;
     global.MakaScenes = api();
