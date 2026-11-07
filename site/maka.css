@@ -1,4 +1,4 @@
-/* MAKA_CSS_BUILD=dc6d1c9 — bump the maka.css query in site HTML when this file changes */
+/* MAKA_CSS_BUILD=dc6d2c0 — bump the maka.css query in site HTML when this file changes */
 /* Maka marketing site — cream / Mikado Yellow tokens (matches Electron studio redesign) */
 :root {
   color-scheme: light;
@@ -445,6 +445,20 @@ svg {
   padding-inline: clamp(0.16em, 0.7vw, 0.28em);
   overflow: visible;
   text-align: center;
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.maka-wordmark *,
+.maka-wordmark__back,
+.maka-wordmark__front,
+.maka-wordmark__svg,
+.maka-wordmark__svg text,
+.maka-wordmark g {
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .maka-wordmark__svg {
