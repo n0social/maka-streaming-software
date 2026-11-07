@@ -107,7 +107,8 @@
       btnWebcam: doc.getElementById('btn-webcam'),
       btnScreen: doc.getElementById('btn-screen'),
       btnMic: doc.getElementById('btn-mic'),
-      btnGoLive: doc.getElementById('btn-go-live'),
+      // Single primary CTA: Stream Controls → Go Live (header Go Live removed).
+      btnGoLive: doc.getElementById('btn-go-live-sidebar') || doc.getElementById('btn-go-live'),
       btnGoLiveSidebar: doc.getElementById('btn-go-live-sidebar'),
       btnGoLiveLabel: doc.getElementById('btn-go-live-label'),
       btnRelayRefresh: doc.getElementById('btn-relay-refresh'),
@@ -120,13 +121,25 @@
       modal: doc.getElementById('relay-modal'),
       modalClose: doc.getElementById('modal-close'),
       modalBody: doc.getElementById('modal-body'),
+      modalTitle: doc.getElementById('modal-title'),
       previewHost: doc.getElementById('studio-preview'),
+      keyModal: doc.getElementById('stream-key-modal'),
+      keyModalTitle: doc.getElementById('stream-key-modal-title'),
+      keyModalLede: doc.getElementById('stream-key-modal-lede'),
+      keyModalArm: doc.getElementById('stream-key-modal-arm'),
+      keyModalArmLabel: doc.getElementById('stream-key-modal-arm-label'),
+      keyModalSave: doc.getElementById('stream-key-modal-save'),
+      keyModalCancel: doc.getElementById('stream-key-modal-cancel'),
+      keyIngestHint: doc.getElementById('stream-key-ingest-hint'),
     };
 
     // Need at least Go Live chrome or a canvas to own this page slice.
     if (!els.btnGoLive && !els.btnGoLiveSidebar && !els.canvas && !els.statusText) {
       return null;
     }
+
+    var goLiveBusy = false;
+    var keyModalPlatform = 'twitch';
 
     var relayCandidates = resolveRelayCandidates();
     var relayBase = relayCandidates[0];
@@ -233,14 +246,13 @@
         els.livePill.dataset.live = isLive ? 'true' : 'false';
         els.livePill.textContent = isLive ? 'Live' : 'Offline';
       }
-      if (els.btnGoLive) {
-        els.btnGoLive.textContent = isLive ? 'End Live' : 'Go Live';
-        els.btnGoLive.dataset.live = isLive ? '1' : '0';
-      }
       if (els.btnGoLiveLabel) {
-        els.btnGoLiveLabel.textContent = isLive ? 'End Streaming' : 'Start Streaming';
+        els.btnGoLiveLabel.textContent = isLive ? 'End Live' : 'Go Live';
+      } else if (els.btnGoLive && !els.btnGoLiveLabel) {
+        els.btnGoLive.textContent = isLive ? 'End Live' : 'Go Live';
       }
-      if (els.btnGoLiveSidebar) {
+      if (els.btnGoLive) els.btnGoLive.dataset.live = isLive ? '1' : '0';
+      if (els.btnGoLiveSidebar && els.btnGoLiveSidebar !== els.btnGoLive) {
         els.btnGoLiveSidebar.dataset.live = isLive ? '1' : '0';
       }
       if (els.streamViewers) {
@@ -268,7 +280,7 @@
     }
 
     function getPreviewApi() {
-      // Shared getter for Go Live / WHIP, Recording, and Virtual Cam.
+      // Shared getter for Go Live / WHIP and Recording.
       if (els.previewHost && els.previewHost._makaPreview) return els.previewHost._makaPreview;
       if (global.MakaStreamPreview) return global.MakaStreamPreview;
       if (global.MakaPreview) return global.MakaPreview;
@@ -300,15 +312,19 @@
 
     function updateButtons() {
       var live = Boolean(whipPublisher);
-      if (els.btnGoLive) els.btnGoLive.disabled = live ? false : !hasCapture();
-      if (els.btnGoLiveSidebar) els.btnGoLiveSidebar.disabled = live ? false : !hasCapture();
+      // Keep Go Live clickable so missing capture/relay show an honest modal (never a silent no-op).
+      var disable = goLiveBusy;
       if (els.btnGoLive) {
+        els.btnGoLive.disabled = disable;
         els.btnGoLive.title = live
           ? 'End WHIP session'
           : hasCapture()
-            ? 'Publish WHIP to local relay'
-            : 'Add a webcam or screen share preview first';
-        if (els.btnGoLiveSidebar) els.btnGoLiveSidebar.title = els.btnGoLive.title;
+            ? 'Publish WHIP to local relay (keys from Twitch/YouTube chips → /config)'
+            : 'Go Live — share a tab/window or add a webcam first (click for details)';
+      }
+      if (els.btnGoLiveSidebar && els.btnGoLiveSidebar !== els.btnGoLive) {
+        els.btnGoLiveSidebar.disabled = disable;
+        els.btnGoLiveSidebar.title = els.btnGoLive ? els.btnGoLive.title : '';
       }
       setLiveUi(live);
     }
@@ -771,7 +787,11 @@
       return { gameplay: gameplay, webcam: webcamOut, mic: micOut };
     }
 
-    function showRelayModal(message) {
+    function showRelayModal(message, title) {
+      if (els.modalTitle && title) els.modalTitle.textContent = title;
+      else if (els.modalTitle && !title) {
+        els.modalTitle.textContent = 'Local relay required for go-live';
+      }
       if (els.modalBody && message) els.modalBody.textContent = message;
       if (els.modal) els.modal.hidden = false;
     }
@@ -795,98 +815,116 @@
     }
 
     async function onGoLive() {
-      if (destroyed) return;
+      if (destroyed || goLiveBusy) return;
       if (whipPublisher) {
-        await onEndLive();
-        return;
-      }
-      if (!hasCapture()) {
-        log('Add webcam or screen share first — preview required before WHIP.');
+        goLiveBusy = true;
         updateButtons();
-        return;
-      }
-
-      var ok = await probeRelay();
-      if (!ok) {
-        showRelayModal(
-          'No local relay at 127.0.0.1:' +
-            RELAY_PORT +
-            '. Install or run Maka desktop so MAKArelay.exe is listening — the browser captures a browser tab and publishes WHIP; the sidecar encodes (profiles up to 4K) and RTMPs to Twitch / YouTube with your stream keys. This website cannot start the encoder or claim a cloud stream. Preview stays local.',
-        );
-        if (destHint) {
-          destHint.textContent =
-            'Relay missing — download / run Maka desktop for encoding offload on port ' +
-            RELAY_PORT +
-            '.';
-        }
-        updateButtons();
-        return;
-      }
-
-      // Soft gate: armed platforms without keys still go live (keys may live in desktop relay settings).
-      var dest = readDestinations();
-      if (platformPref.twitch && !dest.twitchKey) {
-        log(
-          'Twitch armed without a key in this page — relay will use a key already configured in desktop relay settings, or RTMP will fail until one is set.',
-        );
-        syncDestKeyPanel(platformPref);
-      }
-      if (platformPref.youtube && !dest.youtubeKey) {
-        log(
-          'YouTube armed without a key in this page — paste a key below or configure it in Maka desktop relay settings.',
-        );
-        syncDestKeyPanel(platformPref);
-      }
-      if (!platformPref.twitch && !platformPref.youtube) {
-        log(
-          'No Twitch/YouTube chip armed — WHIP will still publish to the relay; configure platform keys in relay settings for RTMP out.',
-        );
-      }
-
-      try {
         try {
-          await postRelayConfig();
-        } catch (cfgErr) {
+          await onEndLive();
+        } finally {
+          goLiveBusy = false;
+          updateButtons();
+        }
+        return;
+      }
+
+      goLiveBusy = true;
+      updateButtons();
+      try {
+        if (!hasCapture()) {
+          log('Add webcam or screen share first — preview required before WHIP.');
+          showRelayModal(
+            'No program preview yet. Share a browser tab / window (Game Capture) or add a webcam, then try Go Live again. The browser publishes WHIP from that preview to the local MAKArelay sidecar — without a capture there is nothing to stream.',
+            'Preview required before Go Live',
+          );
+          if (destHint) {
+            destHint.textContent = 'Share a tab/window or add a webcam before Go Live.';
+          }
+          return;
+        }
+
+        var ok = await probeRelay();
+        if (!ok) {
+          showRelayModal(
+            'No local relay at 127.0.0.1:' +
+              RELAY_PORT +
+              '. Install or run Maka desktop so MAKArelay.exe is listening — the browser captures a browser tab and publishes WHIP; the sidecar encodes (profiles up to 4K) and RTMPs to Twitch / YouTube with your stream keys. This website cannot start the encoder or claim a cloud stream. Preview stays local.',
+            'Local relay required for go-live',
+          );
+          if (destHint) {
+            destHint.textContent =
+              'Relay missing — download / run Maka desktop for encoding offload on port ' +
+              RELAY_PORT +
+              '.';
+          }
+          return;
+        }
+
+        // Soft gate: armed platforms without keys still go live (keys may live in desktop relay settings).
+        var dest = readDestinations();
+        if (platformPref.twitch && !dest.twitchKey) {
           log(
-            'Config optional warning: ' +
-              (cfgErr instanceof Error ? cfgErr.message : String(cfgErr)),
+            'Twitch armed without a key in this page — open the Twitch chip to paste a key, or use Maka desktop relay settings.',
           );
         }
-        await postSceneLayout();
-        log('Publishing WHIP to ' + relayBase + PATHS.whip + '…');
-        whipPublisher = await publishWhip(buildPublishSources());
-        whipPublisher.pc.onconnectionstatechange = function () {
-          if (!whipPublisher) return;
-          var state = whipPublisher.pc.connectionState;
-          log('WHIP connection: ' + state);
-          if (state === 'connected') {
-            setRelayChrome(
-              'live',
-              'Live via local relay',
-              'WHIP session active on ' +
-                relayBase +
-                '. Relay encodes with your selected profile and RTMPs to platforms only if keys are in relay RAM — not via this website CDN.',
+        if (platformPref.youtube && !dest.youtubeKey) {
+          log(
+            'YouTube armed without a key in this page — open the YouTube chip to paste a key, or use Maka desktop relay settings.',
+          );
+        }
+        if (!platformPref.twitch && !platformPref.youtube) {
+          log(
+            'No Twitch/YouTube chip armed — WHIP will still publish to the relay; configure platform keys via the chips (or relay settings) for RTMP out.',
+          );
+        }
+
+        try {
+          try {
+            await postRelayConfig();
+          } catch (cfgErr) {
+            log(
+              'Config optional warning: ' +
+                (cfgErr instanceof Error ? cfgErr.message : String(cfgErr)),
             );
-          } else if (state === 'failed' || state === 'disconnected' || state === 'closed') {
-            setRelayChrome('warn', 'WHIP ' + state, null);
           }
-        };
-        setRelayChrome(
-          'live',
-          'Live via local relay',
-          'WHIP → local relay encode → platform RTMP when keys are set. Not a CDN “live” badge.',
-        );
-        log('WHIP active — check relay /status for encode / platform state.');
-        updateButtons();
-        await refreshRelayStatus();
-      } catch (err) {
-        whipPublisher = null;
-        log('Go live failed: ' + (err instanceof Error ? err.message : err));
-        showRelayModal(
-          'Could not publish WHIP to the local relay. Confirm MAKArelay.exe (or a mock relay) is healthy on port ' +
-            RELAY_PORT +
-            ', then try again. Preview remains local until WHIP succeeds — the browser does not encode 4K NVENC by itself.',
-        );
+          await postSceneLayout();
+          log('Publishing WHIP to ' + relayBase + PATHS.whip + '…');
+          whipPublisher = await publishWhip(buildPublishSources());
+          whipPublisher.pc.onconnectionstatechange = function () {
+            if (!whipPublisher) return;
+            var state = whipPublisher.pc.connectionState;
+            log('WHIP connection: ' + state);
+            if (state === 'connected') {
+              setRelayChrome(
+                'live',
+                'Live via local relay',
+                'WHIP session active on ' +
+                  relayBase +
+                  '. Relay encodes with your selected profile and RTMPs to platforms only if keys are in relay RAM — not via this website CDN.',
+              );
+            } else if (state === 'failed' || state === 'disconnected' || state === 'closed') {
+              setRelayChrome('warn', 'WHIP ' + state, null);
+            }
+          };
+          setRelayChrome(
+            'live',
+            'Live via local relay',
+            'WHIP → local relay encode → platform RTMP when keys are set. Not a CDN “live” badge.',
+          );
+          log('WHIP active — check relay /status for encode / platform state.');
+          await refreshRelayStatus();
+        } catch (err) {
+          whipPublisher = null;
+          log('Go live failed: ' + (err instanceof Error ? err.message : err));
+          showRelayModal(
+            'Could not publish WHIP to the local relay. Confirm MAKArelay.exe (or a mock relay) is healthy on port ' +
+              RELAY_PORT +
+              ', then try again. Preview remains local until WHIP succeeds — the browser does not encode 4K NVENC by itself.',
+            'Could not go live',
+          );
+        }
+      } finally {
+        goLiveBusy = false;
         updateButtons();
       }
     }
@@ -965,10 +1003,9 @@
     function onPreviewChange() {
       updateButtons();
       syncRecordingAvailability();
-      if (vcamActive) paintVcamFrame();
     }
 
-    // --- P1-2 Stream Controls: Recording / Virtual Cam / platform chips ---
+    // --- Stream Controls: Recording / platform key modal ---
     var REC_MIME_CANDIDATES = [
       'video/webm;codecs=vp9,opus',
       'video/webm;codecs=vp8,opus',
@@ -978,23 +1015,17 @@
     var mediaRecorder = null;
     var recordingChunks = [];
     var recordingActive = false;
-    var vcamActive = false;
-    var vcamRaf = 0;
     var platformPref = { twitch: false, youtube: false };
     var lastPlatformClick = 'none';
 
     var btnRecording = doc.getElementById('btn-start-recording');
     var btnRecordingLabel = doc.getElementById('btn-recording-label');
     var statRecording = doc.getElementById('stat-recording');
-    var btnVcam = doc.getElementById('btn-start-vcam');
-    var btnVcamLabel = doc.getElementById('btn-vcam-label');
-    var statVcam = doc.getElementById('stat-vcam');
-    var vcamMock = doc.getElementById('vcam-preview-mock');
-    var vcamCanvas = doc.getElementById('vcam-preview-canvas');
-    var vcamNote = doc.getElementById('vcam-preview-note');
     var platTwitch = doc.getElementById('plat-twitch');
     var platYoutube = doc.getElementById('plat-youtube');
     var destHint = doc.getElementById('stream-destinations-hint');
+    var twitchKeyField = doc.getElementById('dest-twitch-field');
+    var youtubeKeyField = doc.getElementById('dest-youtube-field');
 
     function pickRecorderMime() {
       if (typeof MediaRecorder === 'undefined') return '';
@@ -1153,108 +1184,6 @@
       }
     }
 
-    function setVcamUi(active) {
-      vcamActive = active;
-      if (btnVcam) btnVcam.dataset.vcam = active ? '1' : '0';
-      if (btnVcamLabel) {
-        btnVcamLabel.textContent = active ? 'Stop Virtual Camera' : 'Start Virtual Camera';
-      }
-      if (statVcam) {
-        statVcam.hidden = !active;
-        statVcam.dataset.vcam = active ? '1' : '0';
-        statVcam.textContent = active ? 'Virtual cam preview' : 'Virtual cam off';
-      }
-      if (vcamMock) vcamMock.hidden = !active;
-      if (btnVcam) {
-        btnVcam.title = active
-          ? 'Stop preview-only Virtual Cam mirror. Web cannot install a system virtual camera.'
-          : 'Web cannot install a system virtual camera. Opens a labeled preview-only PiP that mirrors the program frame.';
-      }
-    }
-
-    function paintVcamFrame() {
-      if (!vcamActive || !vcamCanvas) return;
-      var ctx = vcamCanvas.getContext('2d');
-      if (!ctx) return;
-      var w = vcamCanvas.width;
-      var h = vcamCanvas.height;
-      ctx.fillStyle = '#0a0a0a';
-      ctx.fillRect(0, 0, w, h);
-
-      var previewApi = getPreviewApi();
-      var programVideo = doc.getElementById('program-video');
-      var camVideo = doc.getElementById('program-cam-video');
-      var drew = false;
-
-      function drawContain(video) {
-        if (!video || video.readyState < 2 || !video.videoWidth || video.hidden) return false;
-        var vw = video.videoWidth;
-        var vh = video.videoHeight;
-        var scale = Math.min(w / vw, h / vh);
-        var tw = vw * scale;
-        var th = vh * scale;
-        ctx.drawImage(video, (w - tw) / 2, (h - th) / 2, tw, th);
-        return true;
-      }
-
-      if (programVideo && !programVideo.hidden) drew = drawContain(programVideo) || drew;
-      if (!drew && camVideo) drew = drawContain(camVideo) || drew;
-
-      if (!drew && previewApi && typeof previewApi.captureFrameCanvas === 'function') {
-        try {
-          var frame = previewApi.captureFrameCanvas();
-          if (frame) {
-            ctx.drawImage(frame, 0, 0, w, h);
-            drew = true;
-          }
-        } catch (_err) {
-          /* ignore */
-        }
-      }
-
-      if (vcamNote) {
-        vcamNote.textContent = drew
-          ? 'Preview only — not a system camera'
-          : 'No program frame yet — share screen or add webcam';
-      }
-    }
-
-    function stopVcamLoop() {
-      if (vcamRaf) {
-        cancelAnimationFrame(vcamRaf);
-        vcamRaf = 0;
-      }
-    }
-
-    function startVcamLoop() {
-      stopVcamLoop();
-      var tick = function () {
-        if (!vcamActive) return;
-        paintVcamFrame();
-        vcamRaf = requestAnimationFrame(tick);
-      };
-      vcamRaf = requestAnimationFrame(tick);
-    }
-
-    function toggleVcam() {
-      if (vcamActive) {
-        stopVcamLoop();
-        setVcamUi(false);
-        log('Virtual Cam preview stopped (web mock only).');
-        if (destHint) destHint.textContent = 'Virtual Cam preview stopped.';
-        return;
-      }
-      setVcamUi(true);
-      startVcamLoop();
-      log(
-        'Virtual Cam preview only — browsers cannot install a system virtual camera. Other apps will not see Maka as a device.',
-      );
-      if (destHint) {
-        destHint.textContent =
-          'Virtual Cam is preview-only in the browser (no OS camera device).';
-      }
-    }
-
     function readPlatformPref() {
       var out = { twitch: false, youtube: false };
       try {
@@ -1300,62 +1229,25 @@
       return 'none';
     }
 
-    function syncDestKeyPanel(pref) {
-      var keysHost = doc.getElementById('stream-dest-keys');
-      var twitchField = doc.getElementById('dest-twitch-field');
-      var youtubeField = doc.getElementById('dest-youtube-field');
-      var showTwitch = Boolean(pref && pref.twitch);
-      var showYoutube = Boolean(pref && pref.youtube);
-      if (twitchField) twitchField.hidden = !showTwitch;
-      if (youtubeField) youtubeField.hidden = !showYoutube;
-      if (keysHost) keysHost.hidden = !(showTwitch || showYoutube);
-      var dest = readDestinations();
-      var twitchInput = doc.getElementById('web-twitch-key');
-      var youtubeInput = doc.getElementById('web-youtube-key');
-      if (twitchInput && !twitchInput.value && dest.twitchKey) twitchInput.value = dest.twitchKey;
-      if (youtubeInput && !youtubeInput.value && dest.youtubeKey) {
-        youtubeInput.value = dest.youtubeKey;
-      }
-      if (showTwitch && twitchInput) {
-        window.setTimeout(function () {
-          try {
-            twitchInput.focus({ preventScroll: true });
-          } catch (_err) {
-            twitchInput.focus();
-          }
-        }, 0);
-      } else if (showYoutube && youtubeInput) {
-        window.setTimeout(function () {
-          try {
-            youtubeInput.focus({ preventScroll: true });
-          } catch (_err2) {
-            youtubeInput.focus();
-          }
-        }, 0);
-      }
-    }
-
     function syncPlatformHint(pref) {
+      // Stream Info: safe status only — never echo raw keys.
       if (!destHint) return;
-      var parts = [];
-      if (pref.twitch) parts.push('Twitch');
-      if (pref.youtube) parts.push('YouTube');
       var dest = readDestinations();
-      if (!parts.length) {
+      if (!pref.twitch && !pref.youtube) {
         destHint.textContent =
-          'No stream destination selected — arm Twitch / YouTube, then paste a stream key (or set keys in Maka desktop relay settings).';
+          'No platform armed — click Twitch / YouTube under the preview to paste a stream key.';
         return;
       }
       var next = [];
       if (pref.twitch) {
-        next.push(dest.twitchKey ? 'Twitch (key saved)' : 'Twitch — paste stream key below');
+        next.push(dest.twitchKey ? 'Twitch armed · key saved' : 'Twitch armed · key needed');
       }
       if (pref.youtube) {
-        next.push(dest.youtubeKey ? 'YouTube (key saved)' : 'YouTube — paste stream key below');
+        next.push(dest.youtubeKey ? 'YouTube armed · key saved' : 'YouTube armed · key needed');
       }
       destHint.textContent =
         next.join(' · ') +
-        '. Flow: capture → WHIP → local relay encode → RTMP. Browser cannot RTMP alone.';
+        '. Keys stay local for relay /config — not shown here.';
     }
 
     function applyPlatformChips(pref) {
@@ -1375,8 +1267,98 @@
         destTwitch: platformPref.twitch,
         destYoutube: platformPref.youtube,
       });
-      syncDestKeyPanel(platformPref);
       syncPlatformHint(platformPref);
+    }
+
+    function closeStreamKeyModal() {
+      if (els.keyModal) els.keyModal.hidden = true;
+    }
+
+    function openStreamKeyModal(platform) {
+      if (platform !== 'twitch' && platform !== 'youtube') return;
+      keyModalPlatform = platform;
+      lastPlatformClick = platform;
+      var dest = readDestinations();
+      var twitchInput = doc.getElementById('web-twitch-key');
+      var youtubeInput = doc.getElementById('web-youtube-key');
+      if (twitchInput && document.activeElement !== twitchInput) {
+        twitchInput.value = dest.twitchKey || '';
+      }
+      if (youtubeInput && document.activeElement !== youtubeInput) {
+        youtubeInput.value = dest.youtubeKey || '';
+      }
+      if (twitchKeyField) twitchKeyField.hidden = platform !== 'twitch';
+      if (youtubeKeyField) youtubeKeyField.hidden = platform !== 'youtube';
+      if (els.keyModalTitle) {
+        els.keyModalTitle.textContent =
+          platform === 'twitch' ? 'Twitch stream key' : 'YouTube stream key';
+      }
+      if (els.keyModalArmLabel) {
+        els.keyModalArmLabel.textContent =
+          platform === 'twitch' ? 'Arm Twitch for Go Live' : 'Arm YouTube for Go Live';
+      }
+      if (els.keyModalArm) {
+        // Opening from a chip defaults to armed; uncheck to disarm on Save.
+        els.keyModalArm.checked = true;
+      }
+      if (els.keyIngestHint) {
+        els.keyIngestHint.innerHTML =
+          platform === 'twitch'
+            ? 'Ingest hint: <code>rtmp://live.twitch.tv/app/&lt;key&gt;</code> — paste the key only; MAKArelay builds the RTMP URL.'
+            : 'Ingest hint: <code>rtmp://a.rtmp.youtube.com/live2/&lt;key&gt;</code> — paste the key only; MAKArelay builds the RTMP URL.';
+      }
+      if (els.keyModal) els.keyModal.hidden = false;
+      var focusInput = platform === 'twitch' ? twitchInput : youtubeInput;
+      if (focusInput) {
+        window.setTimeout(function () {
+          try {
+            focusInput.focus({ preventScroll: true });
+            focusInput.select();
+          } catch (_err) {
+            try {
+              focusInput.focus();
+            } catch (_err2) {
+              /* ignore */
+            }
+          }
+        }, 0);
+      }
+    }
+
+    function saveStreamKeyModal() {
+      var platform = keyModalPlatform;
+      var arm = els.keyModalArm ? Boolean(els.keyModalArm.checked) : true;
+      var twitchInput = doc.getElementById('web-twitch-key');
+      var youtubeInput = doc.getElementById('web-youtube-key');
+      var partial = {};
+      if (platform === 'twitch') {
+        partial.twitchKey = twitchInput
+          ? String(twitchInput.value || '')
+              .trim()
+              .slice(0, 256)
+          : '';
+        partial.destTwitch = arm;
+      } else {
+        partial.youtubeKey = youtubeInput
+          ? String(youtubeInput.value || '')
+              .trim()
+              .slice(0, 256)
+          : '';
+        partial.destYoutube = arm;
+      }
+      persistDestinations(partial);
+      var next = {
+        twitch: platform === 'twitch' ? arm : platformPref.twitch,
+        youtube: platform === 'youtube' ? arm : platformPref.youtube,
+      };
+      persistPlatformPref(next);
+      closeStreamKeyModal();
+      log(
+        (platform === 'twitch' ? 'Twitch' : 'YouTube') +
+          (arm
+            ? ' armed — stream key saved locally for relay /config on Go Live.'
+            : ' disarmed — destination cleared for Go Live.'),
+      );
     }
 
     function persistPlatformPref(pref, options) {
@@ -1412,58 +1394,27 @@
       );
     }
 
-    function togglePlatform(name) {
-      if (name !== 'twitch' && name !== 'youtube') return;
-      lastPlatformClick = name;
-      var next = { twitch: platformPref.twitch, youtube: platformPref.youtube };
-      next[name] = !next[name];
-      persistPlatformPref(next);
-      if (next[name]) {
-        log(
-          'Armed ' +
-            (name === 'twitch' ? 'Twitch' : 'YouTube') +
-            ' — paste your stream key below (or use Maka desktop relay settings). Keys go to local /config only.',
-        );
-        syncDestKeyPanel(next);
-      } else {
-        log('Cleared ' + (name === 'twitch' ? 'Twitch' : 'YouTube') + ' destination.');
+    function wireStreamKeyModal() {
+      if (els.keyModalSave) {
+        els.keyModalSave.addEventListener('click', function () {
+          saveStreamKeyModal();
+        });
       }
-    }
-
-    function wireDestKeyInputs() {
-      var twitchInput = doc.getElementById('web-twitch-key');
-      var youtubeInput = doc.getElementById('web-youtube-key');
-      var commit = function (platform) {
-        var partial = {};
-        if (platform === 'twitch' && twitchInput) {
-          partial.twitchKey = String(twitchInput.value || '').trim().slice(0, 256);
+      if (els.keyModalCancel) {
+        els.keyModalCancel.addEventListener('click', function () {
+          closeStreamKeyModal();
+        });
+      }
+      if (els.keyModal) {
+        els.keyModal.addEventListener('click', function (e) {
+          if (e.target === els.keyModal) closeStreamKeyModal();
+        });
+      }
+      doc.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && els.keyModal && !els.keyModal.hidden) {
+          closeStreamKeyModal();
         }
-        if (platform === 'youtube' && youtubeInput) {
-          partial.youtubeKey = String(youtubeInput.value || '').trim().slice(0, 256);
-        }
-        persistDestinations(partial);
-        syncPlatformHint(platformPref);
-        log(
-          (platform === 'twitch' ? 'Twitch' : 'YouTube') +
-            ' stream key saved locally for relay /config.',
-        );
-      };
-      if (twitchInput) {
-        twitchInput.addEventListener('change', function () {
-          commit('twitch');
-        });
-        twitchInput.addEventListener('blur', function () {
-          commit('twitch');
-        });
-      }
-      if (youtubeInput) {
-        youtubeInput.addEventListener('change', function () {
-          commit('youtube');
-        });
-        youtubeInput.addEventListener('blur', function () {
-          commit('youtube');
-        });
-      }
+      });
     }
 
     function onSettingsPlatformSync(ev) {
@@ -1492,27 +1443,21 @@
         })();
       });
     }
-    if (btnVcam) {
-      btnVcam.addEventListener('click', function () {
-        toggleVcam();
-      });
-    }
     if (platTwitch) {
       platTwitch.addEventListener('click', function () {
-        togglePlatform('twitch');
+        openStreamKeyModal('twitch');
       });
     }
     if (platYoutube) {
       platYoutube.addEventListener('click', function () {
-        togglePlatform('youtube');
+        openStreamKeyModal('youtube');
       });
     }
     window.addEventListener('maka:settings-platform-sync', onSettingsPlatformSync);
-    wireDestKeyInputs();
+    wireStreamKeyModal();
 
     applyPlatformChips(readPlatformPref());
     setRecordingUi(false);
-    setVcamUi(false);
     syncRecordingAvailability();
 
     // Keep cfg-profile + quality select aligned with shared bitrateProfile on boot.
@@ -1610,13 +1555,19 @@
     }
 
     function bindGoLive(btn) {
-      if (!btn) return;
-      btn.addEventListener('click', function () {
+      if (!btn || btn.dataset.makaGoLiveBound === '1') return;
+      btn.dataset.makaGoLiveBound = '1';
+      btn.addEventListener('click', function (ev) {
+        ev.preventDefault();
         void onGoLive();
       });
     }
-    bindGoLive(els.btnGoLive);
-    bindGoLive(els.btnGoLiveSidebar);
+    // Single CTA — sidebar Go Live (header button removed from markup).
+    bindGoLive(els.btnGoLiveSidebar || els.btnGoLive);
+    if (els.btnGoLive && els.btnGoLive !== els.btnGoLiveSidebar) {
+      // Legacy header button if still present — keep wired but prefer sidebar label.
+      bindGoLive(els.btnGoLive);
+    }
 
     if (els.btnRelayRefresh) {
       els.btnRelayRefresh.addEventListener('click', function () {
@@ -1673,7 +1624,7 @@
         if (raf) cancelAnimationFrame(raf);
         stopStatusPoll();
         if (durationTimer) clearInterval(durationTimer);
-        stopVcamLoop();
+        closeStreamKeyModal();
         if (recordingActive && mediaRecorder) {
           try {
             mediaRecorder.stop();
@@ -1706,15 +1657,20 @@
 
   global.initLive = initLive;
 
-  // Classic <script defer> auto-boot when Go Live chrome is present.
+  // Auto-boot after DOM is ready so Go Live / chip handlers attach reliably.
   function autoBoot() {
-    if (document.getElementById('btn-go-live') || document.getElementById('btn-go-live-sidebar')) {
+    var hasGoLive =
+      document.getElementById('btn-go-live-sidebar') ||
+      document.getElementById('btn-go-live') ||
+      document.querySelector('[data-hook="go-live"]');
+    if (hasGoLive || document.getElementById('relay-status-text')) {
       initLive(document);
     }
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', autoBoot);
   } else {
+    // Modules are deferred — DOM is already parsed when this runs.
     autoBoot();
   }
 

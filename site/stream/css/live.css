@@ -331,50 +331,97 @@
   font-variant-numeric: tabular-nums;
 }
 
-.stream-dest-keys {
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-  margin: 0.35rem 0 0.15rem;
-  padding: 0.55rem 0.6rem;
-  border-radius: 0.45rem;
-  border: 1px solid var(--line, #e8e2d6);
-  background: var(--panel-2, #f6f3ec);
+/* Platform key dialog — centered over #program / studio-preview */
+.stream-key-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(26, 20, 8, 0.52);
+  pointer-events: auto;
 }
 
-.stream-dest-keys[hidden] {
+.stream-key-modal-backdrop[hidden] {
   display: none !important;
 }
 
-.stream-dest-key-field {
+.stream-key-modal {
+  max-width: 22rem;
+  width: min(22rem, 100%);
+  padding: 1.15rem 1.25rem 1.2rem;
+  border-radius: 0.55rem;
+  border: 1px solid var(--line, #e8e2d6);
+  background: var(--panel, #faf8f4);
+  color: var(--text, #1a1408);
+  box-shadow: 0 18px 48px rgba(26, 20, 8, 0.18);
+}
+
+.stream-key-modal h2 {
+  margin: 0 0 0.45rem;
+  font-family: var(--headline, 'League Spartan', sans-serif);
+  font-size: 1.05rem;
+  font-style: italic;
+  font-weight: 800;
+}
+
+.stream-key-modal-lede {
+  margin: 0 0 0.75rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--muted, #6b6256);
+}
+
+.stream-key-modal-arm {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text, #1a1408);
+  cursor: pointer;
+}
+
+.stream-key-modal-field {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  margin: 0;
+  gap: 0.3rem;
+  margin: 0 0 0.55rem;
   font-size: 0.72rem;
   color: var(--muted, #6b6256);
 }
 
-.stream-dest-key-field[hidden] {
+.stream-key-modal-field[hidden] {
   display: none !important;
 }
 
-.stream-dest-key-field .key-input {
-  width: 100%;
-  font: inherit;
-  font-size: 0.78rem;
-  padding: 0.4rem 0.5rem;
-  border-radius: 0.35rem;
-  border: 1px solid var(--line, #e8e2d6);
-  background: var(--panel, #faf8f4);
+.stream-key-modal-field .field-label {
+  font-weight: 600;
   color: var(--text, #1a1408);
 }
 
-.stream-dest-key-field .hint {
-  margin: 0;
-  font-size: 0.65rem;
-  line-height: 1.35;
+.stream-key-modal-field .key-input {
+  width: 100%;
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 0.5rem 0.55rem;
+  border-radius: 0.4rem;
+  border: 1px solid var(--line, #e8e2d6);
+  background: var(--panel-2, #f6f3ec);
+  color: var(--text, #1a1408);
+}
+
+.stream-key-ingest-hint {
+  margin: 0 0 0.85rem;
+  font-size: 0.68rem;
+  line-height: 1.4;
   color: var(--muted, #6b6256);
+}
+
+.stream-key-modal-actions {
+  margin-top: 0.15rem;
 }
 
 .stream-field {

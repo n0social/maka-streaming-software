@@ -80,9 +80,6 @@
         <button type="button" class="ghost" id="btn-settings" title="Settings" aria-pressed="false">
           Settings
         </button>
-        <button type="button" class="go-live" id="btn-go-live" data-hook="go-live" data-live="0">
-          Go Live
-        </button>
       </header>
 
       <aside
@@ -225,11 +222,6 @@
                 <video id="program-browser-video" autoplay muted playsinline></video>
                 <span class="program-browser-tag">Search tab</span>
               </div>
-              <div class="program-vcam-mock" id="vcam-preview-mock" hidden aria-label="Virtual camera preview mock">
-                <canvas id="vcam-preview-canvas" width="320" height="180"></canvas>
-                <span class="program-vcam-tag">Virtual Cam · preview only</span>
-                <p class="program-vcam-note" id="vcam-preview-note">Not a system camera device</p>
-              </div>
               <div class="program-overlay-slot program-chat-slot" id="program-chat-slot" hidden>
                 <span class="program-overlay-slot-label">Chat</span>
                 <span class="program-overlay-slot-hint">Placeholder until chat feed is wired</span>
@@ -252,12 +244,65 @@
                 Share a browser tab or window to preview cloud gameplay
               </p>
             </div>
+            <!-- Sibling of #studio-preview so preview.js remount cannot swallow it -->
+            <div
+              id="stream-key-modal"
+              class="stream-key-modal-backdrop"
+              hidden
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="stream-key-modal-title"
+            >
+              <div class="stream-key-modal">
+                <h2 id="stream-key-modal-title">Twitch stream key</h2>
+                <p class="stream-key-modal-lede" id="stream-key-modal-lede">
+                  Paste your stream key for local relay <code>/config</code>. Keys stay in this
+                  browser and are sent only to <code>127.0.0.1:38473</code> when you Go Live —
+                  never to this website’s CDN.
+                </p>
+                <label class="stream-key-modal-arm">
+                  <input type="checkbox" id="stream-key-modal-arm" checked />
+                  <span id="stream-key-modal-arm-label">Arm Twitch for Go Live</span>
+                </label>
+                <label class="stream-key-modal-field" id="dest-twitch-field">
+                  <span class="field-label" id="stream-key-modal-field-label">Twitch stream key</span>
+                  <input
+                    type="password"
+                    id="web-twitch-key"
+                    class="key-input"
+                    autocomplete="off"
+                    spellcheck="false"
+                    placeholder="live_… from Twitch Dashboard → Settings → Stream"
+                    aria-label="Twitch stream key"
+                  />
+                </label>
+                <label class="stream-key-modal-field" id="dest-youtube-field" hidden>
+                  <span class="field-label">YouTube stream key</span>
+                  <input
+                    type="password"
+                    id="web-youtube-key"
+                    class="key-input"
+                    autocomplete="off"
+                    spellcheck="false"
+                    placeholder="YouTube Studio → Go live → Stream key"
+                    aria-label="YouTube stream key"
+                  />
+                </label>
+                <p class="hint tight stream-key-ingest-hint" id="stream-key-ingest-hint">
+                  Ingest hint: <code>rtmp://live.twitch.tv/app/&lt;key&gt;</code> — paste the key
+                  only; MAKArelay builds the RTMP URL.
+                </p>
+                <div class="modal-actions stream-key-modal-actions">
+                  <button type="button" class="btn btn-primary" id="stream-key-modal-save">Save</button>
+                  <button type="button" class="btn btn-ghost" id="stream-key-modal-cancel">Cancel</button>
+                </div>
+              </div>
+            </div>
           </section>
           <div class="program-stats" id="program-stats" aria-label="Program stream stats">
             <div class="program-stats-left" aria-hidden="true"></div>
             <div class="program-stats-center" aria-live="polite">
               <span class="program-stat program-stat-recording" id="stat-recording" data-recording="0">Not recording</span>
-              <span class="program-stat program-stat-vcam" id="stat-vcam" data-vcam="0" hidden>Virtual cam off</span>
             </div>
             <div class="program-stats-right">
               <span class="program-stat" id="stat-dropped">Dropped Frames: 0 (0.0%)</span>
@@ -270,7 +315,9 @@
                   id="plat-twitch"
                   data-state="off"
                   aria-pressed="false"
-                  title="Arm Twitch — then paste your stream key for local relay /config (or set keys in Maka desktop)"
+                  aria-haspopup="dialog"
+                  aria-controls="stream-key-modal"
+                  title="Open Twitch stream key dialog (keys go to local relay /config on Go Live)"
                 >
                   Twitch
                 </button>
@@ -281,7 +328,9 @@
                   id="plat-youtube"
                   data-state="off"
                   aria-pressed="false"
-                  title="Arm YouTube — then paste your stream key for local relay /config (or set keys in Maka desktop)"
+                  aria-haspopup="dialog"
+                  aria-controls="stream-key-modal"
+                  title="Open YouTube stream key dialog (keys go to local relay /config on Go Live)"
                 >
                   YouTube
                 </button>
@@ -364,9 +413,16 @@
         <div class="studio-block studio-block-compact studio-block-controls">
           <h2>Stream Controls</h2>
           <div class="stream-controls-stack">
-            <button type="button" class="btn-block btn-primary btn-go-live" id="btn-go-live-sidebar" data-live="0">
+            <button
+              type="button"
+              class="btn-block btn-primary btn-go-live"
+              id="btn-go-live-sidebar"
+              data-hook="go-live"
+              data-live="0"
+              title="Publish WHIP to local relay (requires preview + MAKArelay)"
+            >
               <span class="btn-icon btn-icon-live" aria-hidden="true">((•))</span>
-              <span id="btn-go-live-label">Start Streaming</span>
+              <span id="btn-go-live-label">Go Live</span>
             </button>
             <p class="relay-guidance" id="relay-detail">
               Encoding (incl. up to 4K) runs in the local MAKArelay sidecar on
@@ -382,16 +438,6 @@
             >
               <span class="btn-icon btn-icon-rec" id="btn-recording-icon" aria-hidden="true">●</span>
               <span id="btn-recording-label">Start Recording</span>
-            </button>
-            <button
-              type="button"
-              class="btn-block btn-secondary"
-              id="btn-start-vcam"
-              data-vcam="0"
-              title="Web cannot install a system virtual camera. Opens a labeled preview-only PiP that mirrors the program frame."
-            >
-              <span class="btn-icon btn-icon-vcam" id="btn-vcam-icon" aria-hidden="true">▢</span>
-              <span id="btn-vcam-label">Start Virtual Camera</span>
             </button>
           </div>
         </div>
@@ -426,35 +472,7 @@
               <div class="stream-meta">
                 <input type="text" id="stream-title-input" class="stream-title-input" maxlength="140" autocomplete="off" placeholder="Stream title" aria-label="Stream title" />
                 <input type="text" id="stream-category-input" class="stream-category-input" maxlength="100" autocomplete="off" placeholder="Category or game" aria-label="Stream category" />
-                <p class="stream-destinations" id="stream-destinations-hint"></p>
-                <div class="stream-dest-keys" id="stream-dest-keys" hidden>
-                  <label class="stream-dest-key-field" id="dest-twitch-field" hidden>
-                    <span class="field-label">Twitch stream key</span>
-                    <input
-                      type="password"
-                      id="web-twitch-key"
-                      class="key-input"
-                      autocomplete="off"
-                      spellcheck="false"
-                      placeholder="live_… from Twitch Dashboard → Settings → Stream"
-                      aria-label="Twitch stream key"
-                    />
-                    <span class="hint tight">Paste your Twitch stream key. Sent only to local relay <code>/config</code> — never to this website’s CDN.</span>
-                  </label>
-                  <label class="stream-dest-key-field" id="dest-youtube-field" hidden>
-                    <span class="field-label">YouTube stream key</span>
-                    <input
-                      type="password"
-                      id="web-youtube-key"
-                      class="key-input"
-                      autocomplete="off"
-                      spellcheck="false"
-                      placeholder="YouTube Studio → Go live → Stream key"
-                      aria-label="YouTube stream key"
-                    />
-                    <span class="hint tight">Paste your YouTube key, or configure it in Maka desktop relay settings (same as the exe).</span>
-                  </label>
-                </div>
+                <p class="stream-destinations" id="stream-destinations-hint" title="Safe status only — stream keys live in the chip dialog, not here"></p>
                 <div class="stream-status-row">
                   <span class="stream-live-pill" id="stream-live-pill" data-live="false">Offline</span>
                   <span class="stream-viewers" id="stream-viewers" title="Viewer count when you go live">Offline</span>
