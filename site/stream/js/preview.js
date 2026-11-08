@@ -17,7 +17,7 @@
  *
  * Public API: window.MakaStreamPreview (canonical); window.MakaPreview is an alias; host._makaPreview is the same instance.
  */
-const EMPTY_COPY = 'Pick Game Capture or Webcam under Sources to fill Program';
+const EMPTY_COPY = '';
 const WEBCAM_OFFLINE = 'video is offline';
 
 function ensureStylesheet() {
@@ -292,11 +292,9 @@ export function initPreview(root) {
       }
     }
 
-    const cardVisible = Boolean(els.sceneCard && !els.sceneCard.hidden);
-    // Keep empty-state copy until there is capture, a bumper card, or live chrome.
-    els.empty.hidden = hasScreen || hasCam || cardVisible || live;
-    if (!els.empty.hidden) {
-      els.empty.textContent = EMPTY_COPY;
+    if (els.empty) {
+      els.empty.textContent = '';
+      els.empty.hidden = true;
     }
 
     const detail = {
