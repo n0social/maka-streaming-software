@@ -39,6 +39,11 @@
     streamCategoryLegacy: 'maka.stream.streamCategory',
     bitrateProfile: 'maka.stream.bitrateProfile',
   };
+  /** Selected catalogue image, remembered across reloads. JSON { name, image }. */
+  var GAME_IMAGE_KEY = 'maka.stream.streamGameImage';
+  var GAME_CATALOGUE_URL = 'data/game-catalogue.json';
+  var GAME_LIST_VISIBLE_ROWS = 5;
+  var GAME_LIST_ROW_PX = 44;
   /** Mirror src/shared/stream-encode-profiles.ts — relay `profile` + bitrateMbps. */
   var ENCODE_PROFILE_MAP = {
     '720p30': { bitrateMbps: 3 },
@@ -236,6 +241,8 @@
       btnRelayRefresh: doc.getElementById('btn-relay-refresh'),
       streamTitle: doc.getElementById('stream-title-input'),
       streamGame: doc.getElementById('stream-game-input'),
+      streamThumb: doc.getElementById('stream-thumb'),
+      streamThumbImg: doc.getElementById('stream-thumb-img'),
       livePill: doc.getElementById('stream-live-pill'),
       streamDuration: doc.getElementById('stream-duration'),
       streamViewers: doc.getElementById('stream-viewers'),
@@ -263,6 +270,8 @@
       wizardPanelGo: doc.getElementById('go-live-wizard-panel-go'),
       wizardTitleInput: doc.getElementById('go-live-wizard-title-input'),
       wizardGameInput: doc.getElementById('go-live-wizard-game-input'),
+      gamePicker: doc.getElementById('go-live-wizard-game-picker'),
+      gameList: doc.getElementById('go-live-wizard-game-list'),
       wizardQuality: doc.getElementById('go-live-wizard-quality'),
       wizardGoStatus: doc.getElementById('go-live-wizard-go-status'),
       wizardTwitchKey: doc.getElementById('wizard-twitch-key'),
@@ -626,6 +635,274 @@
       return id;
     }
 
+    var gameCatalogue = [];
+    var gameListOpen = false;
+    /** Escape that closed the list must not also dismiss the wizard dialog. */
+    var blockWizardCancel = false;
+
+    function readStoredGameImage() {
+      try {
+        var raw = localStorage.getItem(GAME_IMAGE_KEY);
+        if (!raw) return '';
+        var parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object' || !parsed.image) return '';
+        if (sanitizeGame(parsed.name) !== readStoredGame()) return '';
+        return String(parsed.image);
+      } catch (_err) {
+        return '';
+      }
+    }
+
+    function writeStoredGameImage(name, image) {
+      try {
+        localStorage.setItem(
+          GAME_IMAGE_KEY,
+          JSON.stringify({ name: sanitizeGame(name), image: String(image || '') }),
+        );
+      } catch (_err) {
+        /* ignore */
+      }
+    }
+
+    function catalogueEntryForName(name) {
+      var target = sanitizeGame(name).toLowerCase();
+      for (var i = 0; i < gameCatalogue.length; i++) {
+        if (sanitizeGame(gameCatalogue[i].name).toLowerCase() === target) return gameCatalogue[i];
+      }
+      return null;
+    }
+
+    function readWizardGameName() {
+      var btn = els.wizardGameInput;
+      if (!btn) return readStoredGame();
+      if (btn.tagName === 'INPUT' || btn.tagName === 'TEXTAREA') return sanitizeGame(btn.value);
+      var label = btn.querySelector('.game-picker-trigger-label');
+      return sanitizeGame(label ? label.textContent : btn.textContent);
+    }
+
+    function paintWizardGameTrigger(name, image) {
+      var btn = els.wizardGameInput;
+      if (!btn) return;
+      var shown = sanitizeGame(name);
+      if (btn.tagName === 'INPUT' || btn.tagName === 'TEXTAREA') {
+        if (document.activeElement !== btn) btn.value = shown;
+      } else {
+        var label = btn.querySelector('.game-picker-trigger-label');
+        if (label) label.textContent = shown;
+        else btn.textContent = shown;
+      }
+      var img = btn.querySelector ? btn.querySelector('.game-picker-trigger-img') : null;
+      if (img) {
+        if (image) {
+          img.src = image;
+          img.hidden = false;
+        } else {
+          img.hidden = true;
+          img.removeAttribute('src');
+        }
+      }
+    }
+
+    function paintStreamThumb(image, name) {
+      var thumb = els.streamThumb;
+      if (!thumb) return;
+      var img = els.streamThumbImg || thumb.querySelector('img');
+      var placeholder = thumb.querySelector('.stream-thumb-placeholder');
+      if (!img) return;
+      if (!image) {
+        img.hidden = true;
+        img.removeAttribute('src');
+        img.alt = '';
+        thumb.classList.remove('has-image');
+        if (placeholder) placeholder.hidden = false;
+        return;
+      }
+      img.alt = name ? name + ' box art' : '';
+      img.hidden = false;
+      if (img.getAttribute('src') !== image) img.src = image;
+      thumb.classList.add('has-image');
+      if (placeholder) placeholder.hidden = true;
+      img.onerror = function () {
+        img.hidden = true;
+        thumb.classList.remove('has-image');
+        if (placeholder) placeholder.hidden = false;
+      };
+    }
+
+    function markSelectedGameOption(name) {
+      if (!els.gameList) return;
+      var shown = sanitizeGame(name);
+      var options = els.gameList.querySelectorAll('[role="option"]');
+      for (var i = 0; i < options.length; i++) {
+        options[i].setAttribute('aria-selected', options[i].dataset.gameName === shown ? 'true' : 'false');
+      }
+    }
+
+    function refreshGamePresentation() {
+      var name = readStoredGame();
+      var entry = catalogueEntryForName(name);
+      var image = entry ? entry.image : readStoredGameImage();
+      if (entry) writeStoredGameImage(entry.name, entry.image);
+      paintWizardGameTrigger(name, image);
+      paintStreamThumb(image, name);
+      markSelectedGameOption(name);
+    }
+
+    function positionGameList() {
+      var btn = els.wizardGameInput;
+      var list = els.gameList;
+      if (!btn || !list) return;
+      var rect = btn.getBoundingClientRect();
+      var width = Math.max(rect.width, 220);
+      var maxH = GAME_LIST_VISIBLE_ROWS * GAME_LIST_ROW_PX + 2;
+      var spaceBelow = window.innerHeight - rect.bottom - 12;
+      var openUp = spaceBelow < maxH && rect.top > spaceBelow;
+      list.style.position = 'fixed';
+      list.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)) + 'px';
+      list.style.width = width + 'px';
+      list.style.maxHeight = maxH + 'px';
+      list.style.zIndex = '2147483000';
+      if (openUp) {
+        list.style.top = 'auto';
+        list.style.bottom = window.innerHeight - rect.top + 4 + 'px';
+      } else {
+        list.style.bottom = 'auto';
+        list.style.top = rect.bottom + 4 + 'px';
+      }
+    }
+
+    function setGameListOpen(open) {
+      var list = els.gameList;
+      var btn = els.wizardGameInput;
+      if (!list) return;
+      gameListOpen = Boolean(open);
+      if (btn) btn.setAttribute('aria-expanded', gameListOpen ? 'true' : 'false');
+      if (!gameListOpen) {
+        if (typeof list.hidePopover === 'function') {
+          try {
+            if (list.matches(':popover-open')) list.hidePopover();
+          } catch (_err) {
+            /* ignore */
+          }
+        }
+        list.hidden = true;
+        return;
+      }
+      list.hidden = false;
+      if (typeof list.showPopover === 'function') {
+        try {
+          if (!list.matches(':popover-open')) list.showPopover();
+        } catch (_err2) {
+          /* stay on the fixed overlay */
+        }
+      }
+      positionGameList();
+      var selected = list.querySelector('[aria-selected="true"]');
+      if (selected && typeof selected.scrollIntoView === 'function') {
+        selected.scrollIntoView({ block: 'nearest' });
+      }
+    }
+
+    function closeGameList() {
+      if (gameListOpen) setGameListOpen(false);
+    }
+
+    function renderGameList() {
+      var list = els.gameList;
+      if (!list) return;
+      var current = readStoredGame();
+      list.textContent = '';
+      gameCatalogue.forEach(function (entry) {
+        var li = document.createElement('li');
+        li.className = 'game-picker-option';
+        li.setAttribute('role', 'option');
+        li.dataset.gameId = entry.id;
+        li.dataset.gameName = entry.name;
+        li.dataset.gameImage = entry.image;
+        li.setAttribute('aria-selected', sanitizeGame(entry.name) === current ? 'true' : 'false');
+        var img = document.createElement('img');
+        img.alt = '';
+        img.width = 28;
+        img.height = 36;
+        img.loading = 'lazy';
+        img.decoding = 'async';
+        img.src = entry.image;
+        var span = document.createElement('span');
+        span.className = 'game-picker-option-name';
+        span.textContent = entry.name;
+        li.appendChild(img);
+        li.appendChild(span);
+        li.addEventListener('click', function (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          chooseGame(entry);
+        });
+        list.appendChild(li);
+      });
+    }
+
+    function chooseGame(entry) {
+      if (!entry) return;
+      writeStoredGameImage(entry.name, entry.image);
+      syncStreamMetaDom(readStoredTitle(), entry.name);
+      closeGameList();
+    }
+
+    function loadGameCatalogue() {
+      var fallback = [
+        { id: 'just-chatting', name: DEFAULT_STREAM_GAME, image: 'assets/games/just-chatting.jpg' },
+      ];
+      return fetch(GAME_CATALOGUE_URL, { credentials: 'same-origin' })
+        .then(function (res) {
+          if (!res.ok) throw new Error('catalogue ' + res.status);
+          return res.json();
+        })
+        .then(function (data) {
+          var list = data && Array.isArray(data.games) ? data.games : [];
+          var next = [];
+          list.forEach(function (row) {
+            if (!row || !row.name || !row.image) return;
+            next.push({
+              id: String(row.id || row.name),
+              name: String(row.name),
+              image: String(row.image),
+            });
+          });
+          gameCatalogue = next.length ? next : fallback;
+        })
+        .catch(function () {
+          gameCatalogue = fallback;
+        })
+        .then(function () {
+          renderGameList();
+          refreshGamePresentation();
+        });
+    }
+
+    function onGamePickerPointerDown(ev) {
+      if (!gameListOpen) return;
+      var t = ev.target;
+      if (!(t instanceof Element)) {
+        closeGameList();
+        return;
+      }
+      if (els.gamePicker && els.gamePicker.contains(t)) return;
+      if (els.gameList && els.gameList.contains(t)) return;
+      closeGameList();
+    }
+
+    function onGamePickerKeyDown(ev) {
+      if (ev.key !== 'Escape' || !gameListOpen) return;
+      blockWizardCancel = true;
+      ev.preventDefault();
+      ev.stopPropagation();
+      closeGameList();
+    }
+
+    function onGamePickerResize() {
+      if (gameListOpen) positionGameList();
+    }
+
     function syncStreamMetaDom(title, game) {
       var t = sanitizeTitle(title);
       var g = sanitizeGame(game);
@@ -633,9 +910,6 @@
       writeMetaField(els.streamGame, g, DEFAULT_STREAM_GAME);
       if (els.wizardTitleInput && document.activeElement !== els.wizardTitleInput) {
         els.wizardTitleInput.value = t;
-      }
-      if (els.wizardGameInput && document.activeElement !== els.wizardGameInput) {
-        els.wizardGameInput.value = g;
       }
       try {
         localStorage.setItem(SHARED_KEYS.streamTitle, t);
@@ -655,6 +929,7 @@
       var setGame = doc.getElementById('set-stream-game');
       if (setTitle && document.activeElement !== setTitle) setTitle.value = t;
       if (setGame && document.activeElement !== setGame) setGame.value = g;
+      refreshGamePresentation();
     }
 
     function readDestinations() {
@@ -750,8 +1025,7 @@
       };
       var title =
         sanitizeTitle((els.wizardTitleInput && els.wizardTitleInput.value) || readStoredTitle());
-      var game =
-        sanitizeGame((els.wizardGameInput && els.wizardGameInput.value) || '') || readStoredGame();
+      var game = readWizardGameName() || readStoredGame();
       // Relay /config still uses streamCategory; UI + localStorage use Game.
       if (title) body.streamTitle = title;
       if (game) body.streamCategory = game;
@@ -1033,6 +1307,7 @@
     }
 
     function closeGoLiveWizard() {
+      closeGameList();
       if (els.wizardDialog && els.wizardDialog.open) {
         try {
           els.wizardDialog.close();
@@ -1082,6 +1357,7 @@
     }
 
     function renderGoLiveWizard() {
+      if (wizardStep !== 'details') closeGameList();
       if (els.wizardDialog) els.wizardDialog.dataset.step = wizardStep;
       if (els.wizardPanelPlatform) els.wizardPanelPlatform.hidden = wizardStep !== 'platform';
       if (els.wizardPanelKey) els.wizardPanelKey.hidden = wizardStep !== 'key';
@@ -1145,7 +1421,7 @@
 
     function applyWizardDetails() {
       var title = sanitizeTitle(els.wizardTitleInput && els.wizardTitleInput.value);
-      var game = sanitizeGame(els.wizardGameInput && els.wizardGameInput.value);
+      var game = readWizardGameName();
       var profile = (els.wizardQuality && els.wizardQuality.value) || readBitrateProfile();
       syncStreamMetaDom(title, game);
       syncEncodeSelects(profile);
@@ -1184,9 +1460,7 @@
       if (els.wizardTitleInput && document.activeElement !== els.wizardTitleInput) {
         els.wizardTitleInput.value = readStoredTitle();
       }
-      if (els.wizardGameInput && document.activeElement !== els.wizardGameInput) {
-        els.wizardGameInput.value = readStoredGame();
-      }
+      closeGameList();
       syncStreamMetaDom(readStoredTitle(), readStoredGame());
       syncEncodeSelects(readBitrateProfile());
       wizardStep = 'platform';
@@ -1284,6 +1558,23 @@
           syncEncodeSelects(els.wizardQuality.value);
         });
       }
+      if (els.wizardGameInput) {
+        els.wizardGameInput.addEventListener('click', function () {
+          setGameListOpen(!gameListOpen);
+        });
+      }
+      if (els.wizardDialog) {
+        els.wizardDialog.addEventListener('cancel', function (ev) {
+          if (!gameListOpen && !blockWizardCancel) return;
+          ev.preventDefault();
+          blockWizardCancel = false;
+          closeGameList();
+        });
+      }
+      document.addEventListener('pointerdown', onGamePickerPointerDown, true);
+      document.addEventListener('keydown', onGamePickerKeyDown, true);
+      window.addEventListener('resize', onGamePickerResize);
+      window.addEventListener('maka:settings-change', refreshGamePresentation);
       window.addEventListener('maka:open-go-live-wizard', function () {
         openGoLiveWizard();
       });
@@ -2226,6 +2517,7 @@
       migrateGameStorage();
       syncEncodeSelects(readBitrateProfile());
       syncStreamMetaDom(readStoredTitle(), readStoredGame());
+      void loadGameCatalogue();
     })();
 
     // --- Capture fallback (when preview module not owning the canvas) ---
@@ -2385,6 +2677,11 @@
         document.removeEventListener('maka:preview-change', onPreviewChange);
         window.removeEventListener('resize', resizeCanvas);
         window.removeEventListener('maka:settings-platform-sync', onSettingsPlatformSync);
+        document.removeEventListener('pointerdown', onGamePickerPointerDown, true);
+        document.removeEventListener('keydown', onGamePickerKeyDown, true);
+        window.removeEventListener('resize', onGamePickerResize);
+        window.removeEventListener('maka:settings-change', refreshGamePresentation);
+        closeGameList();
         if (whipPublisher) {
           void whipPublisher.close();
           whipPublisher = null;

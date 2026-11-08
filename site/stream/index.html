@@ -32,13 +32,13 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/maka.css?v=dc6d035" />
-    <link rel="stylesheet" href="./stream.css?v=dc6d076" />
-    <link rel="stylesheet" href="./css/shell.css?v=dc6d076" />
-    <link rel="stylesheet" href="./css/preview-stage.css?v=dc6d076" />
-    <link rel="stylesheet" href="./css/scenes.css?v=dc6d076" />
-    <link rel="stylesheet" href="./css/audio.css?v=dc6d076" />
-    <link rel="stylesheet" href="./css/live.css?v=dc6d076" />
-    <link rel="stylesheet" href="./css/settings.css?v=dc6d076" />
+    <link rel="stylesheet" href="./stream.css?v=dc6d077" />
+    <link rel="stylesheet" href="./css/shell.css?v=dc6d077" />
+    <link rel="stylesheet" href="./css/preview-stage.css?v=dc6d077" />
+    <link rel="stylesheet" href="./css/scenes.css?v=dc6d077" />
+    <link rel="stylesheet" href="./css/audio.css?v=dc6d077" />
+    <link rel="stylesheet" href="./css/live.css?v=dc6d077" />
+    <link rel="stylesheet" href="./css/settings.css?v=dc6d077" />
   </head>
   <body data-mode="studio" class="stream-studio">
     <div class="app" id="studio-app" data-shell="studio">
@@ -405,6 +405,7 @@
           <div class="stream-info" id="stream-info">
             <div class="stream-preview">
               <div class="stream-thumb" id="stream-thumb">
+                <img id="stream-thumb-img" alt="" hidden />
                 <div class="stream-thumb-placeholder">No preview</div>
               </div>
               <div class="stream-meta">
@@ -488,8 +489,29 @@
             <div id="go-live-wizard-panel-details" class="go-live-wizard-fields" hidden>
               <label class="field-label" for="go-live-wizard-title-input">Stream title</label>
               <input id="go-live-wizard-title-input" class="key-input" type="text" maxlength="140" autocomplete="off" />
-              <label class="field-label" for="go-live-wizard-game-input">Game</label>
-              <input id="go-live-wizard-game-input" class="key-input" type="text" maxlength="100" autocomplete="off" placeholder="Just Chatting" />
+              <label class="field-label" id="go-live-wizard-game-label" for="go-live-wizard-game-input">Game</label>
+              <div class="game-picker" id="go-live-wizard-game-picker">
+                <button
+                  type="button"
+                  id="go-live-wizard-game-input"
+                  class="key-input game-picker-trigger"
+                  aria-haspopup="listbox"
+                  aria-expanded="false"
+                  aria-controls="go-live-wizard-game-list"
+                  aria-labelledby="go-live-wizard-game-label"
+                >
+                  <img class="game-picker-trigger-img" alt="" width="22" height="28" hidden />
+                  <span class="game-picker-trigger-label">Just Chatting</span>
+                </button>
+                <ul
+                  id="go-live-wizard-game-list"
+                  class="game-picker-list"
+                  role="listbox"
+                  aria-labelledby="go-live-wizard-game-label"
+                  hidden
+                  popover="manual"
+                ></ul>
+              </div>
               <label class="field-label" for="go-live-wizard-quality">Encode profile</label>
               <select id="go-live-wizard-quality" class="select program-stats-select-encode" aria-label="Encode profile"></select>
             </div>
@@ -533,12 +555,12 @@
     </dialog>
 
     <!-- Module hooks (feature modules owned elsewhere) -->
-    <script src="./js/webm-seek.js?v=dc6d076"></script>
-    <script type="module" src="./js/shell.js?v=dc6d076"></script>
-    <script type="module" src="./js/scenes.js?v=dc6d076"></script>
-    <script type="module" src="./js/preview.js?v=dc6d076"></script>
-    <script type="module" src="./js/audio.js?v=dc6d076"></script>
-    <script type="module" src="./js/live.js?v=dc6d076"></script>
-    <script type="module" src="./js/settings.js?v=dc6d076"></script>
+    <script src="./js/webm-seek.js?v=dc6d077"></script>
+    <script type="module" src="./js/shell.js?v=dc6d077"></script>
+    <script type="module" src="./js/scenes.js?v=dc6d077"></script>
+    <script type="module" src="./js/preview.js?v=dc6d077"></script>
+    <script type="module" src="./js/audio.js?v=dc6d077"></script>
+    <script type="module" src="./js/live.js?v=dc6d077"></script>
+    <script type="module" src="./js/settings.js?v=dc6d077"></script>
   </body>
 </html>

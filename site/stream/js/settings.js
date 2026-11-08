@@ -303,6 +303,9 @@ function syncLiveDomFields() {
   }
   if (wizardGame instanceof HTMLInputElement && document.activeElement !== wizardGame) {
     wizardGame.value = settings.streamGame || DEFAULT_STREAM_GAME
+  } else if (wizardGame && document.activeElement !== wizardGame) {
+    const label = wizardGame.querySelector('.game-picker-trigger-label')
+    if (label) label.textContent = settings.streamGame || DEFAULT_STREAM_GAME
   }
   const profileId = settings.bitrateProfile || DEFAULT_BITRATE_PROFILE
   for (const select of [profile, quality, wizardQuality]) {
