@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Maka lives at makalive.stream — open the studio or download for Windows."
+    />
+    <meta name="theme-color" content="#faf8f4" />
+    <meta name="robots" content="noindex, follow" />
+    <link rel="canonical" href="https://makalive.stream/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Maka" />
+    <meta property="og:title" content="Maka — continue at makalive.stream" />
+    <meta
+      property="og:description"
+      content="This Skydav host is a funnel. Stream and download on makalive.stream."
+    />
+    <meta property="og:url" content="https://makalive.stream/" />
+    <title>Maka — continue at makalive.stream</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=League+Spartan:ital,wght@0,700;0,800;0,900;1,800;1,900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        --gold: #ffc40c;
+        --gold-light: #ffd633;
+        --gold-dark: #c99800;
+        --champagne: #f6f3ec;
+        --bg: #faf8f4;
+        --panel: #ffffff;
+        --text: #1a1408;
+        --muted: #6b6256;
+        --headline: "League Spartan", system-ui, sans-serif;
+        --body: "Inter", "Segoe UI", system-ui, sans-serif;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        font-family: var(--body);
+        color: var(--text);
+        background-color: var(--bg);
+        background-image: radial-gradient(
+          ellipse 90% 55% at 15% -10%,
+          rgba(255, 196, 12, 0.14),
+          transparent 55%
+        );
+        background-attachment: fixed;
+      }
+
+      .shell {
+        min-height: 100vh;
+        max-width: min(42rem, 100%);
+        margin: 0 auto;
+        padding: 1.5rem 1.25rem 2rem;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .hero {
+        position: relative;
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+
+      .backdrop {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        overflow: hidden;
+      }
+
+      .orb {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(42px);
+        opacity: 0.55;
+        animation: orb-drift 12s ease-in-out infinite;
+      }
+
+      .orb--1 {
+        width: min(22rem, 70vw);
+        height: min(22rem, 70vw);
+        top: 6%;
+        left: -8%;
+        background: rgba(255, 196, 12, 0.35);
+      }
+
+      .orb--2 {
+        width: 14rem;
+        height: 14rem;
+        right: -6%;
+        bottom: 10%;
+        background: rgba(255, 214, 51, 0.28);
+        animation-delay: -4s;
+      }
+
+      .grid {
+        position: absolute;
+        inset: -20% -10%;
+        opacity: 0.4;
+        background-image: linear-gradient(
+            rgba(26, 20, 8, 0.04) 1px,
+            transparent 1px
+          ),
+          linear-gradient(90deg, rgba(26, 20, 8, 0.04) 1px, transparent 1px);
+        background-size: 48px 48px;
+        transform: perspective(600px) rotateX(58deg) translateY(-12%);
+        transform-origin: center top;
+      }
+
+      .inner {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1.35rem;
+      }
+
+      .maka-wordmark {
+        position: relative;
+        margin: 0;
+        font-family: var(--headline);
+        font-weight: 900;
+        font-style: italic;
+        font-size: clamp(3.6rem, 18vw, 7.5rem);
+        line-height: 0.9;
+        letter-spacing: -0.04em;
+        text-transform: uppercase;
+        animation: brand-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+
+      .maka-wordmark__back,
+      .maka-wordmark__front {
+        display: block;
+      }
+
+      .maka-wordmark__back {
+        position: absolute;
+        left: 0;
+        top: 0.045em;
+        color: transparent;
+        -webkit-text-stroke: 1px rgba(26, 20, 8, 0.12);
+        transform: translate(0.04em, 0.04em);
+        user-select: none;
+      }
+
+      .maka-wordmark__front {
+        position: relative;
+        z-index: 2;
+        background: linear-gradient(
+          35deg,
+          #fff8e8 0%,
+          #fff8e8 46%,
+          var(--gold) 54%,
+          var(--gold) 100%
+        );
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .maka-wordmark::before {
+        content: "MAKA";
+        position: absolute;
+        left: 0;
+        top: 0;
+        z-index: 3;
+        background-image: linear-gradient(
+            35deg,
+            rgba(255, 255, 255, 0.55) 0%,
+            rgba(255, 255, 255, 0.55) 46%,
+            transparent 54%
+          ),
+          linear-gradient(
+            115deg,
+            transparent 20%,
+            rgba(255, 255, 255, 0.65) 45%,
+            transparent 70%
+          );
+        background-size: 100% 100%, 180% 100%;
+        background-position: 0 0, 12% 36%;
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: foil-shift 9s ease-in-out infinite;
+        pointer-events: none;
+      }
+
+      .lede {
+        margin: 0;
+        max-width: 22rem;
+        color: var(--muted);
+        font-size: 1.02rem;
+        line-height: 1.45;
+        animation: brand-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.65rem;
+        width: 100%;
+        max-width: 22rem;
+        animation: brand-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.16s both;
+      }
+
+      .btn {
+        flex: 1 1 8rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.9rem 1.15rem;
+        border-radius: 999px;
+        font-family: var(--headline);
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        text-decoration: none;
+        border: 1px solid transparent;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+      }
+
+      .btn:hover {
+        transform: translateY(-1px);
+      }
+
+      .btn-outline {
+        background: var(--panel);
+        border-color: rgba(255, 196, 12, 0.35);
+        color: var(--text);
+      }
+
+      .btn-outline:hover {
+        border-color: rgba(255, 196, 12, 0.7);
+      }
+
+      .btn-primary {
+        background: linear-gradient(100deg, var(--gold-light), var(--gold));
+        color: var(--text);
+        box-shadow: 0 10px 28px rgba(255, 196, 12, 0.32);
+      }
+
+      .btn-primary:hover {
+        box-shadow: 0 14px 36px rgba(255, 196, 12, 0.4);
+      }
+
+      .note {
+        margin: 0;
+        font-size: 0.78rem;
+        color: var(--muted);
+        animation: brand-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.22s both;
+      }
+
+      .note a {
+        color: var(--gold-dark);
+      }
+
+      .footer {
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.78rem;
+      }
+
+      @keyframes brand-rise {
+        from {
+          opacity: 0;
+          transform: translateY(0.85rem);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes foil-shift {
+        0%,
+        100% {
+          background-position: 0 0, 8% 34%;
+        }
+        50% {
+          background-position: 0 0, 78% 42%;
+        }
+      }
+
+      @keyframes orb-drift {
+        0%,
+        100% {
+          transform: translate(0, 0);
+        }
+        50% {
+          transform: translate(3%, 4%);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .orb,
+        .maka-wordmark::before,
+        .inner > * {
+          animation: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <main class="hero">
+        <div class="backdrop" aria-hidden="true">
+          <span class="orb orb--1"></span>
+          <span class="orb orb--2"></span>
+          <span class="grid"></span>
+        </div>
+
+        <div class="inner">
+          <h1 class="maka-wordmark" aria-label="MAKA">
+            <span class="maka-wordmark__back" aria-hidden="true">MAKA</span>
+            <span class="maka-wordmark__front">MAKA</span>
+          </h1>
+
+          <p class="lede">
+            Studio, stream, and downloads now live on the Maka origin.
+          </p>
+
+          <nav class="actions" aria-label="Continue to makalive.stream">
+            <a class="btn btn-outline" href="https://makalive.stream/stream/"
+              >Stream</a
+            >
+            <a class="btn btn-primary" href="https://makalive.stream/"
+              >Download</a
+            >
+          </nav>
+
+          <p class="note">
+            Bookmark
+            <a href="https://makalive.stream/">makalive.stream</a>
+            — this Skydav page is only a pointer.
+          </p>
+        </div>
+      </main>
+
+      <footer class="footer">MAKA · MIT</footer>
+    </div>
+  </body>
+</html>
