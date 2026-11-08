@@ -12,7 +12,8 @@ import { spawnSync } from 'node:child_process'
 import { collectDistArtifacts, hasSigningCert } from './sign-windows.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const signingRequired = process.env.MAKA_SIGNING_REQUIRED === '1'
+const signingRequired =
+  process.env.MAKA_SIGNING_REQUIRED === '1' || process.env.TABCAST_SIGNING_REQUIRED === '1'
 
 function run(cmd, args) {
   const result = spawnSync(cmd, args, {
@@ -37,7 +38,9 @@ if (!certOk) {
   run('npm', ['run', 'build'])
   run('node', ['scripts/verify.mjs', '--offline'])
   const publishArgs =
-    process.env.GH_TOKEN || process.env.MAKA_PUBLISH === '1' ? ['--publish', 'always'] : []
+    process.env.GH_TOKEN || process.env.MAKA_PUBLISH === '1' || process.env.TABCAST_PUBLISH === '1'
+      ? ['--publish', 'always']
+      : []
   run('npx', ['electron-builder', '--win', 'nsis', ...publishArgs])
   process.exit(0)
 }

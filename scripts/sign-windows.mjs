@@ -26,7 +26,10 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const timestampUrl = process.env.MAKA_TIMESTAMP_URL || 'http://timestamp.digicert.com'
+const timestampUrl =
+  process.env.MAKA_TIMESTAMP_URL ||
+  process.env.TABCAST_TIMESTAMP_URL ||
+  'http://timestamp.digicert.com'
 
 function findSigntool() {
   if (process.platform !== 'win32') return null
