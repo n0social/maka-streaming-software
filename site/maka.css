@@ -1,4 +1,4 @@
-/* MAKA_CSS_BUILD=dc6d061 — bump ?v= on /maka.css in site/**/*.html when this file changes */
+/* MAKA_CSS_BUILD=dc6d063 — bump ?v= on /maka.css in site/**/*.html when this file changes */
 /* Maka marketing site — cream / Mikado Yellow tokens (matches Electron studio redesign) */
 :root {
   color-scheme: light;
@@ -440,6 +440,11 @@ svg {
   line-height: 0;
 }
 
+.maka-wordmark--image::before {
+  content: none;
+  display: none;
+}
+
 .maka-wordmark--image img {
   display: block;
   width: 100%;
@@ -642,6 +647,18 @@ svg {
 .hero-mvp__btn:active {
   transform: none;
   filter: none;
+}
+
+.hero-mvp__btn--download,
+.hero-mvp__btn--download:hover,
+.hero-mvp__btn--download:focus-visible {
+  color: #1a1408;
+}
+
+.hero-mvp__btn--github,
+.hero-mvp__btn--github:hover,
+.hero-mvp__btn--github:focus-visible {
+  color: #1a1408;
 }
 
 .hero-mvp__btn--download {
