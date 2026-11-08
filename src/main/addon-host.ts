@@ -70,7 +70,7 @@ export class AddonHost {
       name: 'Scene templates',
       version: '1.0.0',
       apiVersion: 1,
-      author: 'Maka',
+      author: 'MAKA',
       category: 'builtin',
       description: 'One-click layouts for the relay encoder.',
       permissions: ['scene.layout'],
@@ -423,8 +423,8 @@ export class AddonHost {
 
     const content =
       event === 'live.end'
-        ? 'Stream ended on Maka.'
-        : `Now live on Maka${platforms ? ` (${platforms})` : ''} · ${ctx.profile}`
+        ? 'Stream ended on MAKA.'
+        : `Now live on MAKA${platforms ? ` (${platforms})` : ''} · ${ctx.profile}`
 
     const body =
       event === 'live.start'

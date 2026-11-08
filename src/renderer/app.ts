@@ -3,7 +3,7 @@ import type {
   BrowseTabInfo,
   CaptureSource,
   DiagEvent,
-  TabcastBridge,
+  MakaBridge,
 } from '../preload/index'
 import type { RelaySnapshot } from '../shared/relay-snapshot'
 import type { StreamProfile, SceneLayout, RelayHealth } from '../shared/tabcast'
@@ -61,7 +61,7 @@ import './onboarding.css'
 
 declare global {
   interface Window {
-    tabcast: TabcastBridge
+    tabcast: MakaBridge
   }
 }
 
@@ -194,7 +194,7 @@ function applyMode(mode: AppMode): void {
   if (brandTag) {
     brandTag.textContent = searchOpen ? 'Search · optional browser' : 'Streaming studio'
   }
-  document.title = searchOpen ? 'Maka — Search' : 'Maka — Streaming'
+  document.title = searchOpen ? 'MAKA — Search' : 'MAKA — Streaming'
 
   for (const tab of document.querySelectorAll<HTMLButtonElement>('.tab')) {
     const active = tab.dataset.tab === mode
@@ -2238,7 +2238,7 @@ window.tabcast.onNavigated((state) => {
 })
 window.tabcast.onTitle((title) => {
   if (currentMode !== 'browse') return
-  document.title = title ? `${title} · Maka — Search` : 'Maka — Search'
+  document.title = title ? `${title} · MAKA — Search` : 'MAKA — Search'
 })
 
 syncDestinationInputs()

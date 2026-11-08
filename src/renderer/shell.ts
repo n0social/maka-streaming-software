@@ -1,9 +1,9 @@
-import type { TabcastBridge } from '../preload/index'
+import type { MakaBridge } from '../preload/index'
 import type { RelaySnapshot } from '../shared/relay-snapshot'
 
 declare global {
   interface Window {
-    tabcast: TabcastBridge
+    tabcast: MakaBridge
   }
 }
 

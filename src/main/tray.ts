@@ -52,7 +52,7 @@ function buildTrayMenu(): Menu {
   const live = getIsLive()
   const items: Electron.MenuItemConstructorOptions[] = [
     {
-      label: 'Show Maka',
+      label: 'Show MAKA',
       click: () => {
         const win = getMain()
         if (!win) return
@@ -103,7 +103,7 @@ export function createAppTray(options: {
 
   const icon = trayIcon()
   tray = new Tray(icon)
-  tray.setToolTip('Maka')
+  tray.setToolTip('MAKA')
   if (!icon.isEmpty()) {
     tray.setImage(icon)
   }

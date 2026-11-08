@@ -11,8 +11,8 @@ export type TourStep = {
 export const ONBOARDING_STEPS: TourStep[] = [
   {
     id: 'welcome',
-    title: 'Welcome to Maka',
-    body: 'Maka is a streaming studio. Capture, scene, destinations, and Go Live are the main job. Search is an optional browser tab for Twitch, YouTube, and chat — open it on purpose.',
+    title: 'Welcome to MAKA',
+    body: 'MAKA is a streaming studio. Capture, scene, destinations, and Go Live are the main job. Search is an optional browser tab for Twitch, YouTube, and chat — open it on purpose.',
     placement: 'center',
   },
   {

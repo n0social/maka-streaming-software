@@ -254,7 +254,7 @@ function openChatPopout(url?: string): void {
     minWidth: 320,
     minHeight: 480,
     backgroundColor: '#07070a',
-    title: 'Maka Chat',
+    title: 'MAKA Chat',
     autoHideMenuBar: true,
     alwaysOnTop: true,
     webPreferences: {
@@ -297,7 +297,7 @@ function createMainWindow(): BrowserWindow {
     minWidth: 1280,
     minHeight: 760,
     backgroundColor: '#faf8f4',
-    title: 'Maka',
+    title: 'MAKA',
     show: false,
     frame: false,
     titleBarStyle: 'hidden',
@@ -400,7 +400,7 @@ function broadcastRelay(): void {
             : snapshot.lifecycle === 'error'
               ? 'Error'
               : 'Offline'
-    mainWindow.setTitle(`Maka — ${label}`)
+    mainWindow.setTitle(`MAKA — ${label}`)
   }
   rebuildTrayMenu()
 }
@@ -1031,7 +1031,7 @@ app.whenReady().then(() => {
       mainWindow.webContents.send('diagnostics:event', event)
     }
   })
-  recordDiagnostic('info', 'app.boot', 'Maka 0.2 starting')
+  recordDiagnostic('info', 'app.boot', 'MAKA 0.2 starting')
 
   allowCapturePermissions()
   neutralizeInstalledRelayConfig()
