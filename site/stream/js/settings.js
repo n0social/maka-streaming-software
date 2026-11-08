@@ -67,7 +67,45 @@ const ENCODE_PROFILES = [
   { id: '4k60', label: '4K @ 60fps · 16 Mbps', bitrateMbps: 16 },
 ]
 
+/**
+ * Stream keys and chat options share one record so the bottom platform buttons
+ * and the Go Live wizard cannot drift:
+ *   twitchKey, youtubeKey
+ *   twitchChannel, twitchIncludeChat
+ *   youtubeChatUrl, youtubeIncludeChat
+ */
 const DEST_STORAGE_KEY = 'maka.stream.destinations.v1'
+
+/** Login from a typed name or a twitch.tv URL. Not a stream key. */
+function normalizeTwitchChannel(raw) {
+  const text = String(raw || '').trim().replace(/^@+/, '')
+  if (!text) return ''
+  const fromUrl = text.match(/(?:https?:\/\/)?(?:www\.)?twitch\.tv\/([A-Za-z0-9_]{1,25})/i)
+  if (fromUrl && fromUrl[1]) return fromUrl[1]
+  if (/twitch\.tv/i.test(text) || /^https?:/i.test(text)) {
+    const bits = text.split(/[?#]/)[0].split('/').filter(Boolean)
+    const last = bits.length ? String(bits[bits.length - 1] || '').replace(/^@+/, '') : ''
+    if (/^[A-Za-z0-9_]{1,25}$/.test(last)) return last
+  }
+  return text.slice(0, 25)
+}
+
+function normalizeYouTubeChatUrl(raw) {
+  return String(raw || '').trim().slice(0, 512)
+}
+
+function emptyDestinations() {
+  return {
+    destTwitch: false,
+    destYoutube: false,
+    twitchKey: '',
+    youtubeKey: '',
+    twitchChannel: '',
+    twitchIncludeChat: false,
+    youtubeChatUrl: '',
+    youtubeIncludeChat: false,
+  }
+}
 
 const DEFAULT_SETTINGS = {
   bitrateProfile: DEFAULT_BITRATE_PROFILE,
@@ -534,16 +572,20 @@ function populateEncodeSelect(select) {
 }
 
 function readDestinations() {
-  const out = { destTwitch: false, destYoutube: false, twitchKey: '', youtubeKey: '' }
+  const out = emptyDestinations()
   try {
     const raw = localStorage.getItem(DEST_STORAGE_KEY)
     if (raw) {
       const parsed = JSON.parse(raw)
       if (parsed && typeof parsed === 'object') {
-        out.destTwitch = Boolean(parsed.destTwitch)
-        out.destYoutube = Boolean(parsed.destYoutube)
+        if (typeof parsed.destTwitch === 'boolean') out.destTwitch = parsed.destTwitch
+        if (typeof parsed.destYoutube === 'boolean') out.destYoutube = parsed.destYoutube
         if (typeof parsed.twitchKey === 'string') out.twitchKey = parsed.twitchKey.slice(0, 256)
         if (typeof parsed.youtubeKey === 'string') out.youtubeKey = parsed.youtubeKey.slice(0, 256)
+        if (typeof parsed.twitchChannel === 'string') out.twitchChannel = normalizeTwitchChannel(parsed.twitchChannel)
+        if (typeof parsed.twitchIncludeChat === 'boolean') out.twitchIncludeChat = parsed.twitchIncludeChat
+        if (typeof parsed.youtubeChatUrl === 'string') out.youtubeChatUrl = normalizeYouTubeChatUrl(parsed.youtubeChatUrl)
+        if (typeof parsed.youtubeIncludeChat === 'boolean') out.youtubeIncludeChat = parsed.youtubeIncludeChat
       }
     }
   } catch {
@@ -552,8 +594,20 @@ function readDestinations() {
   return out
 }
 
+function assignChatInput(id, value, kind) {
+  const el = document.getElementById(id)
+  if (el instanceof HTMLInputElement && document.activeElement !== el) {
+    if (kind === 'check') el.checked = Boolean(value)
+    else el.value = String(value || '')
+  }
+}
+
 function saveDestinations(partial) {
   const next = { ...readDestinations(), ...(partial || {}) }
+  next.twitchChannel = normalizeTwitchChannel(next.twitchChannel)
+  next.youtubeChatUrl = normalizeYouTubeChatUrl(next.youtubeChatUrl)
+  next.twitchIncludeChat = Boolean(next.twitchIncludeChat)
+  next.youtubeIncludeChat = Boolean(next.youtubeIncludeChat)
   try {
     localStorage.setItem(DEST_STORAGE_KEY, JSON.stringify(next))
   } catch {
@@ -575,6 +629,10 @@ function saveDestinations(partial) {
   if (setYoutube instanceof HTMLInputElement && document.activeElement !== setYoutube) {
     setYoutube.value = next.youtubeKey
   }
+  assignChatInput('web-twitch-channel', next.twitchChannel, 'text')
+  assignChatInput('web-youtube-chat-url', next.youtubeChatUrl, 'text')
+  assignChatInput('web-twitch-include-chat', next.twitchIncludeChat, 'check')
+  assignChatInput('web-youtube-include-chat', next.youtubeIncludeChat, 'check')
   window.dispatchEvent(new CustomEvent('maka:destinations-change', { detail: { ...next } }))
   return next
 }

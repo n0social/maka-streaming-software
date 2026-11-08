@@ -29,6 +29,11 @@
     whip: '/whip',
   };
   var TRACK_IDS = { gameplay: 'gameplay', webcam: 'webcam', mic: 'mic' };
+  /**
+   * Platform keys plus chat options. Same object the bottom Twitch / YouTube
+   * buttons and the Go Live wizard read and write:
+   * twitchChannel, twitchIncludeChat, youtubeChatUrl, youtubeIncludeChat.
+   */
   var DEST_STORAGE_KEY = 'maka.stream.destinations.v1';
   /** Matches exe settings-store + Settings / stats bar default. */
   var DEFAULT_BITRATE_PROFILE = '720p30';
@@ -135,6 +140,73 @@
 
   function streamKeyValid(platform, raw) {
     return platform === 'youtube' ? isYouTubeStreamKey(raw) : isTwitchStreamKey(raw);
+  }
+
+  /** Login from a typed name or a twitch.tv URL. Not a stream key. */
+  function normalizeTwitchChannel(raw) {
+    var text = String(raw || '').trim().replace(/^@+/, '');
+    if (!text) return '';
+    var fromUrl = text.match(/(?:https?:\/\/)?(?:www\.)?twitch\.tv\/([A-Za-z0-9_]{1,25})/i);
+    if (fromUrl && fromUrl[1]) return fromUrl[1];
+    if (/twitch\.tv/i.test(text) || /^https?:/i.test(text)) {
+      var path = text.split(/[?#]/)[0];
+      var bits = path.split('/').filter(Boolean);
+      var last = bits.length ? String(bits[bits.length - 1] || '').replace(/^@+/, '') : '';
+      if (/^[A-Za-z0-9_]{1,25}$/.test(last)) return last;
+    }
+    return text.slice(0, 25);
+  }
+
+  /** Twitch login: letters, numbers, underscore, 4–25. */
+  function isTwitchLogin(raw) {
+    return /^[A-Za-z0-9_]{4,25}$/.test(String(raw || ''));
+  }
+
+  function normalizeYouTubeChatUrl(raw) {
+    return String(raw || '').trim().slice(0, 512);
+  }
+
+  /** Video id from watch?v=, youtu.be, /live/, /embed/, or /shorts/. No network lookup. */
+  function youtubeVideoId(raw) {
+    var text = normalizeYouTubeChatUrl(raw);
+    if (!text) return '';
+    var patterns = [
+      /[?&]v=([A-Za-z0-9_-]{11})(?:[^A-Za-z0-9_-]|$)/,
+      /youtu\.be\/([A-Za-z0-9_-]{11})(?:[^A-Za-z0-9_-]|$)/,
+      /youtube\.com\/(?:embed|live|shorts|v)\/([A-Za-z0-9_-]{11})(?:[^A-Za-z0-9_-]|$)/,
+    ];
+    var i;
+    for (i = 0; i < patterns.length; i++) {
+      var match = text.match(patterns[i]);
+      if (match && match[1]) return match[1];
+    }
+    return '';
+  }
+
+  function emptyDestinations() {
+    return {
+      destTwitch: false,
+      destYoutube: false,
+      twitchKey: '',
+      youtubeKey: '',
+      twitchChannel: '',
+      twitchIncludeChat: false,
+      youtubeChatUrl: '',
+      youtubeIncludeChat: false,
+    };
+  }
+
+  function applyDestinationFields(out, parsed) {
+    if (!parsed || typeof parsed !== 'object') return out;
+    if (typeof parsed.destTwitch === 'boolean') out.destTwitch = parsed.destTwitch;
+    if (typeof parsed.destYoutube === 'boolean') out.destYoutube = parsed.destYoutube;
+    if (typeof parsed.twitchKey === 'string') out.twitchKey = parsed.twitchKey.slice(0, 256);
+    if (typeof parsed.youtubeKey === 'string') out.youtubeKey = parsed.youtubeKey.slice(0, 256);
+    if (typeof parsed.twitchChannel === 'string') out.twitchChannel = normalizeTwitchChannel(parsed.twitchChannel);
+    if (typeof parsed.twitchIncludeChat === 'boolean') out.twitchIncludeChat = parsed.twitchIncludeChat;
+    if (typeof parsed.youtubeChatUrl === 'string') out.youtubeChatUrl = normalizeYouTubeChatUrl(parsed.youtubeChatUrl);
+    if (typeof parsed.youtubeIncludeChat === 'boolean') out.youtubeIncludeChat = parsed.youtubeIncludeChat;
+    return out;
   }
 
   function writeMetaField(el, value, emptyFallback) {
@@ -267,7 +339,13 @@
       wizardPanelPlatform: doc.getElementById('go-live-wizard-panel-platform'),
       wizardPanelKey: doc.getElementById('go-live-wizard-panel-key'),
       wizardPanelDetails: doc.getElementById('go-live-wizard-panel-details'),
+      wizardPanelChat: doc.getElementById('go-live-wizard-panel-chat'),
       wizardPanelGo: doc.getElementById('go-live-wizard-panel-go'),
+      wizardChatInclude: doc.getElementById('wizard-chat-include'),
+      wizardChatFields: doc.getElementById('wizard-chat-fields'),
+      wizardTwitchChannel: doc.getElementById('wizard-twitch-channel'),
+      wizardYoutubeChat: doc.getElementById('wizard-youtube-chat-url'),
+      wizardChatNote: doc.getElementById('wizard-chat-note'),
       wizardTitleInput: doc.getElementById('go-live-wizard-title-input'),
       wizardGameInput: doc.getElementById('go-live-wizard-game-input'),
       gamePicker: doc.getElementById('go-live-wizard-game-picker'),
@@ -1003,31 +1081,17 @@
     }
 
     function readDestinations() {
-      var out = { destTwitch: false, destYoutube: false, twitchKey: '', youtubeKey: '' };
+      var out = emptyDestinations();
       if (global.MakaStudioSettings && typeof global.MakaStudioSettings.getDestinations === 'function') {
         try {
-          var fromSettings = global.MakaStudioSettings.getDestinations();
-          if (fromSettings && typeof fromSettings === 'object') {
-            out.destTwitch = Boolean(fromSettings.destTwitch);
-            out.destYoutube = Boolean(fromSettings.destYoutube);
-            if (typeof fromSettings.twitchKey === 'string') out.twitchKey = fromSettings.twitchKey;
-            if (typeof fromSettings.youtubeKey === 'string') out.youtubeKey = fromSettings.youtubeKey;
-          }
+          applyDestinationFields(out, global.MakaStudioSettings.getDestinations());
         } catch (_err) {
           /* fall through */
         }
       }
       try {
         var raw = localStorage.getItem(DEST_STORAGE_KEY);
-        if (raw) {
-          var parsed = JSON.parse(raw);
-          if (parsed && typeof parsed === 'object') {
-            if (typeof parsed.destTwitch === 'boolean') out.destTwitch = parsed.destTwitch;
-            if (typeof parsed.destYoutube === 'boolean') out.destYoutube = parsed.destYoutube;
-            if (typeof parsed.twitchKey === 'string') out.twitchKey = parsed.twitchKey;
-            if (typeof parsed.youtubeKey === 'string') out.youtubeKey = parsed.youtubeKey;
-          }
-        }
+        if (raw) applyDestinationFields(out, JSON.parse(raw));
       } catch (_err2) {
         /* ignore */
       }
@@ -1036,6 +1100,31 @@
       if (twitchInput && twitchInput.value) out.twitchKey = String(twitchInput.value).trim();
       if (youtubeInput && youtubeInput.value) out.youtubeKey = String(youtubeInput.value).trim();
       return out;
+    }
+
+    function syncDestinationInputs(next) {
+      var twitchInput = doc.getElementById('web-twitch-key');
+      var youtubeInput = doc.getElementById('web-youtube-key');
+      var twitchChannel = doc.getElementById('web-twitch-channel');
+      var youtubeChat = doc.getElementById('web-youtube-chat-url');
+      var twitchInclude = doc.getElementById('web-twitch-include-chat');
+      var youtubeInclude = doc.getElementById('web-youtube-include-chat');
+      if (twitchInput && document.activeElement !== twitchInput) twitchInput.value = next.twitchKey || '';
+      if (youtubeInput && document.activeElement !== youtubeInput) {
+        youtubeInput.value = next.youtubeKey || '';
+      }
+      if (twitchChannel && document.activeElement !== twitchChannel) {
+        twitchChannel.value = next.twitchChannel || '';
+      }
+      if (youtubeChat && document.activeElement !== youtubeChat) {
+        youtubeChat.value = next.youtubeChatUrl || '';
+      }
+      if (twitchInclude && document.activeElement !== twitchInclude) {
+        twitchInclude.checked = !!next.twitchIncludeChat;
+      }
+      if (youtubeInclude && document.activeElement !== youtubeInclude) {
+        youtubeInclude.checked = !!next.youtubeIncludeChat;
+      }
     }
 
     function persistDestinations(partial) {
@@ -1052,13 +1141,223 @@
           /* ignore */
         }
       }
-      var twitchInput = doc.getElementById('web-twitch-key');
-      var youtubeInput = doc.getElementById('web-youtube-key');
-      if (twitchInput && document.activeElement !== twitchInput) twitchInput.value = next.twitchKey || '';
-      if (youtubeInput && document.activeElement !== youtubeInput) {
-        youtubeInput.value = next.youtubeKey || '';
-      }
+      syncDestinationInputs(next);
+      paintPlatformChipSaved(next);
+      syncProgramChatEmbeds();
       return next;
+    }
+
+    function pageHost() {
+      try {
+        return String(window.location.hostname || '');
+      } catch (_err) {
+        return '';
+      }
+    }
+
+    function isLocalPageHost(host) {
+      return host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host === '::1';
+    }
+
+    function twitchParentQuery() {
+      var host = pageHost();
+      var parents = [];
+      function add(parent) {
+        if (parent && parents.indexOf(parent) === -1) parents.push(parent);
+      }
+      if (isLocalPageHost(host)) {
+        if (host !== '[::1]' && host !== '::1') add(host);
+        add('localhost');
+        add('127.0.0.1');
+      } else if (host) {
+        add(host);
+      } else {
+        add('makalive.stream');
+      }
+      return parents
+        .map(function (parent) {
+          return 'parent=' + encodeURIComponent(parent);
+        })
+        .join('&');
+    }
+
+    function twitchChatEmbedSrc(login) {
+      return (
+        'https://www.twitch.tv/embed/' +
+        encodeURIComponent(login) +
+        '/chat?' +
+        twitchParentQuery() +
+        '&darkpopout'
+      );
+    }
+
+    function youtubeChatEmbedSrc(videoId) {
+      var host = pageHost() || 'makalive.stream';
+      return (
+        'https://www.youtube.com/live_chat?v=' +
+        encodeURIComponent(videoId) +
+        '&embed_domain=' +
+        encodeURIComponent(host)
+      );
+    }
+
+    function escapeHtml(raw) {
+      return String(raw || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function youtubeChatLabel(raw) {
+      var text = normalizeYouTubeChatUrl(raw);
+      var handle = text.match(/youtube\.com\/@([^/?#]+)/i);
+      if (handle && handle[1]) {
+        try {
+          return '@' + decodeURIComponent(handle[1]);
+        } catch (_err) {
+          return '@' + handle[1];
+        }
+      }
+      var channel = text.match(/youtube\.com\/(?:channel|c|user)\/([^/?#]+)/i);
+      if (channel && channel[1]) {
+        try {
+          return decodeURIComponent(channel[1]);
+        } catch (_err2) {
+          return channel[1];
+        }
+      }
+      var id = youtubeVideoId(text);
+      if (id) return 'YouTube ' + id;
+      return text.replace(/^https?:\/\//i, '').slice(0, 80);
+    }
+
+    function activeEmbedPlatform() {
+      var dialog = els.wizardDialog;
+      var dialogOpen = dialog && (dialog.open || dialog.hasAttribute('open'));
+      var platform = dialogOpen ? wizardPlatform : chatEmbedPlatform;
+      return platform === 'youtube' ? 'youtube' : 'twitch';
+    }
+
+    function setOverlaySlot(slot, html, embedded) {
+      if (!slot) return;
+      if (embedded) {
+        if (slot.getAttribute('data-embed') === html) return;
+        slot.setAttribute('data-embed', html);
+        slot.classList.add('has-embed');
+        slot.innerHTML = html;
+        return;
+      }
+      if (!slot.classList.contains('has-embed') && !slot.getAttribute('data-embed')) return;
+      slot.removeAttribute('data-embed');
+      slot.classList.remove('has-embed');
+      slot.innerHTML = html;
+    }
+
+    /**
+     * Inclusion turning on highlights Chat and Notifications once so the preview
+     * matches. A later click that unhighlights the row stays off — this is not
+     * called again while the saved include flag remains true.
+     */
+    function raiseSourceHighlights() {
+      ['studio-source-chat', 'studio-source-notifications'].forEach(function (id) {
+        var btn = doc.getElementById(id);
+        if (!btn || btn.dataset.active === '1') return;
+        btn.click();
+      });
+    }
+
+    function noteIncludeStarted(before, after) {
+      var started =
+        (!before.twitchIncludeChat && after.twitchIncludeChat) ||
+        (!before.youtubeIncludeChat && after.youtubeIncludeChat);
+      if (started) raiseSourceHighlights();
+    }
+
+    function syncProgramChatEmbeds() {
+      var dest = readDestinations();
+      var platform = activeEmbedPlatform();
+      var include = platform === 'youtube' ? !!dest.youtubeIncludeChat : !!dest.twitchIncludeChat;
+      var chatSrc = '';
+      var notesTitle = '';
+      if (include && platform === 'twitch' && isTwitchLogin(dest.twitchChannel)) {
+        chatSrc = twitchChatEmbedSrc(dest.twitchChannel);
+        notesTitle = dest.twitchChannel;
+      } else if (include && platform === 'youtube' && dest.youtubeChatUrl) {
+        var videoId = youtubeVideoId(dest.youtubeChatUrl);
+        if (videoId) chatSrc = youtubeChatEmbedSrc(videoId);
+        notesTitle = youtubeChatLabel(dest.youtubeChatUrl);
+      }
+      var chatSlot = doc.getElementById('program-chat-slot');
+      var notesSlot = doc.getElementById('program-notifications-slot');
+      if (chatSrc) {
+        setOverlaySlot(
+          chatSlot,
+          '<iframe src="' +
+            escapeHtml(chatSrc) +
+            '" title="Channel chat" referrerpolicy="strict-origin-when-cross-origin"></iframe>',
+          true,
+        );
+      } else {
+        setOverlaySlot(
+          chatSlot,
+          '<span class="program-overlay-slot-label">Chat</span><span class="program-overlay-slot-hint">Placeholder until chat feed is wired</span>',
+          false,
+        );
+      }
+      if (include && notesTitle) {
+        setOverlaySlot(
+          notesSlot,
+          '<div class="program-notifications-panel"><span class="program-overlay-slot-label">Notifications · ' +
+            escapeHtml(notesTitle) +
+            '</span><p class="program-notifications-line">Chat is included for ' +
+            escapeHtml(notesTitle) +
+            '.</p><p class="program-notifications-line">Notifications are included for ' +
+            escapeHtml(notesTitle) +
+            '.</p></div>',
+          true,
+        );
+      } else {
+        setOverlaySlot(
+          notesSlot,
+          '<span class="program-overlay-slot-label">Notifications</span><span class="program-overlay-slot-hint">Reserved — not wired yet</span>',
+          false,
+        );
+      }
+    }
+
+    function paintPlatformChipSaved(dest) {
+      dest = dest || readDestinations();
+      var twitchBtn = doc.getElementById('plat-twitch');
+      var youtubeBtn = doc.getElementById('plat-youtube');
+      var twitchSaved = doc.getElementById('plat-twitch-saved');
+      var youtubeSaved = doc.getElementById('plat-youtube-saved');
+      if (twitchBtn) {
+        var login = dest.twitchChannel || '';
+        twitchBtn.dataset.channel = login;
+        twitchBtn.dataset.includeChat = dest.twitchIncludeChat ? '1' : '0';
+        if (twitchSaved) {
+          twitchSaved.textContent = login;
+          twitchSaved.hidden = !login;
+        }
+        twitchBtn.title = login
+          ? 'Twitch · ' + login + (dest.twitchIncludeChat ? ' · chat and notifications included' : '')
+          : 'Open Twitch stream key dialog (keys go to local relay /config on Go Live)';
+      }
+      if (youtubeBtn) {
+        var url = dest.youtubeChatUrl || '';
+        var videoId = youtubeVideoId(url);
+        var short = videoId || (url ? url.replace(/^https?:\/\//i, '').slice(0, 32) : '');
+        youtubeBtn.dataset.chatUrl = url;
+        youtubeBtn.dataset.includeChat = dest.youtubeIncludeChat ? '1' : '0';
+        if (youtubeSaved) {
+          youtubeSaved.textContent = short;
+          youtubeSaved.hidden = !short;
+        }
+        youtubeBtn.title = url
+          ? 'YouTube · ' + url + (dest.youtubeIncludeChat ? ' · chat and notifications included' : '')
+          : 'Open YouTube stream key dialog (keys go to local relay /config on Go Live)';
+      }
     }
 
     function readStudioAudioVideoPrefs() {
@@ -1360,6 +1659,10 @@
     var wizardStep = 'platform';
     var wizardPlatform = 'twitch';
     var wizardBusy = false;
+    /** Platform whose saved chat options drive the program slots when the wizard is closed. */
+    var chatEmbedPlatform = 'twitch';
+    var chatHydrating = false;
+    var WIZARD_STEP_ORDER = ['platform', 'key', 'details', 'chat', 'go'];
 
     function populateWizardQualitySelect() {
       if (!els.wizardQuality) return;
@@ -1377,6 +1680,7 @@
     }
 
     function closeGoLiveWizard() {
+      chatEmbedPlatform = wizardPlatform === 'youtube' ? 'youtube' : 'twitch';
       closeGameList();
       hideGameArtCard();
       if (els.wizardDialog && els.wizardDialog.open) {
@@ -1387,6 +1691,66 @@
         }
       }
       wizardBusy = false;
+      syncProgramChatEmbeds();
+    }
+
+    function hydrateWizardChat() {
+      var dest = readDestinations();
+      var include = wizardPlatform === 'youtube' ? !!dest.youtubeIncludeChat : !!dest.twitchIncludeChat;
+      chatHydrating = true;
+      if (els.wizardChatInclude) els.wizardChatInclude.checked = include;
+      if (els.wizardTwitchChannel && document.activeElement !== els.wizardTwitchChannel) {
+        els.wizardTwitchChannel.value = dest.twitchChannel || '';
+      }
+      if (els.wizardYoutubeChat && document.activeElement !== els.wizardYoutubeChat) {
+        els.wizardYoutubeChat.value = dest.youtubeChatUrl || '';
+      }
+      syncWizardChatVisibility();
+      chatHydrating = false;
+    }
+
+    function syncWizardChatVisibility() {
+      var include = !!(els.wizardChatInclude && els.wizardChatInclude.checked);
+      if (els.wizardChatFields) els.wizardChatFields.hidden = !include;
+      var twitchBlock =
+        els.wizardChatFields && els.wizardChatFields.querySelector('[data-wizard-chat="twitch"]');
+      var youtubeBlock =
+        els.wizardChatFields && els.wizardChatFields.querySelector('[data-wizard-chat="youtube"]');
+      if (twitchBlock) twitchBlock.hidden = wizardPlatform !== 'twitch';
+      if (youtubeBlock) youtubeBlock.hidden = wizardPlatform !== 'youtube';
+      if (!els.wizardChatNote) return;
+      var url = els.wizardYoutubeChat ? String(els.wizardYoutubeChat.value || '').trim() : '';
+      if (include && wizardPlatform === 'youtube' && url && !youtubeVideoId(url)) {
+        els.wizardChatNote.hidden = false;
+        els.wizardChatNote.textContent =
+          'A live video link (watch?v= or /live) is needed for the chat embed.';
+      } else {
+        els.wizardChatNote.hidden = true;
+        els.wizardChatNote.textContent = '';
+      }
+    }
+
+    function wizardChatPartial() {
+      var include = !!(els.wizardChatInclude && els.wizardChatInclude.checked);
+      if (wizardPlatform === 'youtube') {
+        return {
+          youtubeChatUrl: normalizeYouTubeChatUrl(els.wizardYoutubeChat && els.wizardYoutubeChat.value),
+          youtubeIncludeChat: include,
+        };
+      }
+      return {
+        twitchChannel: normalizeTwitchChannel(els.wizardTwitchChannel && els.wizardTwitchChannel.value),
+        twitchIncludeChat: include,
+      };
+    }
+
+    function onWizardChatEdit() {
+      if (chatHydrating) return;
+      chatEmbedPlatform = wizardPlatform === 'youtube' ? 'youtube' : 'twitch';
+      var before = readDestinations();
+      var next = persistDestinations(wizardChatPartial());
+      noteIncludeStarted(before, next);
+      syncWizardChatVisibility();
     }
 
     function syncWizardKeyPanel() {
@@ -1434,10 +1798,11 @@
       if (els.wizardPanelPlatform) els.wizardPanelPlatform.hidden = wizardStep !== 'platform';
       if (els.wizardPanelKey) els.wizardPanelKey.hidden = wizardStep !== 'key';
       if (els.wizardPanelDetails) els.wizardPanelDetails.hidden = wizardStep !== 'details';
+      if (els.wizardPanelChat) els.wizardPanelChat.hidden = wizardStep !== 'chat';
       if (els.wizardPanelGo) els.wizardPanelGo.hidden = wizardStep !== 'go';
       paintPlatformPicks();
 
-      var steps = ['platform', 'key', 'details', 'go'];
+      var steps = WIZARD_STEP_ORDER;
       var idx = steps.indexOf(wizardStep);
       if (els.wizardStep) els.wizardStep.textContent = 'Step ' + (idx + 1) + ' of ' + steps.length;
 
@@ -1460,6 +1825,12 @@
         if (els.wizardTitle) els.wizardTitle.textContent = 'Stream info';
         if (els.wizardBody) els.wizardBody.textContent = '';
         populateWizardQualitySelect();
+      } else if (wizardStep === 'chat') {
+        if (els.wizardTitle) els.wizardTitle.textContent = 'Chat + Notifications';
+        if (els.wizardBody) {
+          els.wizardBody.textContent = 'Saved with the Twitch and YouTube buttons under the preview.';
+        }
+        syncWizardChatVisibility();
       } else if (els.wizardGoStatus) {
         els.wizardGoStatus.textContent = '';
       }
@@ -1537,13 +1908,16 @@
       syncEncodeSelects(readBitrateProfile());
       wizardStep = 'platform';
       wizardBusy = false;
+      chatEmbedPlatform = wizardPlatform;
       renderGoLiveWizard();
+      hydrateWizardChat();
       try {
         if (typeof els.wizardDialog.showModal === 'function') els.wizardDialog.showModal();
         else els.wizardDialog.setAttribute('open', '');
       } catch (_err2) {
         els.wizardDialog.setAttribute('open', '');
       }
+      syncProgramChatEmbeds();
     }
 
     async function wizardForward() {
@@ -1566,6 +1940,13 @@
       }
       if (wizardStep === 'details') {
         applyWizardDetails();
+        wizardStep = 'chat';
+        renderGoLiveWizard();
+        hydrateWizardChat();
+        return;
+      }
+      if (wizardStep === 'chat') {
+        onWizardChatEdit();
         wizardStep = 'go';
         renderGoLiveWizard();
         return;
@@ -1587,8 +1968,11 @@
     function wizardBack() {
       if (wizardStep === 'key') wizardStep = 'platform';
       else if (wizardStep === 'details') wizardStep = 'key';
-      else if (wizardStep === 'go') wizardStep = 'details';
+      else if (wizardStep === 'chat') wizardStep = 'details';
+      else if (wizardStep === 'go') wizardStep = 'chat';
+      var enteredChat = wizardStep === 'chat';
       renderGoLiveWizard();
+      if (enteredChat) hydrateWizardChat();
     }
 
     function wireGoLiveWizard() {
@@ -1614,10 +1998,30 @@
         if (!btn) return;
         btn.addEventListener('click', function () {
           wizardPlatform = btn.dataset.platform === 'youtube' ? 'youtube' : 'twitch';
+          chatEmbedPlatform = wizardPlatform;
           paintPlatformPicks();
           syncWizardKeyPanel();
           refreshKeyGate();
+          hydrateWizardChat();
+          syncProgramChatEmbeds();
         });
+      });
+      if (els.wizardChatInclude) {
+        els.wizardChatInclude.addEventListener('change', function () {
+          onWizardChatEdit();
+        });
+      }
+      ;[els.wizardTwitchChannel, els.wizardYoutubeChat].forEach(function (input) {
+        if (!input) return;
+        input.addEventListener('input', function () {
+          onWizardChatEdit();
+        });
+      });
+      els.wizardDialog.addEventListener('close', function () {
+        chatEmbedPlatform = wizardPlatform === 'youtube' ? 'youtube' : 'twitch';
+        closeGameList();
+        hideGameArtCard();
+        syncProgramChatEmbeds();
       });
       ;[els.wizardTwitchKey, els.wizardYoutubeKey].forEach(function (input) {
         if (!input) return;
@@ -2398,6 +2802,25 @@
       }
       if (twitchKeyField) twitchKeyField.hidden = platform !== 'twitch';
       if (youtubeKeyField) youtubeKeyField.hidden = platform !== 'youtube';
+      [
+        ['dest-twitch-channel-field', platform !== 'twitch'],
+        ['dest-twitch-include-field', platform !== 'twitch'],
+        ['dest-youtube-channel-field', platform !== 'youtube'],
+        ['dest-youtube-include-field', platform !== 'youtube'],
+      ].forEach(function (pair) {
+        var field = doc.getElementById(pair[0]);
+        if (field) field.hidden = pair[1];
+      });
+      var twitchChannel = doc.getElementById('web-twitch-channel');
+      var youtubeChat = doc.getElementById('web-youtube-chat-url');
+      var twitchInclude = doc.getElementById('web-twitch-include-chat');
+      var youtubeInclude = doc.getElementById('web-youtube-include-chat');
+      if (twitchChannel) twitchChannel.value = dest.twitchChannel || '';
+      if (youtubeChat) youtubeChat.value = dest.youtubeChatUrl || '';
+      if (twitchInclude) twitchInclude.checked = !!dest.twitchIncludeChat;
+      if (youtubeInclude) youtubeInclude.checked = !!dest.youtubeIncludeChat;
+      chatEmbedPlatform = platform;
+      syncProgramChatEmbeds();
       if (els.keyModalTitle) {
         els.keyModalTitle.textContent =
           platform === 'twitch' ? 'Twitch Stream Key' : 'YouTube Stream Key';
@@ -2425,6 +2848,7 @@
 
     function saveStreamKeyModal() {
       var platform = keyModalPlatform;
+      var before = readDestinations();
       var twitchInput = doc.getElementById('web-twitch-key');
       var youtubeInput = doc.getElementById('web-youtube-key');
       var partial = {};
@@ -2433,12 +2857,28 @@
         saved = twitchInput ? String(twitchInput.value || '').trim().slice(0, 256) : '';
         partial.twitchKey = saved;
         partial.destTwitch = saved.length > 0;
+        partial.twitchChannel = normalizeTwitchChannel(
+          (doc.getElementById('web-twitch-channel') || {}).value,
+        );
+        partial.twitchIncludeChat = !!(
+          doc.getElementById('web-twitch-include-chat') &&
+          doc.getElementById('web-twitch-include-chat').checked
+        );
       } else {
         saved = youtubeInput ? String(youtubeInput.value || '').trim().slice(0, 256) : '';
         partial.youtubeKey = saved;
         partial.destYoutube = saved.length > 0;
+        partial.youtubeChatUrl = normalizeYouTubeChatUrl(
+          (doc.getElementById('web-youtube-chat-url') || {}).value,
+        );
+        partial.youtubeIncludeChat = !!(
+          doc.getElementById('web-youtube-include-chat') &&
+          doc.getElementById('web-youtube-include-chat').checked
+        );
       }
-      persistDestinations(partial);
+      chatEmbedPlatform = platform;
+      var savedDest = persistDestinations(partial);
+      noteIncludeStarted(before, savedDest);
       var next = {
         twitch: platform === 'twitch' ? saved.length > 0 : platformPref.twitch,
         youtube: platform === 'youtube' ? saved.length > 0 : platformPref.youtube,
@@ -2577,9 +3017,23 @@
         openStreamKeyModal('youtube');
       });
     }
+    function onDestinationsChange() {
+      paintPlatformChipSaved();
+      syncProgramChatEmbeds();
+    }
+
     window.addEventListener('maka:settings-platform-sync', onSettingsPlatformSync);
+    window.addEventListener('maka:destinations-change', onDestinationsChange);
     wireStreamKeyModal();
 
+    (function initChatEmbedPlatform() {
+      var pref = readPlatformPref();
+      var dest = readDestinations();
+      if (pref.youtube && !pref.twitch) chatEmbedPlatform = 'youtube';
+      else if (pref.twitch && !pref.youtube) chatEmbedPlatform = 'twitch';
+      else if (dest.youtubeIncludeChat && !dest.twitchIncludeChat) chatEmbedPlatform = 'youtube';
+      else chatEmbedPlatform = 'twitch';
+    })();
     applyPlatformChips(readPlatformPref());
     setRecordingUi(false);
     syncRecordingAvailability();
@@ -2749,6 +3203,7 @@
         document.removeEventListener('maka:preview-change', onPreviewChange);
         window.removeEventListener('resize', resizeCanvas);
         window.removeEventListener('maka:settings-platform-sync', onSettingsPlatformSync);
+        window.removeEventListener('maka:destinations-change', onDestinationsChange);
         document.removeEventListener('pointerdown', onGamePickerPointerDown, true);
         document.removeEventListener('keydown', onGamePickerKeyDown, true);
         window.removeEventListener('resize', onGamePickerResize);
