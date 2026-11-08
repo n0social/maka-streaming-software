@@ -12,7 +12,7 @@
  *     preview must not bind #studio-source-game / #studio-source-webcam row clicks for capture.
  *   - Overlay / Chat / Notifications are desktop-only: visible but greyed out and non-clickable.
  *   - Scene row click → selectScene immediately (program overlay + maka:scene-change).
- *     No desktop-app dialog. No Add Scene — download CTA instead.
+ *     No desktop-app dialog.
  *
  * Canonical scenes (fixed): Gameplay, Starting Soon, Intermission, Ending.
  *
@@ -26,7 +26,6 @@
  *           .studio-list-leading.scene-icon
  *           .studio-list-text
  *           .studio-list-menu.studio-list-menu--static
- *         #studio-scenes-download-row > a.studio-list-download
  *     .studio-block
  *       .studio-block-head > h2 (Sources) + #btn-refresh-sources.studio-icon-btn
  *       ul.studio-list.studio-source-list (#studio-sources-list)
@@ -50,8 +49,6 @@
   'use strict';
 
   var STORAGE_KEY = 'maka.stream.scenes.v1';
-  var DOWNLOAD_HREF = '/download.html';
-  var DOWNLOAD_LABEL = 'Download the exe for the full experience';
 
   var BUILTIN_SCENES = [
     { id: 'gaming-cam', name: 'Gameplay', icon: '🎮', builtin: true },
@@ -611,24 +608,6 @@
       addRow.appendChild(addBtn);
       scenesList.appendChild(addRow);
     }
-
-    var downloadRow = document.createElement('li');
-    downloadRow.id = 'studio-scenes-download-row';
-    var downloadLink = document.createElement('a');
-    downloadLink.className = 'studio-list-item studio-list-download';
-    downloadLink.id = 'btn-scenes-download';
-    downloadLink.href = DOWNLOAD_HREF;
-    downloadLink.target = '_blank';
-    downloadLink.rel = 'noopener noreferrer';
-    downloadLink.title = DOWNLOAD_LABEL;
-    downloadLink.setAttribute('aria-label', DOWNLOAD_LABEL);
-    downloadLink.innerHTML =
-      '<span class="studio-list-leading scene-icon" aria-hidden="true">↓</span>' +
-      '<span class="studio-list-text">' +
-      DOWNLOAD_LABEL +
-      '</span>';
-    downloadRow.appendChild(downloadLink);
-    scenesList.appendChild(downloadRow);
   }
 
   function layerEnabledForKind(kind) {
