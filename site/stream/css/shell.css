@@ -668,12 +668,12 @@ body.stream-studio {
 .program-cam video,
 #program-cam-video {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+  inset: -1px;
+  width: calc(100% + 2px);
+  height: calc(100% + 2px);
+  object-fit: cover;
   object-position: center;
-  background: #000;
+  background: transparent;
   display: block;
   transform: none;
 }

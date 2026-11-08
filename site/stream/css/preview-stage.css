@@ -238,19 +238,19 @@
   display: none !important;
 }
 
-/* Full webcam frame in PIP — contain avoids extreme crop of face / frame. */
+/* Fill the PIP so a non-16:9 camera does not leave a black bar. */
 .preview-stage__cam-video,
 .program-cam video,
 #program-cam-video {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
+  inset: -1px;
+  width: calc(100% + 2px);
+  height: calc(100% + 2px);
+  max-width: none;
+  max-height: none;
+  object-fit: cover;
   object-position: center;
-  background: #000;
+  background: transparent;
   display: block;
   transform: none;
 }

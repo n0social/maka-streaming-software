@@ -555,6 +555,19 @@ export function initPreview(root) {
     ctx.drawImage(video, dx + (dw - tw) / 2, dy + (dh - th) / 2, tw, th);
   }
 
+  function drawCover(ctx, video, dx, dy, dw, dh) {
+    if (!video || video.readyState < 2 || !video.videoWidth || dw < 2 || dh < 2) return;
+    const scale = Math.max(dw / video.videoWidth, dh / video.videoHeight);
+    const tw = video.videoWidth * scale;
+    const th = video.videoHeight * scale;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(dx, dy, dw, dh);
+    ctx.clip();
+    ctx.drawImage(video, dx + (dw - tw) / 2, dy + (dh - th) / 2, tw, th);
+    ctx.restore();
+  }
+
   function elementFrame(el, canvas) {
     if (!el || el.hidden) return null;
     const stage = (els.stage && els.stage.getBoundingClientRect()) || root.getBoundingClientRect();
@@ -588,11 +601,7 @@ export function initPreview(root) {
     }
     if (els.cam && !els.cam.hidden && els.camVideo && !els.camVideo.hidden) {
       const cam = elementFrame(els.cam, canvas);
-      if (cam) {
-        ctx.fillStyle = '#000000';
-        ctx.fillRect(cam.x, cam.y, cam.w, cam.h);
-        drawContained(ctx, els.camVideo, cam.x, cam.y, cam.w, cam.h);
-      }
+      if (cam) drawCover(ctx, els.camVideo, cam.x, cam.y, cam.w, cam.h);
     }
   }
 
