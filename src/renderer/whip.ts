@@ -11,6 +11,93 @@ export type WhipVideoStallState = {
   stallSinceMs: number | null
 }
 
+export type WhipStreamMetrics = {
+  roundTripMs: number | null
+  outboundVideoFramesDropped: number | null
+  outboundVideoFramesEncoded: number | null
+}
+
+export function parseWhipStreamMetrics(stats: RTCStatsReport): WhipStreamMetrics {
+  let roundTripMs: number | null = null
+  let outboundVideoFramesDropped: number | null = null
+  let outboundVideoFramesEncoded: number | null = null
+  for (const report of stats.values()) {
+    if (report.type === 'candidate-pair') {
+      const pair = report as RTCStats & {
+        state?: string
+        nominated?: boolean
+        currentRoundTripTime?: number
+      }
+      const rttSec = pair.currentRoundTripTime
+      if (
+        typeof rttSec === 'number' &&
+        rttSec > 0 &&
+        (pair.state === 'succeeded' || pair.nominated === true)
+      ) {
+        const ms = Math.round(rttSec * 1000)
+        roundTripMs = roundTripMs === null ? ms : Math.min(roundTripMs, ms)
+      }
+    }
+    if (report.type === 'remote-inbound-rtp' && report.kind === 'video') {
+      const inbound = report as RTCInboundRtpStreamStats & { roundTripTime?: number }
+      if (typeof inbound.roundTripTime === 'number' && inbound.roundTripTime > 0) {
+        roundTripMs = Math.round(inbound.roundTripTime * 1000)
+      }
+    }
+    if (report.type === 'outbound-rtp' && report.kind === 'video') {
+      const outbound = report as RTCOutboundRtpStreamStats & {
+        framesDropped?: number
+        framesEncoded?: number
+      }
+      if (typeof outbound.framesDropped === 'number' && outbound.framesDropped >= 0) {
+        outboundVideoFramesDropped =
+          (outboundVideoFramesDropped ?? 0) + Math.floor(outbound.framesDropped)
+      }
+      if (typeof outbound.framesEncoded === 'number' && outbound.framesEncoded >= 0) {
+        outboundVideoFramesEncoded =
+          (outboundVideoFramesEncoded ?? 0) + Math.floor(outbound.framesEncoded)
+      }
+    }
+  }
+  return { roundTripMs, outboundVideoFramesDropped, outboundVideoFramesEncoded }
+}
+
+export const WHIP_STATS_POLL_MS = 2_000
+
+export type WhipStatsSamplerOptions = {
+  pc: RTCPeerConnection
+  pollIntervalMs?: number
+  isLive: () => boolean
+  onMetrics: (metrics: WhipStreamMetrics) => void
+  getStats?: (pc: RTCPeerConnection) => Promise<RTCStatsReport>
+}
+
+export type WhipStatsSampler = { stop: () => void }
+
+export function startWhipStatsSampler(options: WhipStatsSamplerOptions): WhipStatsSampler {
+  const pollIntervalMs = options.pollIntervalMs ?? WHIP_STATS_POLL_MS
+  const getStats = options.getStats ?? ((pc) => pc.getStats())
+  let stopped = false
+  const tick = async () => {
+    if (stopped || !options.isLive()) return
+    if (options.pc.connectionState !== 'connected') return
+    try {
+      options.onMetrics(parseWhipStreamMetrics(await getStats(options.pc)))
+    } catch {
+      // ignore
+    }
+  }
+  const timer = setInterval(() => void tick(), pollIntervalMs)
+  void tick()
+  return {
+    stop() {
+      if (stopped) return
+      stopped = true
+      clearInterval(timer)
+    },
+  }
+}
+
 export function sumOutboundVideoBytesSent(stats: RTCStatsReport): number {
   let total = 0
   for (const report of stats.values()) {
@@ -94,8 +181,11 @@ export function startWhipVideoWatchdog(options: WhipVideoWatchdogOptions): WhipV
 export type WhipPublisher = {
   pc: RTCPeerConnection
   resourceUrl: string | null
+  audioSenders: WhipAudioSenders
   close: () => Promise<void>
 }
+
+export type WhipAudioTrackRole = 'mic' | 'desktop' | 'game'
 
 export type WhipPublishSources = {
   /** Primary program / gameplay video track. */
@@ -104,7 +194,11 @@ export type WhipPublishSources = {
   browser?: MediaStream | null
   webcam?: MediaStream | null
   mic?: MediaStream | null
+  desktopAudio?: MediaStream | null
+  gameAudio?: MediaStream | null
 }
+
+export type WhipAudioSenders = Partial<Record<WhipAudioTrackRole, RTCRtpSender>>
 
 function waitForIceGathering(pc: RTCPeerConnection, timeoutMs = 4000): Promise<void> {
   if (pc.iceGatheringState === 'complete') return Promise.resolve()
@@ -133,7 +227,11 @@ export function createNamedMediaStream(
   return stream
 }
 
-function attachWhipSources(pc: RTCPeerConnection, sources: WhipPublishSources): void {
+function attachWhipSources(
+  pc: RTCPeerConnection,
+  sources: WhipPublishSources,
+  audioSenders: WhipAudioSenders,
+): void {
   const gameplayTracks = sources.gameplay.getTracks().filter((t) => t.readyState === 'live')
   if (gameplayTracks.length > 0) {
     const gameplayStream = createNamedMediaStream(RELAY_TRACK_STREAM_IDS.gameplay, gameplayTracks)
@@ -156,13 +254,23 @@ function attachWhipSources(pc: RTCPeerConnection, sources: WhipPublishSources): 
     }
   }
 
-  if (sources.mic) {
-    const micTracks = sources.mic.getAudioTracks().filter((t) => t.readyState === 'live')
-    if (micTracks.length > 0) {
-      const micStream = createNamedMediaStream(RELAY_TRACK_STREAM_IDS.mic, micTracks)
-      for (const track of micTracks) pc.addTrack(track, micStream)
+  const attachAudioRole = (
+    role: WhipAudioTrackRole,
+    streamId: RelayTrackStreamId,
+    stream: MediaStream | null | undefined,
+  ) => {
+    if (!stream) return
+    const audioTracks = stream.getAudioTracks().filter((t) => t.readyState === 'live')
+    if (audioTracks.length === 0) return
+    const named = createNamedMediaStream(streamId, audioTracks)
+    for (const track of audioTracks) {
+      audioSenders[role] = pc.addTrack(track, named)
     }
   }
+
+  attachAudioRole('mic', RELAY_TRACK_STREAM_IDS.mic, sources.mic)
+  attachAudioRole('desktop', RELAY_TRACK_STREAM_IDS.desktopAudio, sources.desktopAudio)
+  attachAudioRole('game', RELAY_TRACK_STREAM_IDS.gameAudio, sources.gameAudio)
 }
 
 /** Prefer H.264 for relay ffmpeg (`-f h264`). */
@@ -209,7 +317,8 @@ export async function publishWhip(
     }
   }
 
-  attachWhipSources(pc, sources)
+  const audioSenders: WhipAudioSenders = {}
+  attachWhipSources(pc, sources, audioSenders)
   preferH264VideoCodecs(pc)
 
   const offer = await pc.createOffer()
@@ -250,6 +359,7 @@ export async function publishWhip(
   return {
     pc,
     resourceUrl,
+    audioSenders,
     async close() {
       if (resourceUrl) {
         try {

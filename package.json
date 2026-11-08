@@ -1,14 +1,29 @@
 {
   "name": "tabcast-browser",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "private": false,
-  "description": "Maka gaming streaming service — free streaming software and a free streaming software obs alternative for resource-light capture (Electron studio + local WHIP/RTMP relay).",
+  "description": "Maka — free Windows streaming software for game capture and RTMP live streaming (Electron studio + local WHIP relay). OBS-light alternative for Twitch and YouTube.",
+  "keywords": [
+    "streaming",
+    "live-streaming",
+    "game-capture",
+    "obs-alternative",
+    "twitch",
+    "youtube",
+    "rtmp",
+    "whip",
+    "electron",
+    "maka"
+  ],
   "author": "n0social",
   "license": "MIT",
-  "homepage": "https://github.com/n0social/Maka",
+  "homepage": "https://tabcast.live.skydav.work",
   "repository": {
     "type": "git",
-    "url": "https://github.com/n0social/Maka.git"
+    "url": "https://github.com/n0social/maka-streaming-software.git"
+  },
+  "bugs": {
+    "url": "https://github.com/n0social/maka-streaming-software/issues"
   },
   "main": "out/main/index.js",
   "type": "module",
@@ -19,8 +34,10 @@
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "fetch:relay": "node scripts/fetch-relay.mjs",
+    "fetch:release-backup": "node scripts/fetch-release-backup.mjs",
     "verify": "node scripts/verify.mjs",
     "verify:offline": "node scripts/verify.mjs --offline",
+    "verify:addons": "node scripts/verify-addons.mjs --write-report",
     "export:marketplace": "node scripts/export-marketplace.mjs",
     "marketing": "python scripts/generate-marketing.py",
     "dist": "npm run typecheck && npm run build && node scripts/verify.mjs --offline && electron-builder --win nsis",

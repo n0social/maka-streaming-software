@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Cloud Agent bootstrap: Node deps + SSH client for origin deploy (root@104.131.164.94).
+# Private keys must NOT live in git — add the agent's public key to the droplet and/or
+# configure Cursor Cloud Agent secrets so BatchMode SSH works. See docs/site-deploy.md.
 set -euo pipefail
 
 if ! command -v ssh >/dev/null 2>&1; then

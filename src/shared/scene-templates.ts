@@ -8,6 +8,39 @@ export type SceneTemplate = {
   build: (opts: { profile: StreamProfile; hasWebcam: boolean }) => SceneLayout
 }
 
+export type SceneStubPreset = {
+  id: string
+  title: string
+  subtitle: string
+}
+
+/** Branded holding screens — preview card only; relay gets an empty source list. */
+export const SCENE_STUB_PRESETS: Record<string, SceneStubPreset> = {
+  'starting-soon': {
+    id: 'starting-soon',
+    title: 'Starting Soon',
+    subtitle: 'Hang tight — we’ll be live in a moment',
+  },
+  intermission: {
+    id: 'intermission',
+    title: 'Intermission',
+    subtitle: 'Short break — back shortly',
+  },
+  ending: {
+    id: 'ending',
+    title: 'Ending Scene',
+    subtitle: 'Thanks for watching',
+  },
+}
+
+export function isSceneStubId(id: string): boolean {
+  return id in SCENE_STUB_PRESETS
+}
+
+export function sceneStubPreset(id: string): SceneStubPreset | undefined {
+  return SCENE_STUB_PRESETS[id]
+}
+
 function canvasFor(profile: StreamProfile) {
   return canvasForEncodeProfile(profile)
 }
@@ -110,5 +143,32 @@ export const SCENE_TEMPLATES: SceneTemplate[] = [
         ],
       }
     },
+  },
+  {
+    id: 'starting-soon',
+    name: 'Starting Soon',
+    description: 'Branded holding card before the stream starts.',
+    build: ({ profile }) => ({
+      canvas: canvasFor(profile),
+      sources: [],
+    }),
+  },
+  {
+    id: 'intermission',
+    name: 'Intermission',
+    description: 'Branded break card between segments.',
+    build: ({ profile }) => ({
+      canvas: canvasFor(profile),
+      sources: [],
+    }),
+  },
+  {
+    id: 'ending',
+    name: 'Ending Scene',
+    description: 'Branded sign-off card.',
+    build: ({ profile }) => ({
+      canvas: canvasFor(profile),
+      sources: [],
+    }),
   },
 ]
