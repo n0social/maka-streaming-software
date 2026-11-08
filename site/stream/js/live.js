@@ -740,8 +740,22 @@
       // Prefer armed chips; fall back to stored dest flags.
       var wantTwitch = Boolean(platformPref.twitch || dest.destTwitch);
       var wantYoutube = Boolean(platformPref.youtube || dest.destYoutube);
-      if (wantTwitch && dest.twitchKey) body.twitchKey = String(dest.twitchKey).trim();
-      if (wantYoutube && dest.youtubeKey) body.youtubeKey = String(dest.youtubeKey).trim();
+      var wizardTwitch =
+        els.wizardTwitchKey && wizardPlatform === 'twitch'
+          ? String(els.wizardTwitchKey.value || '').trim()
+          : '';
+      var wizardYoutube =
+        els.wizardYoutubeKey && wizardPlatform === 'youtube'
+          ? String(els.wizardYoutubeKey.value || '').trim()
+          : '';
+      if (wantTwitch && (dest.twitchKey || wizardTwitch)) {
+        body.twitchKey = String(wizardTwitch || dest.twitchKey).trim();
+      }
+      if (wantYoutube && (dest.youtubeKey || wizardYoutube)) {
+        body.youtubeKey = String(wizardYoutube || dest.youtubeKey).trim();
+      }
+      if (!wantYoutube && wizardYoutube) body.youtubeKey = wizardYoutube;
+      if (!wantTwitch && wizardTwitch) body.twitchKey = wizardTwitch;
 
       var prefs = readStudioAudioVideoPrefs();
       body.audioMicBitrateKbps = prefs.audioMicBitrateKbps;
@@ -1327,13 +1341,23 @@
         }
 
         try {
+          var configBody = buildRelayConfigBody();
+          if ((wizardPlatform === 'youtube' || platformPref.youtube) && !configBody.youtubeKey) {
+            showRelayModal(
+              'YouTube was selected, but no stream key was sent to the relay. Go back and enter the key again.',
+              'YouTube key missing',
+            );
+            return;
+          }
           try {
             await postRelayConfig();
           } catch (cfgErr) {
-            log(
-              'Config optional warning: ' +
+            showRelayModal(
+              'The relay rejected the stream settings, so YouTube was not started. ' +
                 (cfgErr instanceof Error ? cfgErr.message : String(cfgErr)),
+              'Could not configure the relay',
             );
+            return;
           }
           await postSceneLayout();
           log('Publishing WHIP to ' + relayBase + PATHS.whip + '…');
@@ -1534,6 +1558,18 @@
         'Record the preview stream locally (MediaRecorder). Stop to download a WebM. Not streaming.';
     }
 
+    async function writeRecordingBlob(blob, handle, name) {
+      if (handle && typeof handle.createWritable === 'function') {
+        var writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        log('Recording saved to ' + (handle.name || name));
+        if (destHint) destHint.textContent = 'Recording saved.';
+        return;
+      }
+      downloadRecordingBlob(blob);
+    }
+
     function downloadRecordingBlob(blob) {
       var ext = blob.type && blob.type.indexOf('mp4') !== -1 ? 'mp4' : 'webm';
       var profile = readBitrateProfile();
@@ -1556,6 +1592,31 @@
 
     async function stopRecordingAndSave() {
       if (!mediaRecorder || !recordingActive) return;
+      var profile = readBitrateProfile();
+      var ts = new Date().toISOString().replace(/[:.]/g, '-');
+      var name = 'maka-recording-' + ts + '-' + profile + '.webm';
+      var handle = null;
+      var saveCancelled = false;
+      if (typeof window.showSaveFilePicker === 'function') {
+        try {
+          handle = await window.showSaveFilePicker({
+            suggestedName: name,
+            types: [
+              {
+                description: 'WebM video',
+                accept: { 'video/webm': ['.webm'] },
+              },
+            ],
+          });
+        } catch (err) {
+          if (err && err.name === 'AbortError') {
+            saveCancelled = true;
+            log('Save cancelled. Recording will still stop.');
+          } else {
+            log('Save dialog unavailable — the file will download instead.');
+          }
+        }
+      }
       var rec = mediaRecorder;
       mediaRecorder = null;
       setRecordingUi(false);
@@ -1577,7 +1638,31 @@
         if (destHint) destHint.textContent = 'Recording produced no data.';
         return;
       }
-      downloadRecordingBlob(blob);
+      if (saveCancelled) return;
+      if (!handle && typeof window.showSaveFilePicker === 'function') {
+        try {
+          handle = await window.showSaveFilePicker({
+            suggestedName: name,
+            types: [
+              {
+                description: 'WebM video',
+                accept: { 'video/webm': ['.webm'] },
+              },
+            ],
+          });
+        } catch (err) {
+          if (err && err.name === 'AbortError') {
+            log('Recording kept in this tab until you stop again and choose a folder.');
+            return;
+          }
+        }
+      }
+      try {
+        await writeRecordingBlob(blob, handle, name);
+      } catch (err) {
+        log('Could not write the recording: ' + (err instanceof Error ? err.message : err));
+        downloadRecordingBlob(blob);
+      }
     }
 
     async function startRecording() {
