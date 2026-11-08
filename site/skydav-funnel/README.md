@@ -10,6 +10,8 @@ Minimal cream/gold hero for **`makalive.stream.skydav.work`** (and any leftover 
 
 **Only after** `makalive.stream` DNS + TLS work on the **new** droplet. Until then, leave skydav serving the full `/opt/maka/web` origin.
 
+There is **no** nginx `server_name` for `makalive.stream.skydav.work` on skydav today (`tabcast.live.skydav.work` + `makalive.stream` share `/opt/maka/web`). Do **not** deploy this funnel over that root while apex still originates here.
+
 See **`docs/maka-droplet-migration.md`** for the full cutover checklist.
 
 ## Suggested root (do not delete `/opt/maka`)
