@@ -69,7 +69,7 @@ function mobilePageHtml(stunOnlyIceJson: string): string {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Maka — Phone pairing</title>
+  <title>MAKA — Phone pairing</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -145,10 +145,10 @@ function mobilePageHtml(stunOnlyIceJson: string): string {
 </head>
 <body>
   <main>
-    <h1>Maka</h1>
+    <h1>MAKA</h1>
     <p>Pair this phone with your studio on the same Wi‑Fi.</p>
     <p class="hint-audio">Use headphones for clearer audio</p>
-    <p class="state spin" id="status">Connecting to Maka…</p>
+    <p class="state spin" id="status">Connecting to MAKA…</p>
     <div id="preview-wrap"><video id="preview" playsinline muted autoplay></video></div>
     <div class="controls" id="controls">
       <button type="button" class="flip" id="btn-flip" hidden>Flip camera</button>
@@ -205,7 +205,7 @@ function mobilePageHtml(stunOnlyIceJson: string): string {
         if (sessionEnded) return;
         reconnecting = true;
         offlineSent = false;
-        status.textContent = 'Reconnecting to Maka…';
+        status.textContent = 'Reconnecting to MAKA…';
         status.className = 'state spin';
       }
 
@@ -232,7 +232,7 @@ function mobilePageHtml(stunOnlyIceJson: string): string {
             void attemptRejoin();
           } else if (state === 'connected' && reconnecting) {
             reconnecting = false;
-            status.textContent = 'Connected to Maka';
+            status.textContent = 'Connected to MAKA';
             status.className = 'state ok';
           }
         });
@@ -444,7 +444,7 @@ function mobilePageHtml(stunOnlyIceJson: string): string {
           updateMicIndicator(stream);
           bindTrackEnded(stream);
           return startWebRtc(stream).then(function () {
-            status.textContent = 'Connected to Maka';
+            status.textContent = 'Connected to MAKA';
             status.className = 'state ok';
           });
         }).then(function () {
@@ -516,7 +516,7 @@ function mobilePageHtml(stunOnlyIceJson: string): string {
       }
 
       tryPairWithToken().catch(function () {
-        status.textContent = 'Could not reach Maka on this network.';
+        status.textContent = 'Could not reach MAKA on this network.';
         status.className = 'state err';
       });
     })();
