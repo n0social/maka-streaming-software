@@ -1,4 +1,4 @@
-/* MAKA_CSS_BUILD=dc6d059 — bump ?v= on /maka.css in site/**/*.html when this file changes */
+/* MAKA_CSS_BUILD=dc6d060 — bump ?v= on /maka.css in site/**/*.html when this file changes */
 /* Maka marketing site — cream / Mikado Yellow tokens (matches Electron studio redesign) */
 :root {
   color-scheme: light;
@@ -441,7 +441,7 @@ svg {
   font-family: var(--headline);
   font-weight: 900;
   font-style: italic;
-  font-size: clamp(5.25rem, 19vw, 11rem);
+  font-size: clamp(6.75rem, 24vw, 14rem);
   line-height: 0.88;
   letter-spacing: -0.04em;
   text-transform: uppercase;
@@ -455,22 +455,44 @@ svg {
   -webkit-user-select: none;
 }
 
-.maka-wordmark__back {
-  display: none;
-}
-
+.maka-wordmark__back,
 .maka-wordmark__front {
   display: block;
-  position: relative;
-  z-index: 2;
   cursor: default;
   user-select: none;
   -webkit-user-select: none;
-  /* Bottom half solid Mikado Yellow; top half is the foil layer. */
+}
+
+/* Offset echo behind the front word. Stays out of flow so it cannot stack as a second line. */
+.maka-wordmark__back {
+  position: absolute;
+  left: 0;
+  top: 0.055em;
+  width: 100%;
+  padding-inline: 0.06em;
+  box-sizing: content-box;
+  transform: translate(0.05em, 0);
+  color: #fff;
+  text-shadow:
+    0 0 0 #f6f3ec,
+    0 2px 0 rgba(246, 243, 236, 0.95),
+    0 0 40px rgba(255, 255, 255, 0.35);
+  -webkit-text-stroke: 1px rgba(230, 223, 208, 0.7);
+  paint-order: stroke fill;
+  white-space: nowrap;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.maka-wordmark__front {
+  position: relative;
+  z-index: 2;
+  /* Solid Mikado Yellow on the lower half. The foil layer covers the top half. */
   background: linear-gradient(
     to bottom,
-    #ffe27a 0%,
-    #ffc40c 46%,
+    #fff6cc 0%,
+    #ffe14a 34%,
+    #ffc40c 50%,
     #ffc40c 100%
   );
   -webkit-background-clip: text;
@@ -820,7 +842,7 @@ svg {
     position: relative;
     z-index: 2;
     justify-self: center;
-    font-size: clamp(4.25rem, 20vw, 6.25rem);
+    font-size: clamp(5.4rem, 26vw, 8rem);
   }
 
   .hero-mvp__mascot-wrap {

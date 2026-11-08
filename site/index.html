@@ -85,18 +85,36 @@
       }
       /* Wordmark colors/foil live in maka.css only — avoid fighting external stylesheet */
       .maka-wordmark {
+        position: relative;
         margin: 0;
         font-family: var(--headline);
         font-weight: 900;
         font-style: italic;
-        font-size: clamp(3.5rem, 16vw, 9rem);
-        line-height: 0.9;
+        font-size: clamp(4.5rem, 20vw, 11rem);
+        line-height: 0.88;
         letter-spacing: -0.04em;
         text-transform: uppercase;
         color: #ffc40c;
         cursor: default;
         user-select: none;
         -webkit-user-select: none;
+      }
+      .maka-wordmark__back,
+      .maka-wordmark__front {
+        display: block;
+        cursor: default;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      .maka-wordmark__back {
+        position: absolute;
+        left: 0;
+        top: 0.06em;
+        width: 100%;
+        color: #fff;
+        transform: translate(0.045em, 0);
+        z-index: 0;
+        pointer-events: none;
       }
       .hero-mvp__actions {
         display: flex;
@@ -138,11 +156,11 @@
     <link
       rel="preload"
       as="style"
-      href="https://makalive.stream/maka.css?v=dc6d059"
+      href="https://makalive.stream/maka.css?v=dc6d060"
     />
     <link
       rel="stylesheet"
-      href="https://makalive.stream/maka.css?v=dc6d059"
+      href="https://makalive.stream/maka.css?v=dc6d060"
     />
   </head>
   <body class="page-home-mvp">
@@ -168,6 +186,7 @@
               />
             </div>
             <h1 class="maka-wordmark" aria-label="MAKA">
+              <span class="maka-wordmark__back" aria-hidden="true">MAKA</span>
               <span class="maka-wordmark__front">MAKA</span>
             </h1>
           </div>
