@@ -16,7 +16,9 @@ type MarketplaceUi = {
 }
 
 export function initMarketplace(api: MakaBridge, ui: MarketplaceUi): void {
-  document.getElementById('btn-open-marketplace')!.addEventListener('click', () => {
+  const open = document.getElementById('btn-open-marketplace')
+  if (!open || !ui.dialog || !ui.list) return
+  open.addEventListener('click', () => {
     void renderMarketplace(api, ui)
     ui.dialog.showModal()
   })

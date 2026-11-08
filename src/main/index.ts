@@ -2,6 +2,7 @@ import {
   app,
   BrowserWindow,
   desktopCapturer,
+  dialog,
   ipcMain,
   protocol,
   session,
@@ -28,6 +29,7 @@ import { BROWSE_CAPTURE_SOURCE_ID } from '../shared/capture'
 import { coerceSettings, isStudioMediaPermission, isValidPresetId, isValidTabId } from './security'
 import { addonHasPermission, isValidAddonId, isValidCatalogId } from '../shared/addon-api'
 import { PHONE_CAM_ADDON_ID } from '../shared/phone-pair'
+import { getVirtualCameraCapability } from './virtual-camera'
 import { addonProfileBucket, normalizeEncodeProfileId } from '../shared/stream-encode-profiles'
 
 function profileBucketForAddon(profileRaw: string | undefined): '720p' | '1080p' {
@@ -537,6 +539,32 @@ function registerIpc(): void {
     else mainWindow.maximize()
     return mainWindow.isMaximized()
   })
+  ipcMain.handle('app:platform', () => process.platform)
+
+  ipcMain.handle('vcam:capability', () => getVirtualCameraCapability())
+
+  ipcMain.handle(
+    'recording:save',
+    async (event, payload: { data?: ArrayBuffer; defaultName?: string }) => {
+      const win = BrowserWindow.fromWebContents(event.sender)
+      const defaultName =
+        typeof payload?.defaultName === 'string' && payload.defaultName.trim()
+          ? payload.defaultName.trim()
+          : 'maka-recording.webm'
+      const saveOptions = {
+        defaultPath: defaultName,
+        filters: [{ name: 'WebM recording', extensions: ['webm'] }],
+      }
+      const result = win
+        ? await dialog.showSaveDialog(win, saveOptions)
+        : await dialog.showSaveDialog(saveOptions)
+      if (result.canceled || !result.filePath) return { canceled: true, filePath: '' }
+      const bytes = payload?.data ? Buffer.from(payload.data) : Buffer.alloc(0)
+      writeFileSync(result.filePath, bytes)
+      return { canceled: false, filePath: result.filePath }
+    },
+  )
+
   ipcMain.handle('window:close', (event) => {
     if (!studioOk(event)) return
     mainWindow?.close()

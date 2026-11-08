@@ -211,6 +211,9 @@
               <span class="program-browser-tag">Browser</span>
             </div>
             <p class="program-empty" id="program-empty">Select a display or window to start streaming</p>
+            <div class="program-scene-card" id="program-scene-card" hidden>
+              <p id="program-scene-card-title">Starting Soon</p>
+            </div>
           </section>
           <div class="program-stats" id="program-stats" aria-label="Program stream stats">
             <label class="program-stats-field">
@@ -236,15 +239,15 @@
         <div class="studio-block studio-block-compact">
           <h2>Audio Mixer</h2>
           <div class="audio-mixer" id="audio-mixer">
-            <div class="audio-channel" id="audio-desktop" title="Desktop audio capture not yet implemented">
+            <div class="audio-channel" id="audio-desktop" title="Desktop audio">
               <div class="audio-channel-top">
                 <span class="audio-channel-icon" aria-hidden="true">🔊</span>
                 <span class="audio-channel-name">Desktop Audio</span>
               </div>
               <div class="audio-meter-track" aria-hidden="true">
-                <div class="audio-meter" id="desktop-meter" style="width: 12%;"></div>
+                <div class="audio-meter" id="desktop-meter" style="width: 0%;"></div>
               </div>
-              <button type="button" class="audio-channel-settings" disabled title="Desktop audio settings (not implemented)" aria-label="Desktop audio settings">⚙</button>
+              <button type="button" class="audio-channel-settings" id="btn-desktop-audio" title="Start desktop audio" aria-label="Desktop audio">⚙</button>
               <div class="audio-db" aria-hidden="true"><span>-30</span><span>-24</span><span>-18</span><span>-12</span><span>-6</span><span>0</span></div>
             </div>
             <div class="audio-channel" id="audio-mic">
@@ -258,15 +261,15 @@
               <button type="button" class="audio-channel-settings" title="Microphone settings" aria-label="Microphone settings">⚙</button>
               <div class="audio-db" aria-hidden="true"><span>-30</span><span>-24</span><span>-18</span><span>-12</span><span>-6</span><span>0</span></div>
             </div>
-            <div class="audio-channel" id="audio-game" title="Game audio capture not yet implemented">
+            <div class="audio-channel" id="audio-game" title="Game audio">
               <div class="audio-channel-top">
                 <span class="audio-channel-icon" aria-hidden="true">🎮</span>
                 <span class="audio-channel-name">Game Audio</span>
               </div>
               <div class="audio-meter-track" aria-hidden="true">
-                <div class="audio-meter" id="game-meter" style="width: 12%;"></div>
+                <div class="audio-meter" id="game-meter" style="width: 0%;"></div>
               </div>
-              <button type="button" class="audio-channel-settings" disabled title="Game audio settings (not implemented)" aria-label="Game audio settings">⚙</button>
+              <button type="button" class="audio-channel-settings" id="btn-game-audio" title="Start game audio" aria-label="Game audio">⚙</button>
               <div class="audio-db" aria-hidden="true"><span>-30</span><span>-24</span><span>-18</span><span>-12</span><span>-6</span><span>0</span></div>
             </div>
           </div>
@@ -279,14 +282,15 @@
               <span class="btn-icon btn-icon-live" aria-hidden="true">((•))</span>
               <span id="btn-go-live-label">Go Live</span>
             </button>
-            <button type="button" class="btn-block btn-secondary" id="btn-start-recording" disabled title="Recording is not available in this build yet">
+            <button type="button" class="btn-block btn-secondary" id="btn-start-recording">
               <span class="btn-icon" aria-hidden="true">●</span>
-              Start Recording
+              <span id="btn-start-recording-label">Start Recording</span>
             </button>
-            <button type="button" class="btn-block btn-secondary" id="btn-start-vcam" disabled title="Virtual camera is not available in this build yet">
+            <button type="button" class="btn-block btn-secondary" id="btn-start-vcam" title="Runs the program preview compositor. This build does not register a camera device.">
               <span class="btn-icon" aria-hidden="true">▢</span>
-              Start Virtual Camera
+              <span id="btn-start-vcam-label">Start Virtual Camera</span>
             </button>
+            <p class="stream-controls-status" id="stream-controls-status"></p>
           </div>
         </div>
 
@@ -344,6 +348,14 @@
           <button type="submit" value="save" id="btn-settings-save">Save</button>
           <button type="submit" value="cancel">Cancel</button>
         </div>
+      </form>
+    </dialog>
+
+    <dialog id="vcam-dialog" class="vcam-dialog">
+      <h2>Virtual camera</h2>
+      <p id="vcam-dialog-body"></p>
+      <form method="dialog">
+        <button type="submit" class="btn-secondary">Close</button>
       </form>
     </dialog>
 

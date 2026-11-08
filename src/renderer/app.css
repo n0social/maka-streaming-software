@@ -946,6 +946,56 @@ body[data-mode='browse'] .program-column {
   pointer-events: none;
 }
 
+.program-scene-card {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  background: #111111;
+  color: #ffc40c;
+}
+
+.program-scene-card[hidden] {
+  display: none !important;
+}
+
+.program-scene-card p {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.program[data-layout='desk'] #program-video,
+.program[data-layout='desk'] .program-empty,
+.program[data-layout='desk'] .program-browser,
+.program[data-layout='card'] #program-video,
+.program[data-layout='card'] .program-cam,
+.program[data-layout='card'] .program-empty,
+.program[data-layout='card'] .program-browser {
+  visibility: hidden !important;
+}
+
+.program[data-layout='desk'] .program-cam {
+  inset: 1.25rem;
+  width: auto !important;
+  height: auto;
+  aspect-ratio: auto;
+}
+
+.stream-controls-status {
+  margin: 0.45rem 0 0;
+  min-height: 1.1rem;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: #000000;
+}
+
+.stream-controls-status:empty {
+  display: none;
+}
+
 .stage-frame {
   position: absolute;
   inset: 0;

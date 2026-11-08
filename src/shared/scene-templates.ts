@@ -111,4 +111,37 @@ export const SCENE_TEMPLATES: SceneTemplate[] = [
       }
     },
   },
+  {
+    id: 'starting-soon',
+    name: 'Starting Soon',
+    description: 'Holding card before the stream starts.',
+    build: ({ profile }) => ({
+      canvas: canvasFor(profile),
+      sources: [],
+    }),
+  },
+  {
+    id: 'intermission',
+    name: 'Intermission',
+    description: 'Break card between segments.',
+    build: ({ profile }) => ({
+      canvas: canvasFor(profile),
+      sources: [],
+    }),
+  },
+  {
+    id: 'ending',
+    name: 'Ending Scene',
+    description: 'Sign-off card.',
+    build: ({ profile }) => ({
+      canvas: canvasFor(profile),
+      sources: [],
+    }),
+  },
 ]
+
+const SCENE_STUB_IDS = new Set(['starting-soon', 'intermission', 'ending'])
+
+export function isSceneStubId(id: string): boolean {
+  return SCENE_STUB_IDS.has(id)
+}

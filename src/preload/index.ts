@@ -3,6 +3,7 @@ import type { RelaySnapshot } from '../shared/relay-snapshot'
 import type { PhoneIceServer } from '../shared/phone-ice-servers'
 import type { PhonePairSnapshot, PhoneWebRtcSessionDescription } from '../shared/phone-pair'
 import type { EncodeProfileId } from '../shared/stream-encode-profiles'
+import type { VcamCapability } from '../shared/virtual-camera'
 
 export type AppMode = 'studio' | 'browse'
 
@@ -201,6 +202,12 @@ export type MakaBridge = {
   onPhoneWebrtcReset: (cb: () => void) => () => void
   submitPhoneWebrtcAnswer: (answer: PhoneWebRtcSessionDescription) => Promise<{ ok: boolean }>
   getPhoneWebRtcIceServers: () => Promise<PhoneIceServer[]>
+  getHostPlatform: () => Promise<string>
+  getVcamCapability: () => Promise<VcamCapability>
+  saveRecording: (payload: {
+    data: ArrayBuffer
+    defaultName: string
+  }) => Promise<{ canceled: boolean; filePath: string }>
 }
 
 const api: MakaBridge = {
@@ -320,6 +327,9 @@ const api: MakaBridge = {
   },
   submitPhoneWebrtcAnswer: (answer) => ipcRenderer.invoke('phone-pair:webrtc-answer', answer),
   getPhoneWebRtcIceServers: () => ipcRenderer.invoke('phone-pair:ice-servers'),
+  getHostPlatform: () => ipcRenderer.invoke('app:platform'),
+  getVcamCapability: () => ipcRenderer.invoke('vcam:capability'),
+  saveRecording: (payload) => ipcRenderer.invoke('recording:save', payload),
 }
 
 contextBridge.exposeInMainWorld('tabcast', api)

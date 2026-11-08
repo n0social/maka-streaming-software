@@ -52,7 +52,19 @@ import {
   readStoredStreamTitle,
   type GoLiveWizardPlatform,
 } from './go-live-wizard'
+import { SCENE_TEMPLATES, isSceneStubId } from '../shared/scene-templates'
+import type { VcamCapability } from '../shared/virtual-camera'
 import { initMarketplace } from './marketplace'
+import { buildRecordingFileName, createProgramRecording } from './program-recording'
+import { createProgramVirtualCamera } from './program-virtual-camera'
+import {
+  parseCapturePlatform,
+  startDesktopLoopbackAudio,
+  startGameLinkedAudio,
+  stopMediaStream,
+  systemAudioCaptureSupported,
+  type SystemAudioCapturePlatform,
+} from './system-audio-capture'
 import {
   getPhoneTracksSnapshot,
   initPhoneTracks,
@@ -82,8 +94,12 @@ const relayStatus = document.getElementById('relay-status')!
 const relayVersion = document.getElementById('relay-version')!
 const relayError = document.getElementById('relay-error')!
 const sourceList = document.getElementById('source-list')!
+const streamControlsStatus = document.getElementById('stream-controls-status')
+const program = document.getElementById('program')!
 const programVideo = document.getElementById('program-video') as HTMLVideoElement
 const programEmpty = document.getElementById('program-empty')!
+const programSceneCard = document.getElementById('program-scene-card')!
+const programSceneCardTitle = document.getElementById('program-scene-card-title')!
 const programCam = document.getElementById('program-cam')!
 const programCamVideo = document.getElementById('program-cam-video') as HTMLVideoElement
 const programCamOffline = document.getElementById('program-cam-offline')!
@@ -167,6 +183,13 @@ const layerEnabled = {
   cam: true,
   mic: true,
   browser: false,
+}
+let activeSceneTemplateId = 'gaming-cam'
+
+const SCENE_CARD_TITLES: Record<string, string> = {
+  'starting-soon': 'Starting Soon',
+  intermission: 'Intermission',
+  ending: 'Ending Scene',
 }
 
 const WEBCAM_OFFLINE_TEXT = 'video is offline'
@@ -285,6 +308,17 @@ function syncProgramVideoSurface(): void {
   const show = Boolean(programStream)
   programVideo.hidden = !show
   programEmpty.hidden = show
+  applyScenePresentation()
+}
+
+function applyScenePresentation(): void {
+  const stub = isSceneStubId(activeSceneTemplateId)
+  const desk = activeSceneTemplateId === 'desk-only'
+  program.dataset.layout = stub ? 'card' : desk ? 'desk' : 'game'
+  programSceneCard.hidden = !stub
+  if (stub) {
+    programSceneCardTitle.textContent = SCENE_CARD_TITLES[activeSceneTemplateId] ?? 'Scene'
+  }
 }
 
 function updateStudioMixControls(): void {
@@ -362,6 +396,7 @@ function syncLayerTracks(): void {
   updateProgramCamOverlay()
   updateProgramBrowserOverlay()
   updateStudioMixControls()
+  applyScenePresentation()
 }
 
 function updateProgramBrowserOverlay(): void {
@@ -429,18 +464,26 @@ async function pushSceneLayout(): Promise<void> {
   const snapshot = await window.tabcast.getRelay()
   if (!snapshot.health) return
   const profile = selectedProfile()
-  const layout = defaultSceneLayout({
-    profile,
-    hasWebcam: hasLiveWebcamVideo() && layerEnabled.cam,
-    hasBrowser: Boolean(browserStream) && layerEnabled.browser,
-  })
-  const scale = Number(camScale.value) / 100
-  const cam = layout.sources.find((s) => s.id === 'webcam')
-  if (cam) {
-    cam.width = Math.round(layout.canvas.width * scale)
-    cam.height = Math.round(cam.width * (9 / 16))
-    cam.x = layout.canvas.width - cam.width - 24
-    cam.y = layout.canvas.height - cam.height - 24
+  const template = SCENE_TEMPLATES.find((item) => item.id === activeSceneTemplateId)
+  const layout = template
+    ? template.build({
+        profile,
+        hasWebcam: hasLiveWebcamVideo() && layerEnabled.cam,
+      })
+    : defaultSceneLayout({
+        profile,
+        hasWebcam: hasLiveWebcamVideo() && layerEnabled.cam,
+        hasBrowser: Boolean(browserStream) && layerEnabled.browser,
+      })
+  if (activeSceneTemplateId === 'gaming-cam') {
+    const scale = Number(camScale.value) / 100
+    const cam = layout.sources.find((s) => s.id === 'webcam')
+    if (cam) {
+      cam.width = Math.round(layout.canvas.width * scale)
+      cam.height = Math.round(cam.width * (9 / 16))
+      cam.x = layout.canvas.width - cam.width - 24
+      cam.y = layout.canvas.height - cam.height - 24
+    }
   }
   if (!layerEnabled.game) {
     layout.sources = layout.sources.filter((s) => s.id !== 'gameplay')
@@ -1037,6 +1080,7 @@ async function selectDesktopSource(source: CaptureSource): Promise<void> {
     layerGame.dataset.active = '1'
     layerGame.textContent = `Gameplay — ${source.name}`
     syncLayerTracks()
+    void refreshGameAudio(false)
     if (currentMode !== 'studio') {
       await window.tabcast.setMode('studio')
     }
@@ -1658,18 +1702,8 @@ async function goLive(): Promise<void> {
       throw new Error(snapshot.error ?? 'Relay is not ready. Start the relay first.')
     }
 
-    const profile = selectedProfile()
     sessionIngestTarget = 'primary'
     await postRelayConfig(snapshot.health, relayConfigForIngest('primary'))
-
-    await postSceneLayout(
-      snapshot.health,
-      defaultSceneLayout({
-        profile,
-        hasWebcam: hasLiveWebcamVideo() && layerEnabled.cam,
-        hasBrowser: Boolean(browserStream) && layerEnabled.browser,
-      }),
-    )
     await pushSceneLayout()
 
     destHint.textContent = 'Publishing WHIP to local relay…'
@@ -1895,7 +1929,25 @@ toggleMic.addEventListener('click', () => {
 })
 
 studioSourceGame.addEventListener('click', () => {
-  void refreshSources()
+  void (async () => {
+    layerEnabled.game = true
+    try {
+      const sources = await window.tabcast.listCaptureSources()
+      const screen = sources.find((source) => source.type === 'screen') ?? sources[0]
+      if (!screen) {
+        programEmpty.hidden = false
+        programEmpty.textContent = 'No display or window was found.'
+        setControlStatus('Game Capture found no display or window.')
+        return
+      }
+      await selectDesktopSource(screen)
+      setControlStatus(`Game Capture is showing ${screen.name}.`)
+    } catch (err) {
+      programEmpty.hidden = false
+      programEmpty.textContent = err instanceof Error ? err.message : 'Could not list sources'
+      setControlStatus(programEmpty.textContent)
+    }
+  })()
 })
 studioSourceWebcam.addEventListener('click', () => {
   toggleWebcamLayer()
@@ -2472,10 +2524,24 @@ const statResolution = document.getElementById('stat-resolution')
 
 // Scene selection handler
 async function selectScene(sceneTemplate: string): Promise<void> {
+  if (!SCENE_TEMPLATES.some((item) => item.id === sceneTemplate)) return
+  activeSceneTemplateId = sceneTemplate
   for (const button of document.querySelectorAll<HTMLButtonElement>('.studio-list-item[data-scene]')) {
     if (button.dataset.scene === sceneTemplate) button.dataset.active = '1'
     else delete button.dataset.active
   }
+  if (sceneTemplate === 'gaming-cam') {
+    layerEnabled.game = true
+    layerEnabled.cam = true
+  } else if (sceneTemplate === 'desk-only') {
+    layerEnabled.game = false
+    layerEnabled.cam = true
+  } else if (isSceneStubId(sceneTemplate)) {
+    layerEnabled.game = false
+    layerEnabled.cam = false
+  }
+  syncLayerTracks()
+  void pushSceneLayout()
 }
 
 // Wire scene buttons
@@ -2691,9 +2757,276 @@ populateEncodeProfileSelect(
 )
 showStreamCard(readStoredStreamTitle(), readStoredStreamGame())
 
-// Desktop and Game audio faders (disabled, no-op)
-// These are shown but don't do anything since the features aren't implemented
+const recordingLabel = document.getElementById('btn-start-recording-label')
+const vcamLabel = document.getElementById('btn-start-vcam-label')
+const vcamDialog = document.getElementById('vcam-dialog') as HTMLDialogElement | null
+const vcamDialogBody = document.getElementById('vcam-dialog-body')
+const desktopMeterEl = document.getElementById('desktop-meter')
+const gameMeterEl = document.getElementById('game-meter')
+const audioDesktop = document.getElementById('audio-desktop')
+const audioGame = document.getElementById('audio-game')
 
-// Initialize stream info
+type LevelMeter = { stop: () => void }
+
+let capturePlatform: SystemAudioCapturePlatform = 'other'
+let desktopAudioStream: MediaStream | null = null
+let gameAudioStream: MediaStream | null = null
+let desktopAudioEnabled = true
+let gameAudioEnabled = true
+let desktopMeter: LevelMeter | null = null
+let gameMeter: LevelMeter | null = null
+let vcamCapability: VcamCapability | null = null
+let vcamNoticeShown = false
+
+function setControlStatus(message: string): void {
+  if (streamControlsStatus) streamControlsStatus.textContent = message
+}
+
+function setMeterWidth(el: HTMLElement | null, percent: number): void {
+  if (!el) return
+  el.style.width = `${Math.max(0, Math.min(100, percent))}%`
+}
+
+function startLevelMeter(stream: MediaStream, onLevel: (percent: number) => void): LevelMeter {
+  const ctx = new AudioContext()
+  const source = ctx.createMediaStreamSource(stream)
+  const node = ctx.createAnalyser()
+  node.fftSize = 256
+  source.connect(node)
+  const data = new Uint8Array(node.frequencyBinCount)
+  let raf = 0
+  const tick = () => {
+    node.getByteFrequencyData(data)
+    let sum = 0
+    for (const value of data) sum += value
+    onLevel(Math.min(100, Math.round((sum / data.length / 255) * 140)))
+    raf = requestAnimationFrame(tick)
+  }
+  tick()
+  return {
+    stop() {
+      cancelAnimationFrame(raf)
+      void ctx.close()
+      onLevel(0)
+    },
+  }
+}
+
+const outputDeps = {
+  getProgramVideo: () => programVideo,
+  getWebcamVideo: () => programCamVideo,
+  hasGameplayVideo: () =>
+    Boolean(programStream) && layerEnabled.game && activeSceneTemplateId === 'gaming-cam',
+  getScenePresentation: () =>
+    isSceneStubId(activeSceneTemplateId) ? 'card' : activeSceneTemplateId === 'desk-only' ? 'desk' : 'game',
+  getSceneTitle: () => SCENE_CARD_TITLES[activeSceneTemplateId] ?? 'Scene',
+  getMicStream: () => (layerEnabled.mic && !micMuted ? micStream : null),
+  getDesktopAudioStream: () => (desktopAudioEnabled ? desktopAudioStream : null),
+  getGameAudioStream: () => (gameAudioEnabled ? gameAudioStream : null),
+  getEncodeSpec: () => encodeProfileSpec(selectedProfile()),
+}
+const programRecording = createProgramRecording(outputDeps)
+const programVirtualCamera = createProgramVirtualCamera(outputDeps)
+
+function windowsAudioNote(kind: 'desktop' | 'game'): string {
+  return kind === 'desktop'
+    ? 'Desktop audio capture runs on Windows (WASAPI loopback). This session cannot open it.'
+    : 'Game audio capture runs on Windows and follows the selected Game Capture source. This session cannot open it.'
+}
+
+async function refreshDesktopAudio(): Promise<void> {
+  desktopMeter?.stop()
+  desktopMeter = null
+  stopMediaStream(desktopAudioStream)
+  desktopAudioStream = null
+  setMeterWidth(desktopMeterEl, 0)
+  if (!systemAudioCaptureSupported(capturePlatform)) {
+    if (audioDesktop) audioDesktop.title = windowsAudioNote('desktop')
+    setControlStatus(windowsAudioNote('desktop'))
+    return
+  }
+  const stream = await startDesktopLoopbackAudio()
+  if (!stream) {
+    if (audioDesktop) audioDesktop.title = 'Windows did not return a desktop audio track.'
+    setControlStatus('Windows did not return a desktop audio track.')
+    return
+  }
+  desktopAudioStream = stream
+  for (const track of stream.getAudioTracks()) track.enabled = desktopAudioEnabled
+  if (desktopAudioEnabled) {
+    desktopMeter = startLevelMeter(stream, (level) => setMeterWidth(desktopMeterEl, level))
+  }
+  if (audioDesktop) audioDesktop.title = 'Desktop audio is capturing the Windows output mix.'
+  setControlStatus('Desktop audio is capturing the Windows output mix.')
+}
+
+async function refreshGameAudio(announce = true): Promise<void> {
+  gameMeter?.stop()
+  gameMeter = null
+  stopMediaStream(gameAudioStream)
+  gameAudioStream = null
+  setMeterWidth(gameMeterEl, 0)
+  const say = (message: string) => {
+    if (announce) setControlStatus(message)
+  }
+  if (!systemAudioCaptureSupported(capturePlatform)) {
+    if (audioGame) audioGame.title = windowsAudioNote('game')
+    say(windowsAudioNote('game'))
+    return
+  }
+  if (!selectedSourceId) {
+    if (audioGame) audioGame.title = 'Select Game Capture first. Game audio follows that window.'
+    say('Select Game Capture first. Game audio follows that window.')
+    return
+  }
+  const stream = await startGameLinkedAudio(selectedSourceId)
+  if (!stream) {
+    if (audioGame) audioGame.title = 'Windows did not return audio for the selected capture source.'
+    say('Windows did not return audio for the selected capture source.')
+    return
+  }
+  gameAudioStream = stream
+  for (const track of stream.getAudioTracks()) track.enabled = gameAudioEnabled
+  if (gameAudioEnabled) {
+    gameMeter = startLevelMeter(stream, (level) => setMeterWidth(gameMeterEl, level))
+  }
+  if (audioGame) audioGame.title = 'Game audio is following the selected capture source.'
+  say('Game audio is following the selected capture source.')
+}
+
+function toggleDesktopAudio(): void {
+  if (!desktopAudioStream) {
+    void refreshDesktopAudio()
+    return
+  }
+  desktopAudioEnabled = !desktopAudioEnabled
+  for (const track of desktopAudioStream.getAudioTracks()) track.enabled = desktopAudioEnabled
+  desktopMeter?.stop()
+  desktopMeter = null
+  if (desktopAudioEnabled) {
+    desktopMeter = startLevelMeter(desktopAudioStream, (level) => setMeterWidth(desktopMeterEl, level))
+    setControlStatus('Desktop audio is on.')
+  } else {
+    setMeterWidth(desktopMeterEl, 0)
+    setControlStatus('Desktop audio is muted.')
+  }
+}
+
+function toggleGameAudio(): void {
+  if (!gameAudioStream) {
+    void refreshGameAudio()
+    return
+  }
+  gameAudioEnabled = !gameAudioEnabled
+  for (const track of gameAudioStream.getAudioTracks()) track.enabled = gameAudioEnabled
+  gameMeter?.stop()
+  gameMeter = null
+  if (gameAudioEnabled) {
+    gameMeter = startLevelMeter(gameAudioStream, (level) => setMeterWidth(gameMeterEl, level))
+    setControlStatus('Game audio is on.')
+  } else {
+    setMeterWidth(gameMeterEl, 0)
+    setControlStatus('Game audio is muted.')
+  }
+}
+
+btnStartRecording?.addEventListener('click', () => {
+  void (async () => {
+    if (!btnStartRecording) return
+    if (programRecording.isRecording()) {
+      btnStartRecording.disabled = true
+      const blob = await programRecording.stop()
+      if (recordingLabel) recordingLabel.textContent = 'Start Recording'
+      btnStartRecording.disabled = false
+      if (!blob || blob.size === 0) {
+        setControlStatus('Recording stopped. The compositor did not produce a file.')
+        return
+      }
+      const saved = await window.tabcast.saveRecording({
+        data: await blob.arrayBuffer(),
+        defaultName: buildRecordingFileName(selectedProfile()),
+      })
+      setControlStatus(saved.canceled ? 'Recording was not saved.' : `Saved ${saved.filePath}`)
+      return
+    }
+    try {
+      await programRecording.start()
+      if (recordingLabel) recordingLabel.textContent = 'Stop Recording'
+      setControlStatus(
+        'Recording the program compositor. Audio tracks are the ones already live when recording starts.',
+      )
+    } catch (err) {
+      setControlStatus(err instanceof Error ? err.message : 'Could not start recording.')
+    }
+  })()
+})
+
+btnStartVcam?.addEventListener('click', () => {
+  void (async () => {
+    if (!vcamCapability) {
+      try {
+        vcamCapability = await window.tabcast.getVcamCapability()
+      } catch {
+        vcamCapability = null
+      }
+    }
+    if (programVirtualCamera.isActive()) {
+      programVirtualCamera.stop()
+      if (vcamLabel) vcamLabel.textContent = 'Start Virtual Camera'
+      setControlStatus('Virtual camera preview stopped.')
+      return
+    }
+    programVirtualCamera.start()
+    if (vcamLabel) vcamLabel.textContent = 'Stop Virtual Camera'
+    const message =
+      vcamCapability?.limitationMessage ??
+      'Preview compositor is running. This build does not register a camera other apps can select.'
+    setControlStatus(message)
+    if (!vcamNoticeShown && vcamDialog && vcamDialogBody) {
+      vcamNoticeShown = true
+      vcamDialogBody.textContent = message
+      vcamDialog.showModal()
+    }
+  })()
+})
+
+audioDesktop?.addEventListener('click', (event) => {
+  if ((event.target as HTMLElement).closest('.audio-channel-settings')) return
+  toggleDesktopAudio()
+})
+audioGame?.addEventListener('click', (event) => {
+  if ((event.target as HTMLElement).closest('.audio-channel-settings')) return
+  toggleGameAudio()
+})
+document.getElementById('btn-desktop-audio')?.addEventListener('click', (event) => {
+  event.stopPropagation()
+  void refreshDesktopAudio()
+})
+document.getElementById('btn-game-audio')?.addEventListener('click', (event) => {
+  event.stopPropagation()
+  void refreshGameAudio()
+})
+
+void window.tabcast
+  .getHostPlatform()
+  .then((platform) => {
+    capturePlatform = parseCapturePlatform(platform)
+    if (!systemAudioCaptureSupported(capturePlatform)) {
+      setMeterWidth(desktopMeterEl, 0)
+      setMeterWidth(gameMeterEl, 0)
+      if (audioDesktop) audioDesktop.title = windowsAudioNote('desktop')
+      if (audioGame) audioGame.title = windowsAudioNote('game')
+      return
+    }
+    void refreshDesktopAudio()
+    if (selectedSourceId) void refreshGameAudio(false)
+  })
+  .catch(() => {
+    setMeterWidth(desktopMeterEl, 0)
+    setMeterWidth(gameMeterEl, 0)
+  })
+
+applyScenePresentation()
+
 updateGoLiveLabel(false)
 updateStreamInfo(false)
