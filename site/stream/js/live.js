@@ -106,16 +106,24 @@
     return cleaned || DEFAULT_STREAM_GAME;
   }
 
-  function isTwitchStreamKey(raw) {
+  function extractStreamKey(raw) {
     var key = String(raw || '').trim();
+    var fromUrl = key.match(/rtmps?:\/\/[^/\s]+\/(?:app|live2)\/([^/?#\s]+)/i);
+    if (fromUrl && fromUrl[1]) return fromUrl[1];
+    var fromApp = key.match(/\/(?:app|live2)\/([^/?#\s]+)/i);
+    if (fromApp && fromApp[1]) return fromApp[1];
+    return key;
+  }
+
+  function isTwitchStreamKey(raw) {
+    var key = extractStreamKey(raw);
     if (!key || /\s/.test(key)) return false;
-    if (/^live_\d{4,15}_[a-z0-9]{8,80}$/i.test(key)) return true;
-    if (/^live_[a-z0-9]{20,80}$/i.test(key)) return true;
-    return false;
+    if (key.length < 15 || key.length > 128) return false;
+    return /^live_[a-zA-Z0-9_]+$/.test(key);
   }
 
   function isYouTubeStreamKey(raw) {
-    var key = String(raw || '').trim();
+    var key = extractStreamKey(raw);
     if (!key || /\s/.test(key)) return false;
     return /^[a-z0-9]{4}(?:-[a-z0-9]{4}){3,5}$/i.test(key);
   }
@@ -737,25 +745,21 @@
       if (game) body.streamCategory = game;
 
       var dest = readDestinations();
-      // Prefer armed chips; fall back to stored dest flags.
-      var wantTwitch = Boolean(platformPref.twitch || dest.destTwitch);
-      var wantYoutube = Boolean(platformPref.youtube || dest.destYoutube);
-      var wizardTwitch =
-        els.wizardTwitchKey && wizardPlatform === 'twitch'
-          ? String(els.wizardTwitchKey.value || '').trim()
-          : '';
-      var wizardYoutube =
-        els.wizardYoutubeKey && wizardPlatform === 'youtube'
-          ? String(els.wizardYoutubeKey.value || '').trim()
-          : '';
-      if (wantTwitch && (dest.twitchKey || wizardTwitch)) {
-        body.twitchKey = String(wizardTwitch || dest.twitchKey).trim();
+      var platform = wizardPlatform === 'youtube' ? 'youtube' : 'twitch';
+      body.platform = platform;
+      if (platform === 'twitch') {
+        var twitchRaw =
+          (els.wizardTwitchKey && String(els.wizardTwitchKey.value || '').trim()) || dest.twitchKey || '';
+        body.twitchKey = extractStreamKey(twitchRaw);
+        body.youtubeKey = '';
+      } else {
+        var youtubeRaw =
+          (els.wizardYoutubeKey && String(els.wizardYoutubeKey.value || '').trim()) ||
+          dest.youtubeKey ||
+          '';
+        body.youtubeKey = extractStreamKey(youtubeRaw);
+        body.twitchKey = '';
       }
-      if (wantYoutube && (dest.youtubeKey || wizardYoutube)) {
-        body.youtubeKey = String(wizardYoutube || dest.youtubeKey).trim();
-      }
-      if (!wantYoutube && wizardYoutube) body.youtubeKey = wizardYoutube;
-      if (!wantTwitch && wizardTwitch) body.twitchKey = wizardTwitch;
 
       var prefs = readStudioAudioVideoPrefs();
       body.audioMicBitrateKbps = prefs.audioMicBitrateKbps;
@@ -1114,12 +1118,12 @@
       var partial = {};
       if (wizardPlatform === 'twitch') {
         partial.twitchKey = els.wizardTwitchKey
-          ? String(els.wizardTwitchKey.value || '').trim().slice(0, 256)
+          ? extractStreamKey(els.wizardTwitchKey.value).slice(0, 256)
           : '';
         partial.destTwitch = true;
       } else {
         partial.youtubeKey = els.wizardYoutubeKey
-          ? String(els.wizardYoutubeKey.value || '').trim().slice(0, 256)
+          ? extractStreamKey(els.wizardYoutubeKey.value).slice(0, 256)
           : '';
         partial.destYoutube = true;
       }
@@ -1342,7 +1346,14 @@
 
         try {
           var configBody = buildRelayConfigBody();
-          if ((wizardPlatform === 'youtube' || platformPref.youtube) && !configBody.youtubeKey) {
+          if (configBody.platform === 'twitch' && !configBody.twitchKey) {
+            showRelayModal(
+              'Twitch was selected, but no stream key was sent to the relay. Go back and enter the key again.',
+              'Twitch key missing',
+            );
+            return;
+          }
+          if (configBody.platform === 'youtube' && !configBody.youtubeKey) {
             showRelayModal(
               'YouTube was selected, but no stream key was sent to the relay. Go back and enter the key again.',
               'YouTube key missing',
@@ -1352,8 +1363,11 @@
           try {
             await postRelayConfig();
           } catch (cfgErr) {
+            var platformLabel = configBody.platform === 'twitch' ? 'Twitch' : 'YouTube';
             showRelayModal(
-              'The relay rejected the stream settings, so YouTube was not started. ' +
+              'The relay rejected the stream settings, so ' +
+                platformLabel +
+                ' was not started. ' +
                 (cfgErr instanceof Error ? cfgErr.message : String(cfgErr)),
               'Could not configure the relay',
             );

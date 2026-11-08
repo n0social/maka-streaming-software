@@ -106,15 +106,18 @@ function healthPayload() {
 }
 
 function statusPayload() {
+  const target = rtmpTarget()
   const platforms = {}
   if (relayConfig.twitchKey) {
-    platforms.twitch = mockRtmpLive ? { live: true, viewers: 0 } : false
+    platforms.twitch =
+      mockRtmpLive && target?.name === 'twitch' ? { live: true, viewers: 0 } : false
   }
   if (relayConfig.youtubeKey) {
-    platforms.youtube = mockRtmpLive ? { live: true, viewers: 0 } : false
+    platforms.youtube =
+      mockRtmpLive && target?.name === 'youtube' ? { live: true, viewers: 0 } : false
   }
   if (relayConfig.customRtmpUrl && relayConfig.customRtmpKey) {
-    platforms.custom = mockRtmpLive ? { live: true } : false
+    platforms.custom = mockRtmpLive && target?.name === 'custom' ? { live: true } : false
   }
 
   return {
@@ -148,11 +151,25 @@ async function waitForIceGathering(pc, timeoutMs = 6000) {
 }
 
 function rtmpTarget() {
-  if (relayConfig.youtubeKey) {
+  const platform = relayConfig.platform
+  if (platform === 'twitch') {
+    if (!relayConfig.twitchKey) return null
+    return { name: 'twitch', url: `rtmp://live.twitch.tv/app/${relayConfig.twitchKey}` }
+  }
+  if (platform === 'youtube') {
+    if (!relayConfig.youtubeKey) return null
     return { name: 'youtube', url: `rtmp://a.rtmp.youtube.com/live2/${relayConfig.youtubeKey}` }
+  }
+  if (platform === 'custom') {
+    if (!relayConfig.customRtmpUrl || !relayConfig.customRtmpKey) return null
+    const base = String(relayConfig.customRtmpUrl).replace(/\/$/, '')
+    return { name: 'custom', url: `${base}/${relayConfig.customRtmpKey}` }
   }
   if (relayConfig.twitchKey) {
     return { name: 'twitch', url: `rtmp://live.twitch.tv/app/${relayConfig.twitchKey}` }
+  }
+  if (relayConfig.youtubeKey) {
+    return { name: 'youtube', url: `rtmp://a.rtmp.youtube.com/live2/${relayConfig.youtubeKey}` }
   }
   if (relayConfig.customRtmpUrl && relayConfig.customRtmpKey) {
     const base = String(relayConfig.customRtmpUrl).replace(/\/$/, '')
@@ -184,6 +201,9 @@ function startRtmpPush(tracks) {
   const target = rtmpTarget()
   if (!target || !tracks.length) return null
   const bitrate = Number(relayConfig.bitrateMbps) || 3
+  let videoK = Math.round(bitrate * 1000)
+  // Twitch drops ingest above its 6000 kbps non-partner ceiling.
+  if (target.name === 'twitch') videoK = Math.min(videoK, 6000)
   const ff = spawn(
     'ffmpeg',
     [
@@ -200,22 +220,34 @@ function startRtmpPush(tracks) {
       'veryfast',
       '-tune',
       'zerolatency',
-      '-b:v',
-      `${Math.round(bitrate * 1000)}k`,
-      '-maxrate',
-      `${Math.round(bitrate * 1000)}k`,
-      '-bufsize',
-      `${Math.round(bitrate * 2000)}k`,
+      '-profile:v',
+      'main',
       '-pix_fmt',
       'yuv420p',
+      '-g',
+      '60',
+      '-keyint_min',
+      '60',
+      '-sc_threshold',
+      '0',
+      '-b:v',
+      `${videoK}k`,
+      '-maxrate',
+      `${videoK}k`,
+      '-bufsize',
+      `${videoK * 2}k`,
       '-c:a',
       'aac',
       '-b:a',
       '160k',
       '-ar',
       '48000',
+      '-ac',
+      '2',
       '-f',
       'flv',
+      '-flvflags',
+      'no_duration_filesize',
       target.url,
     ],
     { stdio: ['pipe', 'inherit', 'pipe'] },
@@ -372,6 +404,14 @@ async function handleRequest(req, res) {
       return
     }
     relayConfig = { ...relayConfig, ...body }
+    if (body.platform === 'twitch') {
+      relayConfig.youtubeKey = ''
+      relayConfig.customRtmpKey = ''
+    } else if (body.platform === 'youtube') {
+      relayConfig.twitchKey = ''
+      relayConfig.customRtmpKey = ''
+    }
+    console.log('[config] platform=%s', relayConfig.platform || rtmpTarget()?.name || 'none')
     if (body.profile && !body.bitrateMbps) {
       const bitrates = {
         '720p30': 3,
