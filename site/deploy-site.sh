@@ -1,13 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
-# HTML links: https://tabcast.live.skydav.work/maka.css?v=dc6d035 (absolute origin avoids apex redirect stripping /maka.css).
-# nginx: site/tabcast-site-cache.conf + site/nginx/tabcast.live.skydav.work.conf
+# Public stylesheets: https://makalive.stream/maka.css?v=dc6d038
+# nginx: site/maka-site-cache.conf + site/nginx/tabcast.live.skydav.work.conf
 
-WEB_ROOT="${WEB_ROOT:-/opt/tabcast/web}"
+WEB_ROOT="${WEB_ROOT:-/opt/maka/web}"
 SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
-SITE_HOST="${SITE_HOST:-tabcast.live.skydav.work}"
-CSS_BUILD="${CSS_BUILD:-dc6d035}"
+SITE_HOST="${SITE_HOST:-makalive.stream}"
+CSS_BUILD="${CSS_BUILD:-dc6d038}"
 
 echo "Publishing Maka site from ${SRC_DIR}…"
 
@@ -43,12 +43,12 @@ chmod 644 "${WEB_ROOT}/index.html" "${WEB_ROOT}/legacy.html" "${WEB_ROOT}/downlo
   "${WEB_ROOT}/stream/index.html" "${WEB_ROOT}/stream/stream.css" "${WEB_ROOT}/stream/stream.js" \
   "${WEB_ROOT}/preview/index.html" "${WEB_ROOT}/preview/preview.css"
 
-if [ -f "${SRC_DIR}/tabcast-downloads.conf" ]; then
-  cp "${SRC_DIR}/tabcast-downloads.conf" /etc/nginx/snippets/tabcast-downloads.conf
+if [ -f "${SRC_DIR}/maka-downloads.conf" ]; then
+  cp "${SRC_DIR}/maka-downloads.conf" /etc/nginx/snippets/maka-downloads.conf
 fi
 
-if [ -f "${SRC_DIR}/tabcast-site-cache.conf" ]; then
-  cp "${SRC_DIR}/tabcast-site-cache.conf" /etc/nginx/snippets/tabcast-site-cache.conf
+if [ -f "${SRC_DIR}/maka-site-cache.conf" ]; then
+  cp "${SRC_DIR}/maka-site-cache.conf" /etc/nginx/snippets/maka-site-cache.conf
 fi
 
 if [ -f "${SRC_DIR}/nginx/tabcast.live.skydav.work.conf" ]; then
@@ -65,10 +65,13 @@ curl -sk -o /dev/null -w "preview:%{http_code}\n" "https://127.0.0.1/preview/" -
 curl -sk -o /dev/null -w "legacy:%{http_code}\n" "https://127.0.0.1/legacy.html" -H "Host: ${SITE_HOST}"
 curl -sk -o /dev/null -w "stream:%{http_code}\n" "https://127.0.0.1/stream/" -H "Host: ${SITE_HOST}"
 curl -sk -o /dev/null -w "marketing:%{http_code}\n" "https://127.0.0.1/marketing/download-now.png" -H "Host: ${SITE_HOST}"
-curl -sk -o /dev/null -w "setup:%{http_code}\n" "https://127.0.0.1/downloads/Maka-Setup-0.2.4.exe" -H "Host: ${SITE_HOST}"
+curl -sk -o /dev/null -w "setup:%{http_code}\n" "https://127.0.0.1/downloads/Maka-Setup-0.2.5.exe" -H "Host: ${SITE_HOST}"
 
 css_ct="$(curl -skI "https://127.0.0.1/maka.css?v=${CSS_BUILD}" -H "Host: ${SITE_HOST}" | awk -F': ' 'tolower($1)=="content-type"{print $2}' | tr -d '\r')"
-css_head="$(curl -sk "https://127.0.0.1/maka.css?v=${CSS_BUILD}" -H "Host: ${SITE_HOST}" | head -c 40)"
+css_tmp="$(mktemp)"
+curl -sk -o "${css_tmp}" "https://127.0.0.1/maka.css?v=${CSS_BUILD}" -H "Host: ${SITE_HOST}"
+css_head="$(head -c 40 "${css_tmp}")"
+rm -f "${css_tmp}"
 echo "maka.css content-type:${css_ct}"
 echo "maka.css head:${css_head}"
 if [[ "${css_ct}" != *"text/css"* ]] || [[ "${css_head}" != "/* MAKA_CSS_BUILD=${CSS_BUILD}"* ]]; then

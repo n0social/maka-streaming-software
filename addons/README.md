@@ -1,8 +1,8 @@
-# Tabcast user addons
+# Maka user addons
 
 Copy an addon folder to:
 
-`%APPDATA%/Tabcast Browser/addons/<your-addon-id>/`
+`%APPDATA%/Maka/addons/<your-addon-id>/`
 
 Each addon needs a validated `tabcast-addon.json` manifest. See [docs/ADDON-API.md](../docs/ADDON-API.md).
 
@@ -22,4 +22,4 @@ Studio → **Addon marketplace** — install curated extensions without manual f
 
 ## Samples
 
-- `_samples/hello-tabcast/` — sandboxed runtime demo (`index.html` + `tabcast.addons` API). Also in marketplace as **Hello Tabcast**.
+- `_samples/hello-tabcast/` — sandboxed runtime demo (`index.html` + `tabcast.addons` API). Also in marketplace as **Hello Maka**.

@@ -7,7 +7,7 @@
       "name": "Discord Now Live",
       "version": "0.1.0",
       "apiVersion": 1,
-      "author": "Tabcast",
+      "author": "Maka",
       "category": "utility",
       "description": "Post a “now live” message to Discord via webhook when you go live (community pattern).",
       "permissions": [
@@ -59,7 +59,7 @@
       "name": "Custom RTMP / Kick",
       "version": "0.1.0",
       "apiVersion": 1,
-      "author": "Tabcast (example)",
+      "author": "Maka (example)",
       "category": "platform",
       "description": "Stream to Kick, Facebook Live, or any RTMP endpoint — adds a Custom RTMP destination row.",
       "permissions": [
@@ -109,7 +109,7 @@
       "name": "Lower thirds",
       "version": "0.1.0",
       "apiVersion": 1,
-      "author": "Tabcast",
+      "author": "Maka",
       "category": "production",
       "description": "Quick lower-third style layouts for name/title overlays via scene API.",
       "permissions": [

@@ -1,6 +1,6 @@
-# Tabcast Addon API v1
+# Maka Addon API v1
 
-Manifest: `tabcast-addon.json` in `%APPDATA%/Tabcast Browser/addons/<folder>/`
+Manifest: `tabcast-addon.json` in `%APPDATA%/Maka/addons/<folder>/`
 
 ## API version
 
@@ -67,7 +67,7 @@ Pair URLs come from the main process; addons must not bind port `38474` themselv
 
 Declarative addons with `live.events` + `network.fetch` can also use main-process Discord webhooks via settings.
 
-Settings path: `%APPDATA%/Tabcast Browser/addons/<folder>/settings.json`
+Settings path: `%APPDATA%/Maka/addons/<folder>/settings.json`
 
 ## Marketplace
 
@@ -75,11 +75,11 @@ The marketplace is **developer-curated** (not user submissions). See [community-
 
 Bundled catalog: `src/shared/marketplace-catalog.ts`
 
-Remote feed (optional): `https://tabcast.live.skydav.work/marketplace.json` — merged with bundled entries, cached 1h.
+Remote feed (optional): `https://makalive.stream/marketplace.json` — merged with bundled entries, cached 1h. The app still tries the previous origin host if that URL is down.
 
 Install copies manifest + optional `files` to user addons folder.
 
-**Try it:** Install **Hello Tabcast** from marketplace — sandboxed panel with toast button.
+**Try it:** Install **Hello Maka** from marketplace — sandboxed panel with toast button.
 
 ## Next (v1.2)
 

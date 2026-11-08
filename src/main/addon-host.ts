@@ -70,7 +70,7 @@ export class AddonHost {
       name: 'Scene templates',
       version: '1.0.0',
       apiVersion: 1,
-      author: 'Tabcast',
+      author: 'Maka',
       category: 'builtin',
       description: 'One-click layouts for the relay encoder.',
       permissions: ['scene.layout'],

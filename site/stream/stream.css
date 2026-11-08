@@ -154,6 +154,44 @@
   line-height: 1.5;
 }
 
+.stream-hint {
+  font-size: 0.78rem !important;
+}
+
+.stream-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.65rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.stream-field input,
+.stream-field select {
+  font: inherit;
+  padding: 0.45rem 0.55rem;
+  border-radius: 0.45rem;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.stream-status-json {
+  margin: 0.65rem 0 0;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.45rem;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  font-family: ui-monospace, monospace;
+  font-size: 0.68rem;
+  line-height: 1.4;
+  max-height: 6rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  color: var(--muted);
+}
+
 .stream-actions {
   display: flex;
   flex-direction: column;

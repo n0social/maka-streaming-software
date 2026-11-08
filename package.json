@@ -44,9 +44,13 @@
     "dist:dir": "npm run build && electron-builder --win dir",
     "dist:signed": "node scripts/dist-signed.mjs",
     "dist:ci": "npm run typecheck && npm run build && node scripts/verify.mjs --offline && electron-builder --win nsis --publish always",
-    "sign:relay": "node scripts/sign-windows.mjs vendor/relay/TabcastRelay.exe",
+    "sign:relay": "node scripts/sign-windows.mjs vendor/relay/MAKArelay.exe",
     "sign:verify": "node scripts/sign-windows.mjs --verify --all",
-    "release:manifest": "node scripts/update-browser-manifest.mjs"
+    "release:manifest": "node scripts/update-browser-manifest.mjs",
+    "web:relay": "node scripts/web-relay-dev.mjs",
+    "dev:web-studio": "node scripts/web-studio-dev.mjs --with-relay",
+    "dev:web-studio:site": "node scripts/web-studio-dev.mjs",
+    "test:web-relay": "node scripts/web-relay-smoke.test.mjs --spawn"
   },
   "devDependencies": {
     "@types/node": "^22.15.29",
@@ -59,7 +63,8 @@
   },
   "dependencies": {
     "electron-updater": "^6.6.2",
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.4",
+    "werift": "^0.25.2"
   },
   "engines": {
     "node": ">=22.5"
@@ -80,6 +85,7 @@
         "from": "vendor/relay",
         "to": "relay",
         "filter": [
+          "MAKArelay.exe",
           "TabcastRelay.exe",
           "relay-manifest.json"
         ]

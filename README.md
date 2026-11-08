@@ -6,21 +6,32 @@ Studio branding uses an **original fan-inspired anime streamer mascot** (blonde 
 
 ![Maka studio with a live game stream in the program monitor](docs/readme-hero.png)
 
-Maka is **free streaming software** for Windows: a desktop **Electron studio** for game capture, scenes, and **Go Live** without wiring up OBS first. A local **TabcastRelay** on `127.0.0.1:38473` takes WHIP from the app, encodes with FFmpeg, and pushes **RTMP** to Twitch, YouTube, or a custom RTMP endpoint. Stream keys stay in relay RAM — not written to disk by the UI.
+Maka is **free streaming software** for Windows: a desktop **Electron studio** for game capture, scenes, and **Go Live** without wiring up OBS first. A local **MAKA.relay** (`MAKArelay.exe`) on `127.0.0.1:38473` takes WHIP from the app, encodes with FFmpeg, and pushes **RTMP** to Twitch, YouTube, or a custom RTMP endpoint. The app looks in `%LOCALAPPDATA%\MAKArelay` first and still reads the older encoder folder because the current binary extracts there. Stream keys stay in relay RAM — not written to disk by the UI.
 
-**Website:** [tabcast.live.skydav.work](https://tabcast.live.skydav.work)
+**Website:** [makalive.stream](https://makalive.stream)
 
 ---
 
-## Get Maka (v0.2.4 installer)
+## Get Maka (v0.2.6 installer)
 
-The current **unsigned** Windows installer on GitHub is **v0.2.4**. Recent builds include the **phone camera/mic add-on** (QR pairing, independent camera and mic, 60-second rejoin, STUN and optional TURN) and **live stream recovery** (a bad stream key stops the stream immediately, network blips retry longer, WHIP stall watchdog, backup RTMP ingest).
+The current **unsigned** Windows installer on GitHub is **v0.2.6**. Installed copies of **v0.2.4** and **v0.2.5** check this release for an update. The build includes the **phone camera/mic add-on** (QR pairing, independent camera and mic, 60-second rejoin, STUN and optional TURN) and **live stream recovery** (a bad stream key stops the stream immediately, network blips retry longer, WHIP stall watchdog, backup RTMP ingest).
 
-`main` may be a few documentation commits ahead of the tag. The download and `git checkout maka.streaming.v.01` match the published installer; building `main` is the same app plus any commits made after the tag.
+`git checkout v0.2.6` matches the published installer.
+
+### Recent updates
+
+**0.2.6**
+
+- Addon protocol rename: preload exposes **`window.maka`**, manifests are **`maka-addon.json`**, sandbox pages load from **`maka-addon://`**, browse session uses **`persist:maka-browse`**, and catalog ids use **`com.maka.*`** (with migration from **`com.tabcast.*`**, including **`com.tabcast.phone-cam`** → **`com.maka.phone-cam`**). Relay paths and **`TabcastRelay.exe`** / **`TABCAST_*`** encoder env vars are unchanged; the app may also set **`MAKA_*`**.
+
+**0.2.5**
+
+- The encoder is **MAKA.relay** (`MAKArelay.exe`); the app looks in `%LOCALAPPDATA%\MAKArelay` first and still reads the older encoder folder because the current binary extracts there.
+- The site is [https://makalive.stream](https://makalive.stream); the marketing site hero is the MAKA wordmark.
 
 ### Option A — Download (Windows)
 
-1. Download **[Maka-Setup-0.2.4.exe](https://github.com/n0social/maka-streaming-software/releases/download/maka.streaming.v.01/Maka-Setup-0.2.4.exe)** from the [maka.streaming.v.01 release](https://github.com/n0social/maka-streaming-software/releases/tag/maka.streaming.v.01) (installer **v0.2.4**).
+1. Download **[Maka-Setup-0.2.6.exe](https://github.com/n0social/maka-streaming-software/releases/download/v0.2.6/Maka-Setup-0.2.6.exe)** from the [v0.2.6 release](https://github.com/n0social/maka-streaming-software/releases/tag/v0.2.6).
 2. Run the installer on **Windows 10 or 11** (x64).
 3. **Windows SmartScreen** may warn because the build is **unsigned** — that is expected until code signing is in place.
 
@@ -35,7 +46,17 @@ npm run fetch:relay
 npm run dev
 ```
 
-On Windows, `npm run dist` produces the NSIS installer. Use tag **`maka.streaming.v.01`** if you need a tree that exactly matches the published installer above.
+On Windows, `npm run dist` produces the NSIS installer. Use tag **`v0.2.6`** if you need a tree that exactly matches the published installer above.
+
+### Browser pipeline test (no MAKArelay.exe download)
+
+To exercise **WHIP → localhost relay → mock RTMP** in Chrome without the ~400 MB encoder binary, see **[docs/web-relay.md](docs/web-relay.md)**:
+
+```bash
+npm run dev:web-studio   # mock relay :38473 + static site :8765 → /stream/
+```
+
+Production preview: [makalive.stream/stream/](https://makalive.stream/stream/).
 
 ---
 
@@ -45,7 +66,7 @@ On Windows, `npm run dist` produces the NSIS installer. Use tag **`maka.streamin
 |--------|------|
 | **Studio** | Program monitor, display/window capture, webcam/mic, layers, destinations, Go Live |
 | **Browse** | Multi-tab Chromium pane (Twitch, YouTube Studio, chat) with optional chat pop-out |
-| **TabcastRelay** | Local encoder on port **38473** — WHIP in, RTMP out to your platforms |
+| **MAKA.relay** | Local encoder (`MAKArelay.exe`) on port **38473** — WHIP in, RTMP out to your platforms |
 
 ---
 
@@ -77,7 +98,7 @@ Automatic reconnect with a **fatal-vs-blip** retry policy (ingest/key errors sto
 [Display / window / webcam / mic / optional phone]
         │  capture APIs
         ▼
-[Maka Studio UI]  ──WHIP──►  [TabcastRelay :38473]  ──RTMP──►  Twitch / YouTube / Custom
+[Maka Studio UI]  ──WHIP──►  [MAKA.relay :38473]  ──RTMP──►  Twitch / YouTube / Custom
 [Browse tabs / chat]
 ```
 
@@ -106,7 +127,7 @@ Automatic reconnect with a **fatal-vs-blip** retry policy (ingest/key errors sto
 
 ## SmartScreen & trust
 
-The v0.2.4 installer is **unsigned**. SmartScreen may block or warn on first run. Only download from the official GitHub release linked above.
+The v0.2.6 installer is **unsigned**. SmartScreen may block or warn on first run. Only download from the official GitHub release linked above.
 
 ---
 
