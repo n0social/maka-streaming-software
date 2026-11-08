@@ -193,8 +193,23 @@
    * @param {number} durationMs wall-clock length of the recording
    * @returns {Uint8Array}
    */
+  function patchDuration(data, info, durationUnits) {
+    var patched = false;
+    walk(data, info.contentStart, info.contentEnd, function (el) {
+      if (patched || el.id !== ID_DURATION) return;
+      var len = el.contentEnd - el.contentStart;
+      if (len !== 4 && len !== 8) return;
+      var view = new DataView(data.buffer, data.byteOffset + el.contentStart, len);
+      if (len === 8) view.setFloat64(0, durationUnits, false);
+      else view.setFloat32(0, durationUnits, false);
+      patched = true;
+    });
+    return patched;
+  }
+
   function fixWebmBuffer(input, durationMs) {
-    var data = input instanceof Uint8Array ? input : new Uint8Array(input);
+    var source = input instanceof Uint8Array ? input : new Uint8Array(input);
+    var data = new Uint8Array(source);
     var top = [];
     walk(data, 0, data.length, function (el) {
       top.push(el);
@@ -237,26 +252,30 @@
     var durationUnits = Math.max(unitsFromClock, unitsFromClusters);
     if (!durationUnits) return data;
 
-    var newInfo = rebuildInfo(data, info, durationUnits);
-    var payloadParts = [];
-    var clusters = [];
-    var payloadLen = 0;
-    for (c = 0; c < children.length; c++) {
-      var el = children[c];
-      if (el.id === ID_CUES) continue;
-      var bytes = el.id === ID_INFO ? newInfo : data.subarray(el.start, el.contentEnd);
-      if (el.id === ID_CLUSTER) {
-        clusters.push({ time: clusterTime(data, el), position: payloadLen });
-      }
-      payloadParts.push(bytes);
-      payloadLen += bytes.length;
-    }
-    if (clusters.length) {
-      var cues = buildCues(clusters);
-      payloadParts.push(cues);
-      payloadLen += cues.length;
+    var patched = patchDuration(data, info, durationUnits);
+    if (!patched) {
+      var rebuiltInfo = rebuildInfo(data, info, durationUnits);
+      var head = data.subarray(0, info.start);
+      var tail = data.subarray(info.contentEnd);
+      data = concat([head, rebuiltInfo, tail]);
+      return fixWebmBuffer(data, durationMs);
     }
 
+    var hasCues = false;
+    var clusters = [];
+    for (c = 0; c < children.length; c++) {
+      if (children[c].id === ID_CUES) hasCues = true;
+      if (children[c].id === ID_CLUSTER) {
+        clusters.push({
+          time: clusterTime(data, children[c]),
+          position: children[c].start - segment.contentStart,
+        });
+      }
+    }
+    if (!clusters.length || hasCues) return data;
+
+    var cues = buildCues(clusters);
+    var payloadLen = (segment.unknown ? 0 : segment.contentEnd - segment.contentStart) + cues.length;
     var segmentHeader = rewriteSegmentHeader(
       data.subarray(segment.start, segment.contentStart),
       segment.idLen,
@@ -265,9 +284,9 @@
       payloadLen,
     );
     var before = data.subarray(0, segment.start);
-    var after =
-      segment.contentEnd < data.length ? data.subarray(segment.contentEnd) : new Uint8Array(0);
-    return concat([before, segmentHeader, concat(payloadParts), after]);
+    var body = data.subarray(segment.contentStart, segment.unknown ? data.length : segment.contentEnd);
+    var after = segment.unknown || segment.contentEnd >= data.length ? new Uint8Array(0) : data.subarray(segment.contentEnd);
+    return concat([before, segmentHeader, body, cues, after]);
   }
 
   return { fixWebmBuffer: fixWebmBuffer };

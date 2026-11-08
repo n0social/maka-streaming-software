@@ -430,6 +430,18 @@
       return null;
     }
 
+    function readProgramStream() {
+      var api = getPreviewApi();
+      if (!api || typeof api.getProgramStream !== 'function') return null;
+      try {
+        var stream = api.getProgramStream();
+        if (liveTrack(stream)) return stream;
+      } catch (_err) {
+        return null;
+      }
+      return null;
+    }
+
     function readPreviewStreams() {
       var api = getPreviewApi();
       if (!api || typeof api.getStreams !== 'function') return null;
@@ -946,7 +958,8 @@
         (previewStreams && previewStreams.webcam) ||
         webcamStream ||
         null;
-      var main = screen || cam;
+      var composed = readProgramStream();
+      var main = composed || screen;
       if (!main || !main.getVideoTracks()[0]) {
         if (els.canvas && typeof els.canvas.captureStream === 'function') {
           var canvasStream = els.canvas.captureStream(30);
@@ -962,7 +975,7 @@
       var gameplay = namedStream(TRACK_IDS.gameplay, main.getVideoTracks());
       var webcamOut = null;
       // Separate webcam track only when screen is the gameplay bed (PiP path).
-      if (screen && cam && cam.getVideoTracks()[0] && screen === main) {
+      if (!composed && screen && cam && cam.getVideoTracks()[0] && screen === main) {
         webcamOut = namedStream(TRACK_IDS.webcam, cam.getVideoTracks());
       }
       var micOut = null;
@@ -1536,10 +1549,11 @@
     }
 
     function pickPreviewRecordStream() {
+      var composed = readProgramStream();
+      if (composed) return composed;
       var streams = readPreviewStreams();
       if (!streams) return null;
       if (liveTrack(streams.screen)) return streams.screen;
-      if (liveTrack(streams.webcam)) return streams.webcam;
       return null;
     }
 
@@ -1582,35 +1596,39 @@
 
     async function buildRecordingStream(videoStream) {
       var out = new MediaStream();
+      var clones = [];
       videoStream.getVideoTracks().forEach(function (track) {
         if (track.readyState === 'live') out.addTrack(track);
       });
-      var ctx = new AudioContext();
-      if (ctx.state === 'suspended') {
+      function addDirectAudio(stream, channelId) {
+        var tracks = liveAudioTracks(stream);
+        if (!tracks.length) return false;
+        if (channelId && global.MakaStreamAudio && typeof global.MakaStreamAudio.isMuted === 'function') {
+          if (global.MakaStreamAudio.isMuted(channelId)) return false;
+        }
+        var clone = tracks[0].clone();
+        clone.enabled = true;
+        out.addTrack(clone);
+        clones.push(clone);
+        return true;
+      }
+      var micOn = addDirectAudio(resolveMicStream(), 'mic');
+      if (!micOn) {
         try {
-          await ctx.resume();
+          var fresh = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+          var freshTracks = liveAudioTracks(fresh);
+          if (freshTracks.length) {
+            freshTracks[0].enabled = true;
+            out.addTrack(freshTracks[0]);
+            clones.push(freshTracks[0]);
+            micOn = true;
+          }
         } catch (_err) {
-          /* autoplay policy */
+          micOn = false;
         }
       }
-      var dest = ctx.createMediaStreamDestination();
-      var micOn = connectRecordingSource(ctx, dest, resolveMicStream(), 'mic');
-      var desktopOn = connectRecordingSource(ctx, dest, mixerStream('desktop'), 'desktop');
-      var gameOn = connectRecordingSource(ctx, dest, mixerStream('game'), 'game');
-      if (!micOn && !desktopOn && !gameOn) {
-        connectRecordingSource(ctx, dest, videoStream, null);
-      }
-      var mixed = dest.stream.getAudioTracks()[0];
-      if (mixed) out.addTrack(mixed);
-      else {
-        try {
-          await ctx.close();
-        } catch (_err) {
-          /* ignore */
-        }
-        ctx = null;
-      }
-      return { stream: out, ctx: ctx, micOn: micOn };
+      if (!micOn) addDirectAudio(mixerStream('desktop'), 'desktop') || addDirectAudio(mixerStream('game'), 'game');
+      return { stream: out, ctx: null, micOn: micOn, clones: clones };
     }
 
     function closeRecordingMix() {
@@ -1619,6 +1637,15 @@
       if (mix && mix.ctx) {
         mix.ctx.close().catch(function () {
           return undefined;
+        });
+      }
+      if (mix && mix.clones) {
+        mix.clones.forEach(function (track) {
+          try {
+            track.stop();
+          } catch (_err) {
+            /* ignore */
+          }
         });
       }
     }
@@ -1741,7 +1768,7 @@
         if (destHint) destHint.textContent = 'Recording produced no data.';
         return;
       }
-      showRecordingSaveModal(blob, name);
+      downloadRecordingBlob(blob);
     }
 
     async function startRecording() {

@@ -39,6 +39,11 @@
   background: #0a0a0c;
 }
 
+/* No window chosen for Game Capture: the bed stays black and the webcam remains a PIP. */
+#studio-preview > .preview-stage[data-game-bed='black'] {
+  background: #000;
+}
+
 #studio-preview > .preview-stage #program-video,
 #studio-preview > .preview-stage .preview-stage__program {
   position: absolute;

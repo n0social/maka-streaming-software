@@ -297,6 +297,8 @@ export function initPreview(root) {
       els.empty.hidden = true;
     }
 
+    if (els.stage) els.stage.dataset.gameBed = hasScreen ? 'capture' : 'black';
+
     const detail = {
       hasScreen,
       hasWebcam: hasCam,
@@ -532,6 +534,82 @@ export function initPreview(root) {
     return { screen: screenStream, webcam: webcamStream };
   }
 
+  let programCanvas = null;
+  let programStream = null;
+  let programDrawTimer = 0;
+
+  function ensureProgramCanvas() {
+    if (!programCanvas) {
+      programCanvas = document.createElement('canvas');
+      programCanvas.width = 1280;
+      programCanvas.height = 720;
+    }
+    return programCanvas;
+  }
+
+  function drawContained(ctx, video, dx, dy, dw, dh) {
+    if (!video || video.readyState < 2 || !video.videoWidth || dw < 2 || dh < 2) return;
+    const scale = Math.min(dw / video.videoWidth, dh / video.videoHeight);
+    const tw = video.videoWidth * scale;
+    const th = video.videoHeight * scale;
+    ctx.drawImage(video, dx + (dw - tw) / 2, dy + (dh - th) / 2, tw, th);
+  }
+
+  function elementFrame(el, canvas) {
+    if (!el || el.hidden) return null;
+    const stage = (els.stage && els.stage.getBoundingClientRect()) || root.getBoundingClientRect();
+    const rect = el.getBoundingClientRect();
+    if (!stage.width || !stage.height || rect.width < 2 || rect.height < 2) return null;
+    return {
+      x: ((rect.left - stage.left) / stage.width) * canvas.width,
+      y: ((rect.top - stage.top) / stage.height) * canvas.height,
+      w: (rect.width / stage.width) * canvas.width,
+      h: (rect.height / stage.height) * canvas.height,
+    };
+  }
+
+  function drawProgramFrame() {
+    const canvas = ensureProgramCanvas();
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const hasScreen = Boolean(
+      screenStream && screenStream.getVideoTracks().some((t) => t.readyState === 'live'),
+    );
+    if (hasScreen && els.program && !els.program.hidden) {
+      const game = elementFrame(els.program, canvas) || {
+        x: 0,
+        y: 0,
+        w: canvas.width,
+        h: canvas.height,
+      };
+      drawContained(ctx, els.program, game.x, game.y, game.w, game.h);
+    }
+    if (els.cam && !els.cam.hidden && els.camVideo && !els.camVideo.hidden) {
+      const cam = elementFrame(els.cam, canvas);
+      if (cam) {
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(cam.x, cam.y, cam.w, cam.h);
+        drawContained(ctx, els.camVideo, cam.x, cam.y, cam.w, cam.h);
+      }
+    }
+  }
+
+  function tickProgramFrame() {
+    drawProgramFrame();
+    programDrawTimer = window.setTimeout(tickProgramFrame, 1000 / 30);
+  }
+
+  /** Black game bed plus the webcam in its current overlay slot. */
+  function getProgramStream() {
+    const canvas = ensureProgramCanvas();
+    drawProgramFrame();
+    if (!programStream) programStream = canvas.captureStream(30);
+    if (!programDrawTimer) tickProgramFrame();
+    return programStream;
+  }
+
   function captureFrameCanvas() {
     const canvas = document.createElement('canvas');
     canvas.width = 1280;
@@ -626,10 +704,15 @@ export function initPreview(root) {
     setScreenStream,
     setWebcamStream,
     getStreams,
+    getProgramStream,
     captureFrameCanvas,
     destroy() {
       if (destroyed) return;
       destroyed = true;
+      if (programDrawTimer) {
+        window.clearTimeout(programDrawTimer);
+        programDrawTimer = 0;
+      }
       if (externalScreen) externalScreen.removeEventListener('click', onScreenClick);
       if (externalWebcam) externalWebcam.removeEventListener('click', onWebcamClick);
       root.removeEventListener('maka:scene-change', onSceneEvent);
