@@ -1070,11 +1070,11 @@
       }
 
       if (wizardStep === 'platform') {
-        if (els.wizardTitle) els.wizardTitle.textContent = 'Choose platform';
-        if (els.wizardBody) els.wizardBody.textContent = 'Which Platform would you like to stream to?';
+        if (els.wizardTitle) els.wizardTitle.textContent = 'Choose a platform';
+        if (els.wizardBody) els.wizardBody.textContent = 'Which platform would you like to stream to?';
       } else if (wizardStep === 'key') {
         if (els.wizardTitle) els.wizardTitle.textContent = 'Stream key';
-        if (els.wizardBody) els.wizardBody.textContent = 'Enter in your stream key';
+        if (els.wizardBody) els.wizardBody.textContent = 'Enter your stream key';
         syncWizardKeyPanel();
         refreshKeyGate();
       } else if (wizardStep === 'details') {

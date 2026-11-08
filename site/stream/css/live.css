@@ -544,13 +544,6 @@
 .go-live-wizard-actions-secondary [hidden] {
   display: none !important;
 }
-.go-live-wizard-dialog[data-step="platform"] .go-live-wizard-step,
-.go-live-wizard-dialog[data-step="platform"] .go-live-wizard-form h2,
-.go-live-wizard-dialog[data-step="platform"] .go-live-wizard-lead,
-.go-live-wizard-dialog[data-step="key"] .go-live-wizard-step,
-.go-live-wizard-dialog[data-step="key"] .go-live-wizard-form h2,
-.go-live-wizard-dialog[data-step="key"] .go-live-wizard-lead,
-.go-live-wizard-dialog[data-step="go"] .go-live-wizard-step,
 .go-live-wizard-dialog[data-step="go"] .go-live-wizard-form h2,
 .go-live-wizard-dialog[data-step="go"] .go-live-wizard-lead,
 .go-live-wizard-dialog[data-step="go"] .go-live-wizard-status {
@@ -644,6 +637,7 @@
   display: flex;
   justify-content: center;
   gap: 0.55rem;
+  margin-top: 1.35rem;
 }
 .go-live-wizard-dialog[data-step="go"] #go-live-wizard-next {
   font-size: 1.35rem;
