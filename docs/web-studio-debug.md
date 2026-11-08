@@ -1,17 +1,19 @@
 # Web studio debug pass — `site/stream/`
 
-**Date:** 2026-11-07  
+**Date:** 2026-11-07 (fresh re-check 2026-11-08 after tip `48db4d2`+)  
 **Branch:** `cursor/web-studio-port-dc6d`  
-**Scope:** 1:1 exe port under `site/stream/` (`index.html`, `stream.css`, `css/*`, `js/*`)  
-**Method:** Static asset/ID/syntax checks + `python3 -m http.server` on `site/` (:8790) + headless Chrome (CDP) instrumentation. **No deploy. No droplet / skydav.work.**
+**Scope:** 1:1 exe port under `site/stream/` (`index.html`, `stream.css`, `css/*`, `js/*`) + `download.html`  
+**Method:** Static asset/ID/syntax checks + `python3 -m http.server` on `site/` (:8790) + headless Chrome (CDP) instrumentation.
 
-**Screenshot:** `/opt/cursor/artifacts/web-studio-debug-layout.png` (1440×900). Companion 1100×700: `/opt/cursor/artifacts/web-studio-debug-layout-1100x700.png`.
+**Screenshot:** `/opt/cursor/artifacts/web-studio-debug-layout.png` (1440×900). Companion 1100×700: `/opt/cursor/artifacts/web-studio-debug-layout-1100x700.png`. Fresh 2026-11-08: `/tmp/web-studio-debug/layout-1440.png`.
 
 ---
 
 ## Verdict
 
 The page **boots cleanly**. All six modules initialize. Layout containment holds at 1440×900 and 1100×700 (center does **not** expand over sidebars). Scenes, preview chrome, audio mixer, live probe honesty, and settings persistence are largely present.
+
+**2026-11-08 re-pass (post-`48db4d2`):** P0/P1 clear for boot, Go Live wizard (`#go-live-wizard-dialog` Step 1 of 4), settings open/persist (`maka.stream.settings.v1` + `maka.stream.streamTitle`), and all `/stream/js|css` + `/marketplace.json` assets 200. `download.html` retargeted to same-origin `/maka.css` + `makalive.stream` canonical (removed `tabcast.live.skydav.work` base/CSS). Relay `ERR_CONNECTION_REFUSED` still expected without sidecar.
 
 Wiring layers 1–3 addressed source-row ↔ preview capture conflicts, dead Stream Controls chrome (recording / vcam / marketplace / platform chips / studio↔browser mode), and the live ↔ preview API name (`MakaStreamPreview` canonical + `MakaPreview` alias). Remaining: other P2 polish (mic id, event emit, CSS dedupe, etc.). Nothing found that blocks first paint.
 

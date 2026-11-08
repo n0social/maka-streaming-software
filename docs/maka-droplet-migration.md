@@ -1,6 +1,8 @@
 # Maka → dedicated DigitalOcean droplet (migration runbook)
 
-**Status:** docs + skydav funnel prepared. Live traffic **not** cut over. Do **not** delete `/opt/maka` on skydav.
+**Status:** docs + skydav funnel prepared. Live traffic **not** cut over. Do **not** delete `/opt/maka` on skydav. **New droplet comes later — do not migrate yet.**
+
+**Portfolio (stays on skydav):** `skydav.work` / `skydav-portfolio` keeps a **Download** link to `https://makalive.stream/download.html` (no large installer copies under the portfolio tree). Full Maka origin (studio + downloads + signaling) moves to the new droplet later; the portfolio link keeps working across that cutover.
 
 **Goal:** move **all** Maka code (static site, signaling, future relay) onto a new DO droplet. After cutover, `tabcast.live.skydav.work` (and any `*.skydav.work` Maka host) becomes a **cream/gold hero funnel** that sends streamers to `https://makalive.stream/`. Apex `makalive.stream` DNS points at the **new** droplet IP.
 
@@ -189,7 +191,12 @@ server {
 - Do **not** create the DO droplet from the agent without a clear API token.
 - Do **not** migrate live traffic yet.
 - Do **not** tear down `/opt/maka` or stop `tabcast-signaling` on skydav until the new origin is verified.
-- Do **not** move `skydav-portfolio` (unrelated site on the same box).
+- Do **not** move `skydav-portfolio` off skydav — only ensure it links to Maka download on `makalive.stream`.
+- Do **not** replace full studio on `makalive.stream` with the thin funnel while apex still originates here.
+
+### Funnel host note (`makalive.stream.skydav.work`)
+
+As of 2026-11-08, nginx on skydav has **no** `server_name` for `makalive.stream.skydav.work`. `tabcast.live.skydav.work` (+ `makalive.stream` / `www`) already serves `/opt/maka/web` (full studio). Deploy `site/skydav-funnel/` only after cutover (or after adding a dedicated funnel vhost); do not overwrite `/opt/maka/web` with the funnel while `makalive.stream` still points here.
 
 ---
 

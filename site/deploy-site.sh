@@ -21,10 +21,15 @@ cp "${SRC_DIR}/maka.css" "${WEB_ROOT}/maka.css"
 cp "${SRC_DIR}/robots.txt" "${WEB_ROOT}/robots.txt"
 cp "${SRC_DIR}/sitemap.xml" "${WEB_ROOT}/sitemap.xml"
 
-mkdir -p "${WEB_ROOT}/stream"
+mkdir -p "${WEB_ROOT}/stream/js" "${WEB_ROOT}/stream/css"
 cp "${SRC_DIR}/stream/index.html" "${WEB_ROOT}/stream/index.html"
 cp "${SRC_DIR}/stream/stream.css" "${WEB_ROOT}/stream/stream.css"
 cp "${SRC_DIR}/stream/stream.js" "${WEB_ROOT}/stream/stream.js"
+cp "${SRC_DIR}/stream/js/"*.js "${WEB_ROOT}/stream/js/"
+cp "${SRC_DIR}/stream/css/"*.css "${WEB_ROOT}/stream/css/"
+if [ -f "${SRC_DIR}/marketplace.json" ]; then
+  cp "${SRC_DIR}/marketplace.json" "${WEB_ROOT}/marketplace.json"
+fi
 
 mkdir -p "${WEB_ROOT}/preview"
 cp "${SRC_DIR}/preview/index.html" "${WEB_ROOT}/preview/index.html"
@@ -41,7 +46,11 @@ find "${WEB_ROOT}/marketing" -type f -exec chmod 644 {} \;
 chmod 644 "${WEB_ROOT}/index.html" "${WEB_ROOT}/legacy.html" "${WEB_ROOT}/download.html" \
   "${WEB_ROOT}/404.html" "${WEB_ROOT}/maka.css" "${WEB_ROOT}/maka-mascot.svg" "${WEB_ROOT}/robots.txt" "${WEB_ROOT}/sitemap.xml" \
   "${WEB_ROOT}/stream/index.html" "${WEB_ROOT}/stream/stream.css" "${WEB_ROOT}/stream/stream.js" \
+  "${WEB_ROOT}/stream/js/"*.js "${WEB_ROOT}/stream/css/"*.css \
   "${WEB_ROOT}/preview/index.html" "${WEB_ROOT}/preview/preview.css"
+if [ -f "${WEB_ROOT}/marketplace.json" ]; then
+  chmod 644 "${WEB_ROOT}/marketplace.json"
+fi
 
 if [ -f "${SRC_DIR}/tabcast-downloads.conf" ]; then
   cp "${SRC_DIR}/tabcast-downloads.conf" /etc/nginx/snippets/tabcast-downloads.conf
@@ -64,6 +73,7 @@ curl -sk -o /dev/null -w "home:%{http_code}\n" "https://127.0.0.1/" -H "Host: ${
 curl -sk -o /dev/null -w "preview:%{http_code}\n" "https://127.0.0.1/preview/" -H "Host: ${SITE_HOST}"
 curl -sk -o /dev/null -w "legacy:%{http_code}\n" "https://127.0.0.1/legacy.html" -H "Host: ${SITE_HOST}"
 curl -sk -o /dev/null -w "stream:%{http_code}\n" "https://127.0.0.1/stream/" -H "Host: ${SITE_HOST}"
+curl -sk -o /dev/null -w "download:%{http_code}\n" "https://127.0.0.1/download.html" -H "Host: ${SITE_HOST}"
 curl -sk -o /dev/null -w "marketing:%{http_code}\n" "https://127.0.0.1/marketing/download-now.png" -H "Host: ${SITE_HOST}"
 curl -sk -o /dev/null -w "setup:%{http_code}\n" "https://127.0.0.1/downloads/Maka-Setup-0.2.4.exe" -H "Host: ${SITE_HOST}"
 
