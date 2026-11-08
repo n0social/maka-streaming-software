@@ -471,7 +471,7 @@
               </div>
               <div class="stream-meta">
                 <input type="text" id="stream-title-input" class="stream-title-input" maxlength="140" autocomplete="off" placeholder="Stream title" aria-label="Stream title" />
-                <input type="text" id="stream-category-input" class="stream-category-input" maxlength="100" autocomplete="off" placeholder="Category or game" aria-label="Stream category" />
+                <input type="text" id="stream-game-input" class="stream-game-input" maxlength="100" autocomplete="off" placeholder="Game" aria-label="Game" />
                 <p class="stream-destinations" id="stream-destinations-hint" title="Safe status only — stream keys live in the chip dialog, not here"></p>
                 <div class="stream-status-row">
                   <span class="stream-live-pill" id="stream-live-pill" data-live="false">Offline</span>
@@ -513,6 +513,59 @@
         </div>
       </div>
     </div>
+
+
+    <!-- Go Live wizard — prefills from Stream Info / Settings shared localStorage keys -->
+    <dialog id="go-live-wizard-dialog" class="go-live-wizard-dialog" aria-labelledby="go-live-wizard-title">
+      <div class="go-live-wizard-form">
+        <p class="go-live-wizard-step" id="go-live-wizard-step">Step 1 of 4</p>
+        <h2 id="go-live-wizard-title">Go live</h2>
+        <p class="hint tight" id="go-live-wizard-body"></p>
+        <div id="go-live-wizard-panel-platform">
+          <fieldset class="go-live-wizard-platforms">
+            <legend class="sr-only">Platform</legend>
+            <label class="check">
+              <input type="radio" name="go-live-platform" value="twitch" checked />
+              Twitch
+            </label>
+            <label class="check">
+              <input type="radio" name="go-live-platform" value="youtube" />
+              YouTube
+            </label>
+          </fieldset>
+        </div>
+        <div id="go-live-wizard-panel-key" hidden>
+          <div data-wizard-key="twitch">
+            <label class="field-label" for="wizard-twitch-key">Twitch stream key</label>
+            <input id="wizard-twitch-key" class="key-input" type="password" autocomplete="off" spellcheck="false" />
+          </div>
+          <div data-wizard-key="youtube" hidden>
+            <label class="field-label" for="wizard-youtube-key">YouTube stream key</label>
+            <input id="wizard-youtube-key" class="key-input" type="password" autocomplete="off" spellcheck="false" />
+          </div>
+        </div>
+        <div id="go-live-wizard-panel-details" hidden>
+          <label class="field-label" for="go-live-wizard-title-input">Stream title</label>
+          <input id="go-live-wizard-title-input" class="key-input" type="text" maxlength="140" autocomplete="off" />
+          <label class="field-label" for="go-live-wizard-game-input">Game</label>
+          <input id="go-live-wizard-game-input" class="key-input" type="text" maxlength="100" autocomplete="off" placeholder="Just Chatting" />
+          <label class="field-label" for="go-live-wizard-quality">Encode profile</label>
+          <select id="go-live-wizard-quality" class="select program-stats-select-encode" aria-label="Encode profile"></select>
+          <p class="hint tight">
+            Prefills from Stream Info and Settings → Streaming. Edits sync to the same
+            <code>maka.stream.*</code> keys before Go Live.
+          </p>
+        </div>
+        <div id="go-live-wizard-panel-go" hidden>
+          <p class="go-live-wizard-status" id="go-live-wizard-go-status" data-state="idle"></p>
+        </div>
+        <div class="row go-live-wizard-actions">
+          <button type="button" class="btn btn-primary" id="go-live-wizard-next">Next</button>
+          <button type="button" class="btn btn-ghost" id="go-live-wizard-back" hidden>Back</button>
+          <button type="button" class="btn btn-ghost" id="go-live-wizard-cancel">Cancel</button>
+        </div>
+      </div>
+    </dialog>
 
     <pre class="stream-log" id="stream-log" hidden aria-hidden="true"></pre>
     <select id="cfg-profile" hidden aria-hidden="true" aria-label="Encode profile for relay config">

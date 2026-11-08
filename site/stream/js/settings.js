@@ -10,19 +10,21 @@
  *   localStorage key `maka.stream.settings.v1` — JSON blob mirroring AppSettings
  *   keys used by the Settings UI.
  *
- * Shared keys (sync with live.js / Stream Info sidebar):
+ * Shared keys (sync with live.js / Stream Info sidebar / Go Live wizard):
  *   maka.stream.streamTitle      ↔ settings.streamTitle / #stream-title-input / #set-stream-title
- *   maka.stream.streamCategory   ↔ settings.streamCategory / #stream-category-input / #set-stream-category
+ *   maka.stream.streamGame       ↔ settings.streamGame / #stream-game-input / #set-stream-game
+ *     (migrates legacy maka.stream.streamCategory → streamGame; empty → Just Chatting)
  *   maka.stream.bitrateProfile   ↔ settings.bitrateProfile / #cfg-profile / #set-encode-profile
+ *     Default everywhere: 720p30 (matches exe settings-store).
  *
  * Mapping summary (settings.json → localStorage):
  *   minimizeToTrayWhileLive, labMode, autoCheckUpdatesOnStartup,
- *   bitrateProfile, lastStreamPlatform, streamTitle, streamCategory,
+ *   bitrateProfile, lastStreamPlatform, streamTitle, streamGame,
  *   preferredMicDeviceId, audioMicBitrateKbps, audioDesktopBitrateKbps,
  *   videoEncoderPreference, gpuPreference, recordingSaveFolder,
  *   settingsActiveTab
  *   → stored in maka.stream.settings.v1 (same property names)
- *   + streamTitle / streamCategory / bitrateProfile mirrored to shared keys above
+ *   + streamTitle / streamGame / bitrateProfile mirrored to shared keys above
  *   Web is Studio-only: startupMode always "studio"; Browser Mode UI removed.
  *
  * Shell hooks:
@@ -34,9 +36,15 @@
 const APP_VERSION = '0.2.4' // mirrors package.json "version"
 
 const STORAGE_KEY = 'maka.stream.settings.v1'
+/** Safe web / exe default encode profile (src/main/settings-store.ts). */
+const DEFAULT_BITRATE_PROFILE = '720p30'
+/** Twitch-style fallback when Game is empty. */
+const DEFAULT_STREAM_GAME = 'Just Chatting'
 const SHARED = {
   streamTitle: 'maka.stream.streamTitle',
-  streamCategory: 'maka.stream.streamCategory',
+  streamGame: 'maka.stream.streamGame',
+  /** @deprecated migrated → streamGame */
+  streamCategoryLegacy: 'maka.stream.streamCategory',
   bitrateProfile: 'maka.stream.bitrateProfile',
 }
 
@@ -62,7 +70,7 @@ const ENCODE_PROFILES = [
 const DEST_STORAGE_KEY = 'maka.stream.destinations.v1'
 
 const DEFAULT_SETTINGS = {
-  bitrateProfile: '720p30',
+  bitrateProfile: DEFAULT_BITRATE_PROFILE,
   startupMode: 'studio',
   minimizeToTrayWhileLive: true,
   labMode: false,
@@ -71,7 +79,7 @@ const DEFAULT_SETTINGS = {
   settingsActiveTab: 'general',
   lastStreamPlatform: 'none',
   streamTitle: '',
-  streamCategory: '',
+  streamGame: DEFAULT_STREAM_GAME,
   preferredMicDeviceId: '',
   preferredDesktopAudioOutputDeviceId: '',
   audioMicBitrateKbps: 160,
@@ -99,11 +107,34 @@ function sanitizeTitle(raw) {
     .slice(0, 140)
 }
 
-function sanitizeCategory(raw) {
-  return String(raw || '')
+function sanitizeGame(raw) {
+  const cleaned = String(raw || '')
     .trim()
     .replace(/\s+/g, ' ')
     .slice(0, 100)
+  return cleaned || DEFAULT_STREAM_GAME
+}
+
+/** @deprecated use sanitizeGame */
+function sanitizeCategory(raw) {
+  return sanitizeGame(raw)
+}
+
+function migrateCategoryToGameStorage() {
+  try {
+    const game = localStorage.getItem(SHARED.streamGame)
+    if (game != null && String(game).length) {
+      localStorage.setItem(SHARED.streamGame, sanitizeGame(game))
+      return
+    }
+    const legacy = localStorage.getItem(SHARED.streamCategoryLegacy)
+    if (legacy != null) {
+      localStorage.setItem(SHARED.streamGame, sanitizeGame(legacy))
+      localStorage.removeItem(SHARED.streamCategoryLegacy)
+    }
+  } catch {
+    /* private mode */
+  }
 }
 
 function coerceSettings(raw) {
@@ -124,7 +155,11 @@ function coerceSettings(raw) {
     out.lastStreamPlatform = raw.lastStreamPlatform
   }
   if (typeof raw.streamTitle === 'string') out.streamTitle = sanitizeTitle(raw.streamTitle)
-  if (typeof raw.streamCategory === 'string') out.streamCategory = sanitizeCategory(raw.streamCategory)
+  if (typeof raw.streamGame === 'string') {
+    out.streamGame = sanitizeGame(raw.streamGame)
+  } else if (typeof raw.streamCategory === 'string') {
+    out.streamGame = sanitizeGame(raw.streamCategory)
+  }
   if (typeof raw.preferredMicDeviceId === 'string') out.preferredMicDeviceId = raw.preferredMicDeviceId
   if (typeof raw.preferredDesktopAudioOutputDeviceId === 'string') {
     out.preferredDesktopAudioOutputDeviceId = raw.preferredDesktopAudioOutputDeviceId
@@ -146,12 +181,17 @@ function coerceSettings(raw) {
 
 function readSharedOverrides(base) {
   const next = { ...base }
+  migrateCategoryToGameStorage()
   try {
     const title = localStorage.getItem(SHARED.streamTitle)
-    const category = localStorage.getItem(SHARED.streamCategory)
+    let game = localStorage.getItem(SHARED.streamGame)
+    if (game == null) {
+      const legacy = localStorage.getItem(SHARED.streamCategoryLegacy)
+      if (legacy != null) game = legacy
+    }
     const profile = localStorage.getItem(SHARED.bitrateProfile)
     if (title != null) next.streamTitle = sanitizeTitle(title)
-    if (category != null) next.streamCategory = sanitizeCategory(category)
+    if (game != null) next.streamGame = sanitizeGame(game)
     if (profile && ENCODE_PROFILES.some((p) => p.id === profile)) next.bitrateProfile = profile
   } catch {
     /* private mode */
@@ -175,14 +215,44 @@ function persistShared(partial) {
     if (Object.prototype.hasOwnProperty.call(partial, 'streamTitle')) {
       localStorage.setItem(SHARED.streamTitle, sanitizeTitle(partial.streamTitle))
     }
-    if (Object.prototype.hasOwnProperty.call(partial, 'streamCategory')) {
-      localStorage.setItem(SHARED.streamCategory, sanitizeCategory(partial.streamCategory))
+    if (Object.prototype.hasOwnProperty.call(partial, 'streamGame')) {
+      localStorage.setItem(SHARED.streamGame, sanitizeGame(partial.streamGame))
+      try {
+        localStorage.removeItem(SHARED.streamCategoryLegacy)
+      } catch {
+        /* ignore */
+      }
     }
     if (Object.prototype.hasOwnProperty.call(partial, 'bitrateProfile')) {
-      localStorage.setItem(SHARED.bitrateProfile, String(partial.bitrateProfile))
+      const id = String(partial.bitrateProfile)
+      localStorage.setItem(
+        SHARED.bitrateProfile,
+        ENCODE_PROFILES.some((p) => p.id === id) ? id : DEFAULT_BITRATE_PROFILE,
+      )
     }
   } catch {
     /* ignore */
+  }
+}
+
+/** Ensure shared keys exist so Stream Info, stats bar, Settings, and wizard stay aligned. */
+function ensureSharedDefaults() {
+  migrateCategoryToGameStorage()
+  try {
+    if (localStorage.getItem(SHARED.streamGame) == null) {
+      localStorage.setItem(SHARED.streamGame, DEFAULT_STREAM_GAME)
+    } else {
+      localStorage.setItem(SHARED.streamGame, sanitizeGame(localStorage.getItem(SHARED.streamGame)))
+    }
+    const profile = localStorage.getItem(SHARED.bitrateProfile)
+    if (!profile || !ENCODE_PROFILES.some((p) => p.id === profile)) {
+      localStorage.setItem(SHARED.bitrateProfile, DEFAULT_BITRATE_PROFILE)
+    }
+    if (localStorage.getItem(SHARED.streamTitle) == null) {
+      localStorage.setItem(SHARED.streamTitle, '')
+    }
+  } catch {
+    /* private mode */
   }
 }
 
@@ -207,27 +277,35 @@ function dispatchChange() {
 
 function syncLiveDomFields() {
   const title = document.getElementById('stream-title-input')
-  const category = document.getElementById('stream-category-input')
+  const game = document.getElementById('stream-game-input')
   const profile = document.getElementById('cfg-profile')
   const quality = document.getElementById('program-quality-select')
+  const wizardQuality = document.getElementById('go-live-wizard-quality')
+  const wizardTitle = document.getElementById('go-live-wizard-title-input')
+  const wizardGame = document.getElementById('go-live-wizard-game-input')
 
   populateEncodeSelect(profile)
   populateEncodeSelect(quality)
+  populateEncodeSelect(wizardQuality)
 
   if (title instanceof HTMLInputElement && document.activeElement !== title) {
     title.value = settings.streamTitle
   }
-  if (category instanceof HTMLInputElement && document.activeElement !== category) {
-    category.value = settings.streamCategory
+  if (game instanceof HTMLInputElement && document.activeElement !== game) {
+    game.value = settings.streamGame || DEFAULT_STREAM_GAME
   }
-  if (profile instanceof HTMLSelectElement && document.activeElement !== profile) {
-    if ([...profile.options].some((o) => o.value === settings.bitrateProfile)) {
-      profile.value = settings.bitrateProfile
-    }
+  if (wizardTitle instanceof HTMLInputElement && document.activeElement !== wizardTitle) {
+    wizardTitle.value = settings.streamTitle
   }
-  if (quality instanceof HTMLSelectElement && document.activeElement !== quality) {
-    if ([...quality.options].some((o) => o.value === settings.bitrateProfile)) {
-      quality.value = settings.bitrateProfile
+  if (wizardGame instanceof HTMLInputElement && document.activeElement !== wizardGame) {
+    wizardGame.value = settings.streamGame || DEFAULT_STREAM_GAME
+  }
+  const profileId = settings.bitrateProfile || DEFAULT_BITRATE_PROFILE
+  for (const select of [profile, quality, wizardQuality]) {
+    if (select instanceof HTMLSelectElement && document.activeElement !== select) {
+      if ([...select.options].some((o) => o.value === profileId)) {
+        select.value = profileId
+      }
     }
   }
 }
@@ -282,23 +360,27 @@ function settingsMarkup() {
               </div>
               <div class="settings-panel" id="settings-panel-streaming" data-settings-panel="streaming" hidden>
                 <h2>Streaming</h2>
+                <label class="field-label" for="set-stream-title">Stream title</label>
+                <input id="set-stream-title" class="key-input" type="text" maxlength="140" autocomplete="off" placeholder="Stream title" />
+                <label class="field-label" for="set-stream-game">Game</label>
+                <input id="set-stream-game" class="key-input" type="text" maxlength="100" autocomplete="off" placeholder="Just Chatting" />
+                <p class="hint tight">
+                  Same fields as Stream Info. Empty game saves as <strong>Just Chatting</strong>.
+                  Synced to <code>maka.stream.streamTitle</code> / <code>maka.stream.streamGame</code>.
+                </p>
                 <label class="field-label" for="set-encode-profile">Default encode quality</label>
                 <select id="set-encode-profile" class="select">${profileOptions}</select>
                 <p class="hint tight">
-                  Relay <code>profile</code> keys (<code>720p30</code>…<code>4k60</code>) matching the desktop exe.
-                  Synced to <code>maka.stream.bitrateProfile</code> for live.js <code>POST /config</code>.
-                  Encoding (incl. 4K) runs in the local MAKArelay sidecar — not in this browser.
+                  Default <code>720p30</code> (matches desktop). Synced with the program stats bar and
+                  <code>maka.stream.bitrateProfile</code> for live.js <code>POST /config</code>.
+                  Encoding runs in the local MAKArelay sidecar — not in this browser.
                 </p>
-                <label class="field-label" for="set-last-platform">Last go-live platform</label>
+                <label class="field-label" for="set-last-platform">Armed go-live platform</label>
                 <select id="set-last-platform" class="select">
                   <option value="none">Not set</option>
                   <option value="twitch">Twitch</option>
                   <option value="youtube">YouTube</option>
                 </select>
-                <label class="field-label" for="set-stream-title">Stream title</label>
-                <input id="set-stream-title" class="key-input" type="text" maxlength="140" autocomplete="off" />
-                <label class="field-label" for="set-stream-category">Category / game</label>
-                <input id="set-stream-category" class="key-input" type="text" maxlength="100" autocomplete="off" />
                 <label class="field-label" for="set-twitch-key">Twitch stream key</label>
                 <input id="set-twitch-key" class="key-input" type="password" autocomplete="off" spellcheck="false" placeholder="live_…" />
                 <label class="field-label" for="set-youtube-key">YouTube stream key</label>
@@ -359,12 +441,13 @@ function settingsMarkup() {
               </div>
               <div class="settings-panel" id="settings-panel-help" data-settings-panel="help" hidden>
                 <h2>Help</h2>
-                <button type="button" class="btn-block spaced-btn" id="btn-replay-setup">Replay setup wizard</button>
+                <button type="button" class="btn-block spaced-btn" id="btn-open-go-live-wizard">Open Go Live wizard</button>
                 <button type="button" class="btn-block spaced-btn" id="btn-check-updates">Check for updates</button>
-                <button type="button" class="btn-block spaced-btn" id="btn-replay-tour">Replay onboarding tour</button>
+                <a class="btn-block spaced-btn" id="btn-download-maka" href="/download.html">Download Maka desktop</a>
                 <p class="settings-web-note">
-                  About Maka web studio — App v${APP_VERSION}. Updates ship with the desktop installer;
-                  this page opens the GitHub releases list.
+                  About Maka web studio — App v${APP_VERSION}. Setup / onboarding tours ship with the
+                  desktop installer. Updates open the GitHub releases list. The Go Live wizard prefills
+                  title, game, encode profile, and armed platform from Stream Info / Streaming.
                 </p>
               </div>
             </div>
@@ -402,8 +485,14 @@ function ensureRoot() {
   if (!el.id) el.id = 'studio-settings'
   if (!el.getAttribute('aria-label')) el.setAttribute('aria-label', 'Settings')
 
-  if (!el.querySelector('.settings-view-inner')) {
+  const needsMarkup =
+    !el.querySelector('.settings-view-inner') ||
+    !el.querySelector('#set-stream-game') ||
+    el.querySelector('#set-stream-category') ||
+    el.querySelector('#btn-replay-setup')
+  if (needsMarkup) {
     el.innerHTML = settingsMarkup()
+    delete el.dataset.settingsWired
   }
 
   return el
@@ -561,8 +650,8 @@ function applySettingsToForm() {
   if (platform instanceof HTMLSelectElement) platform.value = settings.lastStreamPlatform
   const title = byId('set-stream-title')
   if (title instanceof HTMLInputElement) title.value = settings.streamTitle
-  const category = byId('set-stream-category')
-  if (category instanceof HTMLInputElement) category.value = settings.streamCategory
+  const game = byId('set-stream-game')
+  if (game instanceof HTMLInputElement) game.value = settings.streamGame || DEFAULT_STREAM_GAME
   const dest = readDestinations()
   const setTwitch = byId('set-twitch-key')
   const setYoutube = byId('set-youtube-key')
@@ -701,7 +790,7 @@ function wireForm() {
   const encode = document.getElementById('set-encode-profile')
   if (encode) {
     encode.addEventListener('change', (event) => {
-      const value = event.target.value
+      const value = event.target.value || DEFAULT_BITRATE_PROFILE
       saveSettings({ bitrateProfile: value })
     })
   }
@@ -752,7 +841,7 @@ function wireForm() {
   })
 
   const persistStreamMeta = (key, raw) => {
-    const value = key === 'streamTitle' ? sanitizeTitle(raw) : sanitizeCategory(raw)
+    const value = key === 'streamTitle' ? sanitizeTitle(raw) : sanitizeGame(raw)
     saveSettings({ [key]: value })
   }
   const title = document.getElementById('set-stream-title')
@@ -760,10 +849,10 @@ function wireForm() {
     title.addEventListener('change', (e) => persistStreamMeta('streamTitle', e.target.value))
     title.addEventListener('blur', (e) => persistStreamMeta('streamTitle', e.target.value))
   }
-  const category = document.getElementById('set-stream-category')
-  if (category) {
-    category.addEventListener('change', (e) => persistStreamMeta('streamCategory', e.target.value))
-    category.addEventListener('blur', (e) => persistStreamMeta('streamCategory', e.target.value))
+  const game = document.getElementById('set-stream-game')
+  if (game) {
+    game.addEventListener('change', (e) => persistStreamMeta('streamGame', e.target.value))
+    game.addEventListener('blur', (e) => persistStreamMeta('streamGame', e.target.value))
   }
 
   const micSelect = document.getElementById('set-mic-device')
@@ -802,18 +891,11 @@ function wireForm() {
   const pickBtn = document.getElementById('btn-pick-recording-folder')
   if (pickBtn) pickBtn.addEventListener('click', () => void pickRecordingFolder())
 
-  const replaySetup = document.getElementById('btn-replay-setup')
-  if (replaySetup) {
-    replaySetup.addEventListener('click', () => {
+  const openWizard = document.getElementById('btn-open-go-live-wizard')
+  if (openWizard) {
+    openWizard.addEventListener('click', () => {
       closeSettings()
-      window.dispatchEvent(new CustomEvent('maka:replay-setup'))
-    })
-  }
-  const replayTour = document.getElementById('btn-replay-tour')
-  if (replayTour) {
-    replayTour.addEventListener('click', () => {
-      closeSettings()
-      window.dispatchEvent(new CustomEvent('maka:replay-tour'))
+      window.dispatchEvent(new CustomEvent('maka:open-go-live-wizard'))
     })
   }
   const checkUpdates = document.getElementById('btn-check-updates')
@@ -850,19 +932,19 @@ function wireShellChrome() {
   window.addEventListener('maka:close-settings', () => closeSettings())
   window.addEventListener('maka:toggle-settings', () => toggleSettings())
 
-  // Stream Info sidebar → settings shared keys
+  // Stream Info / stats bar / wizard → settings shared keys (one source of truth)
   const bindLiveField = (domId, key, sanitize) => {
     const el = document.getElementById(domId)
     if (!(el instanceof HTMLInputElement) && !(el instanceof HTMLSelectElement)) return
     const commit = () => {
       const value = sanitize(el.value)
-      if (key === 'streamTitle' || key === 'streamCategory' || key === 'bitrateProfile') {
+      if (key === 'streamTitle' || key === 'streamGame' || key === 'bitrateProfile') {
         saveSettings({ [key]: value })
         const settingsField =
           key === 'streamTitle'
             ? document.getElementById('set-stream-title')
-            : key === 'streamCategory'
-              ? document.getElementById('set-stream-category')
+            : key === 'streamGame'
+              ? document.getElementById('set-stream-game')
               : document.getElementById('set-encode-profile')
         if (
           settingsField instanceof HTMLInputElement ||
@@ -876,16 +958,20 @@ function wireShellChrome() {
     el.addEventListener('blur', commit)
   }
   bindLiveField('stream-title-input', 'streamTitle', sanitizeTitle)
-  bindLiveField('stream-category-input', 'streamCategory', sanitizeCategory)
-  bindLiveField('cfg-profile', 'bitrateProfile', (v) => String(v || '720p30'))
-  bindLiveField('program-quality-select', 'bitrateProfile', (v) => String(v || '720p30'))
+  bindLiveField('stream-game-input', 'streamGame', sanitizeGame)
+  bindLiveField('go-live-wizard-title-input', 'streamTitle', sanitizeTitle)
+  bindLiveField('go-live-wizard-game-input', 'streamGame', sanitizeGame)
+  bindLiveField('cfg-profile', 'bitrateProfile', (v) => String(v || DEFAULT_BITRATE_PROFILE))
+  bindLiveField('program-quality-select', 'bitrateProfile', (v) => String(v || DEFAULT_BITRATE_PROFILE))
+  bindLiveField('go-live-wizard-quality', 'bitrateProfile', (v) => String(v || DEFAULT_BITRATE_PROFILE))
 
   window.addEventListener('storage', (event) => {
     if (!event.key) return
     if (
       event.key !== STORAGE_KEY &&
       event.key !== SHARED.streamTitle &&
-      event.key !== SHARED.streamCategory &&
+      event.key !== SHARED.streamGame &&
+      event.key !== SHARED.streamCategoryLegacy &&
       event.key !== SHARED.bitrateProfile
     ) {
       return
@@ -944,7 +1030,19 @@ function ensureStylesheet() {
 
 function init() {
   ensureStylesheet()
+  ensureSharedDefaults()
   settings = loadSettings()
+  // Persist coerced defaults so Settings / stats bar / wizard never disagree on first paint.
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
+  } catch {
+    /* ignore */
+  }
+  persistShared({
+    streamTitle: settings.streamTitle,
+    streamGame: settings.streamGame,
+    bitrateProfile: settings.bitrateProfile,
+  })
   root = ensureRoot()
   wireForm()
   wireShellChrome()
@@ -964,6 +1062,8 @@ export {
   STORAGE_KEY,
   SHARED,
   ENCODE_PROFILES,
+  DEFAULT_BITRATE_PROFILE,
+  DEFAULT_STREAM_GAME,
   DEST_STORAGE_KEY,
   openSettings,
   closeSettings,
@@ -973,4 +1073,6 @@ export {
   readDestinations,
   saveDestinations,
   populateEncodeSelect,
+  sanitizeGame,
+  sanitizeTitle,
 }

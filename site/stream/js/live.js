@@ -30,6 +30,15 @@
   };
   var TRACK_IDS = { gameplay: 'gameplay', webcam: 'webcam', mic: 'mic' };
   var DEST_STORAGE_KEY = 'maka.stream.destinations.v1';
+  /** Matches exe settings-store + Settings / stats bar default. */
+  var DEFAULT_BITRATE_PROFILE = '720p30';
+  var DEFAULT_STREAM_GAME = 'Just Chatting';
+  var SHARED_KEYS = {
+    streamTitle: 'maka.stream.streamTitle',
+    streamGame: 'maka.stream.streamGame',
+    streamCategoryLegacy: 'maka.stream.streamCategory',
+    bitrateProfile: 'maka.stream.bitrateProfile',
+  };
   /** Mirror src/shared/stream-encode-profiles.ts — relay `profile` + bitrateMbps. */
   var ENCODE_PROFILE_MAP = {
     '720p30': { bitrateMbps: 3 },
@@ -54,11 +63,53 @@
       .slice(0, 140);
   }
 
-  function sanitizeCategory(raw) {
-    return String(raw || '')
+  function sanitizeGame(raw) {
+    var cleaned = String(raw || '')
       .trim()
       .replace(/\s+/g, ' ')
       .slice(0, 100);
+    return cleaned || DEFAULT_STREAM_GAME;
+  }
+
+  function migrateGameStorage() {
+    try {
+      var game = localStorage.getItem(SHARED_KEYS.streamGame);
+      if (game != null && String(game).length) {
+        localStorage.setItem(SHARED_KEYS.streamGame, sanitizeGame(game));
+        return;
+      }
+      var legacy = localStorage.getItem(SHARED_KEYS.streamCategoryLegacy);
+      if (legacy != null) {
+        localStorage.setItem(SHARED_KEYS.streamGame, sanitizeGame(legacy));
+        localStorage.removeItem(SHARED_KEYS.streamCategoryLegacy);
+      } else if (localStorage.getItem(SHARED_KEYS.streamGame) == null) {
+        localStorage.setItem(SHARED_KEYS.streamGame, DEFAULT_STREAM_GAME);
+      }
+    } catch (_err) {
+      /* private mode */
+    }
+  }
+
+  function readStoredGame() {
+    migrateGameStorage();
+    try {
+      var game = localStorage.getItem(SHARED_KEYS.streamGame);
+      if (game == null) {
+        var legacy = localStorage.getItem(SHARED_KEYS.streamCategoryLegacy);
+        if (legacy != null) return sanitizeGame(legacy);
+      }
+      return sanitizeGame(game);
+    } catch (_err) {
+      return DEFAULT_STREAM_GAME;
+    }
+  }
+
+  function readStoredTitle() {
+    try {
+      return sanitizeTitle(localStorage.getItem(SHARED_KEYS.streamTitle));
+    } catch (_err) {
+      return '';
+    }
   }
 
   function isPageLocalhost() {
@@ -113,7 +164,7 @@
       btnGoLiveLabel: doc.getElementById('btn-go-live-label'),
       btnRelayRefresh: doc.getElementById('btn-relay-refresh'),
       streamTitle: doc.getElementById('stream-title-input'),
-      streamCategory: doc.getElementById('stream-category-input'),
+      streamGame: doc.getElementById('stream-game-input'),
       livePill: doc.getElementById('stream-live-pill'),
       streamDuration: doc.getElementById('stream-duration'),
       streamViewers: doc.getElementById('stream-viewers'),
@@ -131,6 +182,23 @@
       keyModalSave: doc.getElementById('stream-key-modal-save'),
       keyModalCancel: doc.getElementById('stream-key-modal-cancel'),
       keyIngestHint: doc.getElementById('stream-key-ingest-hint'),
+      wizardDialog: doc.getElementById('go-live-wizard-dialog'),
+      wizardStep: doc.getElementById('go-live-wizard-step'),
+      wizardTitle: doc.getElementById('go-live-wizard-title'),
+      wizardBody: doc.getElementById('go-live-wizard-body'),
+      wizardPanelPlatform: doc.getElementById('go-live-wizard-panel-platform'),
+      wizardPanelKey: doc.getElementById('go-live-wizard-panel-key'),
+      wizardPanelDetails: doc.getElementById('go-live-wizard-panel-details'),
+      wizardPanelGo: doc.getElementById('go-live-wizard-panel-go'),
+      wizardTitleInput: doc.getElementById('go-live-wizard-title-input'),
+      wizardGameInput: doc.getElementById('go-live-wizard-game-input'),
+      wizardQuality: doc.getElementById('go-live-wizard-quality'),
+      wizardGoStatus: doc.getElementById('go-live-wizard-go-status'),
+      wizardTwitchKey: doc.getElementById('wizard-twitch-key'),
+      wizardYoutubeKey: doc.getElementById('wizard-youtube-key'),
+      wizardNext: doc.getElementById('go-live-wizard-next'),
+      wizardBack: doc.getElementById('go-live-wizard-back'),
+      wizardCancel: doc.getElementById('go-live-wizard-cancel'),
     };
 
     // Need at least Go Live chrome or a canvas to own this page slice.
@@ -433,22 +501,92 @@
     }
 
     function readBitrateProfile() {
-      var fromCfg = els.cfgProfile && els.cfgProfile.value;
-      var fromQuality = doc.getElementById('program-quality-select');
-      var fromSelect = fromQuality && fromQuality.value;
       var fromStorage = '';
       try {
-        fromStorage = localStorage.getItem('maka.stream.bitrateProfile') || '';
+        fromStorage = localStorage.getItem(SHARED_KEYS.bitrateProfile) || '';
       } catch (_err) {
         /* ignore */
       }
-      var raw = fromCfg || fromSelect || fromStorage || '720p30';
+      var fromCfg = els.cfgProfile && els.cfgProfile.value;
+      var fromQuality = doc.getElementById('program-quality-select');
+      var fromSelect = fromQuality && fromQuality.value;
+      var fromWizard = els.wizardQuality && els.wizardQuality.value;
+      // Prefer persisted shared key so Settings / Stream Info / wizard / stats bar stay aligned.
+      var raw = fromStorage || fromCfg || fromSelect || fromWizard || DEFAULT_BITRATE_PROFILE;
       if (!ENCODE_PROFILE_MAP[raw]) {
         if (raw === '720p') return '720p30';
         if (raw === '1080p') return '1080p60';
-        return '720p30';
+        return DEFAULT_BITRATE_PROFILE;
       }
       return raw;
+    }
+
+    function syncEncodeSelects(profile) {
+      var id = profile || readBitrateProfile();
+      if (!ENCODE_PROFILE_MAP[id]) id = DEFAULT_BITRATE_PROFILE;
+      ;[els.cfgProfile, doc.getElementById('program-quality-select'), els.wizardQuality].forEach(
+        function (select) {
+          if (!select) return;
+          if (![...select.options].some(function (o) {
+            return o.value === id;
+          })) {
+            var opt = document.createElement('option');
+            opt.value = id;
+            opt.textContent = id;
+            select.appendChild(opt);
+          }
+          if (document.activeElement !== select) select.value = id;
+        },
+      );
+      try {
+        localStorage.setItem(SHARED_KEYS.bitrateProfile, id);
+      } catch (_err) {
+        /* ignore */
+      }
+      if (global.MakaStudioSettings && typeof global.MakaStudioSettings.setSettings === 'function') {
+        try {
+          var cur = global.MakaStudioSettings.getSettings
+            ? global.MakaStudioSettings.getSettings()
+            : null;
+          if (!cur || cur.bitrateProfile !== id) {
+            global.MakaStudioSettings.setSettings({ bitrateProfile: id });
+          }
+        } catch (_err2) {
+          /* ignore */
+        }
+      }
+      return id;
+    }
+
+    function syncStreamMetaDom(title, game) {
+      var t = sanitizeTitle(title);
+      var g = sanitizeGame(game);
+      if (els.streamTitle && document.activeElement !== els.streamTitle) els.streamTitle.value = t;
+      if (els.streamGame && document.activeElement !== els.streamGame) els.streamGame.value = g;
+      if (els.wizardTitleInput && document.activeElement !== els.wizardTitleInput) {
+        els.wizardTitleInput.value = t;
+      }
+      if (els.wizardGameInput && document.activeElement !== els.wizardGameInput) {
+        els.wizardGameInput.value = g;
+      }
+      try {
+        localStorage.setItem(SHARED_KEYS.streamTitle, t);
+        localStorage.setItem(SHARED_KEYS.streamGame, g);
+        localStorage.removeItem(SHARED_KEYS.streamCategoryLegacy);
+      } catch (_err) {
+        /* ignore */
+      }
+      if (global.MakaStudioSettings && typeof global.MakaStudioSettings.setSettings === 'function') {
+        try {
+          global.MakaStudioSettings.setSettings({ streamTitle: t, streamGame: g });
+        } catch (_err2) {
+          /* ignore */
+        }
+      }
+      var setTitle = doc.getElementById('set-stream-title');
+      var setGame = doc.getElementById('set-stream-game');
+      if (setTitle && document.activeElement !== setTitle) setTitle.value = t;
+      if (setGame && document.activeElement !== setGame) setGame.value = g;
     }
 
     function readDestinations() {
@@ -537,29 +675,21 @@
 
     function buildRelayConfigBody() {
       var profile = readBitrateProfile();
-      var spec = ENCODE_PROFILE_MAP[profile] || ENCODE_PROFILE_MAP['720p30'];
+      var spec = ENCODE_PROFILE_MAP[profile] || ENCODE_PROFILE_MAP[DEFAULT_BITRATE_PROFILE];
       var body = {
         profile: profile,
         bitrateMbps: spec.bitrateMbps,
       };
-      var title = sanitizeTitle(els.streamTitle && els.streamTitle.value);
-      var category = sanitizeCategory(els.streamCategory && els.streamCategory.value);
-      if (!title) {
-        try {
-          title = sanitizeTitle(localStorage.getItem('maka.stream.streamTitle'));
-        } catch (_err) {
-          /* ignore */
-        }
-      }
-      if (!category) {
-        try {
-          category = sanitizeCategory(localStorage.getItem('maka.stream.streamCategory'));
-        } catch (_err2) {
-          /* ignore */
-        }
-      }
+      var title = sanitizeTitle(els.streamTitle && els.streamTitle.value) || readStoredTitle();
+      var game =
+        sanitizeGame(
+          (els.streamGame && els.streamGame.value) ||
+            (els.wizardGameInput && els.wizardGameInput.value) ||
+            '',
+        ) || readStoredGame();
+      // Relay /config still uses streamCategory; UI + localStorage use Game.
       if (title) body.streamTitle = title;
-      if (category) body.streamCategory = category;
+      if (game) body.streamCategory = game;
 
       var dest = readDestinations();
       // Prefer armed chips; fall back to stored dest flags.
@@ -579,14 +709,7 @@
     async function postRelayConfig() {
       if (!relayHealth) throw new Error('Relay not connected');
       var body = buildRelayConfigBody();
-      if (els.cfgProfile && body.profile) els.cfgProfile.value = body.profile;
-      var quality = doc.getElementById('program-quality-select');
-      if (quality && body.profile) quality.value = body.profile;
-      try {
-        localStorage.setItem('maka.stream.bitrateProfile', body.profile);
-      } catch (_err) {
-        /* ignore */
-      }
+      syncEncodeSelects(body.profile);
       var res = await relayFetch(PATHS.config, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -608,7 +731,7 @@
           body.bitrateMbps +
           ' Mbps' +
           (body.streamTitle ? ', title' : '') +
-          (body.streamCategory ? ', category' : '') +
+          (body.streamCategory ? ', game' : '') +
           (keyBits.length ? ', ' + keyBits.join('+') : ', keys via relay settings if unset') +
           ' → relay RAM).',
       );
@@ -814,6 +937,281 @@
       log('Stream stopped — no cloud endpoint claimed.');
     }
 
+    var wizardStep = 'platform';
+    var wizardPlatform = 'twitch';
+    var wizardBusy = false;
+
+    function populateWizardQualitySelect() {
+      if (!els.wizardQuality) return;
+      var current = readBitrateProfile();
+      if (els.wizardQuality.options.length === 0) {
+        Object.keys(ENCODE_PROFILE_MAP).forEach(function (id) {
+          var opt = document.createElement('option');
+          opt.value = id;
+          var mbps = ENCODE_PROFILE_MAP[id].bitrateMbps;
+          opt.textContent = id + ' · ' + mbps + ' Mbps';
+          els.wizardQuality.appendChild(opt);
+        });
+      }
+      els.wizardQuality.value = current;
+    }
+
+    function closeGoLiveWizard() {
+      if (els.wizardDialog && els.wizardDialog.open) {
+        try {
+          els.wizardDialog.close();
+        } catch (_err) {
+          els.wizardDialog.removeAttribute('open');
+        }
+      }
+      wizardBusy = false;
+    }
+
+    function syncWizardKeyPanel() {
+      var twitchBlock = els.wizardPanelKey && els.wizardPanelKey.querySelector('[data-wizard-key="twitch"]');
+      var youtubeBlock =
+        els.wizardPanelKey && els.wizardPanelKey.querySelector('[data-wizard-key="youtube"]');
+      if (twitchBlock) twitchBlock.hidden = wizardPlatform !== 'twitch';
+      if (youtubeBlock) youtubeBlock.hidden = wizardPlatform !== 'youtube';
+    }
+
+    function renderGoLiveWizard() {
+      if (els.wizardPanelPlatform) els.wizardPanelPlatform.hidden = wizardStep !== 'platform';
+      if (els.wizardPanelKey) els.wizardPanelKey.hidden = wizardStep !== 'key';
+      if (els.wizardPanelDetails) els.wizardPanelDetails.hidden = wizardStep !== 'details';
+      if (els.wizardPanelGo) els.wizardPanelGo.hidden = wizardStep !== 'go';
+
+      var steps = ['platform', 'key', 'details', 'go'];
+      var idx = steps.indexOf(wizardStep);
+      if (els.wizardStep) els.wizardStep.textContent = 'Step ' + (idx + 1) + ' of ' + steps.length;
+
+      if (els.wizardBack) els.wizardBack.hidden = wizardStep === 'platform';
+      if (els.wizardNext) {
+        els.wizardNext.disabled = wizardBusy;
+        if (wizardStep === 'go') els.wizardNext.textContent = wizardBusy ? 'Going live…' : 'Go Live';
+        else els.wizardNext.textContent = 'Next';
+      }
+
+      if (wizardStep === 'platform') {
+        if (els.wizardTitle) els.wizardTitle.textContent = 'Choose platform';
+        if (els.wizardBody) {
+          els.wizardBody.textContent =
+            'Prefills from your armed Twitch / YouTube chip (Settings → Streaming). You can change destinations later from the stats bar.';
+        }
+      } else if (wizardStep === 'key') {
+        if (els.wizardTitle) els.wizardTitle.textContent = 'Stream key';
+        if (els.wizardBody) {
+          els.wizardBody.textContent =
+            'Paste or confirm your stream key. Keys stay in this browser and go only to local relay /config.';
+        }
+        syncWizardKeyPanel();
+      } else if (wizardStep === 'details') {
+        if (els.wizardTitle) els.wizardTitle.textContent = 'Stream info';
+        if (els.wizardBody) {
+          els.wizardBody.textContent =
+            'Title, game, and encode profile match Stream Info / Settings. Empty game defaults to Just Chatting.';
+        }
+        populateWizardQualitySelect();
+        if (els.wizardTitleInput) els.wizardTitleInput.value = readStoredTitle() || (els.streamTitle && els.streamTitle.value) || '';
+        if (els.wizardGameInput) {
+          els.wizardGameInput.value =
+            (els.streamGame && els.streamGame.value) || readStoredGame() || DEFAULT_STREAM_GAME;
+        }
+      } else {
+        if (els.wizardTitle) els.wizardTitle.textContent = 'Go live';
+        if (els.wizardBody) {
+          els.wizardBody.textContent =
+            'Start publishing WHIP to the local relay. End Live from the same button when you are finished.';
+        }
+        var profile = readBitrateProfile();
+        var title = sanitizeTitle(
+          (els.wizardTitleInput && els.wizardTitleInput.value) ||
+            (els.streamTitle && els.streamTitle.value) ||
+            readStoredTitle(),
+        );
+        var game = sanitizeGame(
+          (els.wizardGameInput && els.wizardGameInput.value) ||
+            (els.streamGame && els.streamGame.value) ||
+            readStoredGame(),
+        );
+        if (els.wizardGoStatus) {
+          els.wizardGoStatus.dataset.state = 'ok';
+          els.wizardGoStatus.textContent =
+            (title || '(no title)') +
+            ' · ' +
+            game +
+            ' · ' +
+            profile +
+            ' · ' +
+            (wizardPlatform === 'youtube' ? 'YouTube' : 'Twitch') +
+            ' armed';
+        }
+      }
+    }
+
+    function applyWizardPlatform(platform) {
+      wizardPlatform = platform === 'youtube' ? 'youtube' : 'twitch';
+      lastPlatformClick = wizardPlatform;
+      var next = {
+        twitch: wizardPlatform === 'twitch',
+        youtube: wizardPlatform === 'youtube',
+      };
+      persistPlatformPref(next);
+    }
+
+    function applyWizardKeys() {
+      var partial = {};
+      if (wizardPlatform === 'twitch') {
+        partial.twitchKey = els.wizardTwitchKey
+          ? String(els.wizardTwitchKey.value || '').trim().slice(0, 256)
+          : '';
+        partial.destTwitch = true;
+      } else {
+        partial.youtubeKey = els.wizardYoutubeKey
+          ? String(els.wizardYoutubeKey.value || '').trim().slice(0, 256)
+          : '';
+        partial.destYoutube = true;
+      }
+      persistDestinations(partial);
+    }
+
+    function applyWizardDetails() {
+      var title = sanitizeTitle(els.wizardTitleInput && els.wizardTitleInput.value);
+      var game = sanitizeGame(els.wizardGameInput && els.wizardGameInput.value);
+      var profile = (els.wizardQuality && els.wizardQuality.value) || readBitrateProfile();
+      syncStreamMetaDom(title, game);
+      syncEncodeSelects(profile);
+    }
+
+    function openGoLiveWizard() {
+      if (destroyed) return;
+      if (whipPublisher) {
+        void onEndLive();
+        return;
+      }
+      if (!els.wizardDialog) {
+        void startGoLive();
+        return;
+      }
+      migrateGameStorage();
+      var pref = readPlatformPref();
+      if (pref.youtube && !pref.twitch) wizardPlatform = 'youtube';
+      else if (pref.twitch) wizardPlatform = 'twitch';
+      else {
+        var last = 'none';
+        try {
+          if (global.MakaStudioSettings && typeof global.MakaStudioSettings.getSettings === 'function') {
+            last = global.MakaStudioSettings.getSettings().lastStreamPlatform || 'none';
+          }
+        } catch (_err) {
+          /* ignore */
+        }
+        wizardPlatform = last === 'youtube' ? 'youtube' : 'twitch';
+      }
+      var radios = doc.querySelectorAll('input[name="go-live-platform"]');
+      radios.forEach(function (radio) {
+        radio.checked = radio.value === wizardPlatform;
+      });
+      var dest = readDestinations();
+      if (els.wizardTwitchKey) els.wizardTwitchKey.value = dest.twitchKey || '';
+      if (els.wizardYoutubeKey) els.wizardYoutubeKey.value = dest.youtubeKey || '';
+      populateWizardQualitySelect();
+      syncStreamMetaDom(
+        (els.streamTitle && els.streamTitle.value) || readStoredTitle(),
+        (els.streamGame && els.streamGame.value) || readStoredGame(),
+      );
+      syncEncodeSelects(readBitrateProfile());
+      wizardStep = 'platform';
+      wizardBusy = false;
+      renderGoLiveWizard();
+      try {
+        if (typeof els.wizardDialog.showModal === 'function') els.wizardDialog.showModal();
+        else els.wizardDialog.setAttribute('open', '');
+      } catch (_err2) {
+        els.wizardDialog.setAttribute('open', '');
+      }
+    }
+
+    async function wizardForward() {
+      if (wizardBusy) return;
+      if (wizardStep === 'platform') {
+        var selected = doc.querySelector('input[name="go-live-platform"]:checked');
+        wizardPlatform = selected && selected.value === 'youtube' ? 'youtube' : 'twitch';
+        applyWizardPlatform(wizardPlatform);
+        wizardStep = 'key';
+        renderGoLiveWizard();
+        return;
+      }
+      if (wizardStep === 'key') {
+        applyWizardKeys();
+        wizardStep = 'details';
+        renderGoLiveWizard();
+        return;
+      }
+      if (wizardStep === 'details') {
+        applyWizardDetails();
+        wizardStep = 'go';
+        renderGoLiveWizard();
+        return;
+      }
+      if (wizardStep === 'go') {
+        applyWizardDetails();
+        wizardBusy = true;
+        renderGoLiveWizard();
+        try {
+          await startGoLive();
+          if (whipPublisher) closeGoLiveWizard();
+        } finally {
+          wizardBusy = false;
+          renderGoLiveWizard();
+        }
+      }
+    }
+
+    function wizardBack() {
+      if (wizardStep === 'key') wizardStep = 'platform';
+      else if (wizardStep === 'details') wizardStep = 'key';
+      else if (wizardStep === 'go') wizardStep = 'details';
+      renderGoLiveWizard();
+    }
+
+    function wireGoLiveWizard() {
+      if (!els.wizardDialog || els.wizardDialog.dataset.makaWizardWired === '1') return;
+      els.wizardDialog.dataset.makaWizardWired = '1';
+      if (els.wizardNext) {
+        els.wizardNext.addEventListener('click', function () {
+          void wizardForward();
+        });
+      }
+      if (els.wizardBack) {
+        els.wizardBack.addEventListener('click', function () {
+          wizardBack();
+        });
+      }
+      if (els.wizardCancel) {
+        els.wizardCancel.addEventListener('click', function () {
+          closeGoLiveWizard();
+        });
+      }
+      var radios = doc.querySelectorAll('input[name="go-live-platform"]');
+      radios.forEach(function (radio) {
+        radio.addEventListener('change', function () {
+          if (radio.checked) {
+            wizardPlatform = radio.value === 'youtube' ? 'youtube' : 'twitch';
+            syncWizardKeyPanel();
+          }
+        });
+      });
+      if (els.wizardQuality) {
+        els.wizardQuality.addEventListener('change', function () {
+          syncEncodeSelects(els.wizardQuality.value);
+        });
+      }
+      window.addEventListener('maka:open-go-live-wizard', function () {
+        openGoLiveWizard();
+      });
+    }
+
     async function onGoLive() {
       if (destroyed || goLiveBusy) return;
       if (whipPublisher) {
@@ -827,6 +1225,12 @@
         }
         return;
       }
+      openGoLiveWizard();
+    }
+
+    async function startGoLive() {
+      if (destroyed || goLiveBusy) return;
+      if (whipPublisher) return;
 
       goLiveBusy = true;
       updateButtons();
@@ -1088,13 +1492,7 @@
 
     function downloadRecordingBlob(blob) {
       var ext = blob.type && blob.type.indexOf('mp4') !== -1 ? 'mp4' : 'webm';
-      var profile = '720p30';
-      try {
-        var cfg = doc.getElementById('cfg-profile');
-        if (cfg && cfg.value) profile = cfg.value;
-      } catch (_err) {
-        /* ignore */
-      }
+      var profile = readBitrateProfile();
       var ts = new Date().toISOString().replace(/[:.]/g, '-');
       var name = 'maka-recording-' + ts + '-' + profile + '.' + ext;
       var url = URL.createObjectURL(blob);
@@ -1459,29 +1857,49 @@
     applyPlatformChips(readPlatformPref());
     setRecordingUi(false);
     syncRecordingAvailability();
+    wireGoLiveWizard();
 
-    // Keep cfg-profile + quality select aligned with shared bitrateProfile on boot.
-    (function syncEncodeSelectsOnBoot() {
-      var profile = readBitrateProfile();
-      if (els.cfgProfile) {
-        if (![...els.cfgProfile.options].some(function (o) {
-          return o.value === '4k60';
-        })) {
-          ;['2k60', '4k60'].forEach(function (id) {
-            if (![...els.cfgProfile.options].some(function (o) {
-              return o.value === id;
-            })) {
-              var opt = document.createElement('option');
-              opt.value = id;
-              opt.textContent = id;
-              els.cfgProfile.appendChild(opt);
-            }
-          });
-        }
-        els.cfgProfile.value = profile;
-      }
+    // Keep cfg-profile + quality select + Stream Info game aligned on boot.
+    (function syncSharedMetaOnBoot() {
+      migrateGameStorage();
+      var profile = syncEncodeSelects(readBitrateProfile());
+      var title = (els.streamTitle && els.streamTitle.value) || readStoredTitle();
+      var game = (els.streamGame && els.streamGame.value) || readStoredGame();
+      syncStreamMetaDom(title, game);
+      if (els.cfgProfile) els.cfgProfile.value = profile;
       var quality = doc.getElementById('program-quality-select');
       if (quality) quality.value = profile;
+      // Persist Stream Info edits to the same keys the wizard / Settings read.
+      if (els.streamTitle) {
+        var commitTitle = function () {
+          syncStreamMetaDom(els.streamTitle.value, (els.streamGame && els.streamGame.value) || readStoredGame());
+        };
+        els.streamTitle.addEventListener('change', commitTitle);
+        els.streamTitle.addEventListener('blur', commitTitle);
+      }
+      if (els.streamGame) {
+        var commitGame = function () {
+          syncStreamMetaDom(
+            (els.streamTitle && els.streamTitle.value) || readStoredTitle(),
+            els.streamGame.value,
+          );
+        };
+        els.streamGame.addEventListener('change', commitGame);
+        els.streamGame.addEventListener('blur', commitGame);
+      }
+      var qualitySelect = doc.getElementById('program-quality-select');
+      if (qualitySelect && qualitySelect.dataset.makaProfileBound !== '1') {
+        qualitySelect.dataset.makaProfileBound = '1';
+        qualitySelect.addEventListener('change', function () {
+          syncEncodeSelects(qualitySelect.value || DEFAULT_BITRATE_PROFILE);
+        });
+      }
+      if (els.cfgProfile && els.cfgProfile.dataset.makaProfileBound !== '1') {
+        els.cfgProfile.dataset.makaProfileBound = '1';
+        els.cfgProfile.addEventListener('change', function () {
+          syncEncodeSelects(els.cfgProfile.value || DEFAULT_BITRATE_PROFILE);
+        });
+      }
     })();
 
     // --- Capture fallback (when preview module not owning the canvas) ---
@@ -1605,10 +2023,13 @@
     var api = {
       probeRelay: probeRelay,
       goLive: onGoLive,
+      startGoLive: startGoLive,
+      openGoLiveWizard: openGoLiveWizard,
       endLive: onEndLive,
       buildRelayConfigBody: buildRelayConfigBody,
       readBitrateProfile: readBitrateProfile,
       readDestinations: readDestinations,
+      syncEncodeSelects: syncEncodeSelects,
       isLive: function () {
         return Boolean(whipPublisher);
       },
@@ -1618,6 +2039,8 @@
         return relayDetected;
       },
       encodeProfiles: Object.keys(ENCODE_PROFILE_MAP),
+      defaultBitrateProfile: DEFAULT_BITRATE_PROFILE,
+      defaultStreamGame: DEFAULT_STREAM_GAME,
       destroy: function () {
         if (destroyed) return;
         destroyed = true;
@@ -1625,6 +2048,7 @@
         stopStatusPoll();
         if (durationTimer) clearInterval(durationTimer);
         closeStreamKeyModal();
+        closeGoLiveWizard();
         if (recordingActive && mediaRecorder) {
           try {
             mediaRecorder.stop();

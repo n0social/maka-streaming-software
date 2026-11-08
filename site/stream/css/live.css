@@ -230,7 +230,7 @@
 }
 
 .stream-title-input,
-.stream-category-input {
+.stream-game-input {
   width: 100%;
   border: none;
   background: transparent;
@@ -244,19 +244,19 @@
   font-size: 0.95rem;
 }
 
-.stream-category-input {
+.stream-game-input {
   font-weight: 600;
   font-size: 0.82rem;
   color: #4b5563;
 }
 
 .stream-title-input:focus,
-.stream-category-input:focus {
+.stream-game-input:focus {
   outline: none;
 }
 
 .stream-title-input::placeholder,
-.stream-category-input::placeholder {
+.stream-game-input::placeholder {
   color: #a39888;
   font-weight: 500;
 }
@@ -456,3 +456,81 @@
     width: 100%;
   }
 }
+
+
+/* Go Live wizard */
+.go-live-wizard-dialog {
+  max-width: 26rem;
+  width: min(26rem, calc(100vw - 2rem));
+  padding: 0;
+  border: 1px solid var(--line, #e8e2d6);
+  border-radius: 0.55rem;
+  background: var(--panel, #faf8f4);
+  color: var(--text, #1a1408);
+  box-shadow: 0 18px 48px rgba(26, 20, 8, 0.18);
+}
+.go-live-wizard-dialog::backdrop { background: rgba(26, 20, 8, 0.52); }
+.go-live-wizard-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 1.15rem 1.25rem 1.2rem;
+}
+.go-live-wizard-step {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--muted, #6b6256);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.go-live-wizard-form h2 {
+  margin: 0;
+  font-family: var(--headline, 'League Spartan', sans-serif);
+  font-size: 1.1rem;
+  font-style: italic;
+  font-weight: 800;
+}
+.go-live-wizard-platforms {
+  border: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.go-live-wizard-platforms .check {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.go-live-wizard-form .field-label {
+  display: block;
+  margin: 0.35rem 0 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text, #1a1408);
+}
+.go-live-wizard-form .key-input,
+.go-live-wizard-form .select {
+  width: 100%;
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 0.5rem 0.55rem;
+  border-radius: 0.4rem;
+  border: 1px solid var(--line, #e8e2d6);
+  background: var(--panel-2, #f6f3ec);
+  color: var(--text, #1a1408);
+}
+.go-live-wizard-status { margin: 0; font-size: 0.82rem; line-height: 1.4; }
+.go-live-wizard-status[data-state='error'] { color: #b91c1c; }
+.go-live-wizard-status[data-state='ok'] { color: #166534; }
+.go-live-wizard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.35rem;
+}
+.go-live-wizard-actions .btn { min-width: 5.5rem; }

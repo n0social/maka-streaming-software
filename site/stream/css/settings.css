@@ -54,8 +54,7 @@ body[data-mode='settings'] .stage-frame {
   display: none !important;
 }
 
-body[data-mode='settings'] #navrow,
-body[data-mode='settings'] #browsetabs {
+body[data-mode='settings'] #navrow {
   display: none !important;
 }
 
@@ -336,6 +335,10 @@ body:not([data-mode='settings']) #settings-view.settings-view {
   width: 100%;
   max-width: 22rem;
   margin-bottom: 0.65rem;
+  display: inline-block;
+  box-sizing: border-box;
+  text-align: center;
+  text-decoration: none;
 }
 
 #studio-settings .spaced-btn,
