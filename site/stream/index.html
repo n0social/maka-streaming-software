@@ -32,13 +32,13 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/maka.css?v=dc6d035" />
-    <link rel="stylesheet" href="./stream.css?v=dc6d066" />
-    <link rel="stylesheet" href="./css/shell.css?v=dc6d066" />
-    <link rel="stylesheet" href="./css/preview-stage.css?v=dc6d066" />
-    <link rel="stylesheet" href="./css/scenes.css?v=dc6d066" />
-    <link rel="stylesheet" href="./css/audio.css?v=dc6d066" />
-    <link rel="stylesheet" href="./css/live.css?v=dc6d066" />
-    <link rel="stylesheet" href="./css/settings.css?v=dc6d066" />
+    <link rel="stylesheet" href="./stream.css?v=dc6d067" />
+    <link rel="stylesheet" href="./css/shell.css?v=dc6d067" />
+    <link rel="stylesheet" href="./css/preview-stage.css?v=dc6d067" />
+    <link rel="stylesheet" href="./css/scenes.css?v=dc6d067" />
+    <link rel="stylesheet" href="./css/audio.css?v=dc6d067" />
+    <link rel="stylesheet" href="./css/live.css?v=dc6d067" />
+    <link rel="stylesheet" href="./css/settings.css?v=dc6d067" />
   </head>
   <body data-mode="studio" class="stream-studio">
     <div class="app" id="studio-app" data-shell="studio">
@@ -157,27 +157,27 @@
               </button>
               <ul class="studio-source-picker" id="source-picker-mic" hidden role="list" aria-label="Microphones"></ul>
             </li>
-            <li class="studio-source-group" data-desktop-only="1">
-              <button type="button" class="studio-list-item studio-source-toggle" id="studio-source-browser" data-source-kind="browser" data-desktop-only="1" disabled aria-disabled="true" title="Overlay requires Maka desktop (exe)">
+            <li class="studio-source-group">
+              <button type="button" class="studio-list-item studio-source-toggle" id="studio-source-browser" data-source-kind="browser" aria-expanded="false" aria-controls="source-picker-browser">
                 <span class="studio-list-leading source-icon" aria-hidden="true">🌐</span>
                 <span class="studio-list-text">Overlay</span>
-                <span class="studio-list-menu studio-list-menu--static" aria-hidden="true">⋯</span>
+                <span role="button" tabindex="0" class="studio-list-menu" data-source-menu="browser" aria-label="Pick overlay layout">⋯</span>
               </button>
               <ul class="studio-source-picker" id="source-picker-browser" hidden role="list" aria-label="Overlay layout presets"></ul>
             </li>
-            <li class="studio-source-group" data-desktop-only="1">
-              <button type="button" class="studio-list-item studio-source-toggle" id="studio-source-chat" data-source-kind="chat" data-desktop-only="1" disabled aria-disabled="true" title="Chat overlay requires Maka desktop (exe)">
+            <li class="studio-source-group">
+              <button type="button" class="studio-list-item studio-source-toggle" id="studio-source-chat" data-source-kind="chat" aria-expanded="false" aria-controls="source-picker-chat">
                 <span class="studio-list-leading source-icon" aria-hidden="true">💬</span>
                 <span class="studio-list-text">Chat</span>
-                <span class="studio-list-menu studio-list-menu--static" aria-hidden="true">⋯</span>
+                <span role="button" tabindex="0" class="studio-list-menu" data-source-menu="chat" aria-label="Pick chat source">⋯</span>
               </button>
               <ul class="studio-source-picker" id="source-picker-chat" hidden role="list" aria-label="Chat sources"></ul>
             </li>
-            <li class="studio-source-group" data-desktop-only="1">
-              <button type="button" class="studio-list-item studio-source-toggle" id="studio-source-notifications" data-source-kind="notifications" data-desktop-only="1" disabled aria-disabled="true" title="Notifications require Maka desktop (exe)">
+            <li class="studio-source-group">
+              <button type="button" class="studio-list-item studio-source-toggle" id="studio-source-notifications" data-source-kind="notifications" aria-expanded="false" aria-controls="source-picker-notifications">
                 <span class="studio-list-leading source-icon" aria-hidden="true">🔔</span>
                 <span class="studio-list-text">Notifications</span>
-                <span class="studio-list-menu studio-list-menu--static" aria-hidden="true">⋯</span>
+                <span role="button" tabindex="0" class="studio-list-menu" data-source-menu="notifications" aria-label="Pick notification overlay">⋯</span>
               </button>
               <ul class="studio-source-picker" id="source-picker-notifications" hidden role="list" aria-label="Notification overlays"></ul>
             </li>
@@ -449,6 +449,17 @@
       </section>
     </div>
 
+    <div class="modal-backdrop" id="recording-save-modal" hidden role="dialog" aria-modal="true" aria-labelledby="recording-save-title">
+      <div class="modal">
+        <h2 id="recording-save-title">Recording finished</h2>
+        <p id="recording-save-body">Choose where to save this recording.</p>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-primary" id="recording-save-choose">Choose where to save</button>
+          <button type="button" class="btn btn-ghost" id="recording-save-download">Download</button>
+        </div>
+      </div>
+    </div>
+
     <div class="modal-backdrop" id="relay-modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div class="modal">
         <h2 id="modal-title">Local relay required for go-live</h2>
@@ -547,11 +558,11 @@
     </dialog>
 
     <!-- Module hooks (feature modules owned elsewhere) -->
-    <script type="module" src="./js/shell.js?v=dc6d066"></script>
-    <script type="module" src="./js/scenes.js?v=dc6d066"></script>
-    <script type="module" src="./js/preview.js?v=dc6d066"></script>
-    <script type="module" src="./js/audio.js?v=dc6d066"></script>
-    <script type="module" src="./js/live.js?v=dc6d066"></script>
-    <script type="module" src="./js/settings.js?v=dc6d066"></script>
+    <script type="module" src="./js/shell.js?v=dc6d067"></script>
+    <script type="module" src="./js/scenes.js?v=dc6d067"></script>
+    <script type="module" src="./js/preview.js?v=dc6d067"></script>
+    <script type="module" src="./js/audio.js?v=dc6d067"></script>
+    <script type="module" src="./js/live.js?v=dc6d067"></script>
+    <script type="module" src="./js/settings.js?v=dc6d067"></script>
   </body>
 </html>

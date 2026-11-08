@@ -1487,6 +1487,8 @@
     var mediaRecorder = null;
     var recordingChunks = [];
     var recordingActive = false;
+    var pendingRecordingBlob = null;
+    var pendingRecordingName = '';
     var platformPref = { twitch: false, youtube: false };
     var lastPlatformClick = 'none';
 
@@ -1590,33 +1592,27 @@
       if (destHint) destHint.textContent = 'Recording downloaded: ' + name;
     }
 
+    function showRecordingSaveModal(blob, name) {
+      pendingRecordingBlob = blob;
+      pendingRecordingName = name;
+      var modal = doc.getElementById('recording-save-modal');
+      var body = doc.getElementById('recording-save-body');
+      if (body) body.textContent = 'Choose where to save ' + name + '.';
+      if (modal) modal.hidden = false;
+    }
+
+    function hideRecordingSaveModal() {
+      var modal = doc.getElementById('recording-save-modal');
+      if (modal) modal.hidden = true;
+      pendingRecordingBlob = null;
+      pendingRecordingName = '';
+    }
+
     async function stopRecordingAndSave() {
       if (!mediaRecorder || !recordingActive) return;
       var profile = readBitrateProfile();
       var ts = new Date().toISOString().replace(/[:.]/g, '-');
       var name = 'maka-recording-' + ts + '-' + profile + '.webm';
-      var handle = null;
-      var saveCancelled = false;
-      if (typeof window.showSaveFilePicker === 'function') {
-        try {
-          handle = await window.showSaveFilePicker({
-            suggestedName: name,
-            types: [
-              {
-                description: 'WebM video',
-                accept: { 'video/webm': ['.webm'] },
-              },
-            ],
-          });
-        } catch (err) {
-          if (err && err.name === 'AbortError') {
-            saveCancelled = true;
-            log('Save cancelled. Recording will still stop.');
-          } else {
-            log('Save dialog unavailable — the file will download instead.');
-          }
-        }
-      }
       var rec = mediaRecorder;
       mediaRecorder = null;
       setRecordingUi(false);
@@ -1638,31 +1634,7 @@
         if (destHint) destHint.textContent = 'Recording produced no data.';
         return;
       }
-      if (saveCancelled) return;
-      if (!handle && typeof window.showSaveFilePicker === 'function') {
-        try {
-          handle = await window.showSaveFilePicker({
-            suggestedName: name,
-            types: [
-              {
-                description: 'WebM video',
-                accept: { 'video/webm': ['.webm'] },
-              },
-            ],
-          });
-        } catch (err) {
-          if (err && err.name === 'AbortError') {
-            log('Recording kept in this tab until you stop again and choose a folder.');
-            return;
-          }
-        }
-      }
-      try {
-        await writeRecordingBlob(blob, handle, name);
-      } catch (err) {
-        log('Could not write the recording: ' + (err instanceof Error ? err.message : err));
-        downloadRecordingBlob(blob);
-      }
+      showRecordingSaveModal(blob, name);
     }
 
     async function startRecording() {
@@ -1949,6 +1921,40 @@
           if (recordingActive) await stopRecordingAndSave();
           else await startRecording();
         })();
+      });
+    }
+    var recordingChoose = doc.getElementById('recording-save-choose');
+    var recordingDownload = doc.getElementById('recording-save-download');
+    if (recordingChoose) {
+      recordingChoose.addEventListener('click', function () {
+        void (async function () {
+          var blob = pendingRecordingBlob;
+          var name = pendingRecordingName;
+          if (!blob) return;
+          if (typeof window.showSaveFilePicker !== 'function') {
+            downloadRecordingBlob(blob);
+            hideRecordingSaveModal();
+            return;
+          }
+          try {
+            var handle = await window.showSaveFilePicker({
+              suggestedName: name,
+              types: [{ description: 'WebM video', accept: { 'video/webm': ['.webm'] } }],
+            });
+            await writeRecordingBlob(blob, handle, name);
+            hideRecordingSaveModal();
+          } catch (err) {
+            if (err && err.name === 'AbortError') return;
+            log('Could not open the save dialog. Use Download instead.');
+          }
+        })();
+      });
+    }
+    if (recordingDownload) {
+      recordingDownload.addEventListener('click', function () {
+        if (!pendingRecordingBlob) return;
+        downloadRecordingBlob(pendingRecordingBlob);
+        hideRecordingSaveModal();
       });
     }
     if (platTwitch) {

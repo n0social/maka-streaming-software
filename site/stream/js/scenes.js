@@ -87,8 +87,11 @@
   });
 
   var SOURCE_KINDS = ['game', 'webcam', 'mic', 'browser', 'chat', 'notifications'];
-  /** Visible but non-interactive — full experience is desktop exe only. */
-  var DESKTOP_ONLY_SOURCES = ['browser', 'chat', 'notifications'];
+  var DESKTOP_ONLY_SOURCES = [];
+  var MAX_CUSTOM_SCENES = 5;
+  var customScenes = [];
+  var customMenuId = null;
+  var activeOverlayPresetId = '';
   var DESKTOP_ONLY_TITLE = 'Available in Maka desktop (exe) — download for the full experience';
 
   var SOURCE_META = {
@@ -203,8 +206,12 @@
   }
 
   function findScene(id) {
-    for (var i = 0; i < scenes.length; i++) {
+    var i;
+    for (i = 0; i < scenes.length; i++) {
       if (scenes[i].id === id) return scenes[i];
+    }
+    for (i = 0; i < customScenes.length; i++) {
+      if (customScenes[i].id === id) return customScenes[i];
     }
     return null;
   }
@@ -222,7 +229,9 @@
   function writeStorage() {
     var payload = {
       activeSceneId: activeSceneId,
-      customScenes: [],
+      customScenes: customScenes.map(function (scene) {
+        return { id: scene.id, name: scene.name };
+      }),
       customOrder: [],
       layers: {
         game: !!layers.game,
@@ -255,9 +264,25 @@
     var data = readStorage();
     if (!data || typeof data !== 'object') return;
 
+    if (Array.isArray(data.customScenes)) {
+      customScenes = [];
+      data.customScenes.forEach(function (item) {
+        if (!item || typeof item.id !== 'string' || !/^custom-[1-5]$/.test(item.id)) return;
+        if (customScenes.some(function (scene) { return scene.id === item.id; })) return;
+        var name = typeof item.name === 'string' ? item.name.trim().slice(0, 80) : '';
+        customScenes.push({
+          id: item.id,
+          name: name || 'Custom Scene ' + item.id.replace('custom-', ''),
+          icon: '▶',
+          builtin: false,
+        });
+      });
+      customScenes = customScenes.slice(0, MAX_CUSTOM_SCENES);
+    }
+
     var wanted = typeof data.activeSceneId === 'string' ? data.activeSceneId : 'gaming-cam';
-    // Drop legacy Just Chatting / custom-* active ids onto Gameplay.
-    activeSceneId = isCanonicalSceneId(wanted) ? wanted : 'gaming-cam';
+    activeSceneId =
+      isCanonicalSceneId(wanted) || /^custom-[1-5]$/.test(wanted) ? wanted : 'gaming-cam';
 
     if (data.layers && typeof data.layers === 'object') {
       Object.keys(layers).forEach(function (key) {
@@ -291,7 +316,14 @@
             subtitle: bumper.id === 'intermission' ? intermissionSubtitle() : bumper.subtitle,
             brand: bumper.brand,
           }
-        : null,
+        : scene && /^custom-[1-5]$/.test(scene.id)
+          ? {
+              id: scene.id,
+              title: scene.name,
+              subtitle: 'Custom scene',
+              brand: 'MAKA',
+            }
+          : null,
       webcamPip: webcamPip && layers.cam,
       layers: {
         game: layers.game,
@@ -312,7 +344,9 @@
     emit('maka:scenes-change', {
       scenes: scenes.map(cloneScene),
       activeSceneId: activeSceneId,
-      customScenes: [],
+      customScenes: customScenes.map(function (scene) {
+        return { id: scene.id, name: scene.name };
+      }),
     });
     emit('maka:sources-change', {
       layers: {
@@ -493,6 +527,90 @@
       }
       scenesList.appendChild(li);
     });
+
+    customScenes.forEach(function (scene) {
+      var li = document.createElement('li');
+      li.dataset.customSceneRow = '1';
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'studio-list-item';
+      btn.dataset.scene = scene.id;
+      btn.dataset.active = scene.id === activeSceneId ? '1' : '0';
+      var leading = document.createElement('span');
+      leading.className = 'studio-list-leading scene-icon';
+      leading.setAttribute('aria-hidden', 'true');
+      leading.textContent = '▶';
+      var nameInput = document.createElement('input');
+      nameInput.type = 'text';
+      nameInput.className = 'studio-scene-name-input studio-list-text';
+      nameInput.value = scene.name;
+      nameInput.maxLength = 80;
+      nameInput.setAttribute('aria-label', 'Scene name');
+      nameInput.addEventListener('click', function (event) { event.stopPropagation(); });
+      nameInput.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter') nameInput.blur();
+      });
+      nameInput.addEventListener('blur', function () {
+        var trimmed = nameInput.value.trim().slice(0, 80) || scene.name;
+        scene.name = trimmed;
+        nameInput.value = trimmed;
+        if (activeSceneId === scene.id) emitAll();
+        else writeStorage();
+      });
+      var menu = document.createElement('span');
+      menu.className = 'studio-list-menu';
+      menu.textContent = '⋯';
+      menu.setAttribute('role', 'button');
+      menu.tabIndex = 0;
+      menu.setAttribute('aria-label', 'Remove custom scene');
+      menu.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        customScenes = customScenes.filter(function (item) { return item.id !== scene.id; });
+        if (activeSceneId === scene.id) activeSceneId = 'gaming-cam';
+        renderSceneList();
+        emitAll();
+      });
+      btn.append(leading, nameInput, menu);
+      btn.addEventListener('click', function () { selectScene(scene.id); });
+      li.appendChild(btn);
+      scenesList.appendChild(li);
+    });
+
+    if (customScenes.length < MAX_CUSTOM_SCENES) {
+      var addRow = document.createElement('li');
+      var addBtn = document.createElement('button');
+      addBtn.type = 'button';
+      addBtn.className = 'studio-list-item';
+      addBtn.id = 'btn-add-scene';
+      addBtn.title = 'Add scene (' + customScenes.length + ' of ' + MAX_CUSTOM_SCENES + ')';
+      addBtn.innerHTML =
+        '<span class="studio-list-leading scene-icon" aria-hidden="true">+</span>' +
+        '<span class="studio-list-text">Add scene</span>';
+      addBtn.addEventListener('click', function () {
+        var slot = 0;
+        var i;
+        for (i = 1; i <= MAX_CUSTOM_SCENES; i++) {
+          var id = 'custom-' + i;
+          if (!customScenes.some(function (item) { return item.id === id; })) {
+            slot = i;
+            break;
+          }
+        }
+        if (!slot) return;
+        customScenes.push({
+          id: 'custom-' + slot,
+          name: 'Custom Scene ' + slot,
+          icon: '▶',
+          builtin: false,
+        });
+        activeSceneId = 'custom-' + slot;
+        renderSceneList();
+        emitAll();
+      });
+      addRow.appendChild(addBtn);
+      scenesList.appendChild(addRow);
+    }
 
     var downloadRow = document.createElement('li');
     downloadRow.id = 'studio-scenes-download-row';
@@ -894,6 +1012,77 @@
     });
   }
 
+  function setProgramSlot(id, visible) {
+    var el = document.getElementById(id);
+    if (el) el.hidden = !visible;
+  }
+
+  function renderOverlayPicker(picker) {
+    var presets = [
+      { id: '', label: 'Follow scene' },
+      { id: 'chat-lower', label: 'Chat lower third' },
+      { id: 'notes-corner', label: 'Notifications corner' },
+      { id: 'broadcast', label: 'Chat and notifications' },
+    ];
+    appendPickerSection(picker, 'Overlay layouts');
+    presets.forEach(function (preset) {
+      appendPickerButton(picker, preset.label, activeOverlayPresetId === preset.id, function () {
+        activeOverlayPresetId = preset.id;
+        var showChat = preset.id === 'chat-lower' || preset.id === 'broadcast';
+        var showNotes = preset.id === 'notes-corner' || preset.id === 'broadcast';
+        layers.overlay = Boolean(preset.id);
+        layers.chat = showChat;
+        layers.notifications = showNotes;
+        sourceActive.browser = layers.overlay;
+        sourceActive.chat = showChat;
+        sourceActive.notifications = showNotes;
+        setProgramSlot('program-chat-slot', showChat);
+        setProgramSlot('program-notifications-slot', showNotes);
+        syncSourceRows();
+        emitAll();
+        renderSourcePicker('browser');
+      });
+    });
+  }
+
+  function renderChatPicker(picker) {
+    appendPickerButton(picker, 'Chat off', !layers.chat, function () {
+      layers.chat = false;
+      sourceActive.chat = false;
+      setProgramSlot('program-chat-slot', false);
+      syncSourceRows();
+      emitAll();
+      renderSourcePicker('chat');
+    });
+    appendPickerButton(picker, 'Placeholder panel', layers.chat, function () {
+      layers.chat = true;
+      sourceActive.chat = true;
+      setProgramSlot('program-chat-slot', true);
+      syncSourceRows();
+      emitAll();
+      renderSourcePicker('chat');
+    });
+  }
+
+  function renderNotificationsPicker(picker) {
+    appendPickerButton(picker, 'Notifications off', !layers.notifications, function () {
+      layers.notifications = false;
+      sourceActive.notifications = false;
+      setProgramSlot('program-notifications-slot', false);
+      syncSourceRows();
+      emitAll();
+      renderSourcePicker('notifications');
+    });
+    appendPickerButton(picker, 'Placeholder overlay', layers.notifications, function () {
+      layers.notifications = true;
+      sourceActive.notifications = true;
+      setProgramSlot('program-notifications-slot', true);
+      syncSourceRows();
+      emitAll();
+      renderSourcePicker('notifications');
+    });
+  }
+
   function renderSourcePicker(kind) {
     var picker = document.getElementById(SOURCE_META[kind].picker);
     if (!picker) return;
@@ -909,6 +1098,18 @@
     }
     if (kind === 'mic') {
       renderMicPicker(picker);
+      return;
+    }
+    if (kind === 'browser') {
+      renderOverlayPicker(picker);
+      return;
+    }
+    if (kind === 'chat') {
+      renderChatPicker(picker);
+      return;
+    }
+    if (kind === 'notifications') {
+      renderNotificationsPicker(picker);
       return;
     }
 
