@@ -1,4 +1,4 @@
-/* MAKA_CSS_BUILD=dc6d035 — bump ?v= on /maka.css in site/**/*.html when this file changes */
+/* MAKA_CSS_BUILD=dc6d058 — bump ?v= on /maka.css in site/**/*.html when this file changes */
 /* Maka marketing site — cream / Mikado Yellow tokens (matches Electron studio redesign) */
 :root {
   color-scheme: light;
@@ -598,140 +598,44 @@ svg {
 
 .hero-mvp__actions {
   display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: stretch;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  gap: 0.65rem 0.75rem;
+  gap: 0.85rem;
   width: 100%;
-  max-width: 36rem;
   margin-top: clamp(1.25rem, 3.5vw, 2.25rem);
+  position: relative;
+  z-index: 5;
 }
 
 .hero-mvp__btn {
-  flex: 1 1 7.5rem;
-  min-width: 7.5rem;
-  max-width: 11.5rem;
-  padding: 0.95rem 1.1rem;
-  font-size: 0.74rem;
-  letter-spacing: 0.07em;
+  flex: 0 0 auto;
   position: relative;
-  isolation: isolate;
-  overflow: visible;
+  z-index: 5;
+  text-align: center;
 }
 
-/* Manga focus lines — burst on hover, then subtle drift (hero CTAs only) */
-.hero-mvp__btn::before,
-.hero-mvp__btn::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 220%;
-  height: 220%;
-  margin: 0;
-  pointer-events: none;
-  opacity: 0;
-  transform: translate(-50%, -50%) scale(0.35);
-  transition: opacity 0.15s ease;
-  z-index: -1;
-  border-radius: 50%;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 100% 100%;
-}
-
-.hero-mvp__btn::before {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-50 -50 100 100'%3E%3Cg fill='none' stroke='%231a1408' stroke-width='1.15' stroke-linecap='round' opacity='0.55'%3E%3Cpath d='M0 -46 L0 -18'/%3E%3Cpath d='M0 18 L0 46'/%3E%3Cpath d='M-46 0 L-18 0'/%3E%3Cpath d='M18 0 L46 0'/%3E%3Cpath d='M-33 -33 L-13 -13'/%3E%3Cpath d='M13 13 L33 33'/%3E%3Cpath d='M33 -33 L13 -13'/%3E%3Cpath d='M-13 13 L-33 33'/%3E%3Cpath d='M0 -38 L4 -22 L-4 -22 Z'/%3E%3Cpath d='M0 38 L4 22 L-4 22 Z'/%3E%3Cpath d='M-38 0 L-22 4 L-22 -4 Z'/%3E%3Cpath d='M38 0 L22 4 L22 -4 Z'/%3E%3C/g%3E%3Cg fill='none' stroke='%23ffc40c' stroke-width='0.85' stroke-linecap='round' opacity='0.7'%3E%3Cpath d='M0 -34 L0 -8'/%3E%3Cpath d='M0 8 L0 34'/%3E%3Cpath d='M-34 0 L-8 0'/%3E%3Cpath d='M8 0 L34 0'/%3E%3Cpath d='M-24 -24 L-8 -8'/%3E%3Cpath d='M8 8 L24 24'/%3E%3Cpath d='M24 -24 L8 -8'/%3E%3Cpath d='M-8 8 L-24 24'/%3E%3C/g%3E%3C/svg%3E");
-}
-
-.hero-mvp__btn::after {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-50 -50 100 100'%3E%3Cg fill='none' stroke='%231a1408' stroke-width='0.65' stroke-linecap='round' opacity='0.35'%3E%3Cpath d='M-6 -44 L-2 -20 L2 -28'/%3E%3Cpath d='M6 44 L2 20 L-2 28'/%3E%3Cpath d='M-44 -6 L-20 -2 L-28 2'/%3E%3Cpath d='M44 6 L20 2 L28 -2'/%3E%3Cpath d='M-40 12 L-18 8'/%3E%3Cpath d='M40 -12 L18 -8'/%3E%3Cpath d='M12 40 L8 18'/%3E%3Cpath d='M-12 -40 L-8 -18'/%3E%3C/g%3E%3C/svg%3E");
-}
-
-.hero-mvp__btn:hover::before,
-.hero-mvp__btn:focus-visible::before,
-.hero-mvp__btn:hover::after,
-.hero-mvp__btn:focus-visible::after {
-  opacity: 1;
-}
-
-.hero-mvp__btn:hover::before,
-.hero-mvp__btn:focus-visible::before {
-  animation: hero-btn-manga-burst 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards,
-    hero-btn-manga-flow 2.8s ease-in-out 0.42s infinite;
-}
-
-.hero-mvp__btn:hover::after,
-.hero-mvp__btn:focus-visible::after {
-  animation: hero-btn-manga-burst-alt 0.48s cubic-bezier(0.22, 1, 0.36, 1) forwards,
-    hero-btn-manga-flow-alt 3.2s ease-in-out 0.48s infinite;
-}
-
-@keyframes hero-btn-manga-burst {
-  0% {
-    transform: translate(-50%, -50%) scale(0.2);
-    opacity: 0;
-  }
-
-  35% {
-    opacity: 1;
-  }
-
-  100% {
-    transform: translate(-50%, -50%) scale(1.05);
-    opacity: 0.92;
-  }
-}
-
-@keyframes hero-btn-manga-burst-alt {
-  0% {
-    transform: translate(-50%, -50%) scale(0.15) rotate(-6deg);
-    opacity: 0;
-  }
-
-  40% {
-    opacity: 0.85;
-  }
-
-  100% {
-    transform: translate(-50%, -50%) scale(1.12) rotate(4deg);
-    opacity: 0.75;
-  }
-}
-
-@keyframes hero-btn-manga-flow {
-  0%,
-  100% {
-    transform: translate(-50%, -50%) scale(1.02) rotate(0deg);
-    opacity: 0.88;
-  }
-
-  50% {
-    transform: translate(-50%, -50%) scale(1.08) rotate(2deg);
-    opacity: 0.72;
-  }
-}
-
-@keyframes hero-btn-manga-flow-alt {
-  0%,
-  100% {
-    transform: translate(-50%, -50%) scale(1.06) rotate(3deg);
-    opacity: 0.65;
-  }
-
-  50% {
-    transform: translate(-50%, -50%) scale(1.01) rotate(-2deg);
-    opacity: 0.8;
-  }
+.hero-mvp__btn:hover,
+.hero-mvp__btn:focus-visible,
+.hero-mvp__btn:active {
+  transform: none;
+  filter: none;
 }
 
 .hero-mvp__btn--download {
+  width: min(22rem, 92vw);
+  min-height: 3.4rem;
+  padding: 1.05rem 2.4rem;
+  font-size: 1.15rem;
+  letter-spacing: 0.08em;
   box-shadow: 0 10px 28px rgba(255, 196, 12, 0.32);
 }
 
-.hero-mvp__btn--download:hover {
-  box-shadow: 0 14px 36px rgba(255, 196, 12, 0.4);
+.hero-mvp__btn--github {
+  width: min(14rem, 70vw);
+  min-height: 2.8rem;
+  padding: 0.8rem 1.6rem;
+  font-size: 0.95rem;
 }
 
 .hero-mvp__mascot {
@@ -955,15 +859,7 @@ svg {
   }
 
   .hero-mvp__actions {
-    flex-direction: column;
-    align-items: stretch;
-    max-width: 18rem;
     margin-top: 1rem;
-  }
-
-  .hero-mvp__btn {
-    max-width: none;
-    width: 100%;
   }
 
   .hero-title--center {
@@ -1003,20 +899,6 @@ svg {
 
   .maka-wordmark::before {
     animation: none;
-  }
-
-  .hero-mvp__btn::before,
-  .hero-mvp__btn::after {
-    animation: none !important;
-    transition: none;
-  }
-
-  .hero-mvp__btn:hover::before,
-  .hero-mvp__btn:focus-visible::before,
-  .hero-mvp__btn:hover::after,
-  .hero-mvp__btn:focus-visible::after {
-    opacity: 0.55;
-    transform: translate(-50%, -50%) scale(1);
   }
 
   .btn:hover {
