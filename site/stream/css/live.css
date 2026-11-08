@@ -230,13 +230,18 @@
 }
 
 .stream-title-input,
-.stream-game-input {
+.stream-game-input,
+.stream-title-display,
+.stream-game-display {
   width: 100%;
+  margin: 0;
   border: none;
   background: transparent;
   padding: 0;
   font: inherit;
   color: var(--text, #1a1408);
+  cursor: default;
+  user-select: text;
 }
 
 .stream-title-input {
@@ -458,79 +463,169 @@
 }
 
 
-/* Go Live wizard */
+/* Go Live wizard — white sheet, mascot left, floating card right */
 .go-live-wizard-dialog {
-  max-width: 26rem;
-  width: min(26rem, calc(100vw - 2rem));
+  width: min(980px, calc(100vw - 2rem));
+  height: min(640px, calc(100vh - 2rem));
+  max-width: none;
+  max-height: none;
   padding: 0;
-  border: 1px solid var(--line, #e8e2d6);
-  border-radius: 0.55rem;
-  background: var(--panel, #faf8f4);
-  color: var(--text, #1a1408);
-  box-shadow: 0 18px 48px rgba(26, 20, 8, 0.18);
+  border: none;
+  border-radius: 22px;
+  background: #fff;
+  color: #1a1408;
+  overflow: hidden;
+  box-shadow: 0 24px 70px rgba(26, 20, 8, 0.22);
 }
-.go-live-wizard-dialog::backdrop { background: rgba(26, 20, 8, 0.52); }
+.go-live-wizard-dialog::backdrop { background: rgba(26, 20, 8, 0.45); }
+.go-live-wizard-card {
+  display: grid;
+  grid-template-columns: minmax(220px, 42%) 1px minmax(0, 1fr);
+  height: 100%;
+  background: #fff;
+}
+.go-live-wizard-mascot {
+  min-height: 0;
+  background: #fff;
+}
+.go-live-wizard-mascot img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
+.go-live-wizard-rule {
+  background: #d9d3c7;
+}
+.go-live-wizard-pane {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.35rem 1.25rem;
+  background: #fff;
+  min-width: 0;
+}
 .go-live-wizard-form {
+  width: min(100%, 26rem);
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
-  padding: 1.15rem 1.25rem 1.2rem;
+  gap: 0.85rem;
+  padding: 1.6rem 1.45rem 1.35rem;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 16px 46px rgba(26, 20, 8, 0.12);
 }
 .go-live-wizard-step {
   margin: 0;
   font-size: 0.72rem;
-  color: var(--muted, #6b6256);
+  color: #6b6256;
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 .go-live-wizard-form h2 {
   margin: 0;
-  font-family: var(--headline, 'League Spartan', sans-serif);
-  font-size: 1.1rem;
+  font-family: "League Spartan", sans-serif;
+  font-size: 1.35rem;
   font-style: italic;
   font-weight: 800;
+  line-height: 1.1;
 }
-.go-live-wizard-platforms {
-  border: none;
+.go-live-wizard-lead {
   margin: 0;
-  padding: 0;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  color: #1a1408;
+}
+.go-live-wizard-dialog[data-step="go"] .go-live-wizard-form h2 {
+  text-align: center;
+  font-size: 2.15rem;
+}
+.go-live-wizard-dialog[data-step="go"] .go-live-wizard-lead:empty {
+  display: none;
+}
+.go-live-platform-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.35rem 0 0.15rem;
+}
+.platform-pick {
+  appearance: none;
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-family: "League Spartan", sans-serif;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  font-size: 0.95rem;
+  min-width: 8.5rem;
+  padding: 0.85rem 1.05rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  cursor: pointer;
+}
+.platform-pick-twitch { background: #9146ff; }
+.platform-pick-youtube { background: #ff0033; }
+.platform-pick[aria-pressed="false"] { opacity: 0.45; }
+.platform-pick[aria-pressed="true"] {
+  opacity: 1;
+  box-shadow: 0 0 0 3px #fff, 0 0 0 5px #1a1408;
+}
+.go-live-wizard-fields {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
 }
-.go-live-wizard-platforms .check {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-}
 .go-live-wizard-form .field-label {
   display: block;
-  margin: 0.35rem 0 0.25rem;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--text, #1a1408);
+  margin: 0.45rem 0 0;
+  font-size: 0.78rem;
+  font-weight: 700;
 }
+.go-live-wizard-form .field-label:first-child { margin-top: 0; }
 .go-live-wizard-form .key-input,
 .go-live-wizard-form .select {
   width: 100%;
+  box-sizing: border-box;
   font: inherit;
-  font-size: 0.82rem;
-  padding: 0.5rem 0.55rem;
-  border-radius: 0.4rem;
-  border: 1px solid var(--line, #e8e2d6);
-  background: var(--panel-2, #f6f3ec);
-  color: var(--text, #1a1408);
+  font-size: 0.92rem;
+  padding: 0.7rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid #e6dfd0;
+  background: #fff;
+  color: #1a1408;
 }
-.go-live-wizard-status { margin: 0; font-size: 0.82rem; line-height: 1.4; }
-.go-live-wizard-status[data-state='error'] { color: #b91c1c; }
-.go-live-wizard-status[data-state='ok'] { color: #166534; }
+.go-live-wizard-key-hint {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  color: #b91c1c;
+}
+.go-live-wizard-status {
+  margin: 0;
+  text-align: center;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+.go-live-wizard-status[data-state="error"] { color: #b91c1c; }
+.go-live-wizard-status[data-state="ok"] { color: #1a1408; }
 .go-live-wizard-actions {
   display: flex;
+  justify-content: center;
   flex-wrap: wrap;
-  gap: 0.45rem;
+  gap: 0.55rem;
   margin-top: 0.35rem;
 }
-.go-live-wizard-actions .btn { min-width: 5.5rem; }
+.go-live-wizard-actions .btn { min-width: 5.75rem; }
+.go-live-wizard-dialog[data-step="go"] #go-live-wizard-next {
+  font-size: 1.15rem;
+  padding: 0.8rem 1.45rem;
+}
+@media (max-width: 760px) {
+  .go-live-wizard-dialog { height: auto; max-height: calc(100vh - 1.5rem); }
+  .go-live-wizard-card { grid-template-columns: 1fr; grid-template-rows: 180px 1px auto; }
+  .go-live-wizard-rule { height: 1px; width: 100%; }
+}

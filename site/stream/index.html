@@ -32,13 +32,13 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/maka.css?v=dc6d035" />
-    <link rel="stylesheet" href="./stream.css?v=dc6d048" />
-    <link rel="stylesheet" href="./css/shell.css?v=dc6d048" />
-    <link rel="stylesheet" href="./css/preview-stage.css?v=dc6d048" />
-    <link rel="stylesheet" href="./css/scenes.css?v=dc6d048" />
-    <link rel="stylesheet" href="./css/audio.css?v=dc6d048" />
-    <link rel="stylesheet" href="./css/live.css?v=dc6d048" />
-    <link rel="stylesheet" href="./css/settings.css?v=dc6d048" />
+    <link rel="stylesheet" href="./stream.css?v=dc6d051" />
+    <link rel="stylesheet" href="./css/shell.css?v=dc6d051" />
+    <link rel="stylesheet" href="./css/preview-stage.css?v=dc6d051" />
+    <link rel="stylesheet" href="./css/scenes.css?v=dc6d051" />
+    <link rel="stylesheet" href="./css/audio.css?v=dc6d051" />
+    <link rel="stylesheet" href="./css/live.css?v=dc6d051" />
+    <link rel="stylesheet" href="./css/settings.css?v=dc6d051" />
   </head>
   <body data-mode="studio" class="stream-studio">
     <div class="app" id="studio-app" data-shell="studio">
@@ -324,22 +324,7 @@
                 </button>
               </div>
               <span class="program-stat program-stat-bitrate program-stat-tertiary" id="stat-bitrate" data-idle="1" title="Bitrate">—</span>
-              <label class="program-stats-field program-stats-field-encode">
-                <span class="sr-only">Encode profile</span>
-                <select
-                  id="program-quality-select"
-                  class="program-stats-select program-stats-select-encode"
-                  aria-label="Encode profile"
-                  title="Relay encode profile (applied by local MAKArelay — not browser NVENC)"
-                >
-                  <option value="720p30" selected>720p @ 30fps · 3 Mbps</option>
-                  <option value="720p60">720p @ 60fps · 4.5 Mbps</option>
-                  <option value="1080p30">1080p @ 30fps · 4.5 Mbps</option>
-                  <option value="1080p60">1080p @ 60fps · 6 Mbps</option>
-                  <option value="2k60">2K @ 60fps · 10 Mbps</option>
-                  <option value="4k60">4K @ 60fps · 16 Mbps</option>
-                </select>
-              </label>
+              <span class="program-stat program-stat-encode program-stat-secondary" id="stat-encode" title="Encode profile from Go Live">720p30</span>
             </div>
           </div>
         </div>
@@ -412,11 +397,6 @@
               <span class="btn-icon btn-icon-live" aria-hidden="true">((•))</span>
               <span id="btn-go-live-label">Go Live</span>
             </button>
-            <p class="relay-guidance" id="relay-detail">
-              Encoding (incl. up to 4K) runs in the local MAKArelay sidecar on
-              <code>127.0.0.1:38473</code> — WHIP in, RTMP out on this PC. The browser
-              alone cannot NVENC to Twitch / YouTube.
-            </p>
             <button
               type="button"
               class="btn-block btn-secondary"
@@ -458,8 +438,8 @@
                 <div class="stream-thumb-placeholder">No preview</div>
               </div>
               <div class="stream-meta">
-                <input type="text" id="stream-title-input" class="stream-title-input" maxlength="140" autocomplete="off" placeholder="Stream title" aria-label="Stream title" />
-                <input type="text" id="stream-game-input" class="stream-game-input" maxlength="100" autocomplete="off" placeholder="Game" aria-label="Game" />
+                <p class="stream-title-input stream-title-display" id="stream-title-input" aria-label="Stream title">Untitled stream</p>
+                <p class="stream-game-input stream-game-display" id="stream-game-input" aria-label="Game">Just Chatting</p>
                 <p class="stream-destinations" id="stream-destinations-hint" title="Safe status only — stream keys live in the chip dialog, not here"></p>
                 <div class="stream-status-row">
                   <span class="stream-live-pill" id="stream-live-pill" data-live="false">Offline</span>
@@ -503,54 +483,55 @@
     </div>
 
 
-    <!-- Go Live wizard — prefills from Stream Info / Settings shared localStorage keys -->
     <dialog id="go-live-wizard-dialog" class="go-live-wizard-dialog" aria-labelledby="go-live-wizard-title">
-      <div class="go-live-wizard-form">
-        <p class="go-live-wizard-step" id="go-live-wizard-step">Step 1 of 4</p>
-        <h2 id="go-live-wizard-title">Go live</h2>
-        <p class="hint tight" id="go-live-wizard-body"></p>
-        <div id="go-live-wizard-panel-platform">
-          <fieldset class="go-live-wizard-platforms">
-            <legend class="sr-only">Platform</legend>
-            <label class="check">
-              <input type="radio" name="go-live-platform" value="twitch" checked />
-              Twitch
-            </label>
-            <label class="check">
-              <input type="radio" name="go-live-platform" value="youtube" />
-              YouTube
-            </label>
-          </fieldset>
+      <div class="go-live-wizard-card">
+        <div class="go-live-wizard-mascot" aria-hidden="true">
+          <img src="/assets/mascot/mascot-a.jpg" alt="" width="864" height="1152" />
         </div>
-        <div id="go-live-wizard-panel-key" hidden>
-          <div data-wizard-key="twitch">
-            <label class="field-label" for="wizard-twitch-key">Twitch stream key</label>
-            <input id="wizard-twitch-key" class="key-input" type="password" autocomplete="off" spellcheck="false" />
+        <div class="go-live-wizard-rule" aria-hidden="true"></div>
+        <div class="go-live-wizard-pane">
+          <div class="go-live-wizard-form">
+            <p class="go-live-wizard-step" id="go-live-wizard-step">Step 1 of 4</p>
+            <h2 id="go-live-wizard-title">Choose platform</h2>
+            <p class="go-live-wizard-lead" id="go-live-wizard-body">Which Platform would you like to stream to?</p>
+            <div id="go-live-wizard-panel-platform">
+              <div class="go-live-platform-row" role="radiogroup" aria-label="Platform">
+                <button type="button" class="platform-pick platform-pick-twitch" id="wizard-platform-twitch" data-platform="twitch" aria-pressed="true">
+                  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M4 2h16v12l-4 4h-4l-2 2H8v-2H4V2zm2 2v12h4v2l2-2h4l2-2V4H6zm8 2h2v6h-2V6zm-4 0h2v6H10V6z"/></svg>
+                  Twitch
+                </button>
+                <button type="button" class="platform-pick platform-pick-youtube" id="wizard-platform-youtube" data-platform="youtube" aria-pressed="false">
+                  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M23 12.2s0-3.2-.4-4.6c-.2-.9-.9-1.6-1.8-1.8C19.2 5.4 12 5.4 12 5.4s-7.2 0-8.8.4c-.9.2-1.6.9-1.8 1.8C1 9 1 12.2 1 12.2s0 3.2.4 4.6c.2.9.9 1.6 1.8 1.8 1.6.4 8.8.4 8.8.4s7.2 0 8.8-.4c.9-.2 1.6-.9 1.8-1.8.4-1.4.4-4.6.4-4.6zM9.8 15.5v-6.6l6.2 3.3-6.2 3.3z"/></svg>
+                  YouTube
+                </button>
+              </div>
+            </div>
+            <div id="go-live-wizard-panel-key" hidden>
+              <div data-wizard-key="twitch">
+                <input id="wizard-twitch-key" class="key-input" type="password" autocomplete="off" spellcheck="false" aria-label="Twitch stream key" placeholder="live_…" />
+              </div>
+              <div data-wizard-key="youtube" hidden>
+                <input id="wizard-youtube-key" class="key-input" type="password" autocomplete="off" spellcheck="false" aria-label="YouTube stream key" placeholder="abcd-efgh-ijkl-mnop" />
+              </div>
+              <p class="go-live-wizard-key-hint" id="wizard-key-hint" hidden></p>
+            </div>
+            <div id="go-live-wizard-panel-details" class="go-live-wizard-fields" hidden>
+              <label class="field-label" for="go-live-wizard-title-input">Stream title</label>
+              <input id="go-live-wizard-title-input" class="key-input" type="text" maxlength="140" autocomplete="off" />
+              <label class="field-label" for="go-live-wizard-game-input">Game</label>
+              <input id="go-live-wizard-game-input" class="key-input" type="text" maxlength="100" autocomplete="off" placeholder="Just Chatting" />
+              <label class="field-label" for="go-live-wizard-quality">Encode profile</label>
+              <select id="go-live-wizard-quality" class="select program-stats-select-encode" aria-label="Encode profile"></select>
+            </div>
+            <div id="go-live-wizard-panel-go" hidden>
+              <p class="go-live-wizard-status" id="go-live-wizard-go-status" data-state="idle"></p>
+            </div>
+            <div class="go-live-wizard-actions">
+              <button type="button" class="btn btn-primary" id="go-live-wizard-next">Next</button>
+              <button type="button" class="btn btn-ghost" id="go-live-wizard-back" hidden>Back</button>
+              <button type="button" class="btn btn-ghost" id="go-live-wizard-cancel">Cancel</button>
+            </div>
           </div>
-          <div data-wizard-key="youtube" hidden>
-            <label class="field-label" for="wizard-youtube-key">YouTube stream key</label>
-            <input id="wizard-youtube-key" class="key-input" type="password" autocomplete="off" spellcheck="false" />
-          </div>
-        </div>
-        <div id="go-live-wizard-panel-details" hidden>
-          <label class="field-label" for="go-live-wizard-title-input">Stream title</label>
-          <input id="go-live-wizard-title-input" class="key-input" type="text" maxlength="140" autocomplete="off" />
-          <label class="field-label" for="go-live-wizard-game-input">Game</label>
-          <input id="go-live-wizard-game-input" class="key-input" type="text" maxlength="100" autocomplete="off" placeholder="Just Chatting" />
-          <label class="field-label" for="go-live-wizard-quality">Encode profile</label>
-          <select id="go-live-wizard-quality" class="select program-stats-select-encode" aria-label="Encode profile"></select>
-          <p class="hint tight">
-            Prefills from Stream Info and Settings → Streaming. Edits sync to the same
-            <code>maka.stream.*</code> keys before Go Live.
-          </p>
-        </div>
-        <div id="go-live-wizard-panel-go" hidden>
-          <p class="go-live-wizard-status" id="go-live-wizard-go-status" data-state="idle"></p>
-        </div>
-        <div class="row go-live-wizard-actions">
-          <button type="button" class="btn btn-primary" id="go-live-wizard-next">Next</button>
-          <button type="button" class="btn btn-ghost" id="go-live-wizard-back" hidden>Back</button>
-          <button type="button" class="btn btn-ghost" id="go-live-wizard-cancel">Cancel</button>
         </div>
       </div>
     </dialog>
@@ -580,11 +561,11 @@
     </dialog>
 
     <!-- Module hooks (feature modules owned elsewhere) -->
-    <script type="module" src="./js/shell.js?v=dc6d048"></script>
-    <script type="module" src="./js/scenes.js?v=dc6d048"></script>
-    <script type="module" src="./js/preview.js?v=dc6d048"></script>
-    <script type="module" src="./js/audio.js?v=dc6d048"></script>
-    <script type="module" src="./js/live.js?v=dc6d048"></script>
-    <script type="module" src="./js/settings.js?v=dc6d048"></script>
+    <script type="module" src="./js/shell.js?v=dc6d051"></script>
+    <script type="module" src="./js/scenes.js?v=dc6d051"></script>
+    <script type="module" src="./js/preview.js?v=dc6d051"></script>
+    <script type="module" src="./js/audio.js?v=dc6d051"></script>
+    <script type="module" src="./js/live.js?v=dc6d051"></script>
+    <script type="module" src="./js/settings.js?v=dc6d051"></script>
   </body>
 </html>

@@ -290,9 +290,13 @@ function syncLiveDomFields() {
 
   if (title instanceof HTMLInputElement && document.activeElement !== title) {
     title.value = settings.streamTitle
+  } else if (title && !(title instanceof HTMLInputElement)) {
+    title.textContent = settings.streamTitle || 'Untitled stream'
   }
   if (game instanceof HTMLInputElement && document.activeElement !== game) {
     game.value = settings.streamGame || DEFAULT_STREAM_GAME
+  } else if (game && !(game instanceof HTMLInputElement)) {
+    game.textContent = settings.streamGame || DEFAULT_STREAM_GAME
   }
   if (wizardTitle instanceof HTMLInputElement && document.activeElement !== wizardTitle) {
     wizardTitle.value = settings.streamTitle
@@ -358,37 +362,11 @@ function settingsMarkup() {
                   Preferences still save locally in this browser (localStorage).
                 </p>
               </div>
-              <div class="settings-panel" id="settings-panel-streaming" data-settings-panel="streaming" hidden>
+              <div class="settings-panel" id="settings-panel-streaming" data-settings-panel="streaming" data-streaming-note="wizard-only" hidden>
                 <h2>Streaming</h2>
-                <label class="field-label" for="set-stream-title">Stream title</label>
-                <input id="set-stream-title" class="key-input" type="text" maxlength="140" autocomplete="off" placeholder="Stream title" />
-                <label class="field-label" for="set-stream-game">Game</label>
-                <input id="set-stream-game" class="key-input" type="text" maxlength="100" autocomplete="off" placeholder="Just Chatting" />
-                <p class="hint tight">
-                  Same fields as Stream Info. Empty game saves as <strong>Just Chatting</strong>.
-                  Synced to <code>maka.stream.streamTitle</code> / <code>maka.stream.streamGame</code>.
-                </p>
-                <label class="field-label" for="set-encode-profile">Default encode quality</label>
-                <select id="set-encode-profile" class="select">${profileOptions}</select>
-                <p class="hint tight">
-                  Default <code>720p30</code> (matches desktop). Synced with the program stats bar and
-                  <code>maka.stream.bitrateProfile</code> for live.js <code>POST /config</code>.
-                  Encoding runs in the local MAKArelay sidecar — not in this browser.
-                </p>
-                <label class="field-label" for="set-last-platform">Armed go-live platform</label>
-                <select id="set-last-platform" class="select">
-                  <option value="none">Not set</option>
-                  <option value="twitch">Twitch</option>
-                  <option value="youtube">YouTube</option>
-                </select>
-                <label class="field-label" for="set-twitch-key">Twitch stream key</label>
-                <input id="set-twitch-key" class="key-input" type="password" autocomplete="off" spellcheck="false" placeholder="live_…" />
-                <label class="field-label" for="set-youtube-key">YouTube stream key</label>
-                <input id="set-youtube-key" class="key-input" type="password" autocomplete="off" spellcheck="false" placeholder="YouTube Studio stream key" />
-                <p class="hint tight">
-                  Keys are stored in this browser’s localStorage and sent only to
-                  <code>127.0.0.1:38473/config</code> when you Go Live. You can also set them in
-                  Maka desktop relay settings. Browsers cannot RTMP to Twitch / YouTube directly.
+                <p class="hint tight" data-streaming-note="wizard-only">
+                  Title, game, encode profile, and platform are set in Go Live. Twitch and YouTube
+                  under the preview keep saved keys.
                 </p>
               </div>
               <div class="settings-panel" id="settings-panel-audio" data-settings-panel="audio" hidden>
@@ -441,13 +419,12 @@ function settingsMarkup() {
               </div>
               <div class="settings-panel" id="settings-panel-help" data-settings-panel="help" hidden>
                 <h2>Help</h2>
-                <button type="button" class="btn-block spaced-btn" id="btn-open-go-live-wizard">Open Go Live wizard</button>
                 <button type="button" class="btn-block spaced-btn" id="btn-check-updates">Check for updates</button>
                 <a class="btn-block spaced-btn" id="btn-download-maka" href="/download.html">Download Maka desktop</a>
                 <p class="settings-web-note">
                   About Maka web studio — App v${APP_VERSION}. Setup / onboarding tours ship with the
-                  desktop installer. Updates open the GitHub releases list. The Go Live wizard prefills
-                  title, game, encode profile, and armed platform from Stream Info / Streaming.
+                  desktop installer. Updates open the GitHub releases list. Stream title, game, and
+                  encode profile are set in Go Live.
                 </p>
               </div>
             </div>
@@ -487,9 +464,11 @@ function ensureRoot() {
 
   const needsMarkup =
     !el.querySelector('.settings-view-inner') ||
-    !el.querySelector('#set-stream-game') ||
-    el.querySelector('#set-stream-category') ||
-    el.querySelector('#btn-replay-setup')
+    !el.querySelector('[data-streaming-note="wizard-only"]') ||
+    Boolean(el.querySelector('#set-stream-title')) ||
+    Boolean(el.querySelector('#set-stream-category')) ||
+    Boolean(el.querySelector('#btn-replay-setup')) ||
+    Boolean(el.querySelector('#btn-open-go-live-wizard'))
   if (needsMarkup) {
     el.innerHTML = settingsMarkup()
     delete el.dataset.settingsWired

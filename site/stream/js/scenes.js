@@ -71,7 +71,7 @@
     intermission: {
       id: 'intermission',
       title: 'Intermission',
-      subtitle: 'Be right back — Maka streams on',
+      subtitle: 'Be right back — Maka Streams in: --:--',
       brand: 'MAKA',
     },
     ending: {
@@ -113,6 +113,44 @@
   /** @type {{ id: string, name: string, icon: string, builtin?: boolean }[]} */
   var scenes = BUILTIN_SCENES.map(cloneScene);
   var activeSceneId = 'gaming-cam';
+  var INTERMISSION_MINUTES = [5, 15, 30];
+  var intermissionMinutes = 0;
+  var intermissionEndsAt = 0;
+  var intermissionTimer = 0;
+  var intermissionMenuOpen = false;
+
+  function formatCountdown(ms) {
+    var total = Math.max(0, Math.ceil(ms / 1000));
+    var minutes = Math.floor(total / 60);
+    var seconds = total % 60;
+    return minutes + ':' + (seconds < 10 ? '0' + seconds : String(seconds));
+  }
+
+  function intermissionSubtitle() {
+    var left = intermissionEndsAt ? formatCountdown(intermissionEndsAt - Date.now()) : '--:--';
+    return 'Be right back — Maka Streams in: ' + left;
+  }
+
+  function tickIntermission() {
+    if (activeSceneId !== 'intermission') return;
+    emit('maka:scene-change', previewSceneDetail(findScene('intermission')));
+    if (intermissionEndsAt && Date.now() >= intermissionEndsAt) {
+      if (intermissionTimer) {
+        clearInterval(intermissionTimer);
+        intermissionTimer = 0;
+      }
+    }
+  }
+
+  function startIntermissionTimer(minutes) {
+    intermissionMinutes = minutes;
+    intermissionEndsAt = Date.now() + minutes * 60 * 1000;
+    if (intermissionTimer) clearInterval(intermissionTimer);
+    intermissionTimer = setInterval(tickIntermission, 250);
+    intermissionMenuOpen = false;
+    selectScene('intermission');
+    renderSceneList();
+  }
 
   var layers = {
     game: true,
@@ -250,7 +288,7 @@
         ? {
             id: bumper.id,
             title: bumper.title,
-            subtitle: bumper.subtitle,
+            subtitle: bumper.id === 'intermission' ? intermissionSubtitle() : bumper.subtitle,
             brand: bumper.brand,
           }
         : null,
@@ -397,9 +435,31 @@
       text.textContent = scene.name;
 
       var menu = document.createElement('span');
-      menu.className = 'studio-list-menu studio-list-menu--static';
-      menu.setAttribute('aria-hidden', 'true');
+      menu.className = 'studio-list-menu';
       menu.textContent = '⋯';
+      if (scene.id === 'intermission') {
+        menu.setAttribute('role', 'button');
+        menu.tabIndex = 0;
+        menu.setAttribute('aria-label', 'Intermission timer');
+        menu.setAttribute('aria-expanded', intermissionMenuOpen ? 'true' : 'false');
+        menu.setAttribute('aria-controls', 'intermission-timer-menu');
+        menu.addEventListener('click', function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          intermissionMenuOpen = !intermissionMenuOpen;
+          renderSceneList();
+        });
+        menu.addEventListener('keydown', function (event) {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          event.stopPropagation();
+          intermissionMenuOpen = !intermissionMenuOpen;
+          renderSceneList();
+        });
+      } else {
+        menu.classList.add('studio-list-menu--static');
+        menu.setAttribute('aria-hidden', 'true');
+      }
 
       btn.append(leading, text, menu);
       btn.addEventListener('click', function () {
@@ -407,6 +467,30 @@
       });
 
       li.appendChild(btn);
+      if (scene.id === 'intermission') {
+        var picker = document.createElement('ul');
+        picker.id = 'intermission-timer-menu';
+        picker.className = 'studio-source-picker';
+        picker.setAttribute('role', 'list');
+        picker.setAttribute('aria-label', 'Intermission timer');
+        picker.hidden = !intermissionMenuOpen;
+        INTERMISSION_MINUTES.forEach(function (minutes) {
+          var item = document.createElement('li');
+          var pick = document.createElement('button');
+          pick.type = 'button';
+          pick.className = 'studio-source-picker-item';
+          pick.dataset.active = intermissionMinutes === minutes ? '1' : '0';
+          pick.textContent = minutes + ' minutes';
+          pick.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            startIntermissionTimer(minutes);
+          });
+          item.appendChild(pick);
+          picker.appendChild(item);
+        });
+        li.appendChild(picker);
+      }
       scenesList.appendChild(li);
     });
 
@@ -1085,6 +1169,13 @@
     highlightSceneSelection(activeSceneId);
     syncSourceRows();
     wirePreviewSync();
+    document.addEventListener('click', function (event) {
+      if (!intermissionMenuOpen) return;
+      var target = event.target;
+      if (target && target.closest && target.closest('#scene-intermission, #intermission-timer-menu')) return;
+      intermissionMenuOpen = false;
+      renderSceneList();
+    });
     emitAll();
     booted = true;
     global.MakaScenes = api();
