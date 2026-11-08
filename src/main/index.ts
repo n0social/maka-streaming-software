@@ -570,11 +570,23 @@ function registerIpc(): void {
     setAppMode(workspaceBeforeSettings)
     return appMode
   })
-  ipcMain.handle('app:get-version-info', () => ({
-    appVersion: app.getVersion(),
-    relayVersion: relay.getSnapshot().health?.version ?? null,
-    platform: process.platform,
-  }))
+  ipcMain.handle('app:get-version-info', () => {
+    const health = relay.getSnapshot().health
+    let relayHost: string | null = null
+    if (health?.streamUrl) {
+      try {
+        relayHost = new URL(health.streamUrl).origin
+      } catch {
+        relayHost = null
+      }
+    }
+    return {
+      appVersion: app.getVersion(),
+      relayVersion: health?.version ?? null,
+      relayHost,
+      platform: process.platform,
+    }
+  })
   ipcMain.handle('vcam:get-capability', (event) => {
     if (!studioOk(event)) return getVirtualCameraCapability()
     return getVirtualCameraCapability()

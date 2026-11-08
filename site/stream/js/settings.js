@@ -341,10 +341,6 @@ function settingsMarkup() {
               <div class="settings-panel active" id="settings-panel-general" data-settings-panel="general">
                 <h2>General</h2>
                 <label class="check">
-                  <input type="checkbox" id="set-tray-live" />
-                  Minimize to tray while live
-                </label>
-                <label class="check">
                   <input type="checkbox" id="set-auto-update" />
                   Check for updates when Maka starts
                 </label>
@@ -354,8 +350,8 @@ function settingsMarkup() {
                   <span id="settings-relay-version">Relay —</span>
                 </p>
                 <p class="settings-web-note">
-                  Browser note: tray minimize and desktop auto-update apply in the Maka exe.
-                  Preferences still save locally in this browser (localStorage).
+                  Browser note: desktop auto-update applies in the Maka exe.
+                  Preferences still save locally in this browser.
                 </p>
               </div>
               <div class="settings-panel" id="settings-panel-streaming" data-settings-panel="streaming" data-streaming-note="wizard-only" hidden>
@@ -464,7 +460,8 @@ function ensureRoot() {
     Boolean(el.querySelector('#set-stream-title')) ||
     Boolean(el.querySelector('#set-stream-category')) ||
     Boolean(el.querySelector('#btn-replay-setup')) ||
-    Boolean(el.querySelector('#btn-open-go-live-wizard'))
+    Boolean(el.querySelector('#btn-open-go-live-wizard')) ||
+    Boolean(el.querySelector('#set-tray-live'))
   if (needsMarkup) {
     el.innerHTML = settingsMarkup()
     delete el.dataset.settingsWired
@@ -491,12 +488,11 @@ function setActiveSettingsTab(tabId) {
 function refreshVersionLabels() {
   const appLine = `App v${APP_VERSION}`
   let relayLine = 'Relay —'
-  const relayText = document.getElementById('relay-status-text')
-  const relayChip = document.getElementById('relay-label')
-  const source = (relayText && relayText.textContent) || (relayChip && relayChip.textContent) || ''
-  if (/online|ok|ready|v?\d/i.test(source) && !/checking|offline|required/i.test(source)) {
-    const match = source.match(/v?\d+\.\d+(?:\.\d+)?/)
-    relayLine = match ? `Relay v${match[0].replace(/^v/, '')}` : 'Relay detected'
+  const live = window.MakaLive
+  const source = live && typeof live.getRelaySource === 'function' ? live.getRelaySource() : null
+  if (source && source.detected && source.host) {
+    const version = source.version ? ` v${source.version}` : ''
+    relayLine = `Relay${version} · ${source.host}`
   }
 
   const appVersionTop = document.getElementById('app-version-label')
@@ -607,9 +603,7 @@ function applySettingsToForm() {
   if (!root) return
   const byId = (id) => document.getElementById(id)
 
-  const tray = byId('set-tray-live')
   const auto = byId('set-auto-update')
-  if (tray instanceof HTMLInputElement) tray.checked = settings.minimizeToTrayWhileLive
   if (auto instanceof HTMLInputElement) auto.checked = settings.autoCheckUpdatesOnStartup
 
   const encodeSelect = byId('set-encode-profile')
@@ -756,7 +750,6 @@ function wireForm() {
       saveSettings({ [key]: el.checked })
     })
   }
-  persistCheckbox('set-tray-live', 'minimizeToTrayWhileLive')
   persistCheckbox('set-auto-update', 'autoCheckUpdatesOnStartup')
 
   const encode = document.getElementById('set-encode-profile')
@@ -900,6 +893,7 @@ function wireShellChrome() {
   document.addEventListener('maka:open-settings', () => void openSettings())
   document.addEventListener('maka:close-settings', () => closeSettings())
   document.addEventListener('maka:toggle-settings', () => toggleSettings())
+  window.addEventListener('maka:relay-source', () => refreshVersionLabels())
   window.addEventListener('maka:open-settings', () => void openSettings())
   window.addEventListener('maka:close-settings', () => closeSettings())
   window.addEventListener('maka:toggle-settings', () => toggleSettings())

@@ -323,6 +323,18 @@
       });
     }
 
+    function relaySource() {
+      return {
+        detected: Boolean(relayDetected),
+        version: relayHealth && relayHealth.version ? String(relayHealth.version) : null,
+        host: relayDetected && relayBase ? relayBase : null,
+      };
+    }
+
+    function publishRelaySource() {
+      window.dispatchEvent(new CustomEvent('maka:relay-source', { detail: relaySource() }));
+    }
+
     function setRelayChrome(state) {
       var connected = Boolean(relayDetected);
       var text = connected ? 'Relay connected' : 'Relay not detected';
@@ -332,6 +344,7 @@
       if (chip) {
         chip.dataset.state = !connected ? 'stopped' : state === 'live' ? 'live' : 'ready';
       }
+      publishRelaySource();
     }
 
     function formatDuration(ms) {
@@ -2028,6 +2041,7 @@
       isRelayDetected: function () {
         return relayDetected;
       },
+      getRelaySource: relaySource,
       encodeProfiles: Object.keys(ENCODE_PROFILE_MAP),
       defaultBitrateProfile: DEFAULT_BITRATE_PROFILE,
       defaultStreamGame: DEFAULT_STREAM_GAME,

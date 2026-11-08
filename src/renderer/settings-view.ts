@@ -114,7 +114,9 @@ function applySettingsToForm(s: AppSettings): void {
 async function refreshVersionLabels(maka: MakaBridge): Promise<void> {
   const info = await maka.getVersionInfo()
   const appLine = `App v${info.appVersion}`
-  const relayLine = info.relayVersion ? `Relay v${info.relayVersion}` : 'Relay —'
+  const relayLine = info.relayVersion
+    ? `Relay v${info.relayVersion}${info.relayHost ? ` · ${info.relayHost}` : ''}`
+    : 'Relay —'
   const appVersionTop = document.getElementById('app-version-label')
   if (appVersionTop) appVersionTop.textContent = info.appVersion
   const settingsApp = document.getElementById('settings-app-version')

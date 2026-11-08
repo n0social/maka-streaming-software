@@ -69,6 +69,8 @@ export type AppSettings = {
 export type AppVersionInfo = {
   appVersion: string
   relayVersion: string | null
+  /** Origin the app reached the relay on, such as http://127.0.0.1:38473. */
+  relayHost: string | null
   platform: string
 }
 
