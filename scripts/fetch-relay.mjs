@@ -5,13 +5,9 @@ import { createHash } from 'node:crypto'
 import { Readable } from 'node:stream'
 import { fileURLToPath } from 'node:url'
 
-const MANIFEST_URLS = [
-  'https://makalive.stream/downloads/relay-manifest.json',
-  'https://tabcast.live.skydav.work/downloads/relay-manifest.json',
-]
-const RELAY_FILES = ['MAKArelay.exe', 'TabcastRelay.exe']
+const MANIFEST_URL = 'https://makalive.stream.skydav.work/downloads/relay-manifest.json'
 const OUT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'vendor', 'relay')
-const OUT_FILE = join(OUT_DIR, 'MAKArelay.exe')
+const OUT_FILE = join(OUT_DIR, 'TabcastRelay.exe')
 
 async function sha256File(path) {
   const { createReadStream } = await import('node:fs')
@@ -29,43 +25,18 @@ async function main() {
   mkdirSync(OUT_DIR, { recursive: true })
 
   console.log('Fetching relay manifest…')
-  let manifest
-  let manifestOrigin = ''
-  let lastError
-  for (const url of MANIFEST_URLS) {
-    try {
-      const res = await fetch(url)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      manifest = await res.json()
-      manifestOrigin = new URL(url).origin
-      break
-    } catch (err) {
-      lastError = err
-    }
-  }
-  if (!manifest) {
-    throw new Error(`Relay manifest unavailable (${lastError})`)
-  }
-  const artifactName = RELAY_FILES.includes(manifest.artifact)
-    ? manifest.artifact
-    : 'MAKArelay.exe'
-  const artifactUrl = `${manifestOrigin}/downloads/${artifactName}`
+  const manifest = await (await fetch(MANIFEST_URL)).json()
+  const artifactUrl = `https://makalive.stream.skydav.work/downloads/${manifest.artifact}`
   const expectedSha = String(manifest.sha256 || '').toLowerCase()
   const expectedSize = Number(manifest.size || 0)
   const force = process.argv.includes('--force')
 
-  const present = [OUT_FILE, join(OUT_DIR, 'TabcastRelay.exe')].find((path) => existsSync(path))
-  if (present && present !== OUT_FILE && !force) {
-    console.log(`Using existing relay at ${present}`)
-  }
-  const localFile = present && !force ? present : OUT_FILE
-
-  if (existsSync(localFile) && !force) {
-    const size = statSync(localFile).size
+  if (existsSync(OUT_FILE) && !force) {
+    const size = statSync(OUT_FILE).size
     if (expectedSize && size === expectedSize && expectedSha) {
-      const digest = await sha256File(localFile)
+      const digest = await sha256File(OUT_FILE)
       if (digest === expectedSha) {
-        console.log(`Relay already present and verified at ${localFile}`)
+        console.log(`Relay already present and verified at ${OUT_FILE}`)
         console.log(`Manifest version ${manifest.version} (${manifest.size} bytes).`)
         writeFileSync(
           join(OUT_DIR, 'relay-manifest.json'),
@@ -80,7 +51,7 @@ async function main() {
         `Incomplete binary (${size} / ${expectedSize} bytes) — re-downloading…`,
       )
     } else {
-      console.log(`Relay present at ${localFile} (${size} bytes). Use --force to re-download.`)
+      console.log(`Relay present at ${OUT_FILE} (${size} bytes). Use --force to re-download.`)
       return
     }
   }
@@ -120,7 +91,7 @@ async function main() {
     throw new Error(`SHA-256 mismatch.\nExpected ${expectedSha}\nGot      ${digest}`)
   }
 
-  console.log(`OK — ${OUT_FILE} ready (sha256 ${digest.slice(0, 12)}…)`)
+  console.log(`OK — vendor relay.exe ready (sha256 ${digest.slice(0, 12)}…)`)
   console.log(`Port ${manifest.port} · stream ${manifest.streamUrl}`)
 
   writeFileSync(

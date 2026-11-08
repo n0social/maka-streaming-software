@@ -67,67 +67,30 @@ def hero_bg(w: int, h: int) -> Image.Image:
     return im
 
 
-# Favicon tile: brighter cream → Mikado, matching the hero. The M is League Spartan
-# Black, sheared to the same synthetic italic the wordmark uses (the family has no italic file).
-CREAM_BRIGHT = (255, 248, 228)
-MIKADO = (255, 196, 12)
-INK = (26, 20, 8)
-MAKA_FONT = ROOT / "scripts" / "fonts" / "LeagueSpartan-900.ttf"
-ITALIC_SHEAR = 0.25
-
-
-def maka_font(size: int) -> ImageFont.FreeTypeFont:
-    return ImageFont.truetype(str(MAKA_FONT), size)
-
-
-def slant_italic(layer: Image.Image, shear: float = ITALIC_SHEAR) -> Image.Image:
-    width, height = layer.size
-    pad = int(abs(shear) * height) + 4
-    canvas = Image.new("RGBA", (width + pad, height), (0, 0, 0, 0))
-    canvas.paste(layer, (0, 0), layer)
-    slanted = canvas.transform(
-        canvas.size,
-        Image.Transform.AFFINE,
-        (1, shear, -shear * (height - 1), 0, 1, 0),
-        resample=Image.Resampling.BICUBIC,
-    )
-    box = slanted.split()[-1].getbbox()
-    return slanted.crop(box) if box else slanted
-
-
 def draw_icon(size: int) -> Image.Image:
     im = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     d = ImageDraw.Draw(im)
     pad = max(2, size // 16)
     radius = max(4, size // 5)
-    inner = size - 2 * pad
+    # Pin tile with gradient approximation
     for y in range(pad, size - pad):
         for x in range(pad, size - pad):
-            if (x - pad) ** 2 + (y - pad) ** 2 < inner ** 2:
-                t = (x - pad) / max(1, inner)
-                r = int(CREAM_BRIGHT[0] * (1 - t) + MIKADO[0] * t)
-                g = int(CREAM_BRIGHT[1] * (1 - t) + MIKADO[1] * t)
-                b = int(CREAM_BRIGHT[2] * (1 - t) + MIKADO[2] * t)
+            t = (x - pad) / max(1, size - 2 * pad)
+            r = int(SILVER[0] * (1 - t) + GOLD[0] * t)
+            g = int(SILVER[1] * (1 - t) + GOLD[1] * t)
+            b = int(SILVER[2] * (1 - t) + GOLD[2] * t)
+            if (x - pad) ** 2 + (y - pad) ** 2 < (size - 2 * pad) ** 2:
                 im.putpixel((x, y), (r, g, b, 255))
-    d.rounded_rectangle(
-        [pad, pad, size - pad - 1, size - pad - 1],
-        radius=radius,
-        outline=(255, 255, 255, 90),
-    )
-    face = maka_font(max(10, int(size * 0.62)))
-    bbox = d.textbbox((0, 0), "M", font=face)
+    d.rounded_rectangle([pad, pad, size - pad, size - pad], radius=radius, outline=(255, 255, 255, 40))
+    f = font(bold=True, size=max(10, int(size * 0.52)))
+    text = "T"
+    bbox = d.textbbox((0, 0), text, font=f)
     tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
-    layer = Image.new("RGBA", (tw + 8, th + 8), (0, 0, 0, 0))
-    ImageDraw.Draw(layer).text(
-        (-bbox[0] + 4, -bbox[1] + 4),
-        "M",
-        font=face,
-        fill=INK + (255,),
-    )
-    glyph = slant_italic(layer)
-    im.alpha_composite(
-        glyph,
-        ((size - glyph.size[0]) // 2, (size - glyph.size[1]) // 2 - size // 48),
+    d.text(
+        ((size - tw) // 2 - bbox[0], (size - th) // 2 - bbox[1] - size // 32),
+        text,
+        font=f,
+        fill=BG,
     )
     return im
 
@@ -139,7 +102,7 @@ def draw_feature_graphic() -> Image.Image:
     f_big = font(bold=True, size=92)
     f_tag = font(bold=True, size=22)
     f_sub = font(bold=False, size=20)
-    d.text((72, 120), "TABCAST", font=f_big, fill=GOLD)
+    d.text((72, 120), "MAKA", font=f_big, fill=GOLD)
     d.text((72, 220), "LIVE · STUDIO · CAPTURE", font=f_tag, fill=GOLD_LIGHT)
     d.text(
         (72, 270),
@@ -167,7 +130,7 @@ def draw_phone_screenshot() -> Image.Image:
     w, h = 1080, 1920
     im = hero_bg(w, h)
     d = ImageDraw.Draw(im)
-    d.text((80, 120), "TABCAST", font=font(bold=True, size=72), fill=CYAN)
+    d.text((80, 120), "MAKA", font=font(bold=True, size=72), fill=CYAN)
     d.text((80, 210), "Studio", font=font(bold=True, size=36), fill=INK)
     d.rounded_rectangle([60, 280, w - 60, h - 420], radius=32, fill=BG2 + (255,), outline=(255, 255, 255, 30))
     d.rounded_rectangle([90, 320, w - 90, h - 680], radius=20, fill=(5, 7, 10, 255))
@@ -184,7 +147,7 @@ def draw_desktop_screenshot() -> Image.Image:
     d = ImageDraw.Draw(im)
     d.rounded_rectangle([40, 40, w - 40, h - 40], radius=20, fill=BG2 + (255,), outline=(255, 255, 255, 25))
     d.rounded_rectangle([40, 40, w - 40, 88], radius=20, fill=(255, 255, 255, 12))
-    d.text((60, 52), "TABCAST  ·  Studio", font=font(bold=True, size=22), fill=CYAN)
+    d.text((60, 52), "MAKA  ·  Studio", font=font(bold=True, size=22), fill=CYAN)
     d.rounded_rectangle([60, 110, 300, h - 60], radius=16, fill=(255, 255, 255, 8))
     d.rounded_rectangle([320, 110, w - 320, h - 60], radius=16, fill=(5, 7, 10, 255), outline=CYAN + (80,))
     d.rounded_rectangle([w - 280, 110, w - 60, h - 60], radius=16, fill=(255, 255, 255, 8))
@@ -215,7 +178,7 @@ def draw_promo_tile() -> Image.Image:
     d = ImageDraw.Draw(im)
     icon = draw_icon(96)
     im.paste(icon, (32, 92), icon)
-    d.text((150, 100), "TABCAST", font=font(bold=True, size=36), fill=CYAN)
+    d.text((150, 100), "MAKA", font=font(bold=True, size=36), fill=CYAN)
     d.text((150, 145), "Browser", font=font(bold=True, size=24), fill=INK)
     d.text((150, 180), "Studio + Relay", font=font(bold=False, size=16), fill=MUTED)
     return im
@@ -225,7 +188,7 @@ def draw_marquee() -> Image.Image:
     w, h = 1400, 560
     im = hero_bg(w, h)
     d = ImageDraw.Draw(im)
-    d.text((80, 180), "TABCAST BROWSER", font=font(bold=True, size=64), fill=CYAN)
+    d.text((80, 180), "MAKA", font=font(bold=True, size=64), fill=CYAN)
     d.text((80, 270), "Capture · Layout · Go Live", font=font(bold=True, size=28), fill=LIME)
     icon = draw_icon(200)
     im.paste(icon, (1050, 180), icon)
@@ -250,34 +213,15 @@ def write_ico(path: Path, sizes: list[int]) -> None:
     path.write_bytes(header + entries + payload)
 
 
-def export_icons(master: Image.Image) -> None:
+def main() -> None:
+    print("Generating Maka marketing package…")
     icon_sizes = [16, 32, 48, 72, 96, 128, 192, 256, 512, 1024]
+    master = draw_icon(1024)
     for s in icon_sizes:
         save_png(master.resize((s, s), Image.Resampling.LANCZOS), ICONS / f"icon-{s}.png")
         save_png(master.resize((s, s), Image.Resampling.LANCZOS), SITE / "icons" / f"icon-{s}.png")
+
     write_ico(OUT / "icons" / "icon.ico", [16, 32, 48, 64, 128, 256])
-    save_png(master.resize((512, 512), Image.Resampling.LANCZOS), SITE / "icons" / "icon-512.png")
-    save_png(master.resize((192, 192), Image.Resampling.LANCZOS), SITE / "apple-touch-icon.png")
-    save_png(master.resize((32, 32), Image.Resampling.LANCZOS), SITE / "favicon-32.png")
-    for s in [16, 24, 32, 48, 64, 128, 256]:
-        save_png(master.resize((s, s), Image.Resampling.LANCZOS), RESOURCES / f"icon-{s}.png")
-    save_png(master.resize((16, 16), Image.Resampling.LANCZOS), RESOURCES / "tray.png")
-    save_png(master.resize((32, 32), Image.Resampling.LANCZOS), RESOURCES / "tray@2x.png")
-    write_ico(RESOURCES / "icon.ico", [16, 24, 32, 48, 64, 128, 256])
-
-
-def main() -> None:
-    import sys
-
-    if "--icons-only" in sys.argv:
-        print("Generating Maka M icons…")
-        export_icons(draw_icon(1024))
-        print("Done.")
-        return
-
-    print("Generating Maka marketing package…")
-    icon_sizes = [16, 32, 48, 72, 96, 128, 192, 256, 512, 1024]
-    export_icons(draw_icon(1024))
 
     save_png(draw_feature_graphic(), STORE / "feature-graphic-1024x500.png")
     save_png(draw_phone_screenshot(), STORE / "screenshot-phone-1080x1920.png")
@@ -299,6 +243,15 @@ def main() -> None:
         dst.write_bytes(src.read_bytes())
 
     save_png(draw_download_badge("DOWNLOAD NOW"), SITE / "download-now.png")
+    save_png(master.resize((512, 512), Image.Resampling.LANCZOS), SITE / "icons" / "icon-512.png")
+    save_png(master.resize((192, 192), Image.Resampling.LANCZOS), SITE / "apple-touch-icon.png")
+    save_png(master.resize((32, 32), Image.Resampling.LANCZOS), SITE / "favicon-32.png")
+
+    for s in [16, 24, 32, 48, 64, 128, 256]:
+        save_png(master.resize((s, s), Image.Resampling.LANCZOS), RESOURCES / f"icon-{s}.png")
+    save_png(master.resize((16, 16), Image.Resampling.LANCZOS), RESOURCES / "tray.png")
+    save_png(master.resize((32, 32), Image.Resampling.LANCZOS), RESOURCES / "tray@2x.png")
+    write_ico(RESOURCES / "icon.ico", [16, 24, 32, 48, 64, 128, 256])
 
     manifest = {
         "product": "Maka",

@@ -98,8 +98,8 @@ Run full verify with relay running: `npm run verify` (no `--offline`).
 
 | Item | Change |
 |------|--------|
-| Sandboxed webview runtime | `tabcast-addon://` protocol + per-addon webview in sidebar |
-| `tabcast.addons` bridge | Preload API: toast, fetch, settings, openExternal, onLiveEvent |
+| Sandboxed webview runtime | `maka-addon://` protocol + per-addon webview in sidebar |
+| `maka.addons` bridge | Preload API: toast, fetch, settings, openExternal, onLiveEvent |
 | Live event broadcast | `app.ready`, `live.start`, `live.end` pushed to runtime webviews |
 | Hello Maka sample | Marketplace installable demo with UI panel |
 
@@ -121,7 +121,7 @@ Run full verify with relay running: `npm run verify` (no `--offline`).
 | Control | Status | Notes |
 |---------|--------|-------|
 | Browse URL scheme filter | ✅ | HTTP/HTTPS only; blocks `file:`, `javascript:`, etc. |
-| Blocked host suffixes | ✅ | `skydav.work` / `skydav.com` in `src/shared/tabcast.ts` |
+| Blocked host suffixes | ✅ | `skydav.work` / `skydav.com` in `src/shared/maka-constants.ts` |
 | Redirect blocking | ✅ | `will-redirect` on browse + chat windows |
 | IPC payload validation | ✅ | Settings, tab IDs, preset IDs |
 | Persisted session scrub | ✅ | Bad URLs/IDs stripped on load |
@@ -136,7 +136,7 @@ Run full verify with relay running: `npm run verify` (no `--offline`).
 | Main window `sandbox: false` | Higher renderer compromise blast radius | Enable sandbox when preload surface allows; audit node APIs |
 | No IPC sender validation | Any frame could invoke handlers | Check `event.sender` against known webContents IDs |
 | Broad default-session media permissions | All frames on default session get capture | Scope permissions to studio webContents only |
-| `neutralizeInstalledRelayConfig()` on boot | Overwrites the local relay `relay-config.json` beside the encoder install | Make opt-in or version-gated; document for IT |
+| `neutralizeInstalledRelayConfig()` on boot | Overwrites `%LOCALAPPDATA%\MAKA Relay\...\relay-config.json` | Make opt-in or version-gated; document for IT |
 | Port 38473 kill via PowerShell | Could kill unrelated listener | PID-file or relay-owned lock instead of port sweep |
 | Stream keys in renderer DOM | Keys in memory in UI process | OS keychain / relay-only key entry for v1 |
 | Google search fallback in browse | Sends classroom queries to Google | Optional: restrict to allowlisted domains only |
@@ -219,7 +219,7 @@ Ship in the first post-0.2 minor (0.2.x or 0.3.0).
 ### Site & release hygiene
 
 - Single deploy script; **`browser-manifest.json`** drives version/SHA on landing page.
-- “Try our browser” CTA → latest GitHub Release (already partially on [makalive.stream](https://makalive.stream)).
+- “Try our browser” CTA → latest GitHub Release (already partially on makalive.stream).
 
 ---
 
@@ -290,7 +290,7 @@ Ship in the first post-0.2 minor (0.2.x or 0.3.0).
 | Area | Paths |
 |------|-------|
 | Main / IPC | `src/main/index.ts`, `relay.ts`, `browse-tabs.ts`, `security.ts` |
-| URL policy | `src/shared/browse-url.ts`, `src/shared/tabcast.ts` |
+| URL policy | `src/shared/browse-url.ts`, `src/shared/maka-constants.ts` |
 | Studio UI | `src/renderer/app.ts`, `app.html`, `whip.ts`, `relay-client.ts` |
 | Build / verify | `package.json`, `scripts/verify.mjs`, `scripts/fetch-relay.mjs` |
 | Site | `site/index.html`, `site/browser-manifest.json`, `site/deploy-site.sh` |
@@ -302,7 +302,7 @@ Ship in the first post-0.2 minor (0.2.x or 0.3.0).
 ## Test plan (before next public build)
 
 - [ ] Fresh install on clean Windows 11 VM (unsigned warning documented).
-- [ ] Relay start/stop/restart × 10; no orphan MAKA.relay process after quit.
+- [ ] Relay start/stop/restart × 10; no orphan `MAKArelay.exe` after quit.
 - [ ] Browse: blocked host redirect denied; Twitch/YT Studio load; chat pop-out.
 - [ ] Go Live 720p and 1080p; profile persists after restart (**after 0.2.1 fix**).
 - [ ] Settings save/load; invalid JSON in userData recovered gracefully.

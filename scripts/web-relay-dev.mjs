@@ -3,11 +3,13 @@
  * MAKA.relay-compatible dev server for browser testing (no MAKArelay.exe).
  * Listens on 127.0.0.1:38473 — same HTTP contract as the desktop sidecar.
  *
- * RTMP ingest is mocked (logged only). WHIP uses werift to accept browser offers.
+ * WHIP uses werift. When a platform key is set, inbound media is remuxed with ffmpeg to RTMP.
  */
 import { createServer } from 'node:http'
+import { spawn } from 'node:child_process'
 import { randomBytes, randomUUID } from 'node:crypto'
 import { RTCPeerConnection } from 'werift'
+import { Event, MediaRecorder } from 'werift/nonstandard'
 
 const HOST = process.env.RELAY_HOST ?? '127.0.0.1'
 const PORT = Number(process.env.RELAY_PORT ?? 38_473)
@@ -21,8 +23,9 @@ let relayConfig = {
   bitrateMbps: 3,
 }
 
-/** @type {Map<string, { pc: RTCPeerConnection, resourcePath: string }>} */
+/** @type {Map<string, { pc: RTCPeerConnection, resourcePath: string, push: { ff: import('node:child_process').ChildProcess, recorder: MediaRecorder } | null }>} */
 const whipSessions = new Map()
+const PUBLIC_IP = process.env.RELAY_PUBLIC_IP || '104.131.164.94'
 
 let relayPhase = /** @type {'idle' | 'starting' | 'live' | 'error'} */ ('idle')
 let relayError = /** @type {string | null} */ (null)
@@ -103,15 +106,18 @@ function healthPayload() {
 }
 
 function statusPayload() {
+  const target = rtmpTarget()
   const platforms = {}
   if (relayConfig.twitchKey) {
-    platforms.twitch = mockRtmpLive ? { live: true, viewers: 0 } : false
+    platforms.twitch =
+      mockRtmpLive && target?.name === 'twitch' ? { live: true, viewers: 0 } : false
   }
   if (relayConfig.youtubeKey) {
-    platforms.youtube = mockRtmpLive ? { live: true, viewers: 0 } : false
+    platforms.youtube =
+      mockRtmpLive && target?.name === 'youtube' ? { live: true, viewers: 0 } : false
   }
   if (relayConfig.customRtmpUrl && relayConfig.customRtmpKey) {
-    platforms.custom = mockRtmpLive ? { live: true } : false
+    platforms.custom = mockRtmpLive && target?.name === 'custom' ? { live: true } : false
   }
 
   return {
@@ -144,8 +150,141 @@ async function waitForIceGathering(pc, timeoutMs = 6000) {
   })
 }
 
+function rtmpTarget() {
+  const platform = relayConfig.platform
+  if (platform === 'twitch') {
+    if (!relayConfig.twitchKey) return null
+    return { name: 'twitch', url: `rtmp://live.twitch.tv/app/${relayConfig.twitchKey}` }
+  }
+  if (platform === 'youtube') {
+    if (!relayConfig.youtubeKey) return null
+    return { name: 'youtube', url: `rtmp://a.rtmp.youtube.com/live2/${relayConfig.youtubeKey}` }
+  }
+  if (platform === 'custom') {
+    if (!relayConfig.customRtmpUrl || !relayConfig.customRtmpKey) return null
+    const base = String(relayConfig.customRtmpUrl).replace(/\/$/, '')
+    return { name: 'custom', url: `${base}/${relayConfig.customRtmpKey}` }
+  }
+  if (relayConfig.twitchKey) {
+    return { name: 'twitch', url: `rtmp://live.twitch.tv/app/${relayConfig.twitchKey}` }
+  }
+  if (relayConfig.youtubeKey) {
+    return { name: 'youtube', url: `rtmp://a.rtmp.youtube.com/live2/${relayConfig.youtubeKey}` }
+  }
+  if (relayConfig.customRtmpUrl && relayConfig.customRtmpKey) {
+    const base = String(relayConfig.customRtmpUrl).replace(/\/$/, '')
+    return { name: 'custom', url: `${base}/${relayConfig.customRtmpKey}` }
+  }
+  return null
+}
+
+function stopPush(push) {
+  if (!push) return
+  try {
+    push.recorder.stop()
+  } catch {
+    /* ignore */
+  }
+  try {
+    push.ff.stdin.end()
+  } catch {
+    /* ignore */
+  }
+  try {
+    push.ff.kill('SIGTERM')
+  } catch {
+    /* ignore */
+  }
+}
+
+function startRtmpPush(tracks) {
+  const target = rtmpTarget()
+  if (!target || !tracks.length) return null
+  const bitrate = Number(relayConfig.bitrateMbps) || 3
+  let videoK = Math.round(bitrate * 1000)
+  // Twitch drops ingest above its 6000 kbps non-partner ceiling.
+  if (target.name === 'twitch') videoK = Math.min(videoK, 6000)
+  const ff = spawn(
+    'ffmpeg',
+    [
+      '-hide_banner',
+      '-loglevel',
+      'warning',
+      '-fflags',
+      'nobuffer',
+      '-i',
+      'pipe:0',
+      '-c:v',
+      'libx264',
+      '-preset',
+      'veryfast',
+      '-tune',
+      'zerolatency',
+      '-profile:v',
+      'main',
+      '-pix_fmt',
+      'yuv420p',
+      '-g',
+      '60',
+      '-keyint_min',
+      '60',
+      '-sc_threshold',
+      '0',
+      '-b:v',
+      `${videoK}k`,
+      '-maxrate',
+      `${videoK}k`,
+      '-bufsize',
+      `${videoK * 2}k`,
+      '-c:a',
+      'aac',
+      '-b:a',
+      '160k',
+      '-ar',
+      '48000',
+      '-ac',
+      '2',
+      '-f',
+      'flv',
+      '-flvflags',
+      'no_duration_filesize',
+      target.url,
+    ],
+    { stdio: ['pipe', 'inherit', 'pipe'] },
+  )
+  ff.stderr.on('data', (chunk) => {
+    const line = String(chunk).trim()
+    if (line) logFfmpeg(line.slice(0, 240))
+  })
+  ff.on('exit', (code) => {
+    logFfmpeg(`${target.name} ffmpeg exit ${code}`)
+    if (code && code !== 0) {
+      mockRtmpLive = false
+      relayError = `${target.name} ingest stopped`
+    }
+  })
+  const stream = new Event()
+  stream.subscribe(async (output) => {
+    if (output && output.saveToFile && ff.stdin.writable) {
+      ff.stdin.write(output.saveToFile)
+    }
+  })
+  const video = tracks.find((track) => track.kind === 'video')
+  const recorder = new MediaRecorder({
+    tracks,
+    stream,
+    width: 1280,
+    height: 720,
+  })
+  if (!video) logFfmpeg(`${target.name} push started without a video track yet`)
+  else logFfmpeg(`${target.name} RTMP push started`)
+  mockRtmpLive = true
+  return { ff, recorder }
+}
+
 async function closeAllWhipSessions() {
   for (const [id, session] of whipSessions) {
+    stopPush(session.push)
     try {
       session.pc.close()
     } catch {
@@ -162,11 +301,32 @@ async function handleWhipPost(res, offerSdp) {
   relayPhase = 'starting'
   relayError = null
 
-  const pc = new RTCPeerConnection({})
+  const pc = new RTCPeerConnection({
+    iceAdditionalHostAddresses: [PUBLIC_IP],
+  })
+  /** @type {import('werift').MediaStreamTrack[]} */
+  const inboundTracks = []
+  let pushStarted = false
+  const maybePush = (session) => {
+    if (pushStarted || !session) return
+    if (!inboundTracks.some((track) => track.kind === 'video') && inboundTracks.length === 0) return
+    if (!rtmpTarget()) return
+    pushStarted = true
+    try {
+      session.push = startRtmpPush(inboundTracks.slice())
+    } catch (err) {
+      pushStarted = false
+      relayError = err instanceof Error ? err.message : String(err)
+      logFfmpeg(relayError)
+    }
+  }
+  /** @type {{ pc: RTCPeerConnection, resourcePath: string, push: ReturnType<typeof startRtmpPush> } | null} */
+  let session = null
   pc.ontrack = (ev) => {
     const kind = ev.track?.kind ?? 'unknown'
-    const id = ev.track?.id ?? '?'
-    console.log(`[whip] inbound track kind=${kind} id=${id}`)
+    console.log(`[whip] inbound track kind=${kind}`)
+    if (ev.track) inboundTracks.push(ev.track)
+    maybePush(session)
   }
 
   try {
@@ -186,25 +346,18 @@ async function handleWhipPost(res, offerSdp) {
 
     const sessionId = randomUUID()
     const resourcePath = `/whip/${sessionId}`
-    whipSessions.set(sessionId, { pc, resourcePath })
-
-    const hasKeys =
-      relayConfig.twitchKey ||
-      relayConfig.youtubeKey ||
-      (relayConfig.customRtmpUrl && relayConfig.customRtmpKey)
-    if (hasKeys) {
-      mockRtmpLive = true
-      logFfmpeg(
-        `mock RTMP push profile=${relayConfig.profile} twitch=${Boolean(relayConfig.twitchKey)} youtube=${Boolean(relayConfig.youtubeKey)} custom=${Boolean(relayConfig.customRtmpUrl)}`,
-      )
-    } else {
-      logFfmpeg('WHIP session active — no stream keys configured (RTMP mock idle)')
+    session = { pc, resourcePath, push: null }
+    whipSessions.set(sessionId, session)
+    maybePush(session)
+    if (!rtmpTarget()) {
+      logFfmpeg('WHIP session active — no stream key configured')
     }
 
     relayPhase = 'live'
     pc.connectionStateChange.subscribe((state) => {
       console.log(`[whip] connectionState=${state}`)
       if (state === 'failed' || state === 'closed') {
+        stopPush(session && session.push)
         whipSessions.delete(sessionId)
         if (whipSessions.size === 0) {
           mockRtmpLive = false
@@ -251,6 +404,14 @@ async function handleRequest(req, res) {
       return
     }
     relayConfig = { ...relayConfig, ...body }
+    if (body.platform === 'twitch') {
+      relayConfig.youtubeKey = ''
+      relayConfig.customRtmpKey = ''
+    } else if (body.platform === 'youtube') {
+      relayConfig.twitchKey = ''
+      relayConfig.customRtmpKey = ''
+    }
+    console.log('[config] platform=%s', relayConfig.platform || rtmpTarget()?.name || 'none')
     if (body.profile && !body.bitrateMbps) {
       const bitrates = {
         '720p30': 3,

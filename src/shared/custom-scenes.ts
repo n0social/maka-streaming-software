@@ -1,7 +1,7 @@
-/** Max user-defined scenes beyond the five built-in rows. */
-export const MAX_CUSTOM_SCENES = 3
+/** Max user-defined scenes beyond the built-in rows. */
+export const MAX_CUSTOM_SCENES = 5
 
-const CUSTOM_SCENE_ID_RE = /^custom-[1-3]$/
+const CUSTOM_SCENE_ID_RE = /^custom-[1-5]$/
 
 export type CustomScene = {
   id: string

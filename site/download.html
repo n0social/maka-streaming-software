@@ -2,7 +2,6 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <base href="https://makalive.stream/" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
@@ -21,25 +20,19 @@
     <meta property="og:image" content="https://makalive.stream/marketing/download-now.png" />
     <meta name="twitter:card" content="summary_large_image" />
     <title>Download Maka</title>
-    <link rel="icon" type="image/png" href="/marketing/favicon-32.png?v=maka-m" sizes="32x32" />
+    <link rel="icon" type="image/png" href="/marketing/favicon-32.png" sizes="32x32" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=League+Spartan:ital,wght@0,700;0,800;0,900;1,800;1,900&display=swap"
       rel="stylesheet"
     />
-    <link
-      rel="preload"
-      as="style"
-      href="https://makalive.stream/maka.css?v=dc6d038"
-    />
-    <link
-      rel="stylesheet"
-      href="https://makalive.stream/maka.css?v=dc6d038"
-    />
+    <link rel="preload" as="style" href="/maka.css?v=dc6d035" />
+    <link rel="stylesheet" href="/maka.css?v=dc6d035" />
     <style>
       .download-main {
         max-width: 40rem;
+        text-align: center;
       }
       .download-main h1 {
         margin: 0 0 0.85rem;
@@ -48,6 +41,15 @@
         font-style: italic;
         font-size: clamp(2rem, 5vw, 2.75rem);
         letter-spacing: -0.03em;
+      }
+      .download-main .site-header,
+      .download-main .site-nav,
+      .download-main .cta-row,
+      .download-main .site-footer {
+        justify-content: center;
+      }
+      .download-main .eyebrow {
+        text-align: center;
       }
       .meta-block {
         margin-top: 2rem;
@@ -61,7 +63,6 @@
       <header class="site-header site-header--nav-only">
         <nav class="site-nav site-nav--compact">
           <a href="/stream/">Stream</a>
-          <a href="/preview/">App preview</a>
           <a href="/">Home</a>
         </nav>
       </header>
@@ -69,33 +70,22 @@
       <main>
         <p class="eyebrow">Windows · v0.2.6</p>
         <h1>Download Maka</h1>
-        <p class="hero-lead">
-          Desktop studio with game capture, cream-and-gold layout, and MAKA.relay on
-          <code>127.0.0.1:38473</code> — WHIP in, RTMP to your platforms. Stream keys stay local.
-        </p>
 
         <div class="cta-row">
-          <a
-            class="btn btn-primary"
-            href="https://github.com/n0social/maka-streaming-software/releases/download/v0.2.6/Maka-Setup-0.2.6.exe"
-            >Download (GitHub)</a
-          >
-          <a class="btn btn-secondary" href="/downloads/Maka-Setup-0.2.6.exe">Mirror on makalive.stream</a>
+          <a class="btn btn-primary" href="/downloads/Maka-Setup-0.2.6.exe">Download for Windows</a>
         </div>
         <div class="cta-row">
-          <a class="btn btn-ghost" href="/downloads/MAKArelay.exe">MAKA.relay</a>
+          <a class="btn btn-ghost" href="/downloads/MAKArelay.exe">Relay only (.exe)</a>
           <a class="btn btn-ghost" href="https://github.com/n0social/maka-streaming-software">Source</a>
         </div>
 
         <div class="meta-block fine-print">
-          <p><code>Maka-Setup-0.2.6.exe</code> · x64 NSIS · ~190 MB · unsigned (SmartScreen may warn)</p>
-          <p>Includes bundled relay · prefer GitHub for checksums and release notes</p>
+          <p><code>Maka-Setup-0.2.6.exe</code> · x64 NSIS · ~182 MB · unsigned (SmartScreen may warn)</p>
+          <p>Includes the local relay. Hosted on makalive.stream.</p>
         </div>
 
         <p class="panel-note">
-          After install, open Studio, verify relay health, add keys, then Go Live. Try the
-          <a href="/stream/">browser capture preview</a> or explore the
-          <a href="/preview/">studio mockup</a> first.
+          After install, open Studio, verify relay health, add keys, then Go Live.
         </p>
       </main>
 

@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
+Disallow: /stream/
 
 Sitemap: https://makalive.stream/sitemap.xml

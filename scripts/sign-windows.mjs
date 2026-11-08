@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Windows Authenticode signing helper for Maka and MAKArelay.exe.
+ * Windows Authenticode signing helper for Maka + MAKA Relay.
  *
  * Usage:
  *   node scripts/sign-windows.mjs <file.exe> [file2.exe ...]
@@ -10,7 +10,7 @@
  * Env:
  *   CSC_LINK / WIN_CSC_LINK     Path to .pfx or base64 pfx
  *   CSC_KEY_PASSWORD / WIN_CSC_KEY_PASSWORD
- *   MAKA_TIMESTAMP_URL          Default http://timestamp.digicert.com
+ *   MAKA_TIMESTAMP_URL       Default http://timestamp.digicert.com
  */
 import {
   existsSync,
@@ -95,18 +95,14 @@ export function hasSigningCert() {
 export function collectDistArtifacts() {
   const out = []
   const distDir = join(root, 'dist-installer')
-  for (const name of ['MAKArelay.exe', 'TabcastRelay.exe']) {
-    const relayVendor = join(root, 'vendor', 'relay', name)
-    if (existsSync(relayVendor)) out.push(relayVendor)
-  }
+  const relayVendor = join(root, 'vendor', 'relay', 'TabcastRelay.exe')
+  if (existsSync(relayVendor)) out.push(relayVendor)
 
   const unpacked = join(distDir, 'win-unpacked', 'Maka.exe')
   if (existsSync(unpacked)) out.push(unpacked)
 
-  for (const name of ['MAKArelay.exe', 'TabcastRelay.exe']) {
-    const relayBundled = join(distDir, 'win-unpacked', 'resources', 'relay', name)
-    if (existsSync(relayBundled)) out.push(relayBundled)
-  }
+  const relayBundled = join(distDir, 'win-unpacked', 'resources', 'relay', 'TabcastRelay.exe')
+  if (existsSync(relayBundled)) out.push(relayBundled)
 
   if (existsSync(distDir)) {
     for (const name of readdirSync(distDir)) {

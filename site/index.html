@@ -27,7 +27,7 @@
     />
     <meta name="twitter:image" content="https://makalive.stream/marketing/feature-graphic-1024x500.png" />
     <title>Maka — stream lighter</title>
-    <link rel="icon" type="image/png" href="/marketing/favicon-32.png?v=maka-m" sizes="32x32" />
+    <link rel="icon" type="image/png" href="/marketing/favicon-32.png" sizes="32x32" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -83,58 +83,46 @@
         gap: 2rem;
         width: 100%;
       }
-      /* Wordmark — must stay readable if maka.css fails (origin serves inline first) */
-      .hero-mvp__brand-stage {
-        display: grid;
-        place-items: center;
-        width: 100vw;
-        max-width: 100vw;
-        margin-left: calc(50% - 50vw);
-        margin-right: calc(50% - 50vw);
-      }
+      /* Wordmark colors/foil live in maka.css only — avoid fighting external stylesheet */
       .maka-wordmark {
         position: relative;
-        grid-area: 1 / 1;
-        justify-self: center;
         margin: 0;
         font-family: var(--headline);
         font-weight: 900;
         font-style: italic;
-        font-size: clamp(3.5rem, 16vw, 9rem);
-        line-height: 0.9;
+        font-size: clamp(4.5rem, 20vw, 11rem);
+        line-height: 0.88;
         letter-spacing: -0.04em;
         text-transform: uppercase;
-        width: fit-content;
-        text-align: center;
+        color: #ffc40c;
+        cursor: default;
+        user-select: none;
+        -webkit-user-select: none;
       }
-      .maka-wordmark__svg {
+      .maka-wordmark__back,
+      .maka-wordmark__front {
         display: block;
-        width: min(94vw, 52rem);
-        height: auto;
-        margin: 0 auto;
-        overflow: visible;
+        cursor: default;
+        user-select: none;
+        -webkit-user-select: none;
       }
-      .maka-wordmark__svg text {
-        font-family: var(--headline);
-        font-weight: 900;
-        font-style: italic;
-        font-size: 188px;
-      }
-      .maka-svg-back {
-        fill: #ffffff;
-      }
-      .maka-svg-yellow {
-        fill: #ffc40c;
-      }
-      .maka-svg-foil {
-        fill: #f6f3ec;
+      .maka-wordmark__back {
+        position: absolute;
+        left: 0;
+        top: 0.06em;
+        width: 100%;
+        color: #fff;
+        transform: translate(0.045em, 0);
+        z-index: 0;
+        pointer-events: none;
       }
       .hero-mvp__actions {
         display: flex;
-        flex-wrap: wrap;
+        flex-direction: column;
+        align-items: center;
         justify-content: center;
-        gap: 0.65rem;
-        max-width: 36rem;
+        gap: 0.75rem;
+        width: 100%;
       }
       .btn {
         display: inline-flex;
@@ -165,11 +153,14 @@
         font-size: 0.78rem;
       }
     </style>
-    <link rel="preload" as="style" href="/maka.css?v=dc6d038" />
-    <link rel="stylesheet" href="/maka.css?v=dc6d038" />
+    <link
+      rel="preload"
+      as="style"
+      href="https://makalive.stream/maka.css?v=dc6d063"
+    />
     <link
       rel="stylesheet"
-      href="https://makalive.stream/maka.css?v=dc6d038"
+      href="https://makalive.stream/maka.css?v=dc6d063"
     />
   </head>
   <body class="page-home-mvp">
@@ -183,59 +174,29 @@
 
         <div class="hero-mvp__inner">
           <div class="hero-mvp__brand-stage">
-            <div class="hero-mvp__mascot-wrap" aria-hidden="true">
+            <h1 class="maka-wordmark maka-wordmark--image" aria-label="MAKA">
               <img
-                class="hero-mvp__mascot"
-                src="/assets/mascot/maka-mascot.png"
-                alt=""
-                width="1024"
-                height="1024"
-                decoding="async"
-                fetchpriority="high"
+                src="/assets/maka-wordmark.png"
+                alt="MAKA"
+                width="760"
+                height="237"
+                draggable="false"
               />
-            </div>
-            <h1 class="maka-wordmark" aria-label="MAKA">
-              <svg class="maka-wordmark__svg" viewBox="0 0 1000 280" role="img" aria-hidden="true">
-                <defs>
-                  <clipPath id="maka-yellow-half" clipPathUnits="objectBoundingBox">
-                    <polygon points="0,0.60 1,0.22 1,1.2 0,1.2" />
-                  </clipPath>
-                  <clipPath id="maka-foil-half" clipPathUnits="objectBoundingBox">
-                    <polygon points="0,-0.2 1,-0.2 1,0.22 0,0.60" />
-                  </clipPath>
-                  <linearGradient id="maka-foil" gradientUnits="objectBoundingBox" x1="0" y1="0" x2="1" y2="0.45">
-                    <stop offset="0%" stop-color="#ffffff" />
-                    <stop offset="18%" stop-color="#c8f3ff" />
-                    <stop offset="40%" stop-color="#ffd6f2" />
-                    <stop offset="62%" stop-color="#fff3b0" />
-                    <stop offset="82%" stop-color="#e7fff6" />
-                    <stop offset="100%" stop-color="#ffffff" />
-                  </linearGradient>
-                  <linearGradient id="maka-shine" gradientUnits="objectBoundingBox" x1="0" y1="0" x2="1" y2="0.55">
-                    <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9" />
-                    <stop offset="16%" stop-color="#ffffff" stop-opacity="0.25" />
-                    <stop offset="34%" stop-color="#ffffff" stop-opacity="1" />
-                    <stop offset="48%" stop-color="#fff6d0" stop-opacity="0.35" />
-                    <stop offset="64%" stop-color="#ffffff" stop-opacity="0.95" />
-                    <stop offset="80%" stop-color="#ffffff" stop-opacity="0.3" />
-                    <stop offset="100%" stop-color="#ffffff" stop-opacity="0.85" />
-                  </linearGradient>
-                </defs>
-                <text class="maka-svg-back" x="512" y="214" text-anchor="middle">MAKA</text>
-                <text class="maka-svg-yellow" x="500" y="202" text-anchor="middle" clip-path="url(#maka-yellow-half)">MAKA</text>
-                <text class="maka-svg-foil" x="500" y="202" text-anchor="middle" clip-path="url(#maka-foil-half)">MAKA</text>
-                <text class="maka-svg-shine" x="500" y="202" text-anchor="middle" clip-path="url(#maka-foil-half)">MAKA</text>
-              </svg>
             </h1>
           </div>
 
           <nav class="hero-mvp__actions" aria-label="Primary actions">
-            <a class="btn btn-outline hero-mvp__btn" href="/stream/"><span>Stream</span></a>
-            <a class="btn btn-outline hero-mvp__btn" href="/preview/"><span>App preview</span></a>
             <a
               class="btn btn-primary hero-mvp__btn hero-mvp__btn--download"
-              href="https://github.com/n0social/maka-streaming-software/releases/download/v0.2.6/Maka-Setup-0.2.6.exe"
-              ><span>Download</span></a
+              href="https://makalive.stream/downloads/Maka-Setup-0.2.6.exe"
+              >Download</a
+            >
+            <a
+              class="btn btn-outline hero-mvp__btn hero-mvp__btn--github"
+              href="https://github.com/n0social/maka-streaming-software/releases"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Github</a
             >
           </nav>
         </div>

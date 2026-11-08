@@ -1,13 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
-# Public stylesheets: https://makalive.stream/maka.css?v=dc6d038
-# nginx: site/maka-site-cache.conf + site/nginx/tabcast.live.skydav.work.conf
+# HTML links: absolute / same-origin maka.css on makalive.stream.
+# nginx: site/maka-site-cache.conf + site/nginx/makalive.stream.skydav.work.conf
 
 WEB_ROOT="${WEB_ROOT:-/opt/maka/web}"
 SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
 SITE_HOST="${SITE_HOST:-makalive.stream}"
-CSS_BUILD="${CSS_BUILD:-dc6d038}"
+CSS_BUILD="${CSS_BUILD:-dc6d035}"
 
 echo "Publishing Maka site from ${SRC_DIR}…"
 
@@ -21,10 +21,17 @@ cp "${SRC_DIR}/maka.css" "${WEB_ROOT}/maka.css"
 cp "${SRC_DIR}/robots.txt" "${WEB_ROOT}/robots.txt"
 cp "${SRC_DIR}/sitemap.xml" "${WEB_ROOT}/sitemap.xml"
 
-mkdir -p "${WEB_ROOT}/stream"
+mkdir -p "${WEB_ROOT}/stream/js" "${WEB_ROOT}/stream/css"
+COMMIT="$(git -C "${SRC_DIR}/.." rev-parse --short HEAD 2>/dev/null || echo unknown)"
+echo "${COMMIT}" > "${WEB_ROOT}/stream/.deployed-commit"
 cp "${SRC_DIR}/stream/index.html" "${WEB_ROOT}/stream/index.html"
 cp "${SRC_DIR}/stream/stream.css" "${WEB_ROOT}/stream/stream.css"
 cp "${SRC_DIR}/stream/stream.js" "${WEB_ROOT}/stream/stream.js"
+cp "${SRC_DIR}/stream/js/"*.js "${WEB_ROOT}/stream/js/"
+cp "${SRC_DIR}/stream/css/"*.css "${WEB_ROOT}/stream/css/"
+if [ -f "${SRC_DIR}/marketplace.json" ]; then
+  cp "${SRC_DIR}/marketplace.json" "${WEB_ROOT}/marketplace.json"
+fi
 
 mkdir -p "${WEB_ROOT}/preview"
 cp "${SRC_DIR}/preview/index.html" "${WEB_ROOT}/preview/index.html"
@@ -41,7 +48,11 @@ find "${WEB_ROOT}/marketing" -type f -exec chmod 644 {} \;
 chmod 644 "${WEB_ROOT}/index.html" "${WEB_ROOT}/legacy.html" "${WEB_ROOT}/download.html" \
   "${WEB_ROOT}/404.html" "${WEB_ROOT}/maka.css" "${WEB_ROOT}/maka-mascot.svg" "${WEB_ROOT}/robots.txt" "${WEB_ROOT}/sitemap.xml" \
   "${WEB_ROOT}/stream/index.html" "${WEB_ROOT}/stream/stream.css" "${WEB_ROOT}/stream/stream.js" \
+  "${WEB_ROOT}/stream/js/"*.js "${WEB_ROOT}/stream/css/"*.css \
   "${WEB_ROOT}/preview/index.html" "${WEB_ROOT}/preview/preview.css"
+if [ -f "${WEB_ROOT}/marketplace.json" ]; then
+  chmod 644 "${WEB_ROOT}/marketplace.json"
+fi
 
 if [ -f "${SRC_DIR}/maka-downloads.conf" ]; then
   cp "${SRC_DIR}/maka-downloads.conf" /etc/nginx/snippets/maka-downloads.conf
@@ -51,9 +62,20 @@ if [ -f "${SRC_DIR}/maka-site-cache.conf" ]; then
   cp "${SRC_DIR}/maka-site-cache.conf" /etc/nginx/snippets/maka-site-cache.conf
 fi
 
-if [ -f "${SRC_DIR}/nginx/tabcast.live.skydav.work.conf" ]; then
-  cp "${SRC_DIR}/nginx/tabcast.live.skydav.work.conf" /etc/nginx/sites-available/tabcast.live.skydav.work
-  ln -sf /etc/nginx/sites-available/tabcast.live.skydav.work /etc/nginx/sites-enabled/tabcast.live.skydav.work
+if [ -f "${SRC_DIR}/nginx/makalive.stream.skydav.work.conf" ]; then
+  cp "${SRC_DIR}/nginx/makalive.stream.skydav.work.conf" /etc/nginx/sites-available/makalive.stream
+  ln -sf /etc/nginx/sites-available/makalive.stream /etc/nginx/sites-enabled/makalive.stream
+  # Drop legacy filename leftover from the old origin vhost.
+  rm -f /etc/nginx/sites-enabled/tabcast.live.skydav.work \
+        /etc/nginx/sites-available/tabcast.live.skydav.work
+fi
+
+if [ -f "${SRC_DIR}/nginx/legacy-hostname-redirect.conf" ]; then
+  cp "${SRC_DIR}/nginx/legacy-hostname-redirect.conf" /etc/nginx/sites-available/legacy-hostname-redirect.conf
+  ln -sf /etc/nginx/sites-available/legacy-hostname-redirect.conf \
+    /etc/nginx/sites-enabled/legacy-hostname-redirect.conf
+  rm -f /etc/nginx/sites-enabled/legacy-tabcast-redirect.conf \
+        /etc/nginx/sites-available/legacy-tabcast-redirect.conf
 fi
 
 nginx -t
@@ -64,14 +86,12 @@ curl -sk -o /dev/null -w "home:%{http_code}\n" "https://127.0.0.1/" -H "Host: ${
 curl -sk -o /dev/null -w "preview:%{http_code}\n" "https://127.0.0.1/preview/" -H "Host: ${SITE_HOST}"
 curl -sk -o /dev/null -w "legacy:%{http_code}\n" "https://127.0.0.1/legacy.html" -H "Host: ${SITE_HOST}"
 curl -sk -o /dev/null -w "stream:%{http_code}\n" "https://127.0.0.1/stream/" -H "Host: ${SITE_HOST}"
+curl -sk -o /dev/null -w "download:%{http_code}\n" "https://127.0.0.1/download.html" -H "Host: ${SITE_HOST}"
 curl -sk -o /dev/null -w "marketing:%{http_code}\n" "https://127.0.0.1/marketing/download-now.png" -H "Host: ${SITE_HOST}"
-curl -sk -o /dev/null -w "setup:%{http_code}\n" "https://127.0.0.1/downloads/Maka-Setup-0.2.5.exe" -H "Host: ${SITE_HOST}"
+curl -sk -o /dev/null -w "setup:%{http_code}\n" "https://127.0.0.1/downloads/Maka-Setup-0.2.4.exe" -H "Host: ${SITE_HOST}"
 
 css_ct="$(curl -skI "https://127.0.0.1/maka.css?v=${CSS_BUILD}" -H "Host: ${SITE_HOST}" | awk -F': ' 'tolower($1)=="content-type"{print $2}' | tr -d '\r')"
-css_tmp="$(mktemp)"
-curl -sk -o "${css_tmp}" "https://127.0.0.1/maka.css?v=${CSS_BUILD}" -H "Host: ${SITE_HOST}"
-css_head="$(head -c 40 "${css_tmp}")"
-rm -f "${css_tmp}"
+css_head="$(curl -sk "https://127.0.0.1/maka.css?v=${CSS_BUILD}" -H "Host: ${SITE_HOST}" | head -c 40)"
 echo "maka.css content-type:${css_ct}"
 echo "maka.css head:${css_head}"
 if [[ "${css_ct}" != *"text/css"* ]] || [[ "${css_head}" != "/* MAKA_CSS_BUILD=${CSS_BUILD}"* ]]; then

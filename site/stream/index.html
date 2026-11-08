@@ -2,162 +2,642 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <base href="https://makalive.stream/" />
+    <base href="/stream/" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Try Maka in your browser — webcam and screen share preview with optional WHIP to a local MAKA.relay."
+      content="Maka Stream — cream and Mikado studio chrome matching the desktop app: scenes, sources, program, mixer, and Go Live."
     />
     <meta name="theme-color" content="#faf8f4" />
     <link rel="canonical" href="https://makalive.stream/stream/" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Maka" />
-    <meta property="og:title" content="Maka — browser stream try" />
+    <meta property="og:title" content="Maka — Stream" />
     <meta
       property="og:description"
-      content="One-session browser capture. Full RTMP uses MAKA.relay on localhost:38473."
+      content="Web studio shell matching Maka desktop: scenes, program preview, audio mixer, and stream controls."
     />
     <meta property="og:url" content="https://makalive.stream/stream/" />
     <meta property="og:image" content="https://makalive.stream/marketing/screenshot-desktop-1280x800.png" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://makalive.stream; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:38473 http://localhost:38473"
+      content="default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:38473 http://localhost:38473 ws://127.0.0.1:* ws://localhost:* https://makalive.stream https://makalive.stream.skydav.work; frame-src https://www.twitch.tv https://twitch.tv https://embed.twitch.tv https://player.twitch.tv https://www.youtube.com https://www.youtube-nocookie.com"
     />
-    <title>Maka — browser stream</title>
-    <link rel="icon" type="image/png" href="/marketing/favicon-32.png?v=maka-m" sizes="32x32" />
+    <title>Maka — Stream</title>
+    <link rel="icon" type="image/png" href="/marketing/favicon-32.png" sizes="32x32" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=League+Spartan:ital,wght@0,700;0,800;0,900;1,800;1,900&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=League+Spartan:ital,wght@0,700;0,800;0,900;1,700;1,800;1,900&display=swap"
       rel="stylesheet"
     />
-    <link
-      rel="preload"
-      as="style"
-      href="https://makalive.stream/maka.css?v=dc6d038"
-    />
-    <link
-      rel="stylesheet"
-      href="https://makalive.stream/maka.css?v=dc6d038"
-    />
-    <link rel="stylesheet" href="/stream/stream.css" />
+    <link rel="stylesheet" href="/maka.css?v=dc6d035" />
+    <link rel="stylesheet" href="./stream.css?v=dc6d081" />
+    <link rel="stylesheet" href="./css/shell.css?v=dc6d081" />
+    <link rel="stylesheet" href="./css/preview-stage.css?v=dc6d081" />
+    <link rel="stylesheet" href="./css/scenes.css?v=dc6d081" />
+    <link rel="stylesheet" href="./css/audio.css?v=dc6d081" />
+    <link rel="stylesheet" href="./css/live.css?v=dc6d081" />
+    <link rel="stylesheet" href="./css/settings.css?v=dc6d081" />
   </head>
-  <body>
-    <div class="stream-app site-shell--full">
-      <header class="stream-top stream-top--minimal">
-        <div class="stream-status" aria-live="polite">
-          <span class="status-dot" id="relay-status-dot" data-state="warn"></span>
-          <span id="relay-status-text">Checking relay…</span>
+  <body data-mode="studio" class="stream-studio">
+    <div class="app" id="studio-app" data-shell="studio">
+      <header class="topbar">
+        <div class="brand">
+          <span class="mark" aria-hidden="true">M</span>
+          <div class="brand-lockup">
+            <strong class="wordmark">Maka Streaming Studio</strong>
+            <span class="brand-tag" id="brand-tag" hidden></span>
+          </div>
+          <span class="version" id="app-version-label">web</span>
         </div>
+        <div class="tabs" role="presentation" data-hook="modes" aria-hidden="true"></div>
+        <div class="relay-chip" id="relay-chip" data-state="stopped" data-hook="relay">
+          <span class="dot status-dot" id="relay-status-dot" data-state="warn"></span>
+          <span id="relay-label"><span id="relay-status-text">Relay not detected</span></span>
+          <button
+            type="button"
+            class="relay-refresh"
+            id="btn-relay-refresh"
+            title="Re-check local relay on 127.0.0.1:38473"
+            aria-label="Refresh relay status"
+          >
+            ↻
+          </button>
+        </div>
+        <button type="button" class="ghost" id="btn-settings" title="Settings" aria-pressed="false">
+          Settings
+        </button>
       </header>
 
-      <div class="stream-main">
-        <div class="stream-stage-wrap">
-          <div class="program-frame">
-            <span class="program-label">Program</span>
-            <canvas id="program-canvas" class="program-canvas" aria-label="Program preview"></canvas>
-            <p class="program-empty" id="program-empty">
-              Add webcam or share your screen to build a layout.<br />
-              Screen fills the frame; webcam appears as a gold picture-in-picture.
-            </p>
+      <aside
+        class="sidebar left studio-sidebar"
+        id="studio-scenes"
+        data-region="scenes"
+        aria-label="Studio inputs"
+        data-hook="sources"
+      >
+        <div class="studio-block">
+          <header class="studio-block-head">
+            <h2>Scenes</h2>
+          </header>
+          <ul class="studio-list studio-list--scenes" id="studio-scenes-list" aria-label="Scenes">
+            <li>
+              <button type="button" class="studio-list-item" id="scene-gameplay" data-scene="gaming-cam" data-active="1">
+                <span class="studio-list-leading scene-icon" aria-hidden="true">🎮</span>
+                <span class="studio-list-text">Gameplay</span>
+                <span class="studio-list-menu studio-list-menu--static" aria-hidden="true">⋯</span>
+              </button>
+            </li>
+            <li>
+              <button type="button" class="studio-list-item" id="scene-starting" data-scene="starting-soon">
+                <span class="studio-list-leading scene-icon" aria-hidden="true">▶</span>
+                <span class="studio-list-text">Starting Soon</span>
+                <span class="studio-list-menu studio-list-menu--static" aria-hidden="true">⋯</span>
+              </button>
+            </li>
+            <li>
+              <button type="button" class="studio-list-item" id="scene-intermission" data-scene="intermission">
+                <span class="studio-list-leading scene-icon" aria-hidden="true">❚❚</span>
+                <span class="studio-list-text">Intermission</span>
+                <span class="studio-list-menu studio-list-menu--static" aria-hidden="true">⋯</span>
+              </button>
+            </li>
+            <li>
+              <button type="button" class="studio-list-item" id="scene-ending" data-scene="ending">
+                <span class="studio-list-leading scene-icon" aria-hidden="true">■</span>
+                <span class="studio-list-text">Ending</span>
+                <span class="studio-list-menu studio-list-menu--static" aria-hidden="true">⋯</span>
+              </button>
+            </li>
+          </ul>
+        </div>
+
+        <div class="studio-block">
+          <header class="studio-block-head">
+            <h2>Sources</h2>
+            <button type="button" class="studio-icon-btn" id="btn-refresh-sources" title="Refresh capture lists" aria-label="Refresh capture lists">↻</button>
+          </header>
+          <ul class="studio-list studio-source-list" id="studio-sources-list" aria-label="Source types">
+            <li class="studio-source-group">
+              <button type="button" class="studio-list-item studio-source-toggle" id="studio-source-game" data-source-kind="game" aria-expanded="false" aria-controls="source-picker-game">
+                <span class="studio-list-leading source-icon" aria-hidden="true">🎮</span>
+                <span class="studio-list-text">Game Capture</span>
+                <span role="button" tabindex="0" class="studio-list-menu" data-source-menu="game" aria-label="Pick display or window">⋯</span>
+              </button>
+              <ul class="studio-source-picker" id="source-picker-game" hidden role="list" aria-label="Displays and windows"></ul>
+            </li>
+            <li class="studio-source-group">
+              <button type="button" class="studio-list-item studio-source-toggle" id="studio-source-webcam" data-source-kind="webcam" aria-expanded="false" aria-controls="source-picker-webcam">
+                <span class="studio-list-leading source-icon" aria-hidden="true">📹</span>
+                <span class="studio-list-text">Webcam</span>
+                <span role="button" tabindex="0" class="studio-list-menu" data-source-menu="webcam" aria-label="Pick camera">⋯</span>
+              </button>
+              <ul class="studio-source-picker" id="source-picker-webcam" hidden role="list" aria-label="Cameras"></ul>
+            </li>
+            <li class="studio-source-group">
+              <button type="button" class="studio-list-item studio-source-toggle" id="studio-source-mic" data-source-kind="mic" aria-expanded="false" aria-controls="source-picker-mic">
+                <span class="studio-list-leading source-icon" aria-hidden="true">🎙</span>
+                <span class="studio-list-text">Microphone</span>
+                <span role="button" tabindex="0" class="studio-list-menu" data-source-menu="mic" aria-label="Pick microphone">⋯</span>
+              </button>
+              <ul class="studio-source-picker" id="source-picker-mic" hidden role="list" aria-label="Microphones"></ul>
+            </li>
+            <li class="studio-source-group">
+              <button type="button" class="studio-list-item studio-source-toggle" id="studio-source-browser" data-source-kind="browser" aria-expanded="false" aria-controls="source-picker-browser">
+                <span class="studio-list-leading source-icon" aria-hidden="true">🌐</span>
+                <span class="studio-list-text">Overlay</span>
+                <span role="button" tabindex="0" class="studio-list-menu" data-source-menu="browser" aria-label="Pick overlay layout">⋯</span>
+              </button>
+              <ul class="studio-source-picker" id="source-picker-browser" hidden role="list" aria-label="Overlay layout presets"></ul>
+            </li>
+            <li class="studio-source-group">
+              <button type="button" class="studio-list-item studio-source-toggle" id="studio-source-chat" data-source-kind="chat" aria-expanded="false" aria-controls="source-picker-chat">
+                <span class="studio-list-leading source-icon" aria-hidden="true">💬</span>
+                <span class="studio-list-text">Chat</span>
+                <span role="button" tabindex="0" class="studio-list-menu" data-source-menu="chat" aria-label="Pick chat source">⋯</span>
+              </button>
+              <ul class="studio-source-picker" id="source-picker-chat" hidden role="list" aria-label="Chat sources"></ul>
+            </li>
+            <li class="studio-source-group">
+              <button type="button" class="studio-list-item studio-source-toggle" id="studio-source-notifications" data-source-kind="notifications" aria-expanded="false" aria-controls="source-picker-notifications">
+                <span class="studio-list-leading source-icon" aria-hidden="true">🔔</span>
+                <span class="studio-list-text">Notifications</span>
+                <span role="button" tabindex="0" class="studio-list-menu" data-source-menu="notifications" aria-label="Pick notification overlay">⋯</span>
+              </button>
+              <ul class="studio-source-picker" id="source-picker-notifications" hidden role="list" aria-label="Notification overlays"></ul>
+            </li>
+          </ul>
+        </div>
+
+        <footer class="studio-footer">
+          <span class="studio-status-dot" id="studio-status-dot" data-state="ok" aria-hidden="true"></span>
+          <span id="studio-status-text">All systems nominal</span>
+        </footer>
+      </aside>
+
+      <main class="stage" aria-label="Program">
+        <div class="program-column">
+          <section class="program" id="program" data-hook="program">
+            <!-- Preview module may remount into #studio-preview; static chrome matches exe until then -->
+            <div id="studio-preview" class="preview-stage-host" data-region="preview">
+              <div class="program-label">
+                Program
+                <span class="program-mode">• Live Output</span>
+              </div>
+              <img id="program-scene-bg" class="program-scene-bg" alt="" hidden />
+              <video id="program-video" autoplay muted playsinline hidden></video>
+              <div class="program-cam" id="program-cam" hidden>
+                <video id="program-cam-video" autoplay muted playsinline hidden></video>
+                <p class="program-cam-offline" id="program-cam-offline" hidden>video is offline</p>
+                <span class="program-cam-tag">Webcam</span>
+              </div>
+              <div class="program-browser" id="program-browser" hidden>
+                <video id="program-browser-video" autoplay muted playsinline></video>
+                <span class="program-browser-tag">Search tab</span>
+              </div>
+              <div class="program-overlay-slot program-chat-slot" id="program-chat-slot" hidden>
+                <span class="program-overlay-slot-label">Chat</span>
+                <span class="program-overlay-slot-hint">Placeholder until chat feed is wired</span>
+              </div>
+              <div class="program-overlay-slot program-notifications-slot" id="program-notifications-slot" hidden>
+                <span class="program-overlay-slot-label">Notifications</span>
+                <span class="program-overlay-slot-hint">Reserved — not wired yet</span>
+              </div>
+              <div class="program-scene-card" id="program-scene-card" hidden>
+                <div class="program-scene-card-inner">
+                  <span class="program-scene-card-brand" aria-hidden="true">MAKA</span>
+                  <span class="program-scene-card-mark" aria-hidden="true">M</span>
+                  <p class="program-scene-card-title" id="program-scene-card-title">Starting Soon</p>
+                  <p class="program-scene-card-subtitle" id="program-scene-card-subtitle">
+                    Maka is warming up — hang tight
+                  </p>
+                </div>
+              </div>
+              <p class="program-empty" id="program-empty" hidden></p>
+            </div>
+            <!-- Sibling of #studio-preview so preview.js remount cannot swallow it -->
+            <div
+              id="stream-key-modal"
+              class="stream-key-modal-backdrop"
+              hidden
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="stream-key-modal-title"
+            >
+              <div class="stream-key-modal">
+                <h2 id="stream-key-modal-title">Twitch Stream Key</h2>
+                <p class="stream-key-modal-lede" id="stream-key-modal-lede">
+                  Save your stream key here for future streams!
+                </p>
+                <label class="stream-key-modal-field" id="dest-twitch-field">
+                  <input
+                    type="password"
+                    id="web-twitch-key"
+                    class="key-input"
+                    autocomplete="off"
+                    spellcheck="false"
+                    aria-label="Twitch stream key"
+                  />
+                </label>
+                <label class="stream-key-modal-field" id="dest-twitch-channel-field">
+                  <span class="field-label">Channel login</span>
+                  <input
+                    type="text"
+                    id="web-twitch-channel"
+                    class="key-input"
+                    autocomplete="off"
+                    spellcheck="false"
+                    maxlength="80"
+                    placeholder="channel name"
+                    aria-label="Twitch channel login"
+                  />
+                </label>
+                <label class="stream-key-modal-check" id="dest-twitch-include-field">
+                  <input type="checkbox" id="web-twitch-include-chat" />
+                  <span>Include chat and notifications</span>
+                </label>
+                <label class="stream-key-modal-field" id="dest-youtube-field" hidden>
+                  <input
+                    type="password"
+                    id="web-youtube-key"
+                    class="key-input"
+                    autocomplete="off"
+                    spellcheck="false"
+                    aria-label="YouTube stream key"
+                  />
+                </label>
+                <label class="stream-key-modal-field" id="dest-youtube-channel-field" hidden>
+                  <span class="field-label">Channel or live video URL</span>
+                  <input
+                    type="text"
+                    id="web-youtube-chat-url"
+                    class="key-input"
+                    autocomplete="off"
+                    spellcheck="false"
+                    maxlength="512"
+                    placeholder="https://www.youtube.com/watch?v=…"
+                    aria-label="YouTube channel or live video URL"
+                  />
+                </label>
+                <label class="stream-key-modal-check" id="dest-youtube-include-field" hidden>
+                  <input type="checkbox" id="web-youtube-include-chat" />
+                  <span>Include chat and notifications</span>
+                </label>
+                <div class="modal-actions stream-key-modal-actions">
+                  <button type="button" class="btn btn-primary" id="stream-key-modal-save">Save</button>
+                  <button type="button" class="btn btn-ghost" id="stream-key-modal-cancel">Cancel</button>
+                </div>
+              </div>
+            </div>
+          </section>
+          <div class="program-stats" id="program-stats" aria-label="Program stream stats">
+            <div class="program-stats-left" aria-hidden="true"></div>
+            <div class="program-stats-center" aria-live="polite">
+              <span class="program-stat program-stat-recording" id="stat-recording" data-recording="0">Not recording</span>
+            </div>
+            <div class="program-stats-right">
+              <span class="program-stat program-stat-secondary" id="stat-dropped" title="Dropped Frames: 0 (0.0%)">Dropped Frames: 0 (0.0%)</span>
+              <span class="program-stat program-stat-priority" id="stat-fps">FPS: 30</span>
+              <span class="program-stat program-stat-latency program-stat-secondary" id="stat-latency" data-idle="1" title="Stream latency">—</span>
+              <div class="program-stats-platforms" role="group" aria-label="Stream destinations">
+                <button
+                  type="button"
+                  class="platform-chip platform-chip-btn"
+                  id="plat-twitch"
+                  data-state="off"
+                  data-channel=""
+                  aria-pressed="false"
+                  aria-haspopup="dialog"
+                  aria-controls="stream-key-modal"
+                  title="Open Twitch stream key dialog (keys go to local relay /config on Go Live)"
+                >
+                  <span class="platform-chip-name">Twitch</span>
+                  <span class="platform-chip-saved" id="plat-twitch-saved" hidden></span>
+                </button>
+                <span class="program-stats-platform-sep" aria-hidden="true">|</span>
+                <button
+                  type="button"
+                  class="platform-chip platform-chip-btn platform-chip-secondary"
+                  id="plat-youtube"
+                  data-state="off"
+                  data-chat-url=""
+                  aria-pressed="false"
+                  aria-haspopup="dialog"
+                  aria-controls="stream-key-modal"
+                  title="Open YouTube stream key dialog (keys go to local relay /config on Go Live)"
+                >
+                  <span class="platform-chip-name">YouTube</span>
+                  <span class="platform-chip-saved" id="plat-youtube-saved" hidden></span>
+                </button>
+              </div>
+              <span class="program-stat program-stat-bitrate program-stat-tertiary" id="stat-bitrate" data-idle="1" title="Bitrate">—</span>
+              <span class="program-stat program-stat-encode program-stat-secondary" id="stat-encode" title="Encode profile from Go Live">720p30</span>
+            </div>
+          </div>
+        </div>
+        <div class="stage-frame" id="stage-frame" aria-hidden="true"></div>
+      </main>
+
+      <aside class="sidebar right studio-sidebar studio-sidebar-right" aria-label="Stream controls">
+        <div class="studio-block studio-block-compact">
+          <h2>Audio Mixer</h2>
+          <div class="audio-mixer" id="audio-mixer" data-maka-audio-mixer>
+            <div class="audio-channel-wrap" data-channel="desktop">
+              <div class="audio-channel" id="audio-desktop" data-capture-unavailable="1" data-idle="1" data-no-signal="1" data-muted="0">
+                <span class="audio-channel-icon" aria-hidden="true">🔊</span>
+                <span class="audio-channel-name" id="audio-desktop-label">Desktop Audio</span>
+                <div class="audio-meter-track" aria-hidden="true">
+                  <div class="audio-meter" id="desktop-meter" style="width:0%"></div>
+                  <span class="audio-meter-nosignal">No signal</span>
+                </div>
+                <button type="button" class="audio-channel-settings" id="btn-desktop-audio-settings" title="Desktop output device" aria-label="Desktop audio settings" aria-expanded="false" aria-controls="desktop-audio-output">⚙</button>
+              </div>
+              <select id="desktop-audio-output" class="audio-channel-picker" hidden aria-label="Desktop audio output device">
+                <option value="">Default system output</option>
+              </select>
+              <div class="audio-db-scale" aria-hidden="true">
+                <span>-30</span><span>-24</span><span>-18</span><span>-12</span><span>-6</span><span>0</span>
+              </div>
+            </div>
+            <div class="audio-channel-wrap" data-channel="mic">
+              <div class="audio-channel" id="audio-mic" data-idle="1" data-no-signal="1" data-muted="0" data-capture-unavailable="0">
+                <span class="audio-channel-icon" aria-hidden="true">🎙</span>
+                <span class="audio-channel-name" id="audio-mic-label">Microphone</span>
+                <div class="audio-meter-track" aria-hidden="true">
+                  <div class="audio-meter" id="mic-meter" style="width:0%"></div>
+                  <span class="audio-meter-nosignal">No signal</span>
+                </div>
+                <button type="button" class="audio-channel-settings" id="btn-mic-audio-settings" title="Microphone settings" aria-label="Microphone settings">⚙</button>
+              </div>
+              <div class="audio-db-scale" aria-hidden="true">
+                <span>-30</span><span>-24</span><span>-18</span><span>-12</span><span>-6</span><span>0</span>
+              </div>
+            </div>
+            <div class="audio-channel-wrap" data-channel="game">
+              <div class="audio-channel" id="audio-game" data-capture-unavailable="1" data-idle="1" data-no-signal="1" data-muted="0">
+                <span class="audio-channel-icon" aria-hidden="true">🎮</span>
+                <span class="audio-channel-name" id="audio-game-label">Game Audio</span>
+                <div class="audio-meter-track" aria-hidden="true">
+                  <div class="audio-meter" id="game-meter" style="width:0%"></div>
+                  <span class="audio-meter-nosignal">No signal</span>
+                </div>
+                <button type="button" class="audio-channel-settings" id="btn-game-audio-settings" title="Linked to gameplay capture source" aria-label="Game audio settings">⚙</button>
+              </div>
+              <div class="audio-db-scale" aria-hidden="true">
+                <span>-30</span><span>-24</span><span>-18</span><span>-12</span><span>-6</span><span>0</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        <aside class="stream-sidebar" aria-label="Stream controls">
-          <div class="stream-block">
-            <h2>Sources</h2>
-            <p>Capture stays in your browser until you publish to a local relay.</p>
-            <div class="stream-actions">
-              <button type="button" class="btn btn-secondary" id="btn-webcam">Add webcam</button>
-              <button type="button" class="btn btn-secondary" id="btn-screen">Share screen</button>
-              <button type="button" class="btn btn-secondary" id="btn-mic">Add microphone</button>
+        <div class="studio-block studio-block-compact studio-block-controls">
+          <h2>Stream Controls</h2>
+          <div class="stream-controls-stack">
+            <button
+              type="button"
+              class="btn-block btn-primary btn-go-live"
+              id="btn-go-live-sidebar"
+              data-hook="go-live"
+              data-live="0"
+              title="Publish WHIP to local relay (requires preview + MAKArelay)"
+            >
+              <span class="btn-icon btn-icon-live" aria-hidden="true">((•))</span>
+              <span id="btn-go-live-label">Go Live</span>
+            </button>
+            <button
+              type="button"
+              class="btn-block btn-secondary"
+              id="btn-start-recording"
+              data-recording="0"
+              title="Record the preview stream locally in this browser (MediaRecorder). Not streaming."
+            >
+              <span class="btn-icon btn-icon-rec" id="btn-recording-icon" aria-hidden="true">●</span>
+              <span id="btn-recording-label">Start Recording</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="studio-block studio-block-compact studio-block-marketplace">
+          <h2>Addon Marketplace</h2>
+          <div
+            id="marketplace-sidebar-list"
+            class="marketplace-sidebar-preview"
+            role="region"
+            aria-label="Addon catalog preview"
+          ></div>
+          <button
+            type="button"
+            class="btn-block btn-secondary btn-open-marketplace"
+            id="btn-open-marketplace"
+            aria-haspopup="dialog"
+            aria-controls="marketplace-dialog"
+          >
+            <span class="btn-icon" aria-hidden="true">▣</span>
+            Browse addons
+          </button>
+        </div>
+
+        <div class="studio-block studio-block-compact studio-block-stream-info">
+          <h2>Stream Info</h2>
+          <div class="stream-info" id="stream-info">
+            <div class="stream-preview">
+              <div class="stream-thumb" id="stream-thumb">
+                <img id="stream-thumb-img" alt="" hidden />
+                <div class="stream-thumb-placeholder">No preview</div>
+              </div>
+              <div class="stream-meta">
+                <p class="stream-title-input stream-title-display" id="stream-title-input" aria-label="Stream title">Untitled stream</p>
+                <p class="stream-game-input stream-game-display" id="stream-game-input" aria-label="Game">Just Chatting</p>
+                <p class="stream-destinations" id="stream-destinations-hint" title="Safe status only — stream keys live in the chip dialog, not here"></p>
+                <div class="stream-status-row">
+                  <span class="stream-live-pill" id="stream-live-pill" data-live="false">Offline</span>
+                  <span class="stream-viewers" id="stream-viewers" title="Viewer count when you go live">Offline</span>
+                  <span class="stream-duration" id="stream-duration" title="Live duration (local clock)">—</span>
+                </div>
+              </div>
             </div>
           </div>
+        </div>
+      </aside>
 
-          <div class="stream-block">
-            <h2>Relay</h2>
-            <p id="relay-version-line">Connect to MAKA.relay on <code>127.0.0.1:38473</code>.</p>
-            <p class="stream-hint">
-              Dev without MAKArelay.exe: run <code>npm run web:relay</code> (see
-              <a href="https://github.com/n0social/maka-streaming-software/blob/main/docs/web-relay.md">web-relay docs</a>).
-            </p>
-            <label class="stream-field">
-              <span>Encode profile</span>
-              <select id="cfg-profile">
-                <option value="720p30">720p30</option>
-                <option value="720p60">720p60</option>
-                <option value="1080p30">1080p30</option>
-                <option value="1080p60">1080p60</option>
-                <option value="2k60">2k60</option>
-                <option value="4k60">4k60</option>
-              </select>
-            </label>
-            <label class="stream-field">
-              <span>Twitch stream key (optional, RAM only)</span>
-              <input id="cfg-twitch-key" type="password" autocomplete="off" placeholder="live_…" />
-            </label>
-            <label class="stream-field">
-              <span>YouTube stream key (optional)</span>
-              <input id="cfg-youtube-key" type="password" autocomplete="off" placeholder="xxxx-xxxx-…" />
-            </label>
-            <div class="stream-actions">
-              <button type="button" class="btn btn-secondary" id="btn-relay-refresh">Check relay</button>
-              <button type="button" class="btn btn-secondary" id="btn-config">Apply config</button>
-              <button type="button" class="btn btn-ghost" id="btn-verify">Verify keys</button>
-            </div>
-            <pre class="stream-status-json" id="relay-status-json" aria-live="polite"></pre>
-          </div>
-
-          <div class="stream-block">
-            <h2>Go live</h2>
-            <p>
-              WHIP to <code>127.0.0.1:38473</code> when MAKA.relay is running. Without it, preview
-              only — no RTMP from this page alone.
-            </p>
-            <div class="stream-actions">
-              <button type="button" class="btn btn-primary" id="btn-start">Start stream</button>
-              <button type="button" class="btn btn-ghost" id="btn-stop" disabled>Stop stream</button>
-            </div>
-          </div>
-
-          <div class="stream-block">
-            <h2>Log</h2>
-            <pre class="stream-log" id="stream-log"></pre>
-          </div>
-        </aside>
-      </div>
-
-      <footer class="stream-footer">
-        <span>Encode + platform keys → desktop Maka or MAKA.relay</span>
-        <span>
-          <a href="/studio-web/">Studio web</a> · <a href="/download.html">Download</a> ·
-          <a href="/preview/">Studio preview</a> ·
-          <a href="/">Home</a>
-        </span>
-      </footer>
+      <!-- Settings mode (owned by settings.js) — mirrors Electron #settings-view -->
+      <section
+        id="studio-settings"
+        class="settings-view"
+        hidden
+        aria-label="Settings"
+        data-region="settings"
+        data-settings-tab="general"
+      >
+        <!-- Populated by ./js/settings.js to match exe General / Streaming / Audio / Video / Recording / Help (web is Studio-only) -->
+      </section>
     </div>
 
     <div class="modal-backdrop" id="relay-modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div class="modal">
-        <h2 id="modal-title">Relay required for go-live</h2>
-        <p>
-          This page previews capture in the browser. RTMP encoding runs in
-          <strong>MAKA.relay</strong> on your PC (port 38473). For local testing without downloading
-          MAKArelay.exe, run <code>npm run dev:web-studio</code> from the repo — then apply config and go
-          live here.
+        <h2 id="modal-title">Local relay required for go-live</h2>
+        <p id="modal-body">
+          Capture and preview stay in the browser. Encoding (including up to 4K) and
+          Twitch / YouTube RTMP run in the <strong>MAKArelay</strong> sidecar on your PC
+          (<code>127.0.0.1:38473</code>). Install or run Maka desktop so the relay is
+          listening, then try Go Live again. This website cannot start the encoder or
+          claim a cloud stream without it.
         </p>
         <div class="modal-actions">
           <a class="btn btn-primary" href="/download.html">Download Maka</a>
-          <a class="btn btn-secondary" href="https://github.com/n0social/maka-streaming-software/blob/main/docs/web-relay.md">Web relay docs</a>
           <button type="button" class="btn btn-ghost" id="modal-close">Keep previewing</button>
         </div>
       </div>
     </div>
 
-    <div class="mascot-corner" aria-hidden="true">
-      <img src="/assets/mascot/maka-mascot.svg" alt="" width="52" height="52" />
-    </div>
 
-    <script src="/stream/stream.js" defer></script>
+    <dialog id="go-live-wizard-dialog" class="go-live-wizard-dialog" aria-labelledby="go-live-wizard-title">
+      <div class="go-live-wizard-card">
+        <div class="go-live-wizard-mascot" aria-hidden="true">
+          <img src="/assets/mascot/mascot-a.jpg" alt="" width="864" height="1152" />
+        </div>
+        <div class="go-live-wizard-rule" aria-hidden="true"></div>
+        <div class="go-live-wizard-pane">
+          <div class="go-live-wizard-form">
+            <p class="go-live-wizard-step" id="go-live-wizard-step">Step 1 of 5</p>
+            <h2 id="go-live-wizard-title">Choose platform</h2>
+            <p class="go-live-wizard-lead" id="go-live-wizard-body">Which Platform would you like to stream to?</p>
+            <div id="go-live-wizard-panel-platform">
+              <div class="go-live-platform-row" role="radiogroup" aria-label="Platform">
+                <button type="button" class="platform-pick platform-pick-twitch" id="wizard-platform-twitch" data-platform="twitch" aria-pressed="true">
+                  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M4 2h16v12l-4 4h-4l-2 2H8v-2H4V2zm2 2v12h4v2l2-2h4l2-2V4H6zm8 2h2v6h-2V6zm-4 0h2v6H10V6z"/></svg>
+                  Twitch
+                </button>
+                <button type="button" class="platform-pick platform-pick-youtube" id="wizard-platform-youtube" data-platform="youtube" aria-pressed="false">
+                  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M23 12.2s0-3.2-.4-4.6c-.2-.9-.9-1.6-1.8-1.8C19.2 5.4 12 5.4 12 5.4s-7.2 0-8.8.4c-.9.2-1.6.9-1.8 1.8C1 9 1 12.2 1 12.2s0 3.2.4 4.6c.2.9.9 1.6 1.8 1.8 1.6.4 8.8.4 8.8.4s7.2 0 8.8-.4c.9-.2 1.6-.9 1.8-1.8.4-1.4.4-4.6.4-4.6zM9.8 15.5v-6.6l6.2 3.3-6.2 3.3z"/></svg>
+                  YouTube
+                </button>
+              </div>
+            </div>
+            <div id="go-live-wizard-panel-key" hidden>
+              <div data-wizard-key="twitch">
+                <input id="wizard-twitch-key" class="key-input" type="password" autocomplete="off" spellcheck="false" aria-label="Twitch stream key" placeholder="live_…" />
+              </div>
+              <div data-wizard-key="youtube" hidden>
+                <input id="wizard-youtube-key" class="key-input" type="password" autocomplete="off" spellcheck="false" aria-label="YouTube stream key" placeholder="abcd-efgh-ijkl-mnop" />
+              </div>
+              <p class="go-live-wizard-key-hint" id="wizard-key-hint" hidden></p>
+            </div>
+            <div id="go-live-wizard-panel-details" class="go-live-wizard-fields" hidden>
+              <label class="field-label" for="go-live-wizard-title-input">Stream title</label>
+              <input id="go-live-wizard-title-input" class="key-input" type="text" maxlength="140" autocomplete="off" />
+              <label class="field-label" id="go-live-wizard-game-label" for="go-live-wizard-game-input">Game</label>
+              <div class="game-picker" id="go-live-wizard-game-picker">
+                <button
+                  type="button"
+                  id="go-live-wizard-game-input"
+                  class="key-input game-picker-trigger"
+                  aria-haspopup="listbox"
+                  aria-expanded="false"
+                  aria-controls="go-live-wizard-game-list"
+                  aria-labelledby="go-live-wizard-game-label"
+                >
+                  <img class="game-picker-trigger-img" alt="" width="22" height="28" hidden />
+                  <span class="game-picker-trigger-label">Just Chatting</span>
+                </button>
+                <ul
+                  id="go-live-wizard-game-list"
+                  class="game-picker-list"
+                  role="listbox"
+                  aria-labelledby="go-live-wizard-game-label"
+                  hidden
+                  popover="manual"
+                ></ul>
+              </div>
+              <label class="field-label" for="go-live-wizard-quality">Encode profile</label>
+              <select id="go-live-wizard-quality" class="select program-stats-select-encode" aria-label="Encode profile"></select>
+            </div>
+            <div id="go-live-wizard-panel-chat" hidden>
+              <label class="go-live-chat-include" for="wizard-chat-include">
+                <input type="checkbox" id="wizard-chat-include" />
+                <span>Do you want these included?</span>
+              </label>
+              <div id="wizard-chat-fields" class="go-live-wizard-fields" hidden>
+                <div data-wizard-chat="twitch">
+                  <label class="field-label" for="wizard-twitch-channel">Twitch channel login</label>
+                  <input
+                    id="wizard-twitch-channel"
+                    class="key-input"
+                    type="text"
+                    maxlength="80"
+                    autocomplete="off"
+                    spellcheck="false"
+                    placeholder="channel name"
+                    aria-label="Twitch channel login"
+                  />
+                </div>
+                <div data-wizard-chat="youtube" hidden>
+                  <label class="field-label" for="wizard-youtube-chat-url">YouTube channel or live video URL</label>
+                  <input
+                    id="wizard-youtube-chat-url"
+                    class="key-input"
+                    type="text"
+                    maxlength="512"
+                    autocomplete="off"
+                    spellcheck="false"
+                    placeholder="https://www.youtube.com/watch?v=…"
+                    aria-label="YouTube channel or live video URL"
+                  />
+                </div>
+                <p class="go-live-wizard-chat-note" id="wizard-chat-note" hidden></p>
+              </div>
+            </div>
+            <div id="go-live-wizard-panel-go" hidden>
+              <p class="go-live-wizard-status" id="go-live-wizard-go-status" data-state="idle" hidden></p>
+            </div>
+            <div class="go-live-wizard-actions">
+              <button type="button" class="btn btn-primary" id="go-live-wizard-next">Next</button>
+              <div class="go-live-wizard-actions-secondary">
+                <button type="button" class="btn btn-ghost" id="go-live-wizard-back" hidden>Back</button>
+                <button type="button" class="btn btn-ghost" id="go-live-wizard-cancel">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside id="go-live-game-card" class="go-live-game-card" popover="manual" hidden>
+        <img id="go-live-game-card-img" alt="" width="285" height="380" />
+        <p id="go-live-game-card-name"></p>
+      </aside>
+    </dialog>
+
+    <pre class="stream-log" id="stream-log" hidden aria-hidden="true"></pre>
+    <select id="cfg-profile" hidden aria-hidden="true" aria-label="Encode profile for relay config">
+      <option value="720p30" selected>720p30</option>
+      <option value="720p60">720p60</option>
+      <option value="1080p30">1080p30</option>
+      <option value="1080p60">1080p60</option>
+      <option value="2k60">2k60</option>
+      <option value="4k60">4k60</option>
+    </select>
+
+    <dialog id="marketplace-dialog" class="marketplace-dialog" aria-labelledby="marketplace-dialog-title">
+      <header class="marketplace-header">
+        <h2 id="marketplace-dialog-title">Addon Marketplace</h2>
+        <p class="hint">
+          Community addons for the streaming shell. Install/enable requires the desktop app; this web catalog is browse-only.
+        </p>
+      </header>
+      <div id="marketplace-list" class="marketplace-list" role="list"></div>
+      <footer class="marketplace-footer">
+        <button type="button" id="marketplace-refresh">Refresh catalog</button>
+        <button type="button" id="marketplace-close">Close</button>
+      </footer>
+    </dialog>
+
+    <!-- Module hooks (feature modules owned elsewhere) -->
+    <script src="./js/webm-seek.js?v=dc6d081"></script>
+    <script type="module" src="./js/shell.js?v=dc6d081"></script>
+    <script type="module" src="./js/scenes.js?v=dc6d081"></script>
+    <script type="module" src="./js/preview.js?v=dc6d081"></script>
+    <script type="module" src="./js/audio.js?v=dc6d081"></script>
+    <script type="module" src="./js/live.js?v=dc6d081"></script>
+    <script type="module" src="./js/settings.js?v=dc6d081"></script>
   </body>
 </html>

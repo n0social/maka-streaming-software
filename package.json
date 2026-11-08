@@ -1,5 +1,5 @@
 {
-  "name": "tabcast-browser",
+  "name": "maka-browser",
   "version": "0.2.4",
   "private": false,
   "description": "Maka — free Windows streaming software for game capture and RTMP live streaming (Electron studio + local WHIP relay). OBS-light alternative for Twitch and YouTube.",
@@ -17,7 +17,7 @@
   ],
   "author": "n0social",
   "license": "MIT",
-  "homepage": "https://tabcast.live.skydav.work",
+  "homepage": "https://makalive.stream.skydav.work",
   "repository": {
     "type": "git",
     "url": "https://github.com/n0social/maka-streaming-software.git"
@@ -44,13 +44,9 @@
     "dist:dir": "npm run build && electron-builder --win dir",
     "dist:signed": "node scripts/dist-signed.mjs",
     "dist:ci": "npm run typecheck && npm run build && node scripts/verify.mjs --offline && electron-builder --win nsis --publish always",
-    "sign:relay": "node scripts/sign-windows.mjs vendor/relay/MAKArelay.exe",
+    "sign:relay": "node scripts/sign-windows.mjs vendor/relay/TabcastRelay.exe",
     "sign:verify": "node scripts/sign-windows.mjs --verify --all",
-    "release:manifest": "node scripts/update-browser-manifest.mjs",
-    "web:relay": "node scripts/web-relay-dev.mjs",
-    "dev:web-studio": "node scripts/web-studio-dev.mjs --with-relay",
-    "dev:web-studio:site": "node scripts/web-studio-dev.mjs",
-    "test:web-relay": "node scripts/web-relay-smoke.test.mjs --spawn"
+    "release:manifest": "node scripts/update-browser-manifest.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.15.29",
@@ -70,7 +66,7 @@
     "node": ">=22.5"
   },
   "build": {
-    "appId": "work.skydav.tabcast.browser",
+    "appId": "work.skydav.maka.browser",
     "productName": "Maka",
     "electronDist": "node_modules/electron/dist",
     "directories": {
@@ -85,7 +81,6 @@
         "from": "vendor/relay",
         "to": "relay",
         "filter": [
-          "MAKArelay.exe",
           "TabcastRelay.exe",
           "relay-manifest.json"
         ]

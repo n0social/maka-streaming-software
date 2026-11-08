@@ -14,7 +14,7 @@ import {
   type RelayVerifyResponse,
   type SceneLayout,
   type StreamProfile,
-} from '../shared/tabcast'
+} from '../shared/maka-constants'
 
 const RELAY_FETCH_MS = 8_000
 

@@ -10,7 +10,7 @@ import {
 } from 'electron'
 import { existsSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { RelayManager, detectOrphanRelayProcesses, RELAY_INSTALL_DIRS } from './relay'
+import { RelayManager, detectOrphanRelayProcesses } from './relay'
 import { BrowseTabsManager, PINNED_PRESETS, normalizeBrowseUrl } from './browse-tabs'
 import { AddonHost } from './addon-host'
 import { AddonRuntime } from './addon-runtime'
@@ -144,15 +144,17 @@ function allowCapturePermissions(): void {
 function neutralizeInstalledRelayConfig(): void {
   const localApp = process.env.LOCALAPPDATA
   if (!localApp) return
-  const body = JSON.stringify({ streamUrl: 'http://127.0.0.1:38473/whip' }, null, 2) + '\n'
-  for (const rootName of RELAY_INSTALL_DIRS) {
-    const dir = join(localApp, rootName, 'v0.1.0')
-    try {
-      mkdirSync(dir, { recursive: true })
-      writeFileSync(join(dir, 'relay-config.json'), body, 'utf8')
-    } catch {
-      // non-fatal
-    }
+  const dir = join(localApp, 'TabcastRelay', 'v0.1.0')
+  const configPath = join(dir, 'relay-config.json')
+  try {
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(
+      configPath,
+      JSON.stringify({ streamUrl: 'http://127.0.0.1:38473/whip' }, null, 2) + '\n',
+      'utf8',
+    )
+  } catch {
+    // non-fatal
   }
 }
 
@@ -291,7 +293,7 @@ function openChatPopout(url?: string): void {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
-      partition: 'persist:tabcast-browse',
+      partition: 'persist:maka-browse',
     },
   })
 
@@ -568,11 +570,23 @@ function registerIpc(): void {
     setAppMode(workspaceBeforeSettings)
     return appMode
   })
-  ipcMain.handle('app:get-version-info', () => ({
-    appVersion: app.getVersion(),
-    relayVersion: relay.getSnapshot().health?.version ?? null,
-    platform: process.platform,
-  }))
+  ipcMain.handle('app:get-version-info', () => {
+    const health = relay.getSnapshot().health
+    let relayHost: string | null = null
+    if (health?.streamUrl) {
+      try {
+        relayHost = new URL(health.streamUrl).origin
+      } catch {
+        relayHost = null
+      }
+    }
+    return {
+      appVersion: app.getVersion(),
+      relayVersion: health?.version ?? null,
+      relayHost,
+      platform: process.platform,
+    }
+  })
   ipcMain.handle('vcam:get-capability', (event) => {
     if (!studioOk(event)) return getVirtualCameraCapability()
     return getVirtualCameraCapability()
@@ -605,7 +619,7 @@ function registerIpc(): void {
   })
 
   ipcMain.handle('shell:open-home', () => {
-    void shell.openExternal('https://makalive.stream')
+    void shell.openExternal('https://makalive.stream/')
   })
 
   ipcMain.handle('settings:get', (event) => {
@@ -1052,7 +1066,7 @@ function registerIpc(): void {
         orphan.orphanCount === 0 && !orphan.portConflict
           ? orphan.totalCount
             ? `${orphan.totalCount} relay process(es), none orphaned`
-            : 'no stray relay executable'
+            : 'no stray relay process'
           : [
               orphan.orphanCount ? `${orphan.orphanCount} orphan PID(s): ${orphan.orphanPids.join(', ')}` : null,
               orphan.portConflict ? `port ${38473} held by PID ${orphan.portListenerPid}` : null,

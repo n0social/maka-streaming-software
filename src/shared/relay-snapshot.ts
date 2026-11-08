@@ -1,4 +1,4 @@
-import type { RelayHealth, RelayLifecycle, RelayStatusResponse } from './tabcast'
+import type { RelayHealth, RelayLifecycle, RelayStatusResponse } from './maka-constants'
 
 export type RelaySnapshot = {
   lifecycle: RelayLifecycle

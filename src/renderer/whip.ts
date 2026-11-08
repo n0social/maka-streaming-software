@@ -1,7 +1,7 @@
 import {
   RELAY_TRACK_STREAM_IDS,
   type RelayTrackStreamId,
-} from '../shared/tabcast'
+} from '../shared/maka-constants'
 
 export const WHIP_VIDEO_WATCHDOG_POLL_MS = 2_000
 export const WHIP_VIDEO_WATCHDOG_STALL_MS = 8_000
@@ -294,7 +294,7 @@ function preferH264VideoCodecs(pc: RTCPeerConnection): void {
 }
 
 /**
- * Publishes capture tracks to a WHIP endpoint (MAKA.relay).
+ * Publishes capture tracks to a WHIP endpoint (Maka Relay).
  * ICE is gathered before the offer is POSTed (WHIP trickle-less).
  */
 export async function publishWhip(

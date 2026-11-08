@@ -16,7 +16,7 @@ import {
   type RelayHealth,
   type RelayLifecycle,
   type RelayStatusResponse,
-} from '../shared/tabcast'
+} from '../shared/maka-constants'
 import type { RelaySnapshot } from '../shared/relay-snapshot'
 import { MAX_LIVE_RETRY_ATTEMPTS, liveRetryBackoffMs } from '../shared/live-retry'
 import { recordDiagnostic } from './diagnostics'

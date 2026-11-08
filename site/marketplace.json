@@ -1,15 +1,15 @@
 [
   {
-    "catalogId": "com.tabcast.discord-now-live",
+    "catalogId": "com.maka.discord-now-live",
     "featured": true,
     "manifest": {
-      "id": "com.tabcast.discord-now-live",
+      "id": "com.maka.discord-now-live",
       "name": "Discord Now Live",
       "version": "0.1.0",
       "apiVersion": 1,
       "author": "Maka",
       "category": "utility",
-      "description": "Post a “now live” message to Discord via webhook when you go live (community pattern).",
+      "description": "Post a \u201cnow live\u201d message to Discord via webhook when you go live (community pattern).",
       "permissions": [
         "network.fetch",
         "live.events",
@@ -25,19 +25,19 @@
           {
             "id": "main",
             "title": "Discord",
-            "description": "Webhook helper — posts on go-live when a webhook URL is saved.",
+            "description": "Webhook helper \u2014 posts on go-live when a webhook URL is saved.",
             "actions": [
               {
                 "id": "configure-webhook",
                 "label": "Set webhook URL",
                 "type": "message",
-                "message": "Use “Set webhook URL” to paste your Discord channel webhook."
+                "message": "Use \u201cSet webhook URL\u201d to paste your Discord channel webhook."
               },
               {
                 "id": "setup",
                 "label": "Setup guide",
                 "type": "message",
-                "message": "Create a Discord channel webhook, click “Set webhook URL”, then go live — Maka POSTs a “now live” embed from the main process (keys never touch the renderer)."
+                "message": "Create a Discord channel webhook, click \u201cSet webhook URL\u201d, then go live \u2014 Maka POSTs a \u201cnow live\u201d embed from the main process (keys never touch the renderer)."
               },
               {
                 "id": "docs",
@@ -52,16 +52,16 @@
     }
   },
   {
-    "catalogId": "com.tabcast.custom-rtmp",
+    "catalogId": "com.maka.custom-rtmp",
     "featured": true,
     "manifest": {
-      "id": "com.tabcast.custom-rtmp",
+      "id": "com.maka.custom-rtmp",
       "name": "Custom RTMP / Kick",
       "version": "0.1.0",
       "apiVersion": 1,
-      "author": "Maka (example)",
+      "author": "Maka",
       "category": "platform",
-      "description": "Stream to Kick, Facebook Live, or any RTMP endpoint — adds a Custom RTMP destination row.",
+      "description": "Stream to Kick, Facebook Live, or any RTMP endpoint \u2014 adds a Custom RTMP destination row.",
       "permissions": [
         "relay.config.write",
         "ui.toast",
@@ -82,7 +82,7 @@
                 "id": "configure-kick",
                 "label": "Use Kick preset",
                 "type": "message",
-                "message": "Kick ingest URL applied — paste your Kick stream key in Destinations → Custom RTMP."
+                "message": "Kick ingest URL applied \u2014 paste your Kick stream key in Destinations \u2192 Custom RTMP."
               },
               {
                 "id": "configure-rtmp",
@@ -103,9 +103,9 @@
     }
   },
   {
-    "catalogId": "com.tabcast.lower-thirds",
+    "catalogId": "com.maka.lower-thirds",
     "manifest": {
-      "id": "com.tabcast.lower-thirds",
+      "id": "com.maka.lower-thirds",
       "name": "Lower thirds",
       "version": "0.1.0",
       "apiVersion": 1,
