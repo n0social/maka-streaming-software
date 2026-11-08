@@ -345,10 +345,6 @@ function settingsMarkup() {
                   Minimize to tray while live
                 </label>
                 <label class="check">
-                  <input type="checkbox" id="set-lab-mode" />
-                  Demo mode (skip key validation)
-                </label>
-                <label class="check">
                   <input type="checkbox" id="set-auto-update" />
                   Check for updates when Maka starts
                 </label>
@@ -612,10 +608,8 @@ function applySettingsToForm() {
   const byId = (id) => document.getElementById(id)
 
   const tray = byId('set-tray-live')
-  const lab = byId('set-lab-mode')
   const auto = byId('set-auto-update')
   if (tray instanceof HTMLInputElement) tray.checked = settings.minimizeToTrayWhileLive
-  if (lab instanceof HTMLInputElement) lab.checked = settings.labMode
   if (auto instanceof HTMLInputElement) auto.checked = settings.autoCheckUpdatesOnStartup
 
   const encodeSelect = byId('set-encode-profile')
@@ -763,7 +757,6 @@ function wireForm() {
     })
   }
   persistCheckbox('set-tray-live', 'minimizeToTrayWhileLive')
-  persistCheckbox('set-lab-mode', 'labMode')
   persistCheckbox('set-auto-update', 'autoCheckUpdatesOnStartup')
 
   const encode = document.getElementById('set-encode-profile')
