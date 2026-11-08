@@ -1,4 +1,4 @@
-/* MAKA_CSS_BUILD=dc6d058 — bump ?v= on /maka.css in site/**/*.html when this file changes */
+/* MAKA_CSS_BUILD=dc6d059 — bump ?v= on /maka.css in site/**/*.html when this file changes */
 /* Maka marketing site — cream / Mikado Yellow tokens (matches Electron studio redesign) */
 :root {
   color-scheme: light;
@@ -449,51 +449,34 @@ svg {
   max-width: none;
   padding-inline: clamp(0.1em, 0.45vw, 0.18em);
   overflow: visible;
-}
-
-.maka-wordmark__back,
-.maka-wordmark__front {
-  display: block;
+  color: #ffc40c;
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .maka-wordmark__back {
-  position: absolute;
-  left: 0;
-  top: 0.045em;
-  width: 100%;
-  padding-inline: 0.06em;
-  box-sizing: content-box;
-  transform: translate(0.045em, 0);
-  color: var(--white);
-  text-shadow:
-    0 0 0 var(--champagne),
-    0 2px 0 rgba(246, 243, 236, 0.95),
-    0 0 40px rgba(255, 255, 255, 0.35);
-  -webkit-text-stroke: 1px rgba(230, 223, 208, 0.65);
-  paint-order: stroke fill;
-  overflow: visible;
-  white-space: nowrap;
-  z-index: 0;
-  user-select: none;
+  display: none;
 }
 
 .maka-wordmark__front {
+  display: block;
   position: relative;
   z-index: 2;
-  /* ~35° upward split: top cream/white, bottom Mikado Yellow (#ffc40c) */
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+  /* Bottom half solid Mikado Yellow; top half is the foil layer. */
   background: linear-gradient(
-    35deg,
-    var(--white) 0%,
-    var(--champagne) 38%,
-    var(--champagne) 46%,
-    var(--gold-light) 49%,
-    var(--gold) 52%,
-    var(--gold) 100%
+    to bottom,
+    #ffe27a 0%,
+    #ffc40c 46%,
+    #ffc40c 100%
   );
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  color: transparent;
+  color: #ffc40c;
 }
 
 /* Holographic foil on cream/white upper split (35deg) — MTG/YGO diamond foil shimmer */
@@ -504,6 +487,9 @@ svg {
   top: 0;
   z-index: 3;
   pointer-events: none;
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
   font: inherit;
   letter-spacing: inherit;
   text-transform: inherit;
@@ -553,18 +539,16 @@ svg {
   -webkit-text-fill-color: transparent;
   color: transparent;
   -webkit-mask-image: linear-gradient(
-    35deg,
+    to bottom,
     #000 0%,
     #000 42%,
-    rgba(0, 0, 0, 0.8) 46%,
-    transparent 50%
+    transparent 52%
   );
   mask-image: linear-gradient(
-    35deg,
+    to bottom,
     #000 0%,
     #000 42%,
-    rgba(0, 0, 0, 0.8) 46%,
-    transparent 50%
+    transparent 52%
   );
   animation: maka-wordmark-foil 9s ease-in-out infinite;
 }
