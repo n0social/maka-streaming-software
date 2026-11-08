@@ -15,12 +15,16 @@ export type WhipStreamMetrics = {
   roundTripMs: number | null
   outboundVideoFramesDropped: number | null
   outboundVideoFramesEncoded: number | null
+  outboundVideoFramesPerSecond: number | null
+  outboundVideoBytesSent: number | null
 }
 
 export function parseWhipStreamMetrics(stats: RTCStatsReport): WhipStreamMetrics {
   let roundTripMs: number | null = null
   let outboundVideoFramesDropped: number | null = null
   let outboundVideoFramesEncoded: number | null = null
+  let outboundVideoFramesPerSecond: number | null = null
+  let outboundVideoBytesSent: number | null = null
   for (const report of stats.values()) {
     if (report.type === 'candidate-pair') {
       const pair = report as RTCStats & {
@@ -48,6 +52,7 @@ export function parseWhipStreamMetrics(stats: RTCStatsReport): WhipStreamMetrics
       const outbound = report as RTCOutboundRtpStreamStats & {
         framesDropped?: number
         framesEncoded?: number
+        framesPerSecond?: number
       }
       if (typeof outbound.framesDropped === 'number' && outbound.framesDropped >= 0) {
         outboundVideoFramesDropped =
@@ -57,9 +62,21 @@ export function parseWhipStreamMetrics(stats: RTCStatsReport): WhipStreamMetrics
         outboundVideoFramesEncoded =
           (outboundVideoFramesEncoded ?? 0) + Math.floor(outbound.framesEncoded)
       }
+      if (typeof outbound.framesPerSecond === 'number' && outbound.framesPerSecond > 0) {
+        outboundVideoFramesPerSecond = Math.round(outbound.framesPerSecond)
+      }
+      if (typeof outbound.bytesSent === 'number' && outbound.bytesSent >= 0) {
+        outboundVideoBytesSent = (outboundVideoBytesSent ?? 0) + outbound.bytesSent
+      }
     }
   }
-  return { roundTripMs, outboundVideoFramesDropped, outboundVideoFramesEncoded }
+  return {
+    roundTripMs,
+    outboundVideoFramesDropped,
+    outboundVideoFramesEncoded,
+    outboundVideoFramesPerSecond,
+    outboundVideoBytesSent,
+  }
 }
 
 export const WHIP_STATS_POLL_MS = 2_000

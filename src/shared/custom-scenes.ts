@@ -24,6 +24,11 @@ export function isDeskOnlyLikeScene(sceneId: string): boolean {
   return sceneId === CUSTOM_SCENE_LAYOUT_TEMPLATE_ID || isCustomSceneId(sceneId)
 }
 
+export function removeCustomScene(existing: readonly CustomScene[], id: string): CustomScene[] {
+  if (!isCustomSceneId(id)) return existing.slice()
+  return existing.filter((scene) => scene.id !== id)
+}
+
 export function nextCustomSceneId(existing: readonly CustomScene[]): string | null {
   for (let i = 1; i <= MAX_CUSTOM_SCENES; i++) {
     const id = `custom-${i}`

@@ -49,6 +49,7 @@ import {
 } from './auto-update'
 import { PhonePairServer, phoneWebRtcIceServersForSession } from './phone-pair'
 import { getVirtualCameraCapability } from './virtual-camera'
+import { createVcamOutputController } from './vcam-output'
 import { pickSceneImageFile, readSceneImageDataUrl } from './scene-image-io'
 import { saveRecording } from './recording-io'
 import { listGpuOptions } from './gpu-info'
@@ -163,6 +164,16 @@ function loadAppUi(win: BrowserWindow): void {
     void win.loadFile(join(__dirname, '../renderer/app.html'))
   }
 }
+
+function loadVcamUi(win: BrowserWindow): void {
+  if (isDev && process.env.ELECTRON_RENDERER_URL) {
+    void win.loadURL(`${process.env.ELECTRON_RENDERER_URL}/vcam-output.html`)
+  } else {
+    void win.loadFile(join(__dirname, '../renderer/vcam-output.html'))
+  }
+}
+
+const vcamOutput = createVcamOutputController()
 
 function layoutBrowserPane(win: BrowserWindow): void {
   if (appMode === 'settings') {
@@ -576,6 +587,20 @@ function registerIpc(): void {
   ipcMain.handle('vcam:get-capability', (event) => {
     if (!studioOk(event)) return getVirtualCameraCapability()
     return getVirtualCameraCapability()
+  })
+  ipcMain.handle('vcam:output-open', (event) => {
+    if (!studioOk(event)) return { devicePath: null }
+    vcamOutput.open({ preload: preloadPath(), load: loadVcamUi })
+    return { devicePath: vcamOutput.devicePath() }
+  })
+  ipcMain.handle('vcam:output-close', (event) => {
+    if (!studioOk(event)) return
+    vcamOutput.close()
+  })
+  ipcMain.on('vcam:frame', (event, dataUrl: unknown) => {
+    if (!isStudioSender(event.sender)) return
+    if (typeof dataUrl !== 'string') return
+    vcamOutput.pushFrame(dataUrl)
   })
   ipcMain.handle('system:list-gpu-options', async () => listGpuOptions())
 
@@ -1124,6 +1149,8 @@ async function shutdownApp(): Promise<void> {
     mainWindow.webContents.send('app:prepare-quit')
     await waitForRendererQuitReady(6000)
   }
+
+  vcamOutput.close()
 
   if (chatWindow && !chatWindow.isDestroyed()) {
     chatWindow.close()

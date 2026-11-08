@@ -3,6 +3,7 @@ import { createProgramOutputCompositor } from './program-output-compositor'
 
 export type ProgramVirtualCameraDeps = ProgramOutputCompositorDeps & {
   compositor?: ProgramOutputCompositor
+  publishFrame?: (jpegDataUrl: string) => void
 }
 
 export type ProgramVirtualCameraController = {
@@ -18,6 +19,13 @@ export function createProgramVirtualCamera(
   const compositor = deps.compositor ?? createProgramOutputCompositor(deps)
   const ownsCompositor = !deps.compositor
   let sessionActive = false
+  let frameTimer: ReturnType<typeof setInterval> | null = null
+
+  function stopFramePump(): void {
+    if (frameTimer == null) return
+    clearInterval(frameTimer)
+    frameTimer = null
+  }
 
   return {
     isActive: () => sessionActive,
@@ -25,10 +33,17 @@ export function createProgramVirtualCamera(
       if (sessionActive) return
       compositor.start()
       sessionActive = true
+      stopFramePump()
+      frameTimer = setInterval(() => {
+        const canvas = compositor.getCanvas()
+        if (!canvas || !deps.publishFrame) return
+        deps.publishFrame(canvas.toDataURL('image/jpeg', 0.72))
+      }, 200)
     },
     stop() {
       if (!sessionActive) return
       sessionActive = false
+      stopFramePump()
       if (ownsCompositor && compositor.isActive()) {
         compositor.stop()
       }

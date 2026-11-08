@@ -45,6 +45,7 @@ export default defineConfig({
       rollupOptions: {
         input: {
           app: resolve('src/renderer/app.html'),
+          'vcam-output': resolve('src/renderer/vcam-output.html'),
         },
       },
     },

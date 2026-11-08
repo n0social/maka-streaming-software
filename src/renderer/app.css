@@ -1400,6 +1400,52 @@ dd {
   display: none !important;
 }
 
+.program-overlay-slot[data-live-feed='1'] {
+  pointer-events: auto;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 0;
+  overflow: hidden;
+  text-align: left;
+}
+
+.program-overlay-slot[data-live-feed='1'] .program-overlay-slot-label {
+  position: absolute;
+  top: 0.25rem;
+  left: 0.35rem;
+  z-index: 1;
+  background: rgba(250, 248, 244, 0.92);
+  padding: 0.05rem 0.25rem;
+}
+
+.program-chat-view {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  border: 0;
+  background: #fff;
+}
+
+.program-chat-view[hidden] {
+  display: none !important;
+}
+
+.program-notifications-feed {
+  list-style: none;
+  margin: 0;
+  padding: 0.2rem 0.35rem 0.35rem;
+  width: 100%;
+  overflow: auto;
+  font-size: 0.58rem;
+  line-height: 1.3;
+  color: #1a1408;
+  text-align: left;
+}
+
+.program-notifications-feed li + li {
+  margin-top: 0.2rem;
+}
+
 .program-overlay-slot-label {
   font-family: var(--font-headline);
   font-size: 0.62rem;
@@ -2691,6 +2737,13 @@ body:not([data-mode='settings']) .settings-view {
   flex-shrink: 0;
 }
 
+.stream-thumb-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
 .stream-thumb-placeholder {
   width: 100%;
   height: 100%;
@@ -2699,6 +2752,11 @@ body:not([data-mode='settings']) .settings-view {
   justify-content: center;
   font-size: 0.625rem;
   color: #666;
+}
+
+.stream-thumb-placeholder[hidden],
+.stream-thumb-canvas[hidden] {
+  display: none !important;
 }
 
 .stream-meta {

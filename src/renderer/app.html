@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:38473 ws://127.0.0.1:*; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:38473 ws://127.0.0.1:*; frame-src https: http://127.0.0.1:*; object-src 'none'; base-uri 'self'; form-action 'none'"
     />
     <title>Maka — Streaming</title>
     <meta name="theme-color" content="#faf8f4" />
@@ -321,11 +321,19 @@
             </div>
             <div class="program-overlay-slot program-chat-slot" id="program-chat-slot" hidden>
               <span class="program-overlay-slot-label">Chat</span>
-              <span class="program-overlay-slot-hint">Placeholder until chat feed is wired</span>
+              <span class="program-overlay-slot-hint" id="program-chat-hint">Pick a chat from the Chat menu</span>
+              <webview
+                id="program-chat-view"
+                class="program-chat-view"
+                partition="persist:tabcast-browse"
+                webpreferences="contextIsolation=yes"
+                hidden
+              ></webview>
             </div>
             <div class="program-overlay-slot program-notifications-slot" id="program-notifications-slot" hidden>
               <span class="program-overlay-slot-label">Notifications</span>
-              <span class="program-overlay-slot-hint">Reserved — not wired yet</span>
+              <span class="program-overlay-slot-hint" id="program-notifications-hint">Studio events show up here</span>
+              <ul id="program-notifications-feed" class="program-notifications-feed" hidden></ul>
             </div>
             <div class="program-scene-card" id="program-scene-card" hidden>
               <div class="program-scene-card-inner">
@@ -488,7 +496,8 @@
           <div class="stream-info" id="stream-info">
             <div class="stream-preview">
               <div class="stream-thumb" id="stream-thumb">
-                <div class="stream-thumb-placeholder">No preview</div>
+                <canvas id="stream-thumb-canvas" class="stream-thumb-canvas" width="168" height="168" hidden></canvas>
+                <div class="stream-thumb-placeholder" id="stream-thumb-placeholder">No preview</div>
               </div>
               <div class="stream-meta">
                 <input type="text" id="stream-title-input" class="stream-title-input" maxlength="140" autocomplete="off" placeholder="Stream title" aria-label="Stream title" />
@@ -787,11 +796,26 @@
 
     <dialog id="scene-image-menu-dialog" class="scene-image-menu-dialog">
       <menu class="scene-image-menu">
-        <li>
+        <li id="scene-menu-timer-5" hidden>
+          <button type="button" data-intermission-min="5">5 minute timer</button>
+        </li>
+        <li id="scene-menu-timer-15" hidden>
+          <button type="button" data-intermission-min="15">15 minute timer</button>
+        </li>
+        <li id="scene-menu-timer-30" hidden>
+          <button type="button" data-intermission-min="30">30 minute timer</button>
+        </li>
+        <li id="scene-menu-timer-stop" hidden>
+          <button type="button" id="scene-image-menu-stop-timer">Stop timer</button>
+        </li>
+        <li id="scene-menu-image-pick">
           <button type="button" id="scene-image-menu-pick">Choose image…</button>
         </li>
-        <li>
+        <li id="scene-menu-image-clear">
           <button type="button" id="scene-image-menu-clear">Clear image</button>
+        </li>
+        <li id="scene-menu-delete" hidden>
+          <button type="button" id="scene-image-menu-delete">Delete scene</button>
         </li>
         <li>
           <button type="button" id="scene-image-menu-cancel">Cancel</button>

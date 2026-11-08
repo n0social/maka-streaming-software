@@ -178,6 +178,10 @@ export type TabcastBridge = {
   onMode: (cb: (mode: AppMode) => void) => () => void
   getVersionInfo: () => Promise<AppVersionInfo>
   getVcamCapability: () => Promise<VcamCapability>
+  openVcamOutput: () => Promise<{ devicePath: string | null }>
+  closeVcamOutput: () => Promise<void>
+  pushVcamFrame: (dataUrl: string) => void
+  onVcamFrame: (cb: (dataUrl: string) => void) => () => void
   listGpuOptions: () => Promise<GpuOption[]>
   pickRecordingFolder: () => Promise<PickRecordingFolderResult>
   navigate: (url: string) => Promise<string | null>
@@ -286,6 +290,16 @@ const api: TabcastBridge = {
   exitSettingsMode: () => ipcRenderer.invoke('app:exit-settings'),
   getVersionInfo: () => ipcRenderer.invoke('app:get-version-info'),
   getVcamCapability: () => ipcRenderer.invoke('vcam:get-capability'),
+  openVcamOutput: () => ipcRenderer.invoke('vcam:output-open'),
+  closeVcamOutput: () => ipcRenderer.invoke('vcam:output-close'),
+  pushVcamFrame: (dataUrl) => {
+    ipcRenderer.send('vcam:frame', dataUrl)
+  },
+  onVcamFrame: (cb) => {
+    const handler = (_event: Electron.IpcRendererEvent, dataUrl: string) => cb(dataUrl)
+    ipcRenderer.on('vcam:frame', handler)
+    return () => ipcRenderer.removeListener('vcam:frame', handler)
+  },
   listGpuOptions: () => ipcRenderer.invoke('system:list-gpu-options'),
   pickRecordingFolder: () => ipcRenderer.invoke('recording:pick-folder'),
   onMode: (cb) => {

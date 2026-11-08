@@ -22,9 +22,20 @@ import {
   isDeskOnlyLikeScene,
   MAX_CUSTOM_SCENES,
   nextCustomSceneId,
+  removeCustomScene,
   resolveSceneLayoutTemplateId,
   type CustomScene,
 } from '../shared/custom-scenes'
+import {
+  dropPercentLabel,
+  frameIntervalMs,
+  intermissionEndsAt,
+  intermissionSubtitle,
+  isIntermissionMinutes,
+  mbpsFromByteDelta,
+  measuredFps,
+  viewerStatusLabel,
+} from '../shared/studio-controls'
 import { isSceneStubId, SCENE_TEMPLATES, sceneStubPreset } from '../shared/scene-templates'
 import {
   sceneImageMaskMode,
@@ -85,6 +96,7 @@ import { startAudioLevelMeter, setHorizontalMeterLevel, type AudioLevelMeter } f
 import {
   parseCapturePlatform,
   startDesktopLoopbackAudio,
+  startDisplayShareAudio,
   startGameLinkedAudio,
   stopMediaStream,
   systemAudioCaptureSupported,
@@ -138,6 +150,31 @@ const sceneImageMenuDialog = document.getElementById('scene-image-menu-dialog') 
 const sceneImageMenuPick = document.getElementById('scene-image-menu-pick') as HTMLButtonElement
 const sceneImageMenuClear = document.getElementById('scene-image-menu-clear') as HTMLButtonElement
 const sceneImageMenuCancel = document.getElementById('scene-image-menu-cancel') as HTMLButtonElement
+const sceneImageMenuDelete = document.getElementById('scene-image-menu-delete') as HTMLButtonElement
+const sceneMenuTimerStop = document.getElementById('scene-image-menu-stop-timer') as HTMLButtonElement
+const sceneMenuTimerRows = [
+  document.getElementById('scene-menu-timer-5')!,
+  document.getElementById('scene-menu-timer-15')!,
+  document.getElementById('scene-menu-timer-30')!,
+  document.getElementById('scene-menu-timer-stop')!,
+]
+const sceneMenuImagePickRow = document.getElementById('scene-menu-image-pick')!
+const sceneMenuImageClearRow = document.getElementById('scene-menu-image-clear')!
+const sceneMenuDeleteRow = document.getElementById('scene-menu-delete')!
+const programChatHint = document.getElementById('program-chat-hint')!
+const programChatView = document.getElementById('program-chat-view') as HTMLElement & { src: string }
+const programNotificationsHint = document.getElementById('program-notifications-hint')!
+const programNotificationsFeed = document.getElementById('program-notifications-feed')!
+const streamThumbCanvas = document.getElementById('stream-thumb-canvas') as HTMLCanvasElement
+const streamThumbPlaceholder = document.getElementById('stream-thumb-placeholder')!
+const streamThumb = document.getElementById('stream-thumb') as HTMLElement | null
+const streamTitleInput = document.getElementById('stream-title-input') as HTMLInputElement | null
+const streamCategoryInput = document.getElementById('stream-category-input') as HTMLInputElement | null
+const streamDestinationsHint = document.getElementById('stream-destinations-hint') as HTMLElement | null
+const streamLivePill = document.getElementById('stream-live-pill') as HTMLElement | null
+const streamViewers = document.getElementById('stream-viewers') as HTMLElement | null
+const streamDuration = document.getElementById('stream-duration') as HTMLElement | null
+const btnGoLiveLabel = document.getElementById('btn-go-live-label') as HTMLElement | null
 const programCam = document.getElementById('program-cam')!
 const programCamVideo = document.getElementById('program-cam-video') as HTMLVideoElement
 const programCamOffline = document.getElementById('program-cam-offline')!
@@ -275,6 +312,20 @@ const sceneImagePaths: Partial<Record<string, string>> = {}
 const sceneImageDataUrlCache = new Map<string, string>()
 let sceneImageMenuTargetId: string | null = null
 let customScenes: CustomScene[] = []
+let intermissionEndsAtMs: number | null = null
+let intermissionTimer: ReturnType<typeof setInterval> | null = null
+const studioNotices: string[] = []
+let captureClockFrames = 0
+let captureClockStartedAt = 0
+let measuredCaptureFps: number | null = null
+let playbackDroppedFrames = 0
+let playbackTotalFrames = 0
+let whipBytesSample: { bytes: number; at: number } | null = null
+let measuredWhipMbps: number | null = null
+const CHAT_PRESET_URLS: Record<string, string> = {
+  'pin-chat': 'https://www.twitch.tv/popout/directory/chat?popout=',
+  'pin-yt-chat': 'https://studio.youtube.com/livestreaming/chat',
+}
 const studioScenesList = document.getElementById('studio-scenes-list')!
 const studioAddSceneRow = document.getElementById('studio-add-scene-row')!
 /** Empty = follow the active scene template; set when user picks an overlay layout preset. */
@@ -398,34 +449,38 @@ function setGameMeterLevel(percent: number): void {
 
 function syncSystemAudioChannelUi(): void {
   const supported = systemAudioCaptureSupported(capturePlatform)
-  audioDesktopChannel.dataset.captureUnavailable = supported ? '0' : '1'
-  audioGameChannel.dataset.captureUnavailable = supported ? '0' : '1'
+  const desktopLive = Boolean(desktopAudioStream)
+  const gameLive = Boolean(gameAudioStream)
+  audioDesktopChannel.dataset.captureUnavailable = supported && desktopLive ? '0' : '1'
+  audioGameChannel.dataset.captureUnavailable = supported && gameLive ? '0' : '1'
   audioDesktopChannel.dataset.muted = desktopAudioMuted ? '1' : '0'
   audioGameChannel.dataset.muted = gameAudioMuted ? '1' : '0'
   btnDesktopAudioSettings.disabled = !supported
   btnGameAudioSettings.disabled = !supported
+  audioDesktopLabel.textContent = 'Desktop Audio'
+  audioGameLabel.textContent = 'Game Audio'
 
   if (!supported) {
-    audioDesktopChannel.title = 'System audio capture requires Windows'
-    audioGameChannel.title = 'System audio capture requires Windows'
-    audioDesktopLabel.textContent = 'Desktop Audio'
-    audioGameLabel.textContent = 'Game Audio'
+    audioDesktopChannel.title = 'System audio capture is not available on this host'
+    audioGameChannel.title = 'System audio capture is not available on this host'
     return
   }
 
-  audioDesktopChannel.title = desktopAudioMuted
-    ? 'Desktop audio muted for stream (click name to unmute)'
-    : 'Full system loopback — click name to mute for stream'
-  const gameLinked = Boolean(selectedSourceId) && captureKind === 'desktop'
-  if (!gameLinked) {
-    audioGameLabel.textContent = 'Game Audio'
-    audioGameChannel.title = 'Select a display or window capture to link game audio'
+  if (!desktopLive) {
+    audioDesktopChannel.title = 'No desktop audio yet. Click the name or gear to share system audio.'
+  } else {
+    audioDesktopChannel.title = desktopAudioMuted
+      ? 'Desktop audio muted for stream (click name to unmute)'
+      : 'Desktop audio live — click name to mute for stream'
+  }
+
+  if (!gameLive) {
+    audioGameChannel.title =
+      'No game audio yet. Click the name or gear to link the gameplay source, or share a window with audio.'
   } else if (gameAudioMuted) {
     audioGameChannel.title = 'Game audio muted for stream (click name to unmute)'
-    audioGameLabel.textContent = 'Game Audio'
   } else {
-    audioGameChannel.title = 'Audio from gameplay capture — click name to mute for stream'
-    audioGameLabel.textContent = 'Game Audio'
+    audioGameChannel.title = 'Game audio live — click name to mute for stream'
   }
 }
 
@@ -466,7 +521,14 @@ function stopGameAudioCapture(): void {
   gameAudioStream = null
 }
 
-async function refreshDesktopAudioCapture(): Promise<void> {
+async function openDesktopAudioStream(fromGesture: boolean): Promise<MediaStream | null> {
+  const loopback = await startDesktopLoopbackAudio(preferredDesktopOutputDeviceId)
+  if (loopback) return loopback
+  if (!fromGesture) return null
+  return startDisplayShareAudio()
+}
+
+async function refreshDesktopAudioCapture(fromGesture = false): Promise<void> {
   if (!systemAudioCaptureSupported(capturePlatform)) {
     stopDesktopAudioCapture()
     syncSystemAudioChannelUi()
@@ -476,8 +538,11 @@ async function refreshDesktopAudioCapture(): Promise<void> {
   desktopAudioStarting = true
   stopDesktopAudioCapture()
   try {
-    const stream = await startDesktopLoopbackAudio(preferredDesktopOutputDeviceId)
+    const stream = await openDesktopAudioStream(fromGesture)
     if (!stream) {
+      if (fromGesture) {
+        setDestError('Could not open desktop audio. Share a screen or window that includes audio.')
+      }
       syncSystemAudioChannelUi()
       return
     }
@@ -485,13 +550,14 @@ async function refreshDesktopAudioCapture(): Promise<void> {
     applyDesktopGameAudioTrackEnabled()
     desktopMeterHandle = startAudioLevelMeter(stream, setDesktopMeterLevel)
     syncWhipAvTracks()
+    pushStudioNotice('Desktop audio connected')
   } finally {
     desktopAudioStarting = false
     syncSystemAudioChannelUi()
   }
 }
 
-async function refreshGameAudioCapture(): Promise<void> {
+async function refreshGameAudioCapture(fromGesture = false): Promise<void> {
   if (!systemAudioCaptureSupported(capturePlatform)) {
     stopGameAudioCapture()
     syncSystemAudioChannelUi()
@@ -502,13 +568,13 @@ async function refreshGameAudioCapture(): Promise<void> {
     captureKind === 'desktop' && selectedSourceId && selectedSourceId !== BROWSE_CAPTURE_SOURCE_ID
       ? selectedSourceId
       : null
-  if (!sourceId) {
-    syncSystemAudioChannelUi()
-    syncWhipAvTracks()
-    return
-  }
-  const stream = await startGameLinkedAudio(sourceId)
+  let stream: MediaStream | null = null
+  if (sourceId) stream = await startGameLinkedAudio(sourceId)
+  if (!stream && fromGesture) stream = await startDisplayShareAudio()
   if (!stream) {
+    if (fromGesture) {
+      setDestError('Could not open game audio. Pick a gameplay source or share a window with audio.')
+    }
     syncSystemAudioChannelUi()
     syncWhipAvTracks()
     return
@@ -518,6 +584,7 @@ async function refreshGameAudioCapture(): Promise<void> {
   gameMeterHandle = startAudioLevelMeter(stream, setGameMeterLevel)
   syncWhipAvTracks()
   syncSystemAudioChannelUi()
+  pushStudioNotice('Game audio connected')
 }
 
 async function refreshDesktopAudioOutputDevices(): Promise<void> {
@@ -674,7 +741,10 @@ function syncSceneProgramPresentation(): void {
     programSceneCard.hidden = false
     programSceneCard.dataset.scene = activeSceneTemplateId
     programSceneCardTitle.textContent = preset.title
-    programSceneCardSubtitle.textContent = preset.subtitle
+    programSceneCardSubtitle.textContent =
+      activeSceneTemplateId === 'intermission'
+        ? intermissionSubtitle(Date.now(), intermissionEndsAtMs, preset.subtitle)
+        : preset.subtitle
     programVideo.hidden = true
     programCam.hidden = true
     programBrowser.hidden = true
@@ -1273,6 +1343,8 @@ function stopWhipVideoWatchdog(): void {
 
 function clearWhipStreamMetrics(): void {
   whipStreamMetrics = null
+  whipBytesSample = null
+  measuredWhipMbps = null
 }
 
 function startWhipStatsSamplerForPublisher(): void {
@@ -1284,6 +1356,16 @@ function startWhipStatsSamplerForPublisher(): void {
     isLive: () => sessionLiveIntent && !goingLive && !liveReconnecting,
     onMetrics: (metrics) => {
       whipStreamMetrics = metrics
+      if (metrics.outboundVideoBytesSent != null) {
+        const now = Date.now()
+        if (whipBytesSample && now > whipBytesSample.at) {
+          measuredWhipMbps = mbpsFromByteDelta(
+            metrics.outboundVideoBytesSent - whipBytesSample.bytes,
+            now - whipBytesSample.at,
+          )
+        }
+        whipBytesSample = { bytes: metrics.outboundVideoBytesSent, at: now }
+      }
       updateProgramStats(lastRelaySnapshot)
       if (isSessionLive()) updateStreamInfo(true, lastRelaySnapshot)
     },
@@ -1923,6 +2005,7 @@ function isChatLikeTab(tab: BrowseTabInfo): boolean {
 function syncChatSourceRow(): void {
   if (!layerEnabled.chat) {
     studioSourceChat.querySelector('.studio-list-text')!.textContent = 'Chat'
+    syncChatFeed()
     return
   }
   if (activeChatSourceId === 'placeholder') {
@@ -1935,6 +2018,7 @@ function syncChatSourceRow(): void {
     return
   }
   studioSourceChat.querySelector('.studio-list-text')!.textContent = 'Chat — on'
+  syncChatFeed()
 }
 
 async function refreshSourcePicker(kind: SourceKind): Promise<void> {
@@ -2892,6 +2976,7 @@ async function endLive(): Promise<void> {
     await stopRelayStream(snapshot.health)
     await window.tabcast.refreshRelay()
     await dispatchAddonLiveEvents('live.end')
+    pushStudioNotice('Ended live')
   } catch (err) {
     setDestError(err instanceof Error ? err.message : String(err))
   } finally {
@@ -2969,6 +3054,7 @@ async function goLive(): Promise<void> {
     await window.tabcast.refreshRelay()
     await dispatchAddonLiveEvents('live.start')
     destHint.textContent = 'Live — keys stay in relay RAM. End Live to tear down WHIP.'
+    pushStudioNotice('Went live')
     btnGoLive.dataset.live = '1'
     btnGoLive.textContent = 'End Live'
   } catch (err) {
@@ -2988,12 +3074,16 @@ async function goLive(): Promise<void> {
   }
 }
 
+let openGoLiveFlow = (): void => {
+  void goLive()
+}
+
 async function onGoLiveClick(): Promise<void> {
   if (isSessionLive()) {
     await endLive()
     return
   }
-  await goLive()
+  openGoLiveFlow()
 }
 
 async function verifyStreamKeys(): Promise<{ ok: boolean; message: string }> {
@@ -3286,9 +3376,6 @@ async function renderAddonPanels(): Promise<void> {
   }
 
   for (const panel of panels) {
-    // Filter out Discord addon from UI
-    console.log('Checking panel:', panel.addonId); if (panel.addonId === 'com.tabcast.discord-now-live') { console.log('Filtering out Discord'); continue; }
-
     const section = document.createElement('section')
     section.className = 'addon-panel'
     section.innerHTML = `<h3>${escapeHtml(panel.title)}</h3>`
@@ -4024,9 +4111,115 @@ async function selectScene(sceneTemplate: string): Promise<void> {
   syncLayerTracks()
   syncSceneProgramPresentation()
   refreshProgramPreviewLayout()
+  pushStudioNotice(`Scene: ${sceneLabel(sceneTemplate)}`)
   if (isSessionLive()) {
     await pushSceneLayout().catch(() => undefined)
   }
+}
+
+function sceneLabel(sceneId: string): string {
+  const custom = customScenes.find((scene) => scene.id === sceneId)
+  if (custom) return custom.name
+  const preset = sceneStubPreset(sceneId)
+  if (preset) return preset.title
+  const template = SCENE_TEMPLATES.find((scene) => scene.id === sceneId)
+  return template?.name ?? sceneId
+}
+
+function pushStudioNotice(message: string): void {
+  const stamp = new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  studioNotices.unshift(`${stamp}  ${message}`)
+  if (studioNotices.length > 8) studioNotices.length = 8
+  renderStudioNotices()
+}
+
+function renderStudioNotices(): void {
+  programNotificationsFeed.replaceChildren()
+  for (const line of studioNotices) {
+    const item = document.createElement('li')
+    item.textContent = line
+    programNotificationsFeed.append(item)
+  }
+  const hasNotes = studioNotices.length > 0
+  programNotificationsFeed.hidden = !hasNotes
+  programNotificationsHint.hidden = hasNotes
+  programNotificationsSlot.dataset.liveFeed = hasNotes ? '1' : '0'
+  if (!hasNotes) programNotificationsHint.textContent = 'Studio events show up here'
+}
+
+function paintIntermissionCard(): void {
+  if (activeSceneTemplateId !== 'intermission' || programSceneCard.hidden) return
+  const preset = sceneStubPreset('intermission')
+  programSceneCardSubtitle.textContent = intermissionSubtitle(
+    Date.now(),
+    intermissionEndsAtMs,
+    preset?.subtitle ?? 'Short break — back shortly',
+  )
+}
+
+function ensureIntermissionTimer(): void {
+  if (intermissionTimer != null) return
+  intermissionTimer = setInterval(() => {
+    paintIntermissionCard()
+    if (intermissionEndsAtMs != null && Date.now() >= intermissionEndsAtMs) {
+      pushStudioNotice('Intermission over')
+      intermissionEndsAtMs = null
+    }
+  }, 250)
+}
+
+function startIntermissionTimer(minutes: number): void {
+  if (!isIntermissionMinutes(minutes)) return
+  intermissionEndsAtMs = intermissionEndsAt(Date.now(), minutes)
+  ensureIntermissionTimer()
+  pushStudioNotice(`Intermission ${minutes} min`)
+  void selectScene('intermission')
+}
+
+function stopIntermissionTimer(): void {
+  intermissionEndsAtMs = null
+  paintIntermissionCard()
+  pushStudioNotice('Intermission timer stopped')
+}
+
+async function deleteCustomScene(sceneId: string): Promise<void> {
+  if (!isCustomSceneId(sceneId)) return
+  const removed = customScenes.find((scene) => scene.id === sceneId)
+  const next = removeCustomScene(customScenes, sceneId)
+  if (activeSceneTemplateId === sceneId) {
+    await selectScene('gaming-cam')
+  }
+  await persistCustomScenes(next)
+  if (sceneImagePaths[sceneId]) {
+    await persistSceneImage(sceneId, null)
+  }
+  pushStudioNotice(`Deleted ${removed?.name ?? 'custom scene'}`)
+}
+
+function chatFeedUrl(): string | null {
+  if (!layerEnabled.chat || activeChatSourceId === 'off' || activeChatSourceId === 'placeholder') return null
+  const preset = CHAT_PRESET_URLS[activeChatSourceId]
+  if (preset) return preset
+  const tab = browseTabsCache.find((entry) => entry.id === activeChatSourceId)
+  return tab?.url || null
+}
+
+function syncChatFeed(): void {
+  const url = chatFeedUrl()
+  if (!url) {
+    programChatView.removeAttribute('src')
+    programChatView.hidden = true
+    programChatSlot.dataset.liveFeed = '0'
+    programChatHint.hidden = false
+    programChatHint.textContent = layerEnabled.chat
+      ? 'Placeholder panel — pick Twitch or YouTube chat to embed it'
+      : 'Pick a chat from the Chat menu'
+    return
+  }
+  if (programChatView.src !== url) programChatView.src = url
+  programChatView.hidden = false
+  programChatHint.hidden = true
+  programChatSlot.dataset.liveFeed = '1'
 }
 
 // Wire scene buttons
@@ -4048,8 +4241,16 @@ if (sceneEnding) {
 
 function openSceneImageMenuFromTarget(menu: HTMLElement): void {
   const id = menu.dataset.sceneMenu
-  if (!id || !sceneSupportsImageUpload(id)) return
+  if (!id) return
+  const custom = isCustomSceneId(id)
+  const timer = id === 'intermission'
+  const image = sceneSupportsImageUpload(id)
+  if (!custom && !timer && !image) return
   sceneImageMenuTargetId = id
+  for (const row of sceneMenuTimerRows) row.hidden = !timer
+  sceneMenuImagePickRow.hidden = !image
+  sceneMenuImageClearRow.hidden = !image
+  sceneMenuDeleteRow.hidden = !custom
   sceneImageMenuClear.disabled = !sceneImagePaths[id]
   sceneImageMenuDialog.showModal()
 }
@@ -4095,6 +4296,27 @@ sceneImageMenuClear.addEventListener('click', () => {
 
 sceneImageMenuCancel.addEventListener('click', () => {
   sceneImageMenuDialog.close()
+})
+
+sceneImageMenuDialog.addEventListener('click', (event) => {
+  const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-intermission-min]')
+  if (!button) return
+  const minutes = Number(button.dataset.intermissionMin)
+  sceneImageMenuDialog.close()
+  startIntermissionTimer(minutes)
+})
+
+sceneMenuTimerStop.addEventListener('click', () => {
+  sceneImageMenuDialog.close()
+  stopIntermissionTimer()
+  void selectScene('intermission')
+})
+
+sceneImageMenuDelete.addEventListener('click', () => {
+  sceneImageMenuDialog.close()
+  const target = sceneImageMenuTargetId
+  if (!target) return
+  void deleteCustomScene(target)
 })
 
 btnSceneImagePick.addEventListener('click', () => {
@@ -4179,12 +4401,20 @@ populateEncodeProfileSelect(
   document.getElementById('go-live-wizard-quality') as HTMLSelectElement,
 )
 
+openGoLiveFlow = () => {
+  void window.tabcast.getSettings().then((s) => {
+    lastStreamPlatform = s.lastStreamPlatform ?? 'none'
+    goLiveWizard.open()
+  })
+}
+
 if (btnGoLiveSidebar) {
   btnGoLiveSidebar.addEventListener('click', () => {
-    void window.tabcast.getSettings().then((s) => {
-      lastStreamPlatform = s.lastStreamPlatform ?? 'none'
-      goLiveWizard.open()
-    })
+    if (isSessionLive()) {
+      void endLive()
+      return
+    }
+    openGoLiveFlow()
   })
 }
 
@@ -4278,35 +4508,62 @@ function updateProgramStats(snapshot?: RelaySnapshot | null): void {
   const spec = encodeProfileSpec(profile)
   const sessionLive = snapshot?.lifecycle === 'live' || isSessionLive()
   const whipMetrics = sessionLive ? whipStreamMetrics : null
-  const { dropped, encoded } = droppedFramesForProgramStats(snapshot, whipMetrics)
-  const dropPct = formatDropPercent(dropped, encoded)
+  const playbackActive = playbackTotalFrames > 0
+  const { dropped, encoded } = playbackActive && !sessionLive
+    ? { dropped: playbackDroppedFrames, encoded: playbackTotalFrames }
+    : droppedFramesForProgramStats(snapshot, whipMetrics)
+  const dropPct = playbackActive && !sessionLive
+    ? dropPercentLabel(playbackDroppedFrames, playbackTotalFrames)
+    : formatDropPercent(dropped, encoded)
   const targetMbps = spec.bitrateMbps
   const observedMbps = relayObservedBitrateMbps(snapshot)
-  const displayMbps = sessionLive && observedMbps != null ? observedMbps : targetMbps
+  const displayMbps =
+    sessionLive && measuredWhipMbps != null
+      ? measuredWhipMbps
+      : sessionLive && observedMbps != null
+        ? observedMbps
+        : targetMbps
+  const measuredFpsNow =
+    measuredCaptureFps ??
+    (sessionLive ? whipMetrics?.outboundVideoFramesPerSecond ?? null : null)
+  const fpsLabel = measuredFpsNow ?? spec.fps
+  const fpsMeasured = measuredFpsNow != null
 
   if (statDropped) {
     statDropped.textContent = `Dropped Frames: ${dropped} (${dropPct}%)`
+    statDropped.title = playbackActive
+      ? 'Dropped frames from the program video element'
+      : 'Dropped frames from the relay or WHIP sender'
   }
   if (statFps) {
-    statFps.textContent = `FPS: ${spec.fps}`
+    statFps.textContent = `FPS: ${fpsLabel}`
+    statFps.title = fpsMeasured
+      ? 'Measured capture or outbound frame rate'
+      : `${spec.menuLabel} encode target`
   }
   if (statLatency) {
-    const latencyMs = sessionLive ? programLatencyMs(snapshot, whipMetrics) : undefined
-    if (latencyMs != null) {
-      statLatency.textContent = formatLatencyStat(latencyMs)
+    const networkMs = sessionLive ? programLatencyMs(snapshot, whipMetrics) : undefined
+    const localMs = frameIntervalMs(measuredFpsNow)
+    if (networkMs != null) {
+      statLatency.textContent = formatLatencyStat(networkMs)
       statLatency.title =
         relayLatencyMs(snapshot) != null
           ? 'Stream latency reported by relay'
           : 'WHIP round-trip time to local relay'
+    } else if (localMs != null) {
+      statLatency.textContent = formatLatencyStat(localMs)
+      statLatency.title = 'Local frame interval from the capture clock. Network RTT appears after go-live.'
     } else {
       statLatency.textContent = '—'
-      statLatency.title = sessionLive
-        ? 'Latency not available yet (waiting for WHIP or relay stats)'
-        : 'Stream latency'
+      statLatency.title = 'Latency appears once a capture or live session reports frames'
     }
   }
   if (statBitrate) {
-    statBitrate.textContent = formatMbpsLabel(displayMbps)
+    const measuredBits = sessionLive && (measuredWhipMbps != null || observedMbps != null)
+    statBitrate.textContent = measuredBits ? formatMbpsLabel(displayMbps) : `${formatMbpsLabel(targetMbps)} target`
+    statBitrate.title = measuredBits
+      ? 'Measured from WHIP bytes sent or relay status'
+      : `${spec.menuLabel} encode target until the session reports a bitrate`
   }
   if (programQualitySelect) {
     programQualitySelect.title = sessionLive
@@ -4352,6 +4609,7 @@ const programRecording = createProgramRecording({
 const programVirtualCamera = createProgramVirtualCamera({
   ...programOutputDeps,
   compositor: programOutputCompositor,
+  publishFrame: (jpeg) => window.tabcast.pushVcamFrame(jpeg),
 })
 
 let vcamCapability: VcamCapability | null = null
@@ -4484,21 +4742,26 @@ if (btnStartVcam) {
       await ensureVcamCapability()
       if (programVirtualCamera.isActive()) {
         programVirtualCamera.stop()
+        await window.tabcast.closeVcamOutput()
         stopProgramOutputCompositorIfIdle()
         setVcamUi(false)
-        destHint.textContent = 'Virtual camera preview stopped.'
+        destHint.textContent = 'Virtual camera stopped.'
+        pushStudioNotice('Virtual camera stopped')
         return
       }
       try {
         setDestError(null)
+        const output = await window.tabcast.openVcamOutput()
         programVirtualCamera.start()
         setVcamUi(true)
         if (!vcamInfoSeen && vcamCapability && !vcamCapability.canOutputToDevice) {
           vcamInfoSeen = true
           openVcamInfoDialog()
         }
-        destHint.textContent =
-          'Virtual camera preview active (program compositor). Other apps cannot use Maka as a camera device in this build — Shift+click Virtual Camera for OBS fallback steps.'
+        destHint.textContent = output.devicePath
+          ? `Virtual camera writing to ${output.devicePath} and the Maka Virtual Camera window.`
+          : 'Virtual camera window is open. Other apps can capture that window. Shift+click for a system-camera fallback.'
+        pushStudioNotice(output.devicePath ? `Virtual camera ${output.devicePath}` : 'Virtual camera window open')
       } catch (err) {
         setDestError(err instanceof Error ? err.message : String(err))
       }
@@ -4531,16 +4794,6 @@ if (vcamCopyFrame) {
 }
 
 void ensureVcamCapability()
-const btnGoLiveLabel = document.getElementById('btn-go-live-label') as HTMLElement | null
-
-// Stream info elements
-const streamThumb = document.getElementById('stream-thumb') as HTMLElement | null
-const streamTitleInput = document.getElementById('stream-title-input') as HTMLInputElement | null
-const streamCategoryInput = document.getElementById('stream-category-input') as HTMLInputElement | null
-const streamDestinationsHint = document.getElementById('stream-destinations-hint') as HTMLElement | null
-const streamLivePill = document.getElementById('stream-live-pill') as HTMLElement | null
-const streamViewers = document.getElementById('stream-viewers') as HTMLElement | null
-const streamDuration = document.getElementById('stream-duration') as HTMLElement | null
 
 // Update Go Live button label based on streaming state
 function updateGoLiveLabel(isLive: boolean): void {
@@ -4631,20 +4884,10 @@ function updateStreamInfo(isLive: boolean, snapshot?: RelaySnapshot | null): voi
     streamLivePill.textContent = isLive ? 'Live' : 'Offline'
   }
   if (streamViewers) {
-    if (!isLive) {
-      streamViewers.textContent = 'Offline'
-      streamViewers.title = 'Viewer count when you go live'
-    } else {
-      const viewers = viewerCountFromRelay(snapshot ?? lastRelaySnapshot)
-      if (viewers != null) {
-        streamViewers.textContent = `Viewers: ${formatViewerCount(viewers)}`
-        streamViewers.title = 'Live viewer count from relay / platform ingest'
-      } else {
-        streamViewers.textContent = 'Viewers: —'
-        streamViewers.title =
-          'Relay has not reported viewer count (needs platform API support in TabcastRelay)'
-      }
-    }
+    const viewers = isLive ? viewerCountFromRelay(snapshot ?? lastRelaySnapshot) : null
+    const label = viewerStatusLabel(isLive, viewers)
+    streamViewers.textContent = viewers != null && isLive ? `Viewers: ${formatViewerCount(viewers)}` : label.text
+    streamViewers.title = label.title
   }
   setLiveDurationClock(isLive)
 }
@@ -4653,6 +4896,10 @@ void initSystemAudioCapture()
 
 audioDesktopLabel.addEventListener('click', () => {
   if (!systemAudioCaptureSupported(capturePlatform)) return
+  if (!desktopAudioStream) {
+    void refreshDesktopAudioCapture(true)
+    return
+  }
   desktopAudioMuted = !desktopAudioMuted
   applyDesktopGameAudioTrackEnabled()
   syncWhipAvTracks()
@@ -4661,7 +4908,10 @@ audioDesktopLabel.addEventListener('click', () => {
 
 audioGameLabel.addEventListener('click', () => {
   if (!systemAudioCaptureSupported(capturePlatform)) return
-  if (!gameAudioStream) return
+  if (!gameAudioStream) {
+    void refreshGameAudioCapture(true)
+    return
+  }
   gameAudioMuted = !gameAudioMuted
   applyDesktopGameAudioTrackEnabled()
   syncWhipAvTracks()
@@ -4670,6 +4920,10 @@ audioGameLabel.addEventListener('click', () => {
 
 btnDesktopAudioSettings.addEventListener('click', () => {
   if (!systemAudioCaptureSupported(capturePlatform)) return
+  if (!desktopAudioStream) {
+    void refreshDesktopAudioCapture(true)
+    return
+  }
   const show = desktopAudioOutputSelect.hidden
   desktopAudioOutputSelect.hidden = !show
   btnDesktopAudioSettings.setAttribute('aria-expanded', show ? 'true' : 'false')
@@ -4686,17 +4940,80 @@ desktopAudioOutputSelect.addEventListener('change', () => {
 
 btnGameAudioSettings.addEventListener('click', () => {
   if (!systemAudioCaptureSupported(capturePlatform)) return
-  if (!selectedSourceId || captureKind !== 'desktop') {
-    setDestError('Select a display or window under Gameplay to link game audio.')
+  if (!gameAudioStream) {
+    void refreshGameAudioCapture(true)
     return
   }
-  void refreshGameAudioCapture()
+  void refreshGameAudioCapture(false)
   studioSourceGame.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
 })
 
 function onStreamMetaFieldCommit(): void { void persistStreamMetaFromInputs().then(() => repostRelayConfigIfLive()) }
 if (streamTitleInput) { streamTitleInput.addEventListener('change', onStreamMetaFieldCommit); streamTitleInput.addEventListener('blur', onStreamMetaFieldCommit) }
 if (streamCategoryInput) { streamCategoryInput.addEventListener('change', onStreamMetaFieldCommit); streamCategoryInput.addEventListener('blur', onStreamMetaFieldCommit) }
+
+function sampleCaptureClock(): void {
+  const videos = [programVideo, programCamVideo, programBrowserVideo]
+  let frames = 0
+  let dropped = 0
+  for (const video of videos) {
+    if (typeof video.getVideoPlaybackQuality !== 'function') continue
+    const quality = video.getVideoPlaybackQuality()
+    frames += quality.totalVideoFrames
+    dropped += quality.droppedVideoFrames
+  }
+  playbackTotalFrames = frames
+  playbackDroppedFrames = dropped
+  const now = performance.now()
+  if (captureClockStartedAt > 0 && frames > captureClockFrames) {
+    measuredCaptureFps = measuredFps(frames - captureClockFrames, now - captureClockStartedAt)
+  } else if (frames === captureClockFrames) {
+    const track = [programStream, cameraStream, browserStream]
+      .flatMap((stream) => stream?.getVideoTracks() ?? [])
+      .find((item) => item.readyState === 'live')
+    const reported = track?.getSettings().frameRate
+    if (typeof reported === 'number' && reported > 0) measuredCaptureFps = Math.round(reported)
+  }
+  captureClockFrames = frames
+  captureClockStartedAt = now
+}
+
+function paintStreamThumb(): void {
+  const ctx = streamThumbCanvas.getContext('2d')
+  if (!ctx) return
+  const video = [programVideo, programCamVideo, programBrowserVideo].find(
+    (item) => !item.hidden && item.videoWidth > 0 && item.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA,
+  )
+  if (video) {
+    ctx.drawImage(video, 0, 0, streamThumbCanvas.width, streamThumbCanvas.height)
+    streamThumbCanvas.hidden = false
+    streamThumbPlaceholder.hidden = true
+    return
+  }
+  if (!programSceneCard.hidden) {
+    ctx.fillStyle = '#f6f3ec'
+    ctx.fillRect(0, 0, streamThumbCanvas.width, streamThumbCanvas.height)
+    ctx.fillStyle = '#ffc40c'
+    ctx.fillRect(0, 0, streamThumbCanvas.width, 8)
+    ctx.fillStyle = '#1a1408'
+    ctx.font = '700 13px system-ui, sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    const title = programSceneCardTitle.textContent ?? 'Scene'
+    ctx.fillText(title, streamThumbCanvas.width / 2, streamThumbCanvas.height / 2)
+    streamThumbCanvas.hidden = false
+    streamThumbPlaceholder.hidden = true
+    return
+  }
+  streamThumbCanvas.hidden = true
+  streamThumbPlaceholder.hidden = false
+}
+
+setInterval(() => {
+  sampleCaptureClock()
+  paintStreamThumb()
+  updateProgramStats(lastRelaySnapshot)
+}, 500)
 
 // Initialize stream info
 highlightSceneSelection(activeSceneTemplateId)
