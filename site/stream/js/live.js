@@ -53,9 +53,19 @@
     var params = new URLSearchParams(window.location.search);
     var relayParam = (params.get('relay') || '').trim().replace(/\/$/, '');
     if (relayParam) return [relayParam];
-    // Only a relay on this computer counts. The site /relay path is a server mock
-    // and must not show as "Relay connected".
-    return ['http://127.0.0.1:' + RELAY_PORT, 'http://localhost:' + RELAY_PORT];
+    // Droplet hosts the relay at same-origin /relay. Localhost is only a fallback
+    // when this page itself is opened on the relay machine.
+    var list = [];
+    try {
+      if (window.location && window.location.origin && window.location.protocol !== 'file:') {
+        list.push(String(window.location.origin).replace(/\/$/, '') + '/relay');
+      }
+    } catch (_err) {
+      /* ignore */
+    }
+    list.push('http://127.0.0.1:' + RELAY_PORT);
+    list.push('http://localhost:' + RELAY_PORT);
+    return list;
   }
 
   function isLoopbackRelayBase(base) {
@@ -67,11 +77,18 @@
     }
   }
 
-  /** True when this base can accept browser WHIP media (local sidecar / ?relay=). */
+  /** Hosted /relay on this site, loopback, or an explicit ?relay= override. */
   function isPublishableRelayBase(base) {
     var params = new URLSearchParams(window.location.search);
     if ((params.get('relay') || '').trim()) return true;
-    return isLoopbackRelayBase(base);
+    if (isLoopbackRelayBase(base)) return true;
+    try {
+      var u = new URL(base, window.location.href);
+      var origin = String(window.location.origin || '').replace(/\/$/, '');
+      return u.origin === origin && /\/relay$/i.test(u.pathname.replace(/\/$/, '') || '/relay');
+    } catch (_err) {
+      return /\/relay$/i.test(String(base || ''));
+    }
   }
 
   function sanitizeTitle(raw) {
@@ -480,11 +497,7 @@
       if (!quiet) {
         var reason =
           lastError instanceof Error ? lastError.message : String(lastError || 'unreachable');
-        log(
-          'Relay not detected (' +
-            reason +
-            '). Sidecar is local-only — run Maka, MAKArelay.exe, or a local mock relay.',
-        );
+        log('Relay not detected (' + reason + ').');
       }
       return false;
     }
@@ -1289,10 +1302,8 @@
         var ok = await probeRelay();
         if (!ok || !isPublishableRelayBase(relayBase)) {
           showRelayModal(
-            'Go Live needs MAKArelay on this computer at 127.0.0.1:' +
-              RELAY_PORT +
-              '. Download / run Maka (or MAKArelay.exe) so the browser can publish WHIP to a local encoder — the website cannot stream for you. A staging /relay health check on the server is not enough for WebRTC media.',
-            'Local relay required for go-live',
+            'Relay not detected. The stream relay runs on this site — try again once it is up.',
+            'Relay not detected',
           );
           if (destHint) {
             destHint.textContent =
@@ -1997,11 +2008,7 @@
         log('Local page — start a mock relay or desktop Maka to enable WHIP.');
       }
     });
-    log(
-      'Web studio — probes 127.0.0.1:' +
-        RELAY_PORT +
-        '/health first (local sidecar). Go Live needs that local relay plus a preview capture; staging /relay is health-only.',
-    );
+    log('Web studio — checks this site’s relay, then a local sidecar if one is running.');
 
     var api = {
       probeRelay: probeRelay,
