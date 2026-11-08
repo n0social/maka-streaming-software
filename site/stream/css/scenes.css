@@ -286,6 +286,22 @@
   opacity: 0.55;
 }
 
+#studio-scenes .studio-source-toggle[data-active='1'] {
+  opacity: 1;
+  border-color: var(--scenes-gold);
+  background: var(--scenes-gold);
+  color: #faf8f4;
+}
+
+#studio-scenes .studio-source-toggle[data-active='1'] .studio-list-leading {
+  background: rgba(250, 248, 244, 0.22);
+}
+
+#studio-scenes .studio-source-toggle[data-active='1'] .studio-list-menu {
+  color: rgba(250, 248, 244, 0.88);
+  opacity: 1;
+}
+
 #studio-scenes .studio-source-list {
   gap: var(--scenes-row-gap);
   min-width: 0;

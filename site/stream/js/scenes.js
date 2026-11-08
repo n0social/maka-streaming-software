@@ -170,6 +170,15 @@
     chat: false,
     notifications: false,
   };
+  /** Row highlight, separate from whether a capture is live. */
+  var sourceHighlighted = {
+    game: false,
+    webcam: false,
+    mic: false,
+    browser: false,
+    chat: false,
+    notifications: false,
+  };
 
   var expandedSourceKind = null;
   var root = null;
@@ -248,6 +257,14 @@
         chat: !!sourceActive.chat,
         notifications: !!sourceActive.notifications,
       },
+      sourceHighlighted: {
+        game: !!sourceHighlighted.game,
+        webcam: !!sourceHighlighted.webcam,
+        mic: !!sourceHighlighted.mic,
+        browser: !!sourceHighlighted.browser,
+        chat: !!sourceHighlighted.chat,
+        notifications: !!sourceHighlighted.notifications,
+      },
       overlayPreset: activeOverlayPresetId || '',
     };
     try {
@@ -292,6 +309,13 @@
     if (data.sourceActive && typeof data.sourceActive === 'object') {
       Object.keys(sourceActive).forEach(function (key) {
         if (typeof data.sourceActive[key] === 'boolean') sourceActive[key] = data.sourceActive[key];
+      });
+    }
+    if (data.sourceHighlighted && typeof data.sourceHighlighted === 'object') {
+      Object.keys(sourceHighlighted).forEach(function (key) {
+        if (typeof data.sourceHighlighted[key] === 'boolean') {
+          sourceHighlighted[key] = data.sourceHighlighted[key];
+        }
       });
     }
   }
@@ -659,7 +683,8 @@
         return;
       }
       el.dataset.enabled = layerEnabledForKind(kind) ? '1' : '0';
-      el.dataset.active = sourceActive[kind] ? '1' : '0';
+      el.dataset.active = sourceHighlighted[kind] ? '1' : '0';
+      el.setAttribute('aria-pressed', sourceHighlighted[kind] ? 'true' : 'false');
       if (kind === 'mic') updateMicRowLabel();
       el.setAttribute('aria-expanded', expandedSourceKind === kind ? 'true' : 'false');
       var menu = el.querySelector('[data-source-menu]');
@@ -1214,13 +1239,16 @@
       btn.dataset.scenesWired = '1';
       return;
     }
-    // Row body = layer on/off only. Capture starts from the ⋯ picker.
     if (!btn.title) {
-      btn.title = 'Toggle layer visibility';
+      btn.title = 'Highlight this source';
     }
     btn.addEventListener('click', function (event) {
       if (event.target.closest && event.target.closest('[data-source-menu]')) return;
-      toggleLayerForSourceKind(kind);
+      if (Object.prototype.hasOwnProperty.call(sourceHighlighted, kind)) {
+        sourceHighlighted[kind] = !sourceHighlighted[kind];
+      }
+      syncSourceRows();
+      writeStorage();
     });
 
     var menu = btn.querySelector('[data-source-menu]');
