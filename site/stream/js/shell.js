@@ -254,9 +254,9 @@ function applyOutputMode(_mode, _opts = {}) {
     body.dataset.outputModePending = mode;
   }
 
-  if (brandTag && body.dataset.mode !== "settings") {
-    brandTag.hidden = false;
-    brandTag.textContent = "Streaming studio";
+  if (brandTag) {
+    brandTag.hidden = true;
+    brandTag.textContent = "";
   }
 
   // Keep program-browser slot hidden (desktop built-in browser is not available here).
