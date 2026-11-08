@@ -25,6 +25,7 @@ mkdir -p "${WEB_ROOT}/stream"
 cp "${SRC_DIR}/stream/index.html" "${WEB_ROOT}/stream/index.html"
 cp "${SRC_DIR}/stream/stream.css" "${WEB_ROOT}/stream/stream.css"
 cp "${SRC_DIR}/stream/stream.js" "${WEB_ROOT}/stream/stream.js"
+rm -f "${WEB_ROOT}/stream/program-poster.jpg" "${WEB_ROOT}/stream/stream-thumb.jpg"
 
 mkdir -p "${WEB_ROOT}/preview"
 cp "${SRC_DIR}/preview/index.html" "${WEB_ROOT}/preview/index.html"
