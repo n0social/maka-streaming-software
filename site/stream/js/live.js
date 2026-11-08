@@ -53,7 +53,33 @@
     var params = new URLSearchParams(window.location.search);
     var relayParam = (params.get('relay') || '').trim().replace(/\/$/, '');
     if (relayParam) return [relayParam];
-    return ['http://127.0.0.1:' + RELAY_PORT, 'http://localhost:' + RELAY_PORT];
+    var list = ['http://127.0.0.1:' + RELAY_PORT, 'http://localhost:' + RELAY_PORT];
+    // Same-origin /relay is for health/status staging only (nginx → droplet mock).
+    // WHIP media needs a loopback sidecar — see isPublishableRelayBase().
+    try {
+      if (window.location && window.location.origin && window.location.protocol !== 'file:') {
+        list.push(String(window.location.origin).replace(/\/$/, '') + '/relay');
+      }
+    } catch (_err) {
+      /* ignore */
+    }
+    return list;
+  }
+
+  function isLoopbackRelayBase(base) {
+    try {
+      var u = new URL(base, window.location.href);
+      return u.hostname === '127.0.0.1' || u.hostname === 'localhost';
+    } catch (_err) {
+      return /127\.0\.0\.1|localhost/i.test(String(base || ''));
+    }
+  }
+
+  /** True when this base can accept browser WHIP media (local sidecar / ?relay=). */
+  function isPublishableRelayBase(base) {
+    var params = new URLSearchParams(window.location.search);
+    if ((params.get('relay') || '').trim()) return true;
+    return isLoopbackRelayBase(base);
   }
 
   function sanitizeTitle(raw) {
@@ -426,18 +452,41 @@
           relayDetected = true;
           var version = hit.health.version || '?';
           var mock = String(version).indexOf('mock') !== -1;
-          var label = mock
-            ? 'Relay detected · mock v' + version
-            : 'Relay detected · v' + version;
+          var publishable = isPublishableRelayBase(relayBase);
+          var label;
+          if (!publishable) {
+            label = mock
+              ? 'Staging mock · not for Go Live'
+              : 'Relay (remote) · not for Go Live';
+          } else if (mock) {
+            label = 'Relay detected · mock v' + version;
+          } else {
+            label = 'Relay detected · v' + version;
+          }
           setRelayChrome(
-            'ok',
+            publishable ? 'ok' : 'warn',
             label,
-            'Connected to ' +
-              relayBase +
-              PATHS.health +
-              '. Sidecar is local-only — RTMP keys never leave this PC.',
+            publishable
+              ? 'Connected to ' +
+                  relayBase +
+                  PATHS.health +
+                  '. Sidecar is local-only — RTMP keys never leave this PC.'
+              : 'Health via ' +
+                  relayBase +
+                  ' is staging-only. Go Live needs MAKArelay on this PC (127.0.0.1:' +
+                  RELAY_PORT +
+                  ') so WebRTC media can reach the encoder.',
           );
-          if (!quiet) log('Relay detected at ' + relayBase + ' (v' + version + ').');
+          if (!quiet) {
+            log(
+              'Relay detected at ' +
+                relayBase +
+                ' (v' +
+                version +
+                ')' +
+                (publishable ? '.' : ' — staging health only; Go Live needs local sidecar.'),
+            );
+          }
           await refreshRelayStatus();
           startStatusPoll();
           return true;
@@ -1248,11 +1297,11 @@
         }
 
         var ok = await probeRelay();
-        if (!ok) {
+        if (!ok || !isPublishableRelayBase(relayBase)) {
           showRelayModal(
-            'No local relay at 127.0.0.1:' +
+            'Go Live needs MAKArelay on this computer at 127.0.0.1:' +
               RELAY_PORT +
-              '. Install or run Maka desktop so MAKArelay.exe is listening — the browser captures a browser tab and publishes WHIP; the sidecar encodes (profiles up to 4K) and RTMPs to Twitch / YouTube with your stream keys. This website cannot start the encoder or claim a cloud stream. Preview stays local.',
+              '. Download / run Maka (or MAKArelay.exe) so the browser can publish WHIP to a local encoder — the website cannot stream for you. A staging /relay health check on the server is not enough for WebRTC media.',
             'Local relay required for go-live',
           );
           if (destHint) {
@@ -2017,7 +2066,7 @@
     log(
       'Web studio — probes 127.0.0.1:' +
         RELAY_PORT +
-        '/health (local sidecar only). Go Live publishes WHIP when relay + preview are ready.',
+        '/health first (local sidecar). Go Live needs that local relay plus a preview capture; staging /relay is health-only.',
     );
 
     var api = {

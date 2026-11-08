@@ -917,9 +917,9 @@ function wireShellChrome() {
       toggleSettings()
       return
     }
-    // Electron: Stream tab exits Settings and restores Studio.
-    const streamTab = t.closest('#tab-stream')
-    if (streamTab && (openState || document.body.dataset.mode === 'settings')) {
+    // Wordmark / brand click exits Settings and restores Studio (Stream tab removed).
+    const brand = t.closest('.brand, .wordmark')
+    if (brand && (openState || document.body.dataset.mode === 'settings')) {
       priorMode = 'studio'
       closeSettings()
     }

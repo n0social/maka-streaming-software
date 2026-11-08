@@ -17,7 +17,7 @@
  *
  * Public API: window.MakaStreamPreview (canonical); window.MakaPreview is an alias; host._makaPreview is the same instance.
  */
-const EMPTY_COPY = 'Share a browser tab or window to preview cloud gameplay';
+const EMPTY_COPY = 'Pick Game Capture or Webcam under Sources to fill Program';
 const WEBCAM_OFFLINE = 'video is offline';
 
 function ensureStylesheet() {

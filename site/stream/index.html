@@ -32,13 +32,13 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/maka.css?v=dc6d035" />
-    <link rel="stylesheet" href="./stream.css" />
-    <link rel="stylesheet" href="./css/shell.css" />
-    <link rel="stylesheet" href="./css/preview-stage.css" />
-    <link rel="stylesheet" href="./css/scenes.css" />
-    <link rel="stylesheet" href="./css/audio.css" />
-    <link rel="stylesheet" href="./css/live.css" />
-    <link rel="stylesheet" href="./css/settings.css" />
+    <link rel="stylesheet" href="./stream.css?v=dc6d048" />
+    <link rel="stylesheet" href="./css/shell.css?v=dc6d048" />
+    <link rel="stylesheet" href="./css/preview-stage.css?v=dc6d048" />
+    <link rel="stylesheet" href="./css/scenes.css?v=dc6d048" />
+    <link rel="stylesheet" href="./css/audio.css?v=dc6d048" />
+    <link rel="stylesheet" href="./css/live.css?v=dc6d048" />
+    <link rel="stylesheet" href="./css/settings.css?v=dc6d048" />
   </head>
   <body data-mode="studio" class="stream-studio">
     <div class="app" id="studio-app" data-shell="studio">
@@ -51,19 +51,7 @@
           </div>
           <span class="version" id="app-version-label">web</span>
         </div>
-        <div class="tabs" role="tablist" data-hook="modes" aria-label="Streaming studio">
-          <button
-            type="button"
-            class="tab tab-primary active"
-            data-tab="studio"
-            id="tab-stream"
-            role="tab"
-            aria-selected="true"
-            title="Return to the three-column studio layout"
-          >
-            Stream
-          </button>
-        </div>
+        <div class="tabs" role="presentation" data-hook="modes" aria-hidden="true"></div>
         <div class="relay-chip" id="relay-chip" data-state="stopped" data-hook="relay">
           <span class="dot status-dot" id="relay-status-dot" data-state="warn"></span>
           <span id="relay-label"><span id="relay-status-text">Relay offline</span></span>
@@ -241,7 +229,7 @@
                 </div>
               </div>
               <p class="program-empty" id="program-empty">
-                Share a browser tab or window to preview cloud gameplay
+                Pick Game Capture or Webcam under Sources to fill Program
               </p>
             </div>
             <!-- Sibling of #studio-preview so preview.js remount cannot swallow it -->
@@ -592,11 +580,11 @@
     </dialog>
 
     <!-- Module hooks (feature modules owned elsewhere) -->
-    <script type="module" src="./js/shell.js"></script>
-    <script type="module" src="./js/scenes.js"></script>
-    <script type="module" src="./js/preview.js"></script>
-    <script type="module" src="./js/audio.js"></script>
-    <script type="module" src="./js/live.js"></script>
-    <script type="module" src="./js/settings.js"></script>
+    <script type="module" src="./js/shell.js?v=dc6d048"></script>
+    <script type="module" src="./js/scenes.js?v=dc6d048"></script>
+    <script type="module" src="./js/preview.js?v=dc6d048"></script>
+    <script type="module" src="./js/audio.js?v=dc6d048"></script>
+    <script type="module" src="./js/live.js?v=dc6d048"></script>
+    <script type="module" src="./js/settings.js?v=dc6d048"></script>
   </body>
 </html>

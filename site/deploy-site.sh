@@ -22,6 +22,8 @@ cp "${SRC_DIR}/robots.txt" "${WEB_ROOT}/robots.txt"
 cp "${SRC_DIR}/sitemap.xml" "${WEB_ROOT}/sitemap.xml"
 
 mkdir -p "${WEB_ROOT}/stream/js" "${WEB_ROOT}/stream/css"
+COMMIT="$(git -C "${SRC_DIR}/.." rev-parse --short HEAD 2>/dev/null || echo unknown)"
+echo "${COMMIT}" > "${WEB_ROOT}/stream/.deployed-commit"
 cp "${SRC_DIR}/stream/index.html" "${WEB_ROOT}/stream/index.html"
 cp "${SRC_DIR}/stream/stream.css" "${WEB_ROOT}/stream/stream.css"
 cp "${SRC_DIR}/stream/stream.js" "${WEB_ROOT}/stream/stream.js"
