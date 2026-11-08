@@ -305,9 +305,9 @@
               <span class="program-stat program-stat-recording" id="stat-recording" data-recording="0">Not recording</span>
             </div>
             <div class="program-stats-right">
-              <span class="program-stat" id="stat-dropped">Dropped Frames: 0 (0.0%)</span>
-              <span class="program-stat" id="stat-fps">FPS: 30</span>
-              <span class="program-stat program-stat-latency" id="stat-latency" title="Stream latency">—</span>
+              <span class="program-stat program-stat-secondary" id="stat-dropped" title="Dropped Frames: 0 (0.0%)">Dropped Frames: 0 (0.0%)</span>
+              <span class="program-stat program-stat-priority" id="stat-fps">FPS: 30</span>
+              <span class="program-stat program-stat-latency program-stat-secondary" id="stat-latency" data-idle="1" title="Stream latency">—</span>
               <div class="program-stats-platforms" role="group" aria-label="Stream destinations">
                 <button
                   type="button"
@@ -324,7 +324,7 @@
                 <span class="program-stats-platform-sep" aria-hidden="true">|</span>
                 <button
                   type="button"
-                  class="platform-chip platform-chip-btn"
+                  class="platform-chip platform-chip-btn platform-chip-secondary"
                   id="plat-youtube"
                   data-state="off"
                   aria-pressed="false"
@@ -335,7 +335,7 @@
                   YouTube
                 </button>
               </div>
-              <span class="program-stat program-stat-bitrate" id="stat-bitrate">—</span>
+              <span class="program-stat program-stat-bitrate program-stat-tertiary" id="stat-bitrate" data-idle="1" title="Bitrate">—</span>
               <label class="program-stats-field program-stats-field-encode">
                 <span class="sr-only">Encode profile</span>
                 <select
