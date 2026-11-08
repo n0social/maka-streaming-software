@@ -605,8 +605,21 @@ export function initPreview(root) {
     }
   }
 
+  function requestProgramFrame() {
+    if (!programStream) return;
+    const track = programStream.getVideoTracks()[0];
+    if (track && typeof track.requestFrame === 'function') {
+      try {
+        track.requestFrame();
+      } catch (_) {
+        /* optional */
+      }
+    }
+  }
+
   function tickProgramFrame() {
     drawProgramFrame();
+    requestProgramFrame();
     programDrawTimer = window.setTimeout(tickProgramFrame, 1000 / 30);
   }
 
@@ -614,7 +627,8 @@ export function initPreview(root) {
   function getProgramStream() {
     const canvas = ensureProgramCanvas();
     drawProgramFrame();
-    if (!programStream) programStream = canvas.captureStream(30);
+    if (!programStream) programStream = canvas.captureStream(0);
+    requestProgramFrame();
     if (!programDrawTimer) tickProgramFrame();
     return programStream;
   }

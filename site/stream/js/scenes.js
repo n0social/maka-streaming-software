@@ -874,16 +874,17 @@
     if (!text) return;
     text.textContent = browserMicLabel ? 'Microphone · ' + browserMicLabel : 'Microphone';
     el.title = browserMicLabel
-      ? 'Browser microphone: ' + browserMicLabel
-      : 'Uses the microphone selected in this browser';
+      ? 'Microphone in use: ' + browserMicLabel
+      : 'Choose a microphone';
   }
 
-  function adoptMicStream(stream) {
+  function adoptMicStream(stream, requestedId) {
     micCaptureStream = stream;
     var track = stream.getAudioTracks()[0];
     var settings = track && typeof track.getSettings === 'function' ? track.getSettings() : null;
-    selectedMicId = (settings && settings.deviceId) || 'browser';
-    browserMicLabel = (track && track.label) || 'Browser microphone';
+    var openedId = (settings && settings.deviceId) || '';
+    selectedMicId = openedId && openedId !== 'default' ? openedId : requestedId || openedId;
+    browserMicLabel = (track && track.label) || 'Microphone';
     if (track) {
       track.addEventListener('ended', function () {
         if (micCaptureStream !== stream) return;
@@ -914,9 +915,20 @@
     emitAll();
   }
 
-  function pickBrowserMic() {
+  function openChosenMic(deviceId) {
+    var audio = deviceId ? { deviceId: { exact: deviceId }, echoCancellation: true } : true;
+    return navigator.mediaDevices.getUserMedia({ audio: audio, video: false }).catch(function (err) {
+      if (!deviceId) throw err;
+      return navigator.mediaDevices.getUserMedia({
+        audio: { deviceId: { ideal: deviceId }, echoCancellation: true },
+        video: false,
+      });
+    });
+  }
+
+  function pickMicDevice(deviceId) {
     stopMicCapture();
-    browserMicLabel = '';
+    selectedMicId = deviceId || '';
     if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
       console.warn('[scenes] getUserMedia unavailable for microphone');
       selectedMicId = '';
@@ -926,10 +938,10 @@
       emitAll();
       return;
     }
-    // No deviceId: this is the microphone the browser itself is using.
-    void navigator.mediaDevices
-      .getUserMedia({ audio: true, video: false })
-      .then(adoptMicStream)
+    void openChosenMic(deviceId)
+      .then(function (stream) {
+        adoptMicStream(stream, deviceId);
+      })
       .catch(function (err) {
         console.warn('[scenes] mic getUserMedia failed', err);
         selectedMicId = '';
@@ -1009,24 +1021,40 @@
   }
 
   function renderMicPicker(picker) {
-    appendPickerSection(picker, 'Browser microphone');
-    appendPickerButton(
-      picker,
-      browserMicLabel || 'Use the browser microphone',
-      sourceActive.mic,
-      function () {
-        pickBrowserMic();
-      },
-    );
-    appendPickerStatus(
-      picker,
-      'This is the microphone selected in the browser. Change it from the lock icon in the address bar, then choose this again.',
-    );
-    if (sourceActive.mic) {
-      appendPickerButton(picker, 'Stop microphone', false, function () {
-        stopMicSource();
+    appendPickerStatus(picker, 'Looking for microphones…');
+    void listMediaInputs('audioinput').then(function (devices) {
+      if (expandedSourceKind !== 'mic') return;
+      picker.innerHTML = '';
+      var mics = devices.filter(function (device) {
+        var id = device.deviceId || '';
+        return id && id !== 'default' && id !== 'communications';
       });
-    }
+      if (!mics.length) {
+        appendPickerStatus(picker, 'No microphones found. Allow microphone access, then open this list again.');
+        appendPickerButton(picker, 'Allow microphone', false, function () {
+          pickMicDevice('');
+        });
+        return;
+      }
+      appendPickerSection(picker, 'Microphones');
+      appendPickerStatus(picker, 'The microphone you select is the one this page captures.');
+      mics.forEach(function (device, index) {
+        var id = device.deviceId || '';
+        appendPickerButton(
+          picker,
+          deviceLabel(device, 'Microphone', index),
+          sourceActive.mic && selectedMicId === id,
+          function () {
+            pickMicDevice(id);
+          },
+        );
+      });
+      if (sourceActive.mic) {
+        appendPickerButton(picker, 'Stop microphone', false, function () {
+          stopMicSource();
+        });
+      }
+    });
   }
 
   function setProgramSlot(id, visible) {
@@ -1485,36 +1513,6 @@
     highlightSceneSelection(activeSceneId);
     syncSourceRows();
     wirePreviewSync();
-    if (navigator.mediaDevices && typeof navigator.mediaDevices.addEventListener === 'function') {
-      navigator.mediaDevices.addEventListener('devicechange', function () {
-        if (!micCaptureStream) return;
-        var previousId = selectedMicId;
-        var previousLabel = browserMicLabel;
-        navigator.mediaDevices
-          .getUserMedia({ audio: true, video: false })
-          .then(function (stream) {
-            var track = stream.getAudioTracks()[0];
-            var settings = track && typeof track.getSettings === 'function' ? track.getSettings() : null;
-            var id = (settings && settings.deviceId) || '';
-            var label = (track && track.label) || '';
-            if (id === previousId && label === previousLabel) {
-              stream.getTracks().forEach(function (item) {
-                try {
-                  item.stop();
-                } catch (err) {
-                  /* ignore */
-                }
-              });
-              return;
-            }
-            stopMicCapture();
-            adoptMicStream(stream);
-          })
-          .catch(function () {
-            /* keep the current browser mic */
-          });
-      });
-    }
     if (activeOverlayPresetId && !OVERLAY_LAYOUTS[activeOverlayPresetId]) activeOverlayPresetId = '';
     applyOverlayLayout(activeOverlayPresetId);
     document.addEventListener('click', function (event) {

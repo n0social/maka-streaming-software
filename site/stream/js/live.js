@@ -1613,20 +1613,6 @@
         return true;
       }
       var micOn = addDirectAudio(resolveMicStream(), 'mic');
-      if (!micOn) {
-        try {
-          var fresh = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-          var freshTracks = liveAudioTracks(fresh);
-          if (freshTracks.length) {
-            freshTracks[0].enabled = true;
-            out.addTrack(freshTracks[0]);
-            clones.push(freshTracks[0]);
-            micOn = true;
-          }
-        } catch (_err) {
-          micOn = false;
-        }
-      }
       if (!micOn) addDirectAudio(mixerStream('desktop'), 'desktop') || addDirectAudio(mixerStream('game'), 'game');
       return { stream: out, ctx: null, micOn: micOn, clones: clones };
     }
@@ -1771,9 +1757,107 @@
       downloadRecordingBlob(blob);
     }
 
+    function recordingCandidates() {
+      var list = [];
+      var composed = readProgramStream();
+      if (composed) list.push(composed);
+      var streams = readPreviewStreams();
+      if (streams && liveTrack(streams.screen)) list.push(streams.screen);
+      if (!list.length && streams && liveTrack(streams.webcam)) list.push(streams.webcam);
+      return list;
+    }
+
+    function recorderOptionSets(stream) {
+      var mime = pickRecorderMime();
+      var hasAudio = stream.getAudioTracks().some(function (track) {
+        return track.readyState === 'live';
+      });
+      var attempts = [];
+      if (mime && hasAudio) attempts.push({ mimeType: mime, audioBitsPerSecond: 128000 });
+      if (mime) attempts.push({ mimeType: mime });
+      attempts.push(null);
+      return attempts;
+    }
+
+    function streamsToRecord(stream) {
+      var videoOnly = new MediaStream(
+        stream.getVideoTracks().filter(function (track) {
+          return track.readyState === 'live';
+        }),
+      );
+      if (videoOnly.getVideoTracks().length && stream.getAudioTracks().length) return [stream, videoOnly];
+      return [stream];
+    }
+
+    function kickVideoFrames(stream) {
+      stream.getVideoTracks().forEach(function (track) {
+        if (typeof track.requestFrame === 'function') {
+          try {
+            track.requestFrame();
+          } catch (_err) {
+            /* canvas capture */
+          }
+        }
+      });
+    }
+
+    function waitForVideoFrame(stream) {
+      kickVideoFrames(stream);
+      return new Promise(function (resolve) {
+        var pending = 0;
+        stream.getVideoTracks().forEach(function (track) {
+          if (track.readyState !== 'live' || !track.muted) return;
+          pending += 1;
+          var done = function () {
+            track.removeEventListener('unmute', done);
+            pending -= 1;
+            if (pending <= 0) resolve();
+          };
+          track.addEventListener('unmute', done);
+        });
+        if (pending <= 0) resolve();
+        else setTimeout(resolve, 400);
+      });
+    }
+
+    function beginRecorder(recorder) {
+      var slices = [1000, 0];
+      var i;
+      for (i = 0; i < slices.length; i++) {
+        try {
+          if (slices[i]) recorder.start(slices[i]);
+          else recorder.start();
+          return true;
+        } catch (_err) {
+          /* timeslice can fail on a canvas track; retry without it */
+        }
+      }
+      return false;
+    }
+
+    function openMediaRecorder(stream) {
+      var attempts = recorderOptionSets(stream);
+      var targets = streamsToRecord(stream);
+      var i;
+      var j;
+      for (j = 0; j < targets.length; j++) {
+        kickVideoFrames(targets[j]);
+        for (i = 0; i < attempts.length; i++) {
+          try {
+            return attempts[i]
+              ? new MediaRecorder(targets[j], attempts[i])
+              : new MediaRecorder(targets[j]);
+          } catch (_err) {
+            /* try the next setup */
+          }
+        }
+      }
+      return null;
+    }
+
     async function startRecording() {
-      var stream = pickPreviewRecordStream();
-      if (!stream) {
+      var candidates = recordingCandidates();
+      if (!candidates.length) {
         log('Cannot record — add a webcam or screen share preview first.');
         if (destHint) {
           destHint.textContent = 'Add a webcam or screen share before recording.';
@@ -1783,55 +1867,65 @@
       }
       if (typeof MediaRecorder === 'undefined') {
         log('MediaRecorder not supported in this browser.');
+        if (destHint) destHint.textContent = 'This browser cannot record.';
         return;
       }
-      var mime = pickRecorderMime();
       recordingChunks = [];
       closeRecordingMix();
-      var mixed;
-      try {
-        mixed = await buildRecordingStream(stream);
-      } catch (err) {
-        log('Could not mix microphone into the recording: ' + (err instanceof Error ? err.message : err));
-        mixed = { stream: stream, ctx: null, micOn: false };
+      var mixed = null;
+      var recorder = null;
+      var index;
+      for (index = 0; index < candidates.length && !recorder; index++) {
+        try {
+          mixed = await buildRecordingStream(candidates[index]);
+        } catch (err) {
+          mixed = { stream: candidates[index], ctx: null, micOn: false, clones: [] };
+          log('Could not add microphone to the recording: ' + (err instanceof Error ? err.message : err));
+        }
+        await waitForVideoFrame(mixed.stream);
+        var candidate = openMediaRecorder(mixed.stream);
+        if (candidate) {
+          candidate.ondataavailable = function (ev) {
+            if (ev.data && ev.data.size > 0) recordingChunks.push(ev.data);
+          };
+          candidate.onerror = function () {
+            log('MediaRecorder error — recording stopped.');
+            void stopRecordingAndSave();
+          };
+        }
+        if (!candidate || !beginRecorder(candidate)) {
+          if (candidate && candidate.state !== 'inactive') {
+            try {
+              candidate.stop();
+            } catch (_err) {
+              /* discard the failed recorder */
+            }
+          }
+          recordingMix = mixed;
+          closeRecordingMix();
+          mixed = null;
+          continue;
+        }
+        recorder = candidate;
+      }
+      if (!recorder || !mixed) {
+        log('Could not start recorder.');
+        if (destHint) destHint.textContent = 'Recording could not start. Turn the webcam on and try again.';
+        mediaRecorder = null;
+        return;
       }
       recordingMix = mixed;
-      try {
-        mediaRecorder = mime
-          ? new MediaRecorder(mixed.stream, { mimeType: mime, audioBitsPerSecond: 128000 })
-          : new MediaRecorder(mixed.stream);
-      } catch (err) {
-        log('Could not start recorder: ' + (err instanceof Error ? err.message : err));
-        mediaRecorder = null;
-        closeRecordingMix();
-        return;
-      }
-      mediaRecorder.ondataavailable = function (ev) {
-        if (ev.data && ev.data.size > 0) recordingChunks.push(ev.data);
-      };
-      mediaRecorder.onerror = function () {
-        log('MediaRecorder error — recording stopped.');
-        void stopRecordingAndSave();
-      };
-      try {
-        recordingStartedAt = Date.now();
-        mediaRecorder.start(1000);
-      } catch (err) {
-        log('Recorder start failed: ' + (err instanceof Error ? err.message : err));
-        mediaRecorder = null;
-        recordingStartedAt = 0;
-        closeRecordingMix();
-        return;
-      }
+      mediaRecorder = recorder;
+      recordingStartedAt = Date.now();
       setRecordingUi(true);
       if (mixed.micOn) {
-        log('Recording preview with microphone. Stop to choose where to save.');
+        log('Recording preview with the selected microphone.');
       } else {
         log('Recording without a microphone. Pick a mic under Sources so the next take includes it.');
       }
       if (destHint) {
         destHint.textContent = mixed.micOn
-          ? 'Recording preview and microphone…'
+          ? 'Recording preview and the selected microphone…'
           : 'Recording preview. No microphone is selected.';
       }
     }
