@@ -67,7 +67,52 @@ def hero_bg(w: int, h: int) -> Image.Image:
     return im
 
 
+# Site favicon. Cream → Mikado, League Spartan M. Drawn upright so a 16px tab
+# keeps both legs; the old italic T (and a sheared M) read as a T at that size.
+CREAM_BRIGHT = (255, 248, 228)
+MIKADO = (255, 196, 12)
+MARK = (26, 20, 8)
+MAKA_FONT = ROOT / "scripts" / "fonts" / "LeagueSpartan-900.ttf"
+
+
+def maka_font(size: int) -> ImageFont.FreeTypeFont:
+    return ImageFont.truetype(str(MAKA_FONT), size)
+
+
+def draw_site_favicon(size: int) -> Image.Image:
+    """makalive.stream tab icon. Upright M. Not used for the desktop exe."""
+    im = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    pad = max(1, size // 18)
+    radius = max(3, size // 5)
+    inner = size - 2 * pad
+    for y in range(pad, size - pad):
+        for x in range(pad, size - pad):
+            if (x - pad) ** 2 + (y - pad) ** 2 < inner ** 2:
+                t = (x - pad) / max(1, inner)
+                r = int(CREAM_BRIGHT[0] * (1 - t) + MIKADO[0] * t)
+                g = int(CREAM_BRIGHT[1] * (1 - t) + MIKADO[1] * t)
+                b = int(CREAM_BRIGHT[2] * (1 - t) + MIKADO[2] * t)
+                im.putpixel((x, y), (r, g, b, 255))
+    d.rounded_rectangle(
+        [pad, pad, size - pad - 1, size - pad - 1],
+        radius=radius,
+        outline=(255, 255, 255, 90),
+    )
+    face = maka_font(max(8, int(size * 0.72)))
+    bbox = d.textbbox((0, 0), "M", font=face)
+    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    d.text(
+        ((size - tw) // 2 - bbox[0], (size - th) // 2 - bbox[1] - size // 64),
+        "M",
+        font=face,
+        fill=MARK,
+    )
+    return im
+
+
 def draw_icon(size: int) -> Image.Image:
+    # Package / exe tile. The website tab icon is draw_site_favicon.
     im = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     d = ImageDraw.Draw(im)
     pad = max(2, size // 16)
@@ -195,8 +240,8 @@ def draw_marquee() -> Image.Image:
     return im
 
 
-def write_ico(path: Path, sizes: list[int]) -> None:
-    images = [draw_icon(s) for s in sizes]
+def write_ico(path: Path, sizes: list[int], drawer=draw_icon) -> None:
+    images = [drawer(s) for s in sizes]
     header = struct.pack("<HHH", 0, 1, len(images))
     offset = 6 + 16 * len(images)
     entries = b""
@@ -244,8 +289,10 @@ def main() -> None:
 
     save_png(draw_download_badge("DOWNLOAD NOW"), SITE / "download-now.png")
     save_png(master.resize((512, 512), Image.Resampling.LANCZOS), SITE / "icons" / "icon-512.png")
-    save_png(master.resize((192, 192), Image.Resampling.LANCZOS), SITE / "apple-touch-icon.png")
-    save_png(master.resize((32, 32), Image.Resampling.LANCZOS), SITE / "favicon-32.png")
+    # Tab icon is its own tile so a later package regen cannot put the T back.
+    save_png(draw_site_favicon(192), SITE / "apple-touch-icon.png")
+    save_png(draw_site_favicon(32), SITE / "favicon-32.png")
+    write_ico(SITE.parent / "favicon.ico", [16, 32], draw_site_favicon)
 
     for s in [16, 24, 32, 48, 64, 128, 256]:
         save_png(master.resize((s, s), Image.Resampling.LANCZOS), RESOURCES / f"icon-{s}.png")
