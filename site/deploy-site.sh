@@ -63,6 +63,17 @@ fi
 if [ -f "${SRC_DIR}/nginx/makalive.stream.skydav.work.conf" ]; then
   cp "${SRC_DIR}/nginx/makalive.stream.skydav.work.conf" /etc/nginx/sites-available/makalive.stream
   ln -sf /etc/nginx/sites-available/makalive.stream /etc/nginx/sites-enabled/makalive.stream
+  # Drop legacy filename leftover from the old origin vhost.
+  rm -f /etc/nginx/sites-enabled/tabcast.live.skydav.work \
+        /etc/nginx/sites-available/tabcast.live.skydav.work
+fi
+
+if [ -f "${SRC_DIR}/nginx/legacy-hostname-redirect.conf" ]; then
+  cp "${SRC_DIR}/nginx/legacy-hostname-redirect.conf" /etc/nginx/sites-available/legacy-hostname-redirect.conf
+  ln -sf /etc/nginx/sites-available/legacy-hostname-redirect.conf \
+    /etc/nginx/sites-enabled/legacy-hostname-redirect.conf
+  rm -f /etc/nginx/sites-enabled/legacy-tabcast-redirect.conf \
+        /etc/nginx/sites-available/legacy-tabcast-redirect.conf
 fi
 
 nginx -t

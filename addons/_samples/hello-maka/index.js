@@ -1,15 +1,15 @@
-/** Hello Tabcast — minimal sandboxed addon using tabcast.addons API. */
+/** Hello Maka — minimal sandboxed addon using maka.addons API. */
 ;(async () => {
   const status = document.getElementById('status')
   const meta = document.getElementById('meta')
   const btn = document.getElementById('btn-toast')
 
-  if (!window.tabcast?.addons) {
-    status.textContent = 'tabcast.addons bridge not available'
+  if (!window.maka?.addons) {
+    status.textContent = 'maka.addons bridge not available'
     return
   }
 
-  const api = window.tabcast.addons
+  const api = window.maka.addons
 
   try {
     const info = await api.getInfo()

@@ -1,18 +1,18 @@
 import type { CatalogEntry } from './addon-types'
-import { HELLO_TABCAST_FILES } from './hello-tabcast-files'
+import { HELLO_MAKA_FILES } from './hello-maka-files'
 import { PHONE_CAM_FILES } from './phone-cam-files'
 
 /** Curated marketplace catalog (bundled with the app). Remote feed can replace this in 0.4+. */
 export const MARKETPLACE_CATALOG: CatalogEntry[] = [
   {
-    catalogId: 'tabcast.scene-templates',
+    catalogId: 'maka.scene-templates',
     featured: true,
     manifest: {
-      id: 'tabcast.scene-templates',
+      id: 'maka.scene-templates',
       name: 'Scene templates',
       version: '1.0.0',
       apiVersion: 1,
-      author: 'Tabcast',
+      author: 'Maka',
       category: 'builtin',
       description: 'One-click encoder layouts: gaming + cam, desk, browse showcase.',
       permissions: ['scene.layout'],
@@ -21,14 +21,14 @@ export const MARKETPLACE_CATALOG: CatalogEntry[] = [
     },
   },
   {
-    catalogId: 'com.tabcast.custom-rtmp',
+    catalogId: 'com.maka.custom-rtmp',
     featured: true,
     manifest: {
-      id: 'com.tabcast.custom-rtmp',
+      id: 'com.maka.custom-rtmp',
       name: 'Custom RTMP / Kick',
       version: '0.1.0',
       apiVersion: 1,
-      author: 'Tabcast (example)',
+      author: 'Maka (example)',
       category: 'platform',
       description:
         'Stream to Kick, Facebook Live, or any RTMP endpoint — adds a Custom RTMP destination row.',
@@ -66,13 +66,13 @@ export const MARKETPLACE_CATALOG: CatalogEntry[] = [
     },
   },
   {
-    catalogId: 'com.tabcast.lower-thirds',
+    catalogId: 'com.maka.lower-thirds',
     manifest: {
-      id: 'com.tabcast.lower-thirds',
+      id: 'com.maka.lower-thirds',
       name: 'Lower thirds',
       version: '0.1.0',
       apiVersion: 1,
-      author: 'Tabcast',
+      author: 'Maka',
       category: 'production',
       description: 'Quick lower-third style layouts for name/title overlays via scene API.',
       permissions: ['scene.layout'],
@@ -103,14 +103,14 @@ export const MARKETPLACE_CATALOG: CatalogEntry[] = [
     },
   },
   {
-    catalogId: 'com.tabcast.phone-cam',
+    catalogId: 'com.maka.phone-cam',
     featured: true,
     manifest: {
-      id: 'com.tabcast.phone-cam',
+      id: 'com.maka.phone-cam',
       name: 'Phone camera',
       version: '0.1.0',
       apiVersion: 1,
-      author: 'Tabcast',
+      author: 'Maka',
       category: 'utility',
       description:
         'Pair a phone on the same Wi‑Fi via QR — camera preview on the device (LAN only; does not feed the program monitor).',
@@ -121,21 +121,21 @@ export const MARKETPLACE_CATALOG: CatalogEntry[] = [
     files: PHONE_CAM_FILES,
   },
   {
-    catalogId: 'com.example.hello-tabcast',
+    catalogId: 'com.example.hello-maka',
     featured: true,
     manifest: {
-      id: 'com.example.hello-tabcast',
-      name: 'Hello Tabcast',
+      id: 'com.example.hello-maka',
+      name: 'Hello Maka',
       version: '0.1.0',
       apiVersion: 1,
-      author: 'Tabcast',
+      author: 'Maka',
       category: 'utility',
-      description: 'Sandboxed addon runtime demo — webview panel with tabcast.addons API.',
+      description: 'Sandboxed addon runtime demo — webview panel with maka.addons API.',
       entry: 'index.html',
       permissions: ['ui.toast', 'live.events'],
       hooks: ['app.ready', 'live.start', 'live.end', 'studio.sidebar.panel'],
     },
-    files: HELLO_TABCAST_FILES,
+    files: HELLO_MAKA_FILES,
   },
 ]
 

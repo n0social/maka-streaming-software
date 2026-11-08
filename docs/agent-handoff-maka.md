@@ -1,4 +1,4 @@
-# Agent handoff: Tabcast marketing site (CSS / wordmark / Caddy)
+# Agent handoff: Maka marketing site (CSS / wordmark / Caddy)
 
 **Branch:** `cursor/studio-redesign-continue-dc6d` (PR base `main`)
 
@@ -6,7 +6,7 @@
 
 Users visiting **`https://makalive.stream`** / **`https://www.makalive.stream`** sometimes see an unstyled hero (“black Arial MAKA”) or stale styling. Root cause on the **45.77.x Caddy** front: apex redirects drop the request path, so `/maka.css` becomes a redirect to the origin **homepage**; browsers treat `index.html` as CSS and discard it.
 
-Site **source of truth** for HTML/CSS is this repo under `site/`. **Origin** nginx on **`104.131.164.94`** serves `/opt/tabcast/web` (`makalive.stream.skydav.work`). Repo fixes are deployed; **Caddy on the public apex is still wrong** until someone with access to the 45.77 host applies the `{uri}` redirect (see `docs/site-deploy.md`).
+Site **source of truth** for HTML/CSS is this repo under `site/`. **Origin** nginx on **`104.131.164.94`** serves `/opt/maka/web` (`makalive.stream.skydav.work`). Repo fixes are deployed; **Caddy on the public apex is still wrong** until someone with access to the 45.77 host applies the `{uri}` redirect (see `docs/site-deploy.md`).
 
 ## Fixes already in repo
 
@@ -25,19 +25,19 @@ Live check (Oct 2026): `curl -sI 'https://www.makalive.stream/maka.css?v=TEST'` 
 
 ## SSH / deploy
 
-- Droplet: **`root@104.131.164.94`**, hostname `skydav`, web root **`/opt/tabcast/web`**
-- Deploy: rsync `site/` → `/opt/tabcast/site-src/`, run `deploy-site.sh` (full commands in `docs/site-deploy.md`)
+- Droplet: **`root@104.131.164.94`**, hostname `skydav`, web root **`/opt/maka/web`**
+- Deploy: rsync `site/` → `/opt/maka/site-src/`, run `deploy-site.sh` (full commands in `docs/site-deploy.md`)
 - Cloud agents: `.cursor/environment.json` installs `openssh-client`, `npm ci`, and `known_hosts` for the droplet. **SSH private key** must come from Cursor Cloud Agent secrets / authorized key on the droplet — never commit keys.
 
 Verify SSH (no password prompt):
 
 ```bash
-ssh -o BatchMode=yes root@104.131.164.94 'hostname && ls /opt/tabcast/web/index.html'
+ssh -o BatchMode=yes root@104.131.164.94 'hostname && ls /opt/maka/web/index.html'
 ```
 
 ## Read first
 
-1. **`docs/agent-handoff-tabcast.md`** (this file) — context
+1. **`docs/agent-handoff-maka.md`** (this file) — context
 2. **`docs/site-deploy.md`** — deploy + Caddy + verification curls
 3. **`site/maka.css`** — wordmark / foil (search `maka-wordmark`)
 4. **`site/index.html`** — hero markup + critical inline fallback CSS

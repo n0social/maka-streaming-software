@@ -16,7 +16,7 @@ import {
   type RelayHealth,
   type RelayLifecycle,
   type RelayStatusResponse,
-} from '../shared/tabcast'
+} from '../shared/maka-constants'
 import type { RelaySnapshot } from '../shared/relay-snapshot'
 import { MAX_LIVE_RETRY_ATTEMPTS, liveRetryBackoffMs } from '../shared/live-retry'
 import { recordDiagnostic } from './diagnostics'
@@ -214,7 +214,7 @@ export type OrphanRelayReport = {
   portConflict: boolean
 }
 
-/** TabcastRelay.exe processes not owned by this app's relay child. */
+/** Stray vendor relay.exe processes not owned by this app's relay child. */
 export async function detectOrphanRelayProcesses(
   ownedPid: number | null,
 ): Promise<OrphanRelayReport> {
@@ -280,7 +280,7 @@ type DirectRelayLaunch = {
   mode: 'direct' | 'launcher'
 }
 
-/** Prefer installed Node relay (no tray). Fall back to TabcastRelay.exe for first extract. */
+/** Prefer installed Node relay (no tray). Fall back to vendor relay.exe for first extract. */
 function resolveLaunch(): DirectRelayLaunch {
   const localApp = process.env.LOCALAPPDATA
   if (localApp) {

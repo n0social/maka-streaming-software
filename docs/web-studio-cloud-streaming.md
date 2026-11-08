@@ -10,7 +10,7 @@ This doc is about the **web client workflow**. The Electron exe (`src/renderer`)
 | Web studio shell / modules | `site/stream/` (`index.html`, `js/*`, `css/*`) |
 | Encode profile IDs (720p30…4k60) | `src/shared/stream-encode-profiles.ts` |
 | `POST /config` body builder | `src/shared/relay-config.ts` |
-| Relay HTTP paths / WHIP track ids | `src/shared/tabcast.ts` |
+| Relay HTTP paths / WHIP track ids | `src/shared/maka-constants.ts` |
 | Desktop sidecar spawn (reference) | `src/main/relay.ts` — web **cannot** spawn this |
 
 Relay listens on **`http://127.0.0.1:38473`** only. Stream keys and RTMP never leave the streamer’s PC via Maka’s website.

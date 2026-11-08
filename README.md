@@ -6,7 +6,7 @@ Studio branding uses an **original fan-inspired anime streamer mascot** (blonde 
 
 ![Maka studio with a live game stream in the program monitor](docs/readme-hero.png)
 
-Maka is **free streaming software** for Windows: a desktop **Electron studio** for game capture, scenes, and **Go Live** without wiring up OBS first. A local **TabcastRelay** on `127.0.0.1:38473` takes WHIP from the app, encodes with FFmpeg, and pushes **RTMP** to Twitch, YouTube, or a custom RTMP endpoint. Stream keys stay in relay RAM — not written to disk by the UI.
+Maka is **free streaming software** for Windows: a desktop **Electron studio** for game capture, scenes, and **Go Live** without wiring up OBS first. A local **MAKA Relay** on `127.0.0.1:38473` takes WHIP from the app, encodes with FFmpeg, and pushes **RTMP** to Twitch, YouTube, or a custom RTMP endpoint. Stream keys stay in relay RAM — not written to disk by the UI.
 
 **Website:** [makalive.stream.skydav.work](https://makalive.stream.skydav.work)
 
@@ -45,7 +45,7 @@ On Windows, `npm run dist` produces the NSIS installer. Use tag **`maka.streamin
 |--------|------|
 | **Studio** | Program monitor, display/window capture, webcam/mic, layers, destinations, Go Live |
 | **Browse** | Multi-tab Chromium pane (Twitch, YouTube Studio, chat) with optional chat pop-out |
-| **TabcastRelay** | Local encoder on port **38473** — WHIP in, RTMP out to your platforms |
+| **MAKA Relay** | Local encoder on port **38473** — WHIP in, RTMP out to your platforms |
 
 ---
 
@@ -77,7 +77,7 @@ Automatic reconnect with a **fatal-vs-blip** retry policy (ingest/key errors sto
 [Display / window / webcam / mic / optional phone]
         │  capture APIs
         ▼
-[Maka Studio UI]  ──WHIP──►  [TabcastRelay :38473]  ──RTMP──►  Twitch / YouTube / Custom
+[Maka Studio UI]  ──WHIP──►  [MAKA Relay :38473]  ──RTMP──►  Twitch / YouTube / Custom
 [Browse tabs / chat]
 ```
 

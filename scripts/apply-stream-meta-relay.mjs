@@ -21,7 +21,7 @@ writeFileSync(
   readFileSync(join(import.meta.dirname, 'relay-config.ts.snippet'), 'utf8'),
 )
 
-patch('src/shared/tabcast.ts', [
+patch('src/shared/maka-constants.ts', [
   [
     `export type RelayConfigRequest = {
   twitchKey?: string
@@ -62,10 +62,10 @@ import {
   RELAY_BASE_URL,`,
   ],
   [
-    `} from '../shared/tabcast'
+    `} from '../shared/maka-constants'
 import { normalizeStreamKey } from '../shared/stream-keys'
 `,
-    `} from '../shared/tabcast'
+    `} from '../shared/maka-constants'
 `,
   ],
   [

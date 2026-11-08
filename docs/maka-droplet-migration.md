@@ -26,9 +26,9 @@
 | Item | Value |
 | --- | --- |
 | Host | `skydav` — Ubuntu, ~961 MiB RAM, 24G disk (~20G used / 4.2G free) |
-| Tree | `/opt/maka` **~1.3G**; `/opt/tabcast` → `/opt/maka` |
+| Tree | `/opt/maka` **~1.3G**; `/opt/maka` → `/opt/maka` |
 | Web | `/opt/maka/web` **~1.1G** (almost all `/downloads/*.exe`, ~1.1G) |
-| Signaling | pm2 `tabcast-signaling` → `/opt/tabcast/apps/signaling/dist/index.js`, port **3001**, Node 22 |
+| Signaling | pm2 `maka-signaling` → `/opt/maka/apps/signaling/dist/index.js`, port **3001**, Node 22 |
 | Other pm2 | `skydav-portfolio` on **:3000** (unrelated; stays on skydav) |
 | nginx | Site `makalive.stream.skydav.work` also serves `makalive.stream` + `www.makalive.stream`; root `/opt/maka/web`; `/ws` + API → `127.0.0.1:3001`; TLS under `/etc/letsencrypt/live/makalive.stream.skydav.work/` |
 | Certbot / nginx / node / pm2 | Present; **ufw inactive** |
@@ -114,7 +114,7 @@ rsync -aHAX --info=progress2 \
   /opt/maka/ root@NEW_IP:/opt/maka/
 
 # Optional convenience symlink (matches current layout):
-ssh root@NEW_IP 'ln -sfn /opt/maka /opt/tabcast'
+ssh root@NEW_IP 'ln -sfn /opt/maka /opt/maka'
 ```
 
 Preserve `apps/signaling/.env` permissions (`chmod 600`). Update on the new host:
@@ -126,8 +126,8 @@ Preserve `apps/signaling/.env` permissions (`chmod 600`). Update on the new host
 ### pm2 signaling
 
 ```bash
-cd /opt/maka/apps/signaling   # or /opt/tabcast/apps/signaling
-pm2 start dist/index.js --name tabcast-signaling --node-args='--env-file=.env'
+cd /opt/maka/apps/signaling   # or /opt/maka/apps/signaling
+pm2 start dist/index.js --name maka-signaling --node-args='--env-file=.env'
 pm2 save
 pm2 startup
 ```
@@ -190,7 +190,7 @@ server {
 
 - Do **not** create the DO droplet from the agent without a clear API token.
 - Do **not** migrate live traffic yet.
-- Do **not** tear down `/opt/maka` or stop `tabcast-signaling` on skydav until the new origin is verified.
+- Do **not** tear down `/opt/maka` or stop `maka-signaling` on skydav until the new origin is verified.
 - Do **not** move `skydav-portfolio` off skydav — only ensure it links to Maka download on `makalive.stream`.
 - Do **not** replace full studio on `makalive.stream` with the thin funnel while apex still originates here.
 

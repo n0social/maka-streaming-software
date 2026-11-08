@@ -21,7 +21,7 @@ import type {
   MarketplaceItem,
 } from '../shared/addon-types'
 import { SCENE_TEMPLATES } from '../shared/scene-templates'
-import type { StreamProfile } from '../shared/tabcast'
+import type { StreamProfile } from '../shared/maka-constants'
 import { loadAddonSettings, saveAddonSettings } from './addon-settings'
 import {
   getBundledCatalog,
@@ -66,11 +66,11 @@ export class AddonHost {
     this.manifests.clear()
     this.state = loadAddonState()
     this.registerBuiltin({
-      id: 'tabcast.scene-templates',
+      id: 'maka.scene-templates',
       name: 'Scene templates',
       version: '1.0.0',
       apiVersion: 1,
-      author: 'Tabcast',
+      author: 'Maka',
       category: 'builtin',
       description: 'One-click layouts for the relay encoder.',
       permissions: ['scene.layout'],
@@ -214,7 +214,7 @@ export class AddonHost {
   }
 
   runAction(addonId: string, actionId: string, ctx: ActionContext): AddonActionResult {
-    if (addonId === 'tabcast.scene-templates') {
+    if (addonId === 'maka.scene-templates') {
       return this.runSceneTemplate(actionId, ctx)
     }
 
@@ -255,7 +255,7 @@ export class AddonHost {
     const dir = join(addonsInstallDir(), folder)
     mkdirSync(dir, { recursive: true })
     writeFileSync(
-      join(dir, 'tabcast-addon.json'),
+      join(dir, 'maka-addon.json'),
       `${JSON.stringify(validated.manifest, null, 2)}\n`,
       'utf8',
     )
@@ -487,8 +487,11 @@ export class AddonHost {
     }
 
     for (const folder of entries) {
-      const manifestPath = join(dir, folder, 'tabcast-addon.json')
-      if (!existsSync(manifestPath)) continue
+      const manifestPath = [
+        join(dir, folder, 'maka-addon.json'),
+        join(dir, folder, 'tabcast-addon.json'),
+      ].find((candidate) => existsSync(candidate))
+      if (!manifestPath) continue
       try {
         const raw = JSON.parse(readFileSync(manifestPath, 'utf8'))
         const validated = validateManifest(raw)

@@ -1,4 +1,4 @@
-import type { SceneLayout } from './tabcast'
+import type { SceneLayout } from './maka-constants'
 
 export type DeclarativeAddonAction =
   | {

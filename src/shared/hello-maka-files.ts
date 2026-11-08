@@ -1,11 +1,11 @@
-/** Bundled Hello Tabcast sample files (mirrors addons/_samples/hello-tabcast/). */
-export const HELLO_TABCAST_FILES: Record<string, string> = {
+/** Bundled Hello Maka sample files (mirrors addons/_samples/hello-maka/). */
+export const HELLO_MAKA_FILES: Record<string, string> = {
   'index.html': `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline';" />
-    <title>Hello Tabcast</title>
+    <title>Hello Maka</title>
     <style>
       :root { color-scheme: dark; font-family: system-ui, sans-serif; }
       body { margin: 0; padding: 0.65rem 0.75rem; background: #121218; color: #e8e8ec; font-size: 0.82rem; }
@@ -16,7 +16,7 @@ export const HELLO_TABCAST_FILES: Record<string, string> = {
     </style>
   </head>
   <body>
-    <div><strong>Hello Tabcast</strong> — sandboxed addon runtime</div>
+    <div><strong>Hello Maka</strong> — sandboxed addon runtime</div>
     <div id="meta"></div>
     <button type="button" id="btn-toast">Send studio toast</button>
     <div id="status">Loading…</div>
@@ -24,16 +24,16 @@ export const HELLO_TABCAST_FILES: Record<string, string> = {
   </body>
 </html>
 `,
-  'index.js': `/** Hello Tabcast — minimal sandboxed addon using tabcast.addons API. */
+  'index.js': `/** Hello Maka — minimal sandboxed addon using maka.addons API. */
 ;(async () => {
   const status = document.getElementById('status')
   const meta = document.getElementById('meta')
   const btn = document.getElementById('btn-toast')
-  if (!window.tabcast?.addons) {
-    status.textContent = 'tabcast.addons bridge not available'
+  if (!window.maka?.addons) {
+    status.textContent = 'maka.addons bridge not available'
     return
   }
-  const api = window.tabcast.addons
+  const api = window.maka.addons
   try {
     const info = await api.getInfo()
     meta.textContent = info.name + ' v' + info.version + ' · API ' + info.apiVersion

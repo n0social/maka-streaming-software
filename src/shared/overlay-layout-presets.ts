@@ -1,4 +1,4 @@
-import type { SceneLayout, SceneSource, StreamProfile } from './tabcast'
+import type { SceneLayout, SceneSource, StreamProfile } from './maka-constants'
 import { canvasForEncodeProfile } from './stream-encode-profiles'
 
 export type OverlayLayoutPreset = {

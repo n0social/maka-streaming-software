@@ -1,6 +1,6 @@
 import { encodeProfileSpec, normalizeEncodeProfileId, type EncodeProfileId } from './stream-encode-profiles'
 import { normalizeStreamKey } from './stream-keys'
-import type { RelayConfigRequest, StreamProfile } from './tabcast'
+import type { RelayConfigRequest, StreamProfile } from './maka-constants'
 
 export type VideoEncoderPreference = 'system' | 'hardware' | 'software'
 

@@ -91,7 +91,7 @@ async function main() {
     throw new Error(`SHA-256 mismatch.\nExpected ${expectedSha}\nGot      ${digest}`)
   }
 
-  console.log(`OK — TabcastRelay.exe ready (sha256 ${digest.slice(0, 12)}…)`)
+  console.log(`OK — vendor relay.exe ready (sha256 ${digest.slice(0, 12)}…)`)
   console.log(`Port ${manifest.port} · stream ${manifest.streamUrl}`)
 
   writeFileSync(

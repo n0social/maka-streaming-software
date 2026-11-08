@@ -1,4 +1,4 @@
-# Tabcast / Maka static site deploy
+# Maka static site deploy
 
 Consolidated runbook for marketing HTML, `maka.css`, downloads, `/stream/`, and `/preview/`.
 
@@ -7,7 +7,7 @@ Consolidated runbook for marketing HTML, `maka.css`, downloads, `/stream/`, and 
 | Layer | Host | Role |
 | --- | --- | --- |
 | **Public apex** | `makalive.stream`, `www.makalive.stream` (Caddy on **45.77.x**) | TLS + redirect to origin; **must preserve `{uri}`** |
-| **Origin** | `makalive.stream.skydav.work` on DO droplet **`104.131.164.94`** | nginx serves **`/opt/tabcast/web`** |
+| **Origin** | `makalive.stream.skydav.work` on DO droplet **`104.131.164.94`** | nginx serves **`/opt/maka/web`** |
 
 Deploy target user: **`root@104.131.164.94`** (hostname `skydav`).
 
@@ -22,8 +22,8 @@ Repository file **`.cursor/environment.json`** runs `.cursor/cloud-agent-install
 **Secrets:** Do **not** commit private SSH keys. The droplet must trust the Cloud Agent’s key (Cursor Cloud Agent secrets / dashboard SSH key, or `authorized_keys` on the droplet). Agents deploy with:
 
 ```bash
-rsync … root@104.131.164.94:/opt/tabcast/site-src/
-ssh root@104.131.164.94 'WEB_ROOT=/opt/tabcast/web bash /opt/tabcast/site-src/deploy-site.sh'
+rsync … root@104.131.164.94:/opt/maka/site-src/
+ssh root@104.131.164.94 'WEB_ROOT=/opt/maka/web bash /opt/maka/site-src/deploy-site.sh'
 ```
 
 ### SSH smoke test (BatchMode)
@@ -32,10 +32,10 @@ From any machine (or Cloud Agent) with the key loaded:
 
 ```bash
 ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
-  root@104.131.164.94 'hostname && ls /opt/tabcast/web/index.html'
+  root@104.131.164.94 'hostname && ls /opt/maka/web/index.html'
 ```
 
-Expected: `skydav` and `/opt/tabcast/web/index.html`. Nonzero exit or “Permission denied” means fix keys/secrets before deploy.
+Expected: `skydav` and `/opt/maka/web/index.html`. Nonzero exit or “Permission denied” means fix keys/secrets before deploy.
 
 ## Deploy to origin (104.131.164.94)
 
@@ -44,13 +44,13 @@ From repo root, on a machine with SSH to the droplet:
 ```bash
 rsync -avz --delete \
   --exclude '.git' \
-  ./site/ root@104.131.164.94:/opt/tabcast/site-src/
-ssh root@104.131.164.94 'WEB_ROOT=/opt/tabcast/web bash /opt/tabcast/site-src/deploy-site.sh'
+  ./site/ root@104.131.164.94:/opt/maka/site-src/
+ssh root@104.131.164.94 'WEB_ROOT=/opt/maka/web bash /opt/maka/site-src/deploy-site.sh'
 ```
 
-`site/deploy-site.sh` copies assets into `/opt/tabcast/web`, installs nginx site + cache snippet, reloads nginx. Default CSS cache bust: **`CSS_BUILD=dc6d035`** (override with env if needed).
+`site/deploy-site.sh` copies assets into `/opt/maka/web`, installs nginx site + cache snippet, reloads nginx. Default CSS cache bust: **`CSS_BUILD=dc6d035`** (override with env if needed).
 
-Alternative: copy `site/` into `/opt/tabcast/site-src` on the server and run the same `deploy-site.sh` there.
+Alternative: copy `site/` into `/opt/maka/site-src` on the server and run the same `deploy-site.sh` there.
 
 ## Branch / repo state (studio redesign)
 
@@ -63,7 +63,7 @@ On **`cursor/studio-redesign-continue-dc6d`**:
 
 Key commits: **`e4cc8e2`** (Caddy/path/nginx), **`a4eee92`** (wordmark 35° + foil).
 
-Handoff summary: **`docs/agent-handoff-tabcast.md`**.
+Handoff summary: **`docs/agent-handoff-maka.md`**.
 
 ## Caddy on 45.77.x (makalive.stream / www) — preserve `{uri}`
 
@@ -118,7 +118,7 @@ curl -sI 'https://makalive.stream/' | grep -i location
 `site/deploy-site.sh` installs:
 
 - `/etc/nginx/sites-available/makalive.stream.skydav.work` (from `site/nginx/makalive.stream.skydav.work.conf`)
-- `/etc/nginx/snippets/tabcast-site-cache.conf` (from `site/tabcast-site-cache.conf`) — exact `/maka.css` handling, `text/css`, no SPA fallback for CSS
+- `/etc/nginx/snippets/maka-site-cache.conf` (from `site/maka-site-cache.conf`) — exact `/maka.css` handling, `text/css`, no SPA fallback for CSS
 
 ## Cache bust
 
