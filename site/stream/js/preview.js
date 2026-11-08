@@ -246,15 +246,6 @@ export function initPreview(root) {
   /** @type {MutationObserver | null} */
   let liveClassObserver = null;
 
-  function isProgramLive() {
-    const program =
-      root.closest('.program') ||
-      (typeof document !== 'undefined' ? document.getElementById('program') : null);
-    if (program && program.classList.contains('is-live')) return true;
-    if (els.stage && els.stage.classList.contains('is-live')) return true;
-    return false;
-  }
-
   /**
    * Sources row gold state, once scenes has written it.
    * @returns {boolean | null} null when the row has not been synced yet
@@ -269,55 +260,56 @@ export function initPreview(root) {
     return null;
   }
 
-  function wantsShown(id, fallback) {
+  /** Gold row wins: an unhighlighted source stays hidden even if a flag was left on. */
+  function rowAllows(id) {
     const row = sourceRowShown(id);
-    if (row === null) return fallback;
+    if (row === null) return true;
     return row;
   }
 
+  function hasLiveVideo(stream) {
+    return Boolean(stream && stream.getVideoTracks().some((t) => t.readyState === 'live'));
+  }
+
+  /** What the program canvas is allowed to paint. Draw loop reads these, not CSS alone. */
+  let drawCam = false;
+  let drawGame = false;
+
   function syncUi() {
     if (destroyed) return;
-    const hasScreen = Boolean(
-      screenStream && screenStream.getVideoTracks().some((t) => t.readyState === 'live'),
-    );
-    const hasCam = Boolean(
-      webcamStream && webcamStream.getVideoTracks().some((t) => t.readyState === 'live'),
-    );
-    const showGame = wantsShown('studio-source-game', gameCaptureDesired) && hasScreen;
-    const showCam = wantsShown('studio-source-webcam', webcamPipDesired);
-    const live = isProgramLive();
+    const hasScreen = hasLiveVideo(screenStream);
+    const hasCam = hasLiveVideo(webcamStream);
+    // Both the explicit flag and the gold row must agree. startWebcam / setWebcamStream
+    // must not flip the flag back on, or a hidden row would reappear on the next sync.
+    const showGame = gameCaptureDesired && rowAllows('studio-source-game') && hasScreen;
+    const showCam = webcamPipDesired && rowAllows('studio-source-webcam');
+    drawGame = showGame;
+    drawCam = showCam && hasCam;
 
     // Game Capture owns the picture. Hiding it leaves the black bed — never a full-frame webcam.
-    if (showGame) {
-      if (els.program.srcObject !== screenStream) els.program.srcObject = screenStream;
-      els.program.hidden = false;
-      void els.program.play().catch(() => undefined);
-    } else {
-      // Keep a live share attached so highlighting the row shows the same stream.
-      if (!hasScreen) els.program.srcObject = null;
-      els.program.hidden = true;
+    if (hasScreen && screenStream && els.program.srcObject !== screenStream) {
+      els.program.srcObject = screenStream;
+    } else if (!hasScreen && els.program.srcObject) {
+      els.program.srcObject = null;
     }
+    els.program.hidden = !showGame;
+    if (showGame) void els.program.play().catch(() => undefined);
 
     if (els.cam) {
-      if (showCam) {
-        els.cam.hidden = false;
-        if (hasCam && els.camVideo) {
-          if (els.camVideo.srcObject !== webcamStream) els.camVideo.srcObject = webcamStream;
-          els.camVideo.hidden = false;
-          if (els.camOffline) els.camOffline.hidden = true;
-          void els.camVideo.play().catch(() => undefined);
-        } else if (els.camVideo) {
+      els.cam.hidden = !showCam;
+      if (els.camVideo) {
+        if (hasCam && webcamStream && els.camVideo.srcObject !== webcamStream) {
+          els.camVideo.srcObject = webcamStream;
+        } else if (!hasCam) {
           els.camVideo.srcObject = null;
-          els.camVideo.hidden = true;
-          if (els.camOffline) {
-            els.camOffline.hidden = false;
-            els.camOffline.textContent = WEBCAM_OFFLINE;
-          }
         }
-      } else {
-        els.cam.hidden = true;
-        // Detach the element only. The MediaStreamTrack keeps running.
-        if (els.camVideo) els.camVideo.srcObject = null;
+        // Keep the MediaStream attached while hidden so the track stays live.
+        els.camVideo.hidden = !(showCam && hasCam);
+        if (showCam && hasCam) void els.camVideo.play().catch(() => undefined);
+      }
+      if (els.camOffline) {
+        els.camOffline.hidden = !(showCam && !hasCam);
+        if (showCam && !hasCam) els.camOffline.textContent = WEBCAM_OFFLINE;
       }
     }
 
@@ -326,7 +318,19 @@ export function initPreview(root) {
       els.empty.hidden = true;
     }
 
-    if (els.stage) els.stage.dataset.gameBed = showGame ? 'capture' : 'black';
+    if (els.stage) {
+      els.stage.dataset.gameBed = showGame ? 'capture' : 'black';
+      els.stage.dataset.drawCam = drawCam ? '1' : '0';
+      els.stage.dataset.drawGame = drawGame ? '1' : '0';
+    }
+
+    // Keep a paintable copy of the share even while #program-video is hidden.
+    // display:none can zero a display-capture's layout size so drawImage paints nothing.
+    syncGamePaint(hasScreen ? screenStream : null);
+    if (programStream) {
+      drawProgramFrame();
+      requestProgramFrame();
+    }
 
     const detail = {
       hasScreen,
@@ -368,18 +372,12 @@ export function initPreview(root) {
   }
 
   function setWebcamPipVisible(show) {
-    const row = sourceRowShown('studio-source-webcam');
-    if (row === false) webcamPipDesired = false;
-    else if (row === true) webcamPipDesired = true;
-    else webcamPipDesired = Boolean(show);
+    webcamPipDesired = Boolean(show);
     syncUi();
   }
 
   function setGameVisible(show) {
-    const row = sourceRowShown('studio-source-game');
-    if (row === false) gameCaptureDesired = false;
-    else if (row === true) gameCaptureDesired = true;
-    else gameCaptureDesired = Boolean(show);
+    gameCaptureDesired = Boolean(show);
     syncUi();
   }
 
@@ -500,6 +498,7 @@ export function initPreview(root) {
     stopTracks(screenStream);
     screenStream = null;
     clearDisplayAudioFromMixer();
+    stopGamePaint();
     if (els.program.srcObject) els.program.srcObject = null;
     syncUi();
   }
@@ -575,6 +574,17 @@ export function initPreview(root) {
   let programCanvas = null;
   let programStream = null;
   let programDrawTimer = 0;
+  /** @type {HTMLVideoElement | null} Dedicated draw source. Never display:none. */
+  let paintVideo = null;
+  /** @type {MediaStream | null} */
+  let paintedStream = null;
+  /** @type {ReadableStreamDefaultReader<VideoFrame> | null} */
+  let frameReader = null;
+  /** @type {VideoFrame | null} */
+  let latestGameFrame = null;
+  /** @type {MediaStreamTrack[]} clones owned by the paint path — never the live share */
+  let paintClones = [];
+  let framePumpToken = 0;
 
   function ensureProgramCanvas() {
     if (!programCanvas) {
@@ -585,25 +595,205 @@ export function initPreview(root) {
     return programCanvas;
   }
 
-  function drawContained(ctx, video, dx, dy, dw, dh) {
-    if (!video || video.readyState < 2 || !video.videoWidth || dw < 2 || dh < 2) return;
-    const scale = Math.min(dw / video.videoWidth, dh / video.videoHeight);
-    const tw = video.videoWidth * scale;
-    const th = video.videoHeight * scale;
-    ctx.drawImage(video, dx + (dw - tw) / 2, dy + (dh - th) / 2, tw, th);
+  function closeLatestGameFrame() {
+    if (!latestGameFrame) return;
+    try {
+      latestGameFrame.close();
+    } catch (_) {
+      /* already closed */
+    }
+    latestGameFrame = null;
   }
 
-  function drawCover(ctx, video, dx, dy, dw, dh) {
-    if (!video || video.readyState < 2 || !video.videoWidth || dw < 2 || dh < 2) return;
-    const scale = Math.max(dw / video.videoWidth, dh / video.videoHeight);
-    const tw = video.videoWidth * scale;
-    const th = video.videoHeight * scale;
+  /**
+   * Display-capture frames often refuse to paint from a display:none video
+   * (videoWidth stays 0, drawImage writes nothing). This element stays in the
+   * document with a real box; opacity keeps it out of the preview.
+   */
+  function ensurePaintVideo() {
+    if (paintVideo && paintVideo.isConnected) return paintVideo;
+    const video = document.createElement('video');
+    video.muted = true;
+    video.defaultMuted = true;
+    video.autoplay = true;
+    video.playsInline = true;
+    video.setAttribute('playsinline', '');
+    video.setAttribute('aria-hidden', 'true');
+    video.tabIndex = -1;
+    video.width = 160;
+    video.height = 90;
+    video.style.cssText = [
+      'position:fixed',
+      'left:0',
+      'bottom:0',
+      'width:160px',
+      'height:90px',
+      'opacity:0',
+      'pointer-events:none',
+      'z-index:-1',
+      'transform:translateZ(0)',
+    ].join(';');
+    (document.body || root).appendChild(video);
+    paintVideo = video;
+    return video;
+  }
+
+  function stopGamePaint() {
+    framePumpToken += 1;
+    const reader = frameReader;
+    frameReader = null;
+    if (reader) {
+      reader.cancel().catch(() => undefined);
+    }
+    closeLatestGameFrame();
+    paintClones.forEach((track) => {
+      try {
+        track.stop();
+      } catch (_) {
+        /* ignore */
+      }
+    });
+    paintClones = [];
+    paintedStream = null;
+    if (paintVideo) paintVideo.srcObject = null;
+  }
+
+  function watchPaintFrames(video, token) {
+    if (!video.requestVideoFrameCallback) return;
+    const loop = () => {
+      if (destroyed || framePumpToken !== token) return;
+      if (drawGame && programStream) {
+        drawProgramFrame();
+        requestProgramFrame();
+      }
+      video.requestVideoFrameCallback(loop);
+    };
+    video.requestVideoFrameCallback(loop);
+  }
+
+  function syncGamePaint(stream) {
+    if (paintedStream === stream) return;
+    stopGamePaint();
+    if (!stream) return;
+    const track = stream.getVideoTracks().find((t) => t.readyState === 'live');
+    if (!track) return;
+    paintedStream = stream;
+    const video = ensurePaintVideo();
+    // Same MediaStream as the preview, but this element is never display:none.
+    video.srcObject = stream;
+    const token = framePumpToken;
+    const arm = () => watchPaintFrames(video, token);
+    void video.play().then(arm).catch(arm);
+
+    if (typeof MediaStreamTrackProcessor !== 'function' || typeof track.clone !== 'function') return;
+    let clone = null;
+    try {
+      clone = track.clone();
+    } catch (_) {
+      clone = null;
+    }
+    if (!clone) return;
+    paintClones.push(clone);
+    try {
+      const processor = new MediaStreamTrackProcessor({ track: clone });
+      const reader = processor.readable.getReader();
+      frameReader = reader;
+      void (async () => {
+        try {
+          while (framePumpToken === token) {
+            const { value, done } = await reader.read();
+            if (done || framePumpToken !== token) {
+              if (value && typeof value.close === 'function') value.close();
+              break;
+            }
+            closeLatestGameFrame();
+            latestGameFrame = value;
+          }
+        } catch (_) {
+          /* track ended */
+        }
+      })();
+    } catch (_) {
+      try {
+        clone.stop();
+      } catch (_) {
+        /* ignore */
+      }
+      paintClones = paintClones.filter((t) => t !== clone);
+    }
+  }
+
+  function sourceSize(source) {
+    if (!source) return null;
+    try {
+      if (typeof VideoFrame !== 'undefined' && source instanceof VideoFrame) {
+        const w = source.displayWidth || source.codedWidth || 0;
+        const h = source.displayHeight || source.codedHeight || 0;
+        if (w < 2 || h < 2) return null;
+        return { w, h };
+      }
+      if (source.readyState < 2 || !source.videoWidth || !source.videoHeight) return null;
+      return { w: source.videoWidth, h: source.videoHeight };
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /** object-fit: cover. Returns false when this source has no frame yet. */
+  function drawCover(ctx, source, dx, dy, dw, dh) {
+    const size = sourceSize(source);
+    if (!size || dw < 2 || dh < 2) return false;
+    const scale = Math.max(dw / size.w, dh / size.h);
+    const tw = size.w * scale;
+    const th = size.h * scale;
     ctx.save();
     ctx.beginPath();
     ctx.rect(dx, dy, dw, dh);
     ctx.clip();
-    ctx.drawImage(video, dx + (dw - tw) / 2, dy + (dh - th) / 2, tw, th);
+    try {
+      ctx.drawImage(
+        source,
+        0,
+        0,
+        size.w,
+        size.h,
+        dx + (dw - tw) / 2,
+        dy + (dh - th) / 2,
+        tw,
+        th,
+      );
+    } catch (_) {
+      ctx.restore();
+      return false;
+    }
     ctx.restore();
+    return true;
+  }
+
+  function gamePaintSources() {
+    const sources = [];
+    if (latestGameFrame) sources.push(latestGameFrame);
+    const visible = els.program;
+    if (
+      visible &&
+      !visible.hidden &&
+      visible.clientWidth >= 2 &&
+      visible.clientHeight >= 2
+    ) {
+      sources.push(visible);
+    }
+    if (paintVideo && paintVideo.clientWidth >= 2 && paintVideo.clientHeight >= 2) {
+      sources.push(paintVideo);
+    }
+    return sources;
+  }
+
+  function drawGameInto(ctx, rect) {
+    const sources = gamePaintSources();
+    for (let i = 0; i < sources.length; i += 1) {
+      if (drawCover(ctx, sources[i], rect.x, rect.y, rect.w, rect.h)) return true;
+    }
+    return false;
   }
 
   function elementFrame(el, canvas) {
@@ -625,19 +815,18 @@ export function initPreview(root) {
     if (!ctx) return;
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    const hasScreen = Boolean(
-      screenStream && screenStream.getVideoTracks().some((t) => t.readyState === 'live'),
-    );
-    if (hasScreen && els.program && !els.program.hidden) {
-      const game = elementFrame(els.program, canvas) || {
+    // Black bed stays when Game Capture is unhighlighted or the frame is not ready.
+    // Never paint the webcam full-frame in its place.
+    if (drawGame) {
+      const game = (els.program && elementFrame(els.program, canvas)) || {
         x: 0,
         y: 0,
         w: canvas.width,
         h: canvas.height,
       };
-      drawContained(ctx, els.program, game.x, game.y, game.w, game.h);
+      drawGameInto(ctx, game);
     }
-    if (els.cam && !els.cam.hidden && els.camVideo && !els.camVideo.hidden) {
+    if (drawCam && els.cam && !els.cam.hidden && els.camVideo && !els.camVideo.hidden) {
       const cam = elementFrame(els.cam, canvas);
       if (cam) drawCover(ctx, els.camVideo, cam.x, cam.y, cam.w, cam.h);
     }
@@ -645,6 +834,18 @@ export function initPreview(root) {
 
   function requestProgramFrame() {
     if (!programStream) return;
+    // drawImage(video) can stay pending until a readback. Flush before the
+    // manual capture frame, or MediaRecorder keeps the previous black bed.
+    if (programCanvas) {
+      const readCtx = programCanvas.getContext('2d');
+      if (readCtx) {
+        try {
+          readCtx.getImageData(0, 0, 1, 1);
+        } catch (_) {
+          /* ignore */
+        }
+      }
+    }
     const track = programStream.getVideoTracks()[0];
     if (track && typeof track.requestFrame === 'function') {
       try {
@@ -680,19 +881,17 @@ export function initPreview(root) {
     ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const drawContain = (video, dx, dy, dw, dh) => {
-      if (!video || video.readyState < 2 || !video.videoWidth) return;
-      const vw = video.videoWidth;
-      const vh = video.videoHeight;
-      const scale = Math.min(dw / vw, dh / vh);
-      const tw = vw * scale;
-      const th = vh * scale;
-      ctx.drawImage(video, dx + (dw - tw) / 2, dy + (dh - th) / 2, tw, th);
-    };
+    if (drawGame) {
+      const game = (els.program && elementFrame(els.program, canvas)) || {
+        x: 0,
+        y: 0,
+        w: canvas.width,
+        h: canvas.height,
+      };
+      drawGameInto(ctx, game);
+    }
 
-    if (!els.program.hidden) drawContain(els.program, 0, 0, canvas.width, canvas.height);
-
-    if (els.cam && !els.cam.hidden && els.camVideo && !els.camVideo.hidden) {
+    if (drawCam && els.cam && !els.cam.hidden && els.camVideo && !els.camVideo.hidden) {
       const pipW = Math.round(canvas.width * 0.22);
       const pipH = Math.round(pipW * (9 / 16));
       const x = canvas.width - pipW - Math.round(canvas.width * 0.045);
@@ -700,8 +899,7 @@ export function initPreview(root) {
       ctx.strokeStyle = '#c9a227';
       ctx.lineWidth = 3;
       ctx.strokeRect(x - 1.5, y - 1.5, pipW + 3, pipH + 3);
-      // Match CSS object-fit: contain so the full webcam frame is visible.
-      drawContain(els.camVideo, x, y, pipW, pipH);
+      drawCover(ctx, els.camVideo, x, y, pipW, pipH);
     }
 
     return canvas;
@@ -763,6 +961,15 @@ export function initPreview(root) {
     getStreams,
     getProgramStream,
     captureFrameCanvas,
+    /** Flags the compose loop paints from. cam/game are false while that source is hidden. */
+    getComposeVisibility() {
+      return {
+        cam: drawCam,
+        game: drawGame,
+        webcamPipDesired,
+        gameCaptureDesired,
+      };
+    },
     destroy() {
       if (destroyed) return;
       destroyed = true;
@@ -780,6 +987,11 @@ export function initPreview(root) {
       }
       stopScreen();
       stopWebcam();
+      stopGamePaint();
+      if (paintVideo) {
+        paintVideo.remove();
+        paintVideo = null;
+      }
       delete root.dataset.previewReady;
       delete root._makaPreview;
       if (typeof globalThis !== 'undefined') {

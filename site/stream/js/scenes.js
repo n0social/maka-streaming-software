@@ -833,11 +833,13 @@
   }
 
   function stopGameCapture() {
-    var preview = getPreviewApi();
-    if (preview && typeof preview.stopScreen === 'function') preview.stopScreen();
+    sourceHighlighted.game = false;
     selectedDisplaySurface = null;
     markSourceActive('game', false);
     syncSourcePickerVisibility();
+    applySourceVisibility();
+    var preview = getPreviewApi();
+    if (preview && typeof preview.stopScreen === 'function') preview.stopScreen();
     emitAll();
   }
 
@@ -863,11 +865,13 @@
   }
 
   function stopWebcamCapture() {
-    var preview = getPreviewApi();
-    if (preview && typeof preview.stopWebcam === 'function') preview.stopWebcam();
+    sourceHighlighted.webcam = false;
     selectedCameraId = '';
     markSourceActive('webcam', false);
     syncSourcePickerVisibility();
+    applySourceVisibility();
+    var preview = getPreviewApi();
+    if (preview && typeof preview.stopWebcam === 'function') preview.stopWebcam();
     emitAll();
   }
 
