@@ -12,8 +12,8 @@ import { initPreview } from "./preview.js";
 const NARROW_MQ = "(max-width: 960px)";
 const MARKETPLACE_URLS = [
   "/marketplace.json",
-  "https://tabcast.live.skydav.work/marketplace.json",
-  "https://tabcast.live/marketplace.json",
+  "https://makalive.stream.skydav.work/marketplace.json",
+  "https://makalive.stream/marketplace.json",
 ];
 
 function resolvePreviewRoot(root) {

@@ -1,6 +1,6 @@
 # Skydav Maka funnel
 
-Minimal cream/gold hero for **`tabcast.live.skydav.work`** (and any leftover Maka hostname still on the skydav droplet) **after** apex traffic moves to the dedicated Maka droplet.
+Minimal cream/gold hero for **`makalive.stream.skydav.work`** (and any leftover Maka hostname still on the skydav droplet) **after** apex traffic moves to the dedicated Maka droplet.
 
 - CTAs: **Stream** → `https://makalive.stream/stream/`, **Download** → `https://makalive.stream/`
 - No studio SPA, no signaling proxy, no downloads tree

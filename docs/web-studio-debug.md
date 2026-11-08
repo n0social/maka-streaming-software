@@ -13,7 +13,7 @@
 
 The page **boots cleanly**. All six modules initialize. Layout containment holds at 1440×900 and 1100×700 (center does **not** expand over sidebars). Scenes, preview chrome, audio mixer, live probe honesty, and settings persistence are largely present.
 
-**2026-11-08 re-pass (post-`48db4d2`):** P0/P1 clear for boot, Go Live wizard (`#go-live-wizard-dialog` Step 1 of 4), settings open/persist (`maka.stream.settings.v1` + `maka.stream.streamTitle`), and all `/stream/js|css` + `/marketplace.json` assets 200. `download.html` retargeted to same-origin `/maka.css` + `makalive.stream` canonical (removed `tabcast.live.skydav.work` base/CSS). Relay `ERR_CONNECTION_REFUSED` still expected without sidecar.
+**2026-11-08 re-pass (post-`48db4d2`):** P0/P1 clear for boot, Go Live wizard (`#go-live-wizard-dialog` Step 1 of 4), settings open/persist (`maka.stream.settings.v1` + `maka.stream.streamTitle`), and all `/stream/js|css` + `/marketplace.json` assets 200. `download.html` retargeted to same-origin `/maka.css` + `makalive.stream` canonical (removed `makalive.stream.skydav.work` base/CSS). Relay `ERR_CONNECTION_REFUSED` still expected without sidecar.
 
 Wiring layers 1–3 addressed source-row ↔ preview capture conflicts, dead Stream Controls chrome (recording / vcam / marketplace / platform chips / studio↔browser mode), and the live ↔ preview API name (`MakaStreamPreview` canonical + `MakaPreview` alias). Remaining: other P2 polish (mic id, event emit, CSS dedupe, etc.). Nothing found that blocks first paint.
 
@@ -203,7 +203,7 @@ Ordered by impact for the next wiring pass:
 
 1. **Recording** (`#btn-start-recording` / `#stat-recording`) — `MediaRecorder` on the preview stream (screen preferred, else webcam) when available; stop downloads a timestamped WebM; idle/recording UI synced. No stream → honest hint, does not fake a recording.
 2. **Virtual Cam** (`#btn-start-vcam` / `#stat-vcam` / `#vcam-preview-mock`) — web cannot install an OS virtual camera; button toggles a labeled **preview-only** PiP canvas that mirrors the program frame. Tooltip/copy state that clearly. Does **not** claim a system camera device.
-3. **Marketplace** — added `#marketplace-dialog` (+ list/refresh/close). Browse opens dialog; Close works. Catalog from `/marketplace.json` with optional remote feed URLs (`tabcast.live` / `skydav.work`); sidebar preview fills from the same list. Install actions are browse-only (desktop installs).
+3. **Marketplace** — added `#marketplace-dialog` (+ list/refresh/close). Browse opens dialog; Close works. Catalog from `/marketplace.json` with optional remote feed URLs (`makalive.stream` / `skydav.work`); sidebar preview fills from the same list. Install actions are browse-only (desktop installs).
 4. **Twitch / YouTube chips** — toggle `data-state` armed/off; persist `maka.stream.platformPref.v1`; sync primary into settings `lastStreamPlatform` / `#set-last-platform`. Settings dropdown exclusive-syncs chips via `maka:settings-platform-sync`.
 5. **Studio Mode** (`#program-output-mode`) — switches `.app[data-output-mode]` + `body[data-mode]` studio/browse layout hint; persists as `startupMode`; matches Settings → Studio & Browser startup buttons via `maka:startup-mode-change`.
 

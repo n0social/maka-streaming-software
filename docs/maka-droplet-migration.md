@@ -4,7 +4,7 @@
 
 **Portfolio (stays on skydav):** `skydav.work` / `skydav-portfolio` keeps a **Download** link to `https://makalive.stream/download.html` (no large installer copies under the portfolio tree). Full Maka origin (studio + downloads + signaling) moves to the new droplet later; the portfolio link keeps working across that cutover.
 
-**Goal:** move **all** Maka code (static site, signaling, future relay) onto a new DO droplet. After cutover, `tabcast.live.skydav.work` (and any `*.skydav.work` Maka host) becomes a **cream/gold hero funnel** that sends streamers to `https://makalive.stream/`. Apex `makalive.stream` DNS points at the **new** droplet IP.
+**Goal:** move **all** Maka code (static site, signaling, future relay) onto a new DO droplet. After cutover, `makalive.stream.skydav.work` (and any `*.skydav.work` Maka host) becomes a **cream/gold hero funnel** that sends streamers to `https://makalive.stream/`. Apex `makalive.stream` DNS points at the **new** droplet IP.
 
 ---
 
@@ -30,7 +30,7 @@
 | Web | `/opt/maka/web` **~1.1G** (almost all `/downloads/*.exe`, ~1.1G) |
 | Signaling | pm2 `tabcast-signaling` → `/opt/tabcast/apps/signaling/dist/index.js`, port **3001**, Node 22 |
 | Other pm2 | `skydav-portfolio` on **:3000** (unrelated; stays on skydav) |
-| nginx | Site `tabcast.live.skydav.work` also serves `makalive.stream` + `www.makalive.stream`; root `/opt/maka/web`; `/ws` + API → `127.0.0.1:3001`; TLS under `/etc/letsencrypt/live/tabcast.live.skydav.work/` |
+| nginx | Site `makalive.stream.skydav.work` also serves `makalive.stream` + `www.makalive.stream`; root `/opt/maka/web`; `/ws` + API → `127.0.0.1:3001`; TLS under `/etc/letsencrypt/live/makalive.stream.skydav.work/` |
 | Certbot / nginx / node / pm2 | Present; **ufw inactive** |
 | Env keys (signaling `.env`) | `NODE_ENV`, `SIGNALING_PORT`, `SIGNALING_HOST`, `SQLITE_PATH`, `JWT_SECRET`, `WS_ORIGIN_ALLOWLIST`, `PUBLIC_WS_URL`, `NODE_OPTIONS` — copy privately; do not commit |
 
@@ -72,7 +72,7 @@ No DO API token was available in the agent environment; provisioning is left to 
 
 1. Lower TTL on `makalive.stream` / `www.makalive.stream` (e.g. 60–300s) ahead of time if possible.
 2. Set **A** records for `makalive.stream` and `www.makalive.stream` → **new droplet IP**.
-3. Leave `tabcast.live.skydav.work` on **104.131.164.94** (funnel after cutover).
+3. Leave `makalive.stream.skydav.work` on **104.131.164.94** (funnel after cutover).
 4. Wait for propagation (`dig +short makalive.stream`) before expecting certbot HTTP-01 to succeed on the new box.
 
 ---
@@ -134,7 +134,7 @@ pm2 startup
 
 ### nginx + TLS on new droplet
 
-- Adapt `site/nginx/tabcast.live.skydav.work.conf` (live skydav also lists `makalive.stream` / `www` in `server_name`).
+- Adapt `site/nginx/makalive.stream.skydav.work.conf` (live skydav also lists `makalive.stream` / `www` in `server_name`).
 - `root /opt/maka/web;`
 - Include download + cache snippets from `/etc/nginx/snippets/` (copy from skydav or from deploy scripts).
 - Proxy `/ws` and `/(auth|rooms|admin|billing|webhooks|health)` → `127.0.0.1:3001`.
@@ -168,7 +168,7 @@ mkdir -p /opt/maka-funnel
 rsync -av ./site/skydav-funnel/ root@104.131.164.94:/opt/maka-funnel/
 ```
 
-Point the skydav Maka `server_name` (`tabcast.live.skydav.work` only) `root` at `/opt/maka-funnel`. Remove `makalive.stream` / `www.makalive.stream` from that server block once DNS no longer hits skydav.
+Point the skydav Maka `server_name` (`makalive.stream.skydav.work` only) `root` at `/opt/maka-funnel`. Remove `makalive.stream` / `www.makalive.stream` from that server block once DNS no longer hits skydav.
 
 **Option 2 — replace `/opt/maka/web` contents for the skydav host only:** copy funnel `index.html` over the live web root **after** apex traffic is on the new droplet. Keep a backup tarball of `/opt/maka/web` first. Still do **not** delete `/opt/maka` tree (signaling backup, downloads archive).
 
@@ -176,11 +176,11 @@ Sample nginx idea:
 
 ```nginx
 server {
-    server_name tabcast.live.skydav.work;
+    server_name makalive.stream.skydav.work;
     root /opt/maka-funnel;
     index index.html;
     location / { try_files $uri $uri/ /index.html; }
-    # TLS: keep existing tabcast.live.skydav.work cert
+    # TLS: keep existing makalive.stream.skydav.work cert
 }
 ```
 
@@ -196,7 +196,7 @@ server {
 
 ### Funnel host note (`makalive.stream.skydav.work`)
 
-As of 2026-11-08, nginx on skydav has **no** `server_name` for `makalive.stream.skydav.work`. `tabcast.live.skydav.work` (+ `makalive.stream` / `www`) already serves `/opt/maka/web` (full studio). Deploy `site/skydav-funnel/` only after cutover (or after adding a dedicated funnel vhost); do not overwrite `/opt/maka/web` with the funnel while `makalive.stream` still points here.
+As of 2026-11-08, nginx on skydav has **no** `server_name` for `makalive.stream.skydav.work`. `makalive.stream.skydav.work` (+ `makalive.stream` / `www`) already serves `/opt/maka/web` (full studio). Deploy `site/skydav-funnel/` only after cutover (or after adding a dedicated funnel vhost); do not overwrite `/opt/maka/web` with the funnel while `makalive.stream` still points here.
 
 ---
 

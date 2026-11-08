@@ -4,13 +4,13 @@
  *
  * Web studio Go Live / relay / WHIP controls.
  *
- * Desktop (exe) spawns TabcastRelay/MAKArelay as a sidecar and polls
+ * Desktop (exe) spawns MAKArelay as a sidecar and polls
  * http://127.0.0.1:38473/health via the main process. The web client cannot
  * start that process — it only probes the same local endpoints from the
  * browser. A CDN /relay proxy is staging-only and is never treated as the
  * user's encoder (keys stay on the streamer's PC).
  *
- * Contract: src/shared/tabcast.ts, src/renderer/relay-client.ts, src/renderer/whip.ts
+ * Contract: src/shared (relay contracts), src/renderer/relay-client.ts, src/renderer/whip.ts
  * Preview handoff (same instance): #studio-preview._makaPreview |
  * window.MakaStreamPreview (canonical) | window.MakaPreview (alias).
  */

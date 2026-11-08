@@ -59,7 +59,7 @@ Local relay :38473  ──encode (profile)──►  RTMP(S) ──► Twitch / 
 |-------|-----|------|
 | Capture + local preview | **Browser web client** | `getDisplayMedia` / `getUserMedia`; Program stage |
 | Transport to encoder | **Browser → relay** | WHIP `POST` SDP to `http://127.0.0.1:38473/whip` |
-| Encode (incl. up to **4K60**) | **Local relay helper** | TabcastRelay / MAKArelay — profile from `POST /config` |
+| Encode (incl. up to **4K60**) | **Local relay helper** | MAKArelay — profile from `POST /config` |
 | Platform ingest | **Relay** | RTMP(S) to Twitch / YouTube using keys on the PC |
 
 Selecting `4k60` in the web UI only tells the **relay** which `profile` / `bitrateMbps` to use. The browser does not NVENC to Twitch/YouTube by itself.

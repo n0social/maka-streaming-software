@@ -1,12 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 
-# HTML links: https://tabcast.live.skydav.work/maka.css?v=dc6d035 (absolute origin avoids apex redirect stripping /maka.css).
-# nginx: site/tabcast-site-cache.conf + site/nginx/tabcast.live.skydav.work.conf
+# HTML links: absolute / same-origin maka.css on makalive.stream.
+# nginx: site/maka-site-cache.conf + site/nginx/makalive.stream.skydav.work.conf
 
-WEB_ROOT="${WEB_ROOT:-/opt/tabcast/web}"
+WEB_ROOT="${WEB_ROOT:-/opt/maka/web}"
 SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
-SITE_HOST="${SITE_HOST:-tabcast.live.skydav.work}"
+SITE_HOST="${SITE_HOST:-makalive.stream}"
 CSS_BUILD="${CSS_BUILD:-dc6d035}"
 
 echo "Publishing Maka site from ${SRC_DIR}…"
@@ -52,17 +52,17 @@ if [ -f "${WEB_ROOT}/marketplace.json" ]; then
   chmod 644 "${WEB_ROOT}/marketplace.json"
 fi
 
-if [ -f "${SRC_DIR}/tabcast-downloads.conf" ]; then
-  cp "${SRC_DIR}/tabcast-downloads.conf" /etc/nginx/snippets/tabcast-downloads.conf
+if [ -f "${SRC_DIR}/maka-downloads.conf" ]; then
+  cp "${SRC_DIR}/maka-downloads.conf" /etc/nginx/snippets/maka-downloads.conf
 fi
 
-if [ -f "${SRC_DIR}/tabcast-site-cache.conf" ]; then
-  cp "${SRC_DIR}/tabcast-site-cache.conf" /etc/nginx/snippets/tabcast-site-cache.conf
+if [ -f "${SRC_DIR}/maka-site-cache.conf" ]; then
+  cp "${SRC_DIR}/maka-site-cache.conf" /etc/nginx/snippets/maka-site-cache.conf
 fi
 
-if [ -f "${SRC_DIR}/nginx/tabcast.live.skydav.work.conf" ]; then
-  cp "${SRC_DIR}/nginx/tabcast.live.skydav.work.conf" /etc/nginx/sites-available/tabcast.live.skydav.work
-  ln -sf /etc/nginx/sites-available/tabcast.live.skydav.work /etc/nginx/sites-enabled/tabcast.live.skydav.work
+if [ -f "${SRC_DIR}/nginx/makalive.stream.skydav.work.conf" ]; then
+  cp "${SRC_DIR}/nginx/makalive.stream.skydav.work.conf" /etc/nginx/sites-available/makalive.stream
+  ln -sf /etc/nginx/sites-available/makalive.stream /etc/nginx/sites-enabled/makalive.stream
 fi
 
 nginx -t

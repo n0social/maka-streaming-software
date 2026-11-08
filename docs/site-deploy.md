@@ -6,8 +6,8 @@ Consolidated runbook for marketing HTML, `maka.css`, downloads, `/stream/`, and 
 
 | Layer | Host | Role |
 | --- | --- | --- |
-| **Public apex** | `tabcast.live`, `www.tabcast.live` (Caddy on **45.77.x**) | TLS + redirect to origin; **must preserve `{uri}`** |
-| **Origin** | `tabcast.live.skydav.work` on DO droplet **`104.131.164.94`** | nginx serves **`/opt/tabcast/web`** |
+| **Public apex** | `makalive.stream`, `www.makalive.stream` (Caddy on **45.77.x**) | TLS + redirect to origin; **must preserve `{uri}`** |
+| **Origin** | `makalive.stream.skydav.work` on DO droplet **`104.131.164.94`** | nginx serves **`/opt/tabcast/web`** |
 
 Deploy target user: **`root@104.131.164.94`** (hostname `skydav`).
 
@@ -57,7 +57,7 @@ Alternative: copy `site/` into `/opt/tabcast/site-src` on the server and run the
 On **`cursor/studio-redesign-continue-dc6d`**:
 
 - Wordmark: **35°** cream/Mikado Yellow split + holographic foil in **`site/maka.css`** (build **`dc6d035`**)
-- HTML uses absolute stylesheet URLs to **`https://tabcast.live.skydav.work/maka.css?v=dc6d035`**
+- HTML uses absolute stylesheet URLs to **`https://makalive.stream.skydav.work/maka.css?v=dc6d035`**
 - Home has critical inline CSS fallback if external CSS fails; wordmark colors/foil are **only** in `maka.css` (commit `a4eee92`)
 - Apex CSS breakage when Caddy strips paths: mitigated in repo by absolute origin URLs + inline fallback; **still broken for relative `/maka.css` on www** until Caddy is fixed
 
@@ -65,15 +65,15 @@ Key commits: **`e4cc8e2`** (Caddy/path/nginx), **`a4eee92`** (wordmark 35° + fo
 
 Handoff summary: **`docs/agent-handoff-tabcast.md`**.
 
-## Caddy on 45.77.x (tabcast.live / www) — preserve `{uri}`
+## Caddy on 45.77.x (makalive.stream / www) — preserve `{uri}`
 
-**Root cause of “black Arial MAKA”:** apex/www redirects that send every path to `https://tabcast.live.skydav.work/` (homepage only). Browsers then load **`index.html` as the stylesheet** when `/maka.css` (or cached relative URL) hits Caddy (MIME mismatch → stylesheet discarded → unstyled hero).
+**Root cause of “black Arial MAKA”:** apex/www redirects that send every path to `https://makalive.stream.skydav.work/` (homepage only). Browsers then load **`index.html` as the stylesheet** when `/maka.css` (or cached relative URL) hits Caddy (MIME mismatch → stylesheet discarded → unstyled hero).
 
 Required Caddy v2 redirect (path **and** query preserved):
 
 ```caddy
-tabcast.live, www.tabcast.live {
-	redir https://tabcast.live.skydav.work{uri} permanent
+makalive.stream, www.makalive.stream {
+	redir https://makalive.stream.skydav.work{uri} permanent
 }
 ```
 
@@ -91,7 +91,7 @@ systemctl reload caddy
 **Origin CSS (should pass after deploy):**
 
 ```bash
-curl -sI 'https://tabcast.live.skydav.work/maka.css?v=dc6d035' | grep -iE '^(HTTP|content-type)'
+curl -sI 'https://makalive.stream.skydav.work/maka.css?v=dc6d035' | grep -iE '^(HTTP|content-type)'
 # HTTP/1.1 200 OK
 # Content-Type: text/css
 ```
@@ -99,9 +99,9 @@ curl -sI 'https://tabcast.live.skydav.work/maka.css?v=dc6d035' | grep -iE '^(HTT
 **Apex redirect must preserve path (often failing until Caddy fix):**
 
 ```bash
-curl -sI 'https://www.tabcast.live/maka.css?v=TEST' | grep -i location
-# WANT: location: https://tabcast.live.skydav.work/maka.css?v=TEST
-# BAD:  location: https://tabcast.live.skydav.work/
+curl -sI 'https://www.makalive.stream/maka.css?v=TEST' | grep -i location
+# WANT: location: https://makalive.stream.skydav.work/maka.css?v=TEST
+# BAD:  location: https://makalive.stream.skydav.work/
 ```
 
 As of last agent check, www still returned the **BAD** location (path stripped). Re-run after Caddy reload.
@@ -109,7 +109,7 @@ As of last agent check, www still returned the **BAD** location (path stripped).
 **Homepage redirect chain:**
 
 ```bash
-curl -sI 'https://tabcast.live/' | grep -i location
+curl -sI 'https://makalive.stream/' | grep -i location
 # Typically redirects to www, then Caddy → origin
 ```
 
@@ -117,7 +117,7 @@ curl -sI 'https://tabcast.live/' | grep -i location
 
 `site/deploy-site.sh` installs:
 
-- `/etc/nginx/sites-available/tabcast.live.skydav.work` (from `site/nginx/tabcast.live.skydav.work.conf`)
+- `/etc/nginx/sites-available/makalive.stream.skydav.work` (from `site/nginx/makalive.stream.skydav.work.conf`)
 - `/etc/nginx/snippets/tabcast-site-cache.conf` (from `site/tabcast-site-cache.conf`) — exact `/maka.css` handling, `text/css`, no SPA fallback for CSS
 
 ## Cache bust
