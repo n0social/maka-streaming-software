@@ -1081,27 +1081,8 @@
         if (els.wizardTitle) els.wizardTitle.textContent = 'Stream info';
         if (els.wizardBody) els.wizardBody.textContent = '';
         populateWizardQualitySelect();
-      } else {
-        if (els.wizardTitle) els.wizardTitle.textContent = 'Go live';
-        if (els.wizardBody) els.wizardBody.textContent = '';
-        var profile = readBitrateProfile();
-        var title = sanitizeTitle(
-          (els.wizardTitleInput && els.wizardTitleInput.value) || readStoredTitle(),
-        );
-        var game = sanitizeGame(
-          (els.wizardGameInput && els.wizardGameInput.value) || readStoredGame(),
-        );
-        if (els.wizardGoStatus) {
-          els.wizardGoStatus.dataset.state = 'ok';
-          els.wizardGoStatus.textContent =
-            (title || 'Untitled stream') +
-            ' · ' +
-            game +
-            ' · ' +
-            profile +
-            ' · ' +
-            (wizardPlatform === 'youtube' ? 'YouTube' : 'Twitch');
-        }
+      } else if (els.wizardGoStatus) {
+        els.wizardGoStatus.textContent = '';
       }
     }
 

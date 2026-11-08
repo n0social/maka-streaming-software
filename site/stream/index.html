@@ -32,13 +32,13 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/maka.css?v=dc6d035" />
-    <link rel="stylesheet" href="./stream.css?v=dc6d057" />
-    <link rel="stylesheet" href="./css/shell.css?v=dc6d057" />
-    <link rel="stylesheet" href="./css/preview-stage.css?v=dc6d057" />
-    <link rel="stylesheet" href="./css/scenes.css?v=dc6d057" />
-    <link rel="stylesheet" href="./css/audio.css?v=dc6d057" />
-    <link rel="stylesheet" href="./css/live.css?v=dc6d057" />
-    <link rel="stylesheet" href="./css/settings.css?v=dc6d057" />
+    <link rel="stylesheet" href="./stream.css?v=dc6d062" />
+    <link rel="stylesheet" href="./css/shell.css?v=dc6d062" />
+    <link rel="stylesheet" href="./css/preview-stage.css?v=dc6d062" />
+    <link rel="stylesheet" href="./css/scenes.css?v=dc6d062" />
+    <link rel="stylesheet" href="./css/audio.css?v=dc6d062" />
+    <link rel="stylesheet" href="./css/live.css?v=dc6d062" />
+    <link rel="stylesheet" href="./css/settings.css?v=dc6d062" />
   </head>
   <body data-mode="studio" class="stream-studio">
     <div class="app" id="studio-app" data-shell="studio">
@@ -508,12 +508,14 @@
               <select id="go-live-wizard-quality" class="select program-stats-select-encode" aria-label="Encode profile"></select>
             </div>
             <div id="go-live-wizard-panel-go" hidden>
-              <p class="go-live-wizard-status" id="go-live-wizard-go-status" data-state="idle"></p>
+              <p class="go-live-wizard-status" id="go-live-wizard-go-status" data-state="idle" hidden></p>
             </div>
             <div class="go-live-wizard-actions">
               <button type="button" class="btn btn-primary" id="go-live-wizard-next">Next</button>
-              <button type="button" class="btn btn-ghost" id="go-live-wizard-back" hidden>Back</button>
-              <button type="button" class="btn btn-ghost" id="go-live-wizard-cancel">Cancel</button>
+              <div class="go-live-wizard-actions-secondary">
+                <button type="button" class="btn btn-ghost" id="go-live-wizard-back" hidden>Back</button>
+                <button type="button" class="btn btn-ghost" id="go-live-wizard-cancel">Cancel</button>
+              </div>
             </div>
           </div>
         </div>
@@ -545,11 +547,11 @@
     </dialog>
 
     <!-- Module hooks (feature modules owned elsewhere) -->
-    <script type="module" src="./js/shell.js?v=dc6d057"></script>
-    <script type="module" src="./js/scenes.js?v=dc6d057"></script>
-    <script type="module" src="./js/preview.js?v=dc6d057"></script>
-    <script type="module" src="./js/audio.js?v=dc6d057"></script>
-    <script type="module" src="./js/live.js?v=dc6d057"></script>
-    <script type="module" src="./js/settings.js?v=dc6d057"></script>
+    <script type="module" src="./js/shell.js?v=dc6d062"></script>
+    <script type="module" src="./js/scenes.js?v=dc6d062"></script>
+    <script type="module" src="./js/preview.js?v=dc6d062"></script>
+    <script type="module" src="./js/audio.js?v=dc6d062"></script>
+    <script type="module" src="./js/live.js?v=dc6d062"></script>
+    <script type="module" src="./js/settings.js?v=dc6d062"></script>
   </body>
 </html>
