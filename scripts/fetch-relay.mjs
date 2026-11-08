@@ -5,10 +5,7 @@ import { createHash } from 'node:crypto'
 import { Readable } from 'node:stream'
 import { fileURLToPath } from 'node:url'
 
-const MANIFEST_URLS = [
-  'https://makalive.stream/downloads/relay-manifest.json',
-  'https://tabcast.live.skydav.work/downloads/relay-manifest.json',
-]
+const MANIFEST_URLS = ['https://makalive.stream/downloads/relay-manifest.json']
 const RELAY_FILES = ['MAKArelay.exe', 'TabcastRelay.exe']
 const OUT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'vendor', 'relay')
 const OUT_FILE = join(OUT_DIR, 'MAKArelay.exe')

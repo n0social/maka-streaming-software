@@ -1,16 +1,12 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { app } from 'electron'
-import { validateManifest } from '../shared/addon-api'
+import { migrateAddonId, validateManifest } from '../shared/addon-api'
 import type { CatalogEntry } from '../shared/addon-types'
 import { MARKETPLACE_CATALOG } from '../shared/marketplace-catalog'
 import { recordDiagnostic } from './diagnostics'
 
-const FEED_URLS = [
-  'https://makalive.stream/marketplace.json',
-  'https://tabcast.live.skydav.work/marketplace.json',
-  'https://tabcast.live/marketplace.json',
-]
+const FEED_URLS = ['https://makalive.stream/marketplace.json']
 const CACHE_TTL_MS = 60 * 60 * 1000
 
 type CacheFile = {
@@ -68,10 +64,14 @@ function parseRemoteEntries(raw: unknown): CatalogEntry[] {
       if (!Object.keys(files).length) files = undefined
     }
 
+    const manifest = {
+      ...validated.manifest,
+      id: migrateAddonId(validated.manifest.id),
+    }
     out.push({
-      catalogId: entry.catalogId.slice(0, 128),
+      catalogId: migrateAddonId(entry.catalogId).slice(0, 128),
       featured: Boolean(entry.featured),
-      manifest: validated.manifest,
+      manifest,
       files,
     })
   }

@@ -2,9 +2,13 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import { join, dirname } from 'node:path'
 import { shell } from 'electron'
 import {
+  ADDON_MANIFEST_FILENAME,
+  LEGACY_ADDON_MANIFEST_FILENAME,
   addonFolderName,
   addonHasPermission,
   isValidCatalogId,
+  legacyAddonId,
+  migrateAddonId,
   validateManifest,
 } from '../shared/addon-api'
 import type {
@@ -21,7 +25,7 @@ import type {
   MarketplaceItem,
 } from '../shared/addon-types'
 import { SCENE_TEMPLATES } from '../shared/scene-templates'
-import type { StreamProfile } from '../shared/tabcast'
+import type { StreamProfile } from '../shared/maka'
 import { loadAddonSettings, saveAddonSettings } from './addon-settings'
 import {
   getBundledCatalog,
@@ -66,7 +70,7 @@ export class AddonHost {
     this.manifests.clear()
     this.state = loadAddonState()
     this.registerBuiltin({
-      id: 'tabcast.scene-templates',
+      id: 'maka.scene-templates',
       name: 'Scene templates',
       version: '1.0.0',
       apiVersion: 1,
@@ -85,13 +89,14 @@ export class AddonHost {
   }
 
   getManifest(addonId: string): AddonManifest | undefined {
-    return this.manifests.get(addonId)
+    return this.manifests.get(migrateAddonId(addonId))
   }
 
   isAddonActive(addonId: string): boolean {
-    const manifest = this.manifests.get(addonId)
+    const id = migrateAddonId(addonId)
+    const manifest = this.manifests.get(id)
     if (!manifest) return false
-    return isAddonEnabled(this.state, addonId, Boolean(manifest.builtin))
+    return isAddonEnabled(this.state, id, Boolean(manifest.builtin))
   }
 
   listMarketplace(): MarketplaceItem[] {
@@ -106,9 +111,10 @@ export class AddonHost {
   }
 
   getAddonSettings(addonId: string): AddonSettingsSnapshot {
-    const manifest = this.manifests.get(addonId)
+    const id = migrateAddonId(addonId)
+    const manifest = this.manifests.get(id)
     if (!manifest) return {}
-    const settings = loadAddonSettings(addonId)
+    const settings = loadAddonSettings(id)
     return {
       discordWebhookUrl: settings.discordWebhookUrl ? '••••••••' : undefined,
       customRtmpUrl: settings.customRtmpUrl,
@@ -122,11 +128,12 @@ export class AddonHost {
   }
 
   setAddonSettings(addonId: string, partial: unknown): AddonInstallResult {
-    const manifest = this.manifests.get(addonId)
+    const id = migrateAddonId(addonId)
+    const manifest = this.manifests.get(id)
     if (!manifest) {
       return { ok: false, message: 'Addon not installed' }
     }
-    saveAddonSettings(addonId, partial)
+    saveAddonSettings(id, partial)
     return { ok: true, message: 'Addon settings saved' }
   }
 
@@ -214,15 +221,16 @@ export class AddonHost {
   }
 
   runAction(addonId: string, actionId: string, ctx: ActionContext): AddonActionResult {
-    if (addonId === 'tabcast.scene-templates') {
+    const id = migrateAddonId(addonId)
+    if (id === 'maka.scene-templates') {
       return this.runSceneTemplate(actionId, ctx)
     }
 
-    const manifest = this.manifests.get(addonId)
+    const manifest = this.manifests.get(id)
     if (!manifest) {
       return { ok: false, message: 'Addon not found' }
     }
-    if (!isAddonEnabled(this.state, addonId, Boolean(manifest.builtin))) {
+    if (!isAddonEnabled(this.state, id, Boolean(manifest.builtin))) {
       return { ok: false, message: 'Addon is disabled' }
     }
 
@@ -235,10 +243,11 @@ export class AddonHost {
   }
 
   install(catalogId: string): AddonInstallResult {
-    if (!isValidCatalogId(catalogId)) {
+    const id = migrateAddonId(catalogId)
+    if (!isValidCatalogId(id)) {
       return { ok: false, message: 'Invalid catalog id' }
     }
-    const entry = this.catalog.find((e) => e.catalogId === catalogId)
+    const entry = this.catalog.find((e) => migrateAddonId(e.catalogId) === id)
     if (!entry) {
       return { ok: false, message: 'Catalog entry not found' }
     }
@@ -255,7 +264,7 @@ export class AddonHost {
     const dir = join(addonsInstallDir(), folder)
     mkdirSync(dir, { recursive: true })
     writeFileSync(
-      join(dir, 'tabcast-addon.json'),
+      join(dir, ADDON_MANIFEST_FILENAME),
       `${JSON.stringify(validated.manifest, null, 2)}\n`,
       'utf8',
     )
@@ -275,10 +284,11 @@ export class AddonHost {
   }
 
   uninstall(addonId: string): AddonInstallResult {
-    if (!isValidCatalogId(addonId)) {
+    const id = migrateAddonId(addonId)
+    if (!isValidCatalogId(id)) {
       return { ok: false, message: 'Invalid addon id' }
     }
-    const manifest = this.manifests.get(addonId)
+    const manifest = this.manifests.get(id)
     if (!manifest) {
       return { ok: false, message: 'Addon not installed' }
     }
@@ -286,9 +296,12 @@ export class AddonHost {
       return { ok: false, message: 'Cannot uninstall built-in addons' }
     }
 
-    removeAddonDir(addonFolderName(addonId))
+    removeAddonDir(addonFolderName(id))
+    const previousId = legacyAddonId(id)
+    if (previousId) removeAddonDir(addonFolderName(previousId))
     const nextEnabled = { ...this.state.enabled }
-    delete nextEnabled[addonId]
+    delete nextEnabled[id]
+    if (previousId) delete nextEnabled[previousId]
     this.state = { enabled: nextEnabled }
     saveAddonState(this.state)
     this.reload()
@@ -297,17 +310,18 @@ export class AddonHost {
   }
 
   setEnabled(addonId: string, enabled: boolean): AddonInstallResult {
-    if (!isValidCatalogId(addonId)) {
+    const id = migrateAddonId(addonId)
+    if (!isValidCatalogId(id)) {
       return { ok: false, message: 'Invalid addon id' }
     }
-    const manifest = this.manifests.get(addonId)
+    const manifest = this.manifests.get(id)
     if (!manifest) {
       return { ok: false, message: 'Addon not installed' }
     }
     if (manifest.builtin) {
       return { ok: false, message: 'Built-in addons are always enabled' }
     }
-    this.state = setAddonEnabled(this.state, addonId, enabled)
+    this.state = setAddonEnabled(this.state, id, enabled)
     saveAddonState(this.state)
     return { ok: true, message: enabled ? 'Addon enabled' : 'Addon disabled' }
   }
@@ -487,8 +501,10 @@ export class AddonHost {
     }
 
     for (const folder of entries) {
-      const manifestPath = join(dir, folder, 'tabcast-addon.json')
-      if (!existsSync(manifestPath)) continue
+      const manifestPath = [ADDON_MANIFEST_FILENAME, LEGACY_ADDON_MANIFEST_FILENAME]
+        .map((name) => join(dir, folder, name))
+        .find((path) => existsSync(path))
+      if (!manifestPath) continue
       try {
         const raw = JSON.parse(readFileSync(manifestPath, 'utf8'))
         const validated = validateManifest(raw)
@@ -497,7 +513,11 @@ export class AddonHost {
           continue
         }
         if (validated.manifest.builtin) continue
-        this.manifests.set(validated.manifest.id, validated.manifest)
+        const manifest = {
+          ...validated.manifest,
+          id: migrateAddonId(validated.manifest.id),
+        }
+        this.manifests.set(manifest.id, manifest)
       } catch (err) {
         recordDiagnostic('warn', 'addons.load', `Invalid manifest: ${folder}`, err)
       }

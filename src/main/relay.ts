@@ -16,7 +16,7 @@ import {
   type RelayHealth,
   type RelayLifecycle,
   type RelayStatusResponse,
-} from '../shared/tabcast'
+} from '../shared/maka'
 import type { RelaySnapshot } from '../shared/relay-snapshot'
 import { MAX_LIVE_RETRY_ATTEMPTS, liveRetryBackoffMs } from '../shared/live-retry'
 import { recordDiagnostic } from './diagnostics'
@@ -304,6 +304,10 @@ function resolveLaunch(): DirectRelayLaunch {
           mode: 'direct',
           env: {
             ...process.env,
+            MAKA_NO_OPEN: '1',
+            MAKA_STREAM_URL: RELAY_WHIP_URL,
+            MAKA_RELAY_ROOT: relayRoot,
+            // Prebuilt encoder still reads the old names.
             TABCAST_NO_OPEN: '1',
             TABCAST_STREAM_URL: RELAY_WHIP_URL,
             TABCAST_RELAY_ROOT: relayRoot,
@@ -322,6 +326,9 @@ function resolveLaunch(): DirectRelayLaunch {
     mode: 'launcher',
     env: {
       ...process.env,
+      MAKA_NO_OPEN: '1',
+      MAKA_STREAM_URL: RELAY_WHIP_URL,
+      // Prebuilt encoder still reads the old names.
       TABCAST_NO_OPEN: '1',
       TABCAST_STREAM_URL: RELAY_WHIP_URL,
     },

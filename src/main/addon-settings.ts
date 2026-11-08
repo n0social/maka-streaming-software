@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { app } from 'electron'
-import { addonFolderName, isValidAddonId } from '../shared/addon-api'
+import { addonFolderName, isValidAddonId, legacyAddonId, migrateAddonId } from '../shared/addon-api'
 import { KICK_RTMP_URL } from '../shared/stream-keys'
 
 export type AddonSettings = {
@@ -84,21 +84,34 @@ export function coerceAddonSettings(raw: unknown): AddonSettings {
   return out
 }
 
-export function loadAddonSettings(addonId: string): AddonSettings {
-  if (!isValidAddonId(addonId)) return {}
-  const path = settingsPath(addonId)
-  if (!existsSync(path)) return {}
+function readSettingsFile(path: string): AddonSettings | null {
+  if (!existsSync(path)) return null
   try {
     return coerceAddonSettings(JSON.parse(readFileSync(path, 'utf8')))
   } catch {
-    return {}
+    return null
   }
 }
 
+export function loadAddonSettings(addonId: string): AddonSettings {
+  const id = migrateAddonId(addonId)
+  if (!isValidAddonId(id)) return {}
+  const path = settingsPath(id)
+  const current = readSettingsFile(path)
+  if (current) return current
+  const legacyId = legacyAddonId(id)
+  if (!legacyId) return {}
+  const legacy = readSettingsFile(settingsPath(legacyId))
+  if (!legacy) return {}
+  writeFileSync(path, `${JSON.stringify(legacy, null, 2)}\n`, 'utf8')
+  return legacy
+}
+
 export function saveAddonSettings(addonId: string, partial: unknown): AddonSettings {
-  if (!isValidAddonId(addonId)) return {}
-  const merged = { ...loadAddonSettings(addonId), ...coerceAddonSettings(partial) }
-  writeFileSync(settingsPath(addonId), `${JSON.stringify(merged, null, 2)}\n`, 'utf8')
+  const id = migrateAddonId(addonId)
+  if (!isValidAddonId(id)) return {}
+  const merged = { ...loadAddonSettings(id), ...coerceAddonSettings(partial) }
+  writeFileSync(settingsPath(id), `${JSON.stringify(merged, null, 2)}\n`, 'utf8')
   return merged
 }
 

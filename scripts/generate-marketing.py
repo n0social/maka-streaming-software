@@ -139,7 +139,7 @@ def draw_feature_graphic() -> Image.Image:
     f_big = font(bold=True, size=92)
     f_tag = font(bold=True, size=22)
     f_sub = font(bold=False, size=20)
-    d.text((72, 120), "TABCAST", font=f_big, fill=GOLD)
+    d.text((72, 120), "MAKA", font=f_big, fill=GOLD)
     d.text((72, 220), "LIVE · STUDIO · CAPTURE", font=f_tag, fill=GOLD_LIGHT)
     d.text(
         (72, 270),
@@ -167,7 +167,7 @@ def draw_phone_screenshot() -> Image.Image:
     w, h = 1080, 1920
     im = hero_bg(w, h)
     d = ImageDraw.Draw(im)
-    d.text((80, 120), "TABCAST", font=font(bold=True, size=72), fill=CYAN)
+    d.text((80, 120), "MAKA", font=font(bold=True, size=72), fill=CYAN)
     d.text((80, 210), "Studio", font=font(bold=True, size=36), fill=INK)
     d.rounded_rectangle([60, 280, w - 60, h - 420], radius=32, fill=BG2 + (255,), outline=(255, 255, 255, 30))
     d.rounded_rectangle([90, 320, w - 90, h - 680], radius=20, fill=(5, 7, 10, 255))
@@ -184,7 +184,7 @@ def draw_desktop_screenshot() -> Image.Image:
     d = ImageDraw.Draw(im)
     d.rounded_rectangle([40, 40, w - 40, h - 40], radius=20, fill=BG2 + (255,), outline=(255, 255, 255, 25))
     d.rounded_rectangle([40, 40, w - 40, 88], radius=20, fill=(255, 255, 255, 12))
-    d.text((60, 52), "TABCAST  ·  Studio", font=font(bold=True, size=22), fill=CYAN)
+    d.text((60, 52), "MAKA  ·  Studio", font=font(bold=True, size=22), fill=CYAN)
     d.rounded_rectangle([60, 110, 300, h - 60], radius=16, fill=(255, 255, 255, 8))
     d.rounded_rectangle([320, 110, w - 320, h - 60], radius=16, fill=(5, 7, 10, 255), outline=CYAN + (80,))
     d.rounded_rectangle([w - 280, 110, w - 60, h - 60], radius=16, fill=(255, 255, 255, 8))
@@ -215,7 +215,7 @@ def draw_promo_tile() -> Image.Image:
     d = ImageDraw.Draw(im)
     icon = draw_icon(96)
     im.paste(icon, (32, 92), icon)
-    d.text((150, 100), "TABCAST", font=font(bold=True, size=36), fill=CYAN)
+    d.text((150, 100), "MAKA", font=font(bold=True, size=36), fill=CYAN)
     d.text((150, 145), "Browser", font=font(bold=True, size=24), fill=INK)
     d.text((150, 180), "Studio + Relay", font=font(bold=False, size=16), fill=MUTED)
     return im
@@ -225,7 +225,7 @@ def draw_marquee() -> Image.Image:
     w, h = 1400, 560
     im = hero_bg(w, h)
     d = ImageDraw.Draw(im)
-    d.text((80, 180), "TABCAST BROWSER", font=font(bold=True, size=64), fill=CYAN)
+    d.text((80, 180), "MAKA BROWSER", font=font(bold=True, size=64), fill=CYAN)
     d.text((80, 270), "Capture · Layout · Go Live", font=font(bold=True, size=28), fill=LIME)
     icon = draw_icon(200)
     im.paste(icon, (1050, 180), icon)

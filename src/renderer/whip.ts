@@ -1,7 +1,7 @@
 import {
   RELAY_TRACK_STREAM_IDS,
   type RelayTrackStreamId,
-} from '../shared/tabcast'
+} from '../shared/maka'
 
 export const WHIP_VIDEO_WATCHDOG_POLL_MS = 2_000
 export const WHIP_VIDEO_WATCHDOG_STALL_MS = 8_000

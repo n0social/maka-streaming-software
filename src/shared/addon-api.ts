@@ -5,7 +5,34 @@ export const ADDON_API_VERSION = 1
 
 const ADDON_ID_RE = /^[a-zA-Z0-9][a-zA-Z0-9._-]{2,127}$/
 
-/** Permissions an addon may request in tabcast-addon.json. */
+export const ADDON_MANIFEST_FILENAME = 'maka-addon.json'
+/** Manifest name written by installs from before the MAKA rename. */
+export const LEGACY_ADDON_MANIFEST_FILENAME = 'tabcast-addon.json'
+
+const LEGACY_ADDON_ID_PREFIX = 'com.tabcast.'
+const ADDON_ID_PREFIX = 'com.maka.'
+
+/** Map persisted pre-rename addon ids onto com.maka.* (and the built-in scene pack). */
+export function migrateAddonId(id: string): string {
+  if (id.startsWith(LEGACY_ADDON_ID_PREFIX)) {
+    return `${ADDON_ID_PREFIX}${id.slice(LEGACY_ADDON_ID_PREFIX.length)}`
+  }
+  if (id === 'tabcast.scene-templates') return 'maka.scene-templates'
+  if (id === 'com.example.hello-tabcast') return 'com.example.hello-maka'
+  return id
+}
+
+/** Previous id for a migrated addon, used to read settings saved before the rename. */
+export function legacyAddonId(id: string): string | null {
+  if (id.startsWith(ADDON_ID_PREFIX)) {
+    return `${LEGACY_ADDON_ID_PREFIX}${id.slice(ADDON_ID_PREFIX.length)}`
+  }
+  if (id === 'maka.scene-templates') return 'tabcast.scene-templates'
+  if (id === 'com.example.hello-maka') return 'com.example.hello-tabcast'
+  return null
+}
+
+/** Permissions an addon may request in maka-addon.json. */
 export const ADDON_PERMISSIONS = [
   'ui.toast',
   'ui.external',
