@@ -95,16 +95,37 @@ function layoutFromParts(
     chat?: Rect | null
     notifications?: Rect | null
     hasWebcam: boolean
+    gameplayZ?: number
+    webcamZ?: number
   },
 ): SceneLayout {
   const canvas = canvasFor(profile)
-  const sources: SceneSource[] = [gameplaySource(parts.gameplay)]
-  if (parts.chat) sources.push(chatPlaceholder(parts.chat, 1))
-  if (parts.notifications) sources.push(notificationsPlaceholder(parts.notifications, 1))
+  const sources: SceneSource[] = [gameplaySource(parts.gameplay, parts.gameplayZ ?? 0)]
+  if (parts.chat) sources.push(chatPlaceholder(parts.chat, 4))
+  if (parts.notifications) sources.push(notificationsPlaceholder(parts.notifications, 5))
   if (parts.hasWebcam && parts.webcam) {
-    sources.push(webcamSource(parts.webcam, 3))
+    sources.push(webcamSource(parts.webcam, parts.webcamZ ?? 3))
   }
   return { canvas, sources }
+}
+
+/** Tall chat column along the lower left. */
+function chatTallLeft(canvas: { width: number; height: number }): Rect {
+  return box(canvas, 0.02, 0.28, 0.26, 0.68)
+}
+
+/** Tall chat sitting above a bottom-left webcam. */
+function chatAboveBottomLeftCam(canvas: { width: number; height: number }): Rect {
+  return box(canvas, 0.02, 0.04, 0.24, 0.62)
+}
+
+/** Tall chat column on the right, vertically centered. */
+function chatCenterRight(canvas: { width: number; height: number }): Rect {
+  return box(canvas, 0.7, 0.12, 0.26, 0.52)
+}
+
+function notesCenter(canvas: { width: number; height: number }): Rect {
+  return box(canvas, 0.34, 0.4, 0.32, 0.16)
 }
 
 /** Default overlay composition when the user has not picked another preset. */
@@ -113,170 +134,103 @@ export const DEFAULT_OVERLAY_PRESET_ID = 'classic-gaming'
 export const OVERLAY_LAYOUT_PRESETS: OverlayLayoutPreset[] = [
   {
     id: 'classic-gaming',
-    name: 'Classic gaming',
+    name: 'Game full, cam top-right',
     description:
-      'Full-frame gameplay; webcam top-right; chat lower-left; notifications center-right (chat/notifications are labeled placeholders until wired).',
+      'Gameplay fills the frame. Webcam sits top-right. Tall chat log is bottom-left. Notifications sit in the center.',
     build: ({ profile, hasWebcam }) => {
       const canvas = canvasFor(profile)
       return layoutFromParts(profile, {
         gameplay: box(canvas, 0, 0, 1, 1),
         webcam: camBox(canvas, 0.74, 0.04, 0.22),
-        chat: box(canvas, 0.02, 0.68, 0.28, 0.28),
-        notifications: box(canvas, 0.62, 0.38, 0.34, 0.22),
+        chat: chatTallLeft(canvas),
+        notifications: notesCenter(canvas),
         hasWebcam,
       })
     },
   },
   {
-    id: 'webcam-focus',
-    name: 'Webcam focus',
+    id: 'game-cam-bottom-left',
+    name: 'Game full, cam bottom-left',
     description:
-      'Webcam full center; gameplay PiP bottom-right; chat centered-left; notifications centered (placeholders).',
-    build: ({ profile, hasWebcam }) => {
-      const canvas = canvasFor(profile)
-      const sources: SceneSource[] = [
-        gameplaySource(box(canvas, 0.62, 0.58, 0.34, 0.34), 0),
-        chatPlaceholder(box(canvas, 0.04, 0.36, 0.26, 0.28), 1),
-        notificationsPlaceholder(box(canvas, 0.37, 0.04, 0.26, 0.18), 1),
-      ]
-      if (hasWebcam) {
-        const w = Math.round(canvas.width * 0.76)
-        const h = Math.round(w * (9 / 16))
-        sources.push(
-          webcamSource(
-            {
-              x: Math.round(canvas.width * 0.12),
-              y: Math.round(canvas.height * 0.1),
-              width: w,
-              height: h,
-            },
-            3,
-          ),
-        )
-      }
-      return { canvas, sources }
-    },
-  },
-  {
-    id: 'notifications-stack',
-    name: 'Notifications stack',
-    description:
-      'Gameplay full frame; notifications upper center-right; chat lower-left; webcam bottom-right.',
+      'Gameplay fills the frame. Webcam sits bottom-left. Tall chat log is on the left above the webcam. Notifications sit in the center.',
     build: ({ profile, hasWebcam }) => {
       const canvas = canvasFor(profile)
       return layoutFromParts(profile, {
         gameplay: box(canvas, 0, 0, 1, 1),
-        webcam: camBox(canvas, 0.72, 0.7, 0.24),
-        chat: box(canvas, 0.03, 0.7, 0.3, 0.26),
-        notifications: box(canvas, 0.55, 0.05, 0.4, 0.2),
+        webcam: camBox(canvas, 0.02, 0.74, 0.22),
+        chat: chatAboveBottomLeftCam(canvas),
+        notifications: notesCenter(canvas),
         hasWebcam,
       })
     },
   },
   {
-    id: 'chat-corner',
-    name: 'Chat corner',
+    id: 'game-cam-bottom-right',
+    name: 'Game full, cam bottom-right',
     description:
-      'Gameplay centered with margin; chat large lower-right; notifications center-left; webcam top-left.',
-    build: ({ profile, hasWebcam }) => {
-      const canvas = canvasFor(profile)
-      return layoutFromParts(profile, {
-        gameplay: box(canvas, 0.06, 0.08, 0.88, 0.72),
-        webcam: camBox(canvas, 0.03, 0.03, 0.2),
-        chat: box(canvas, 0.58, 0.72, 0.38, 0.24),
-        notifications: box(canvas, 0.04, 0.42, 0.22, 0.2),
-        hasWebcam,
-      })
-    },
-  },
-  {
-    id: 'balanced-triple',
-    name: 'Balanced triple',
-    description:
-      'Gameplay inset center; webcam top-right; chat lower-left; notifications lower-center (placeholders).',
-    build: ({ profile, hasWebcam }) => {
-      const canvas = canvasFor(profile)
-      return layoutFromParts(profile, {
-        gameplay: box(canvas, 0.1, 0.12, 0.8, 0.62),
-        webcam: camBox(canvas, 0.76, 0.04, 0.2),
-        chat: box(canvas, 0.04, 0.76, 0.3, 0.2),
-        notifications: box(canvas, 0.36, 0.78, 0.28, 0.18),
-        hasWebcam,
-      })
-    },
-  },
-  {
-    id: 'pip-left',
-    name: 'Gameplay PiP left',
-    description:
-      'Webcam-forward layout: large webcam right; gameplay PiP bottom-left; chat top-left; notifications top-center.',
-    build: ({ profile, hasWebcam }) => {
-      const canvas = canvasFor(profile)
-      const sources: SceneSource[] = [
-        gameplaySource(box(canvas, 0.04, 0.62, 0.32, 0.32), 0),
-        chatPlaceholder(box(canvas, 0.04, 0.06, 0.28, 0.24), 1),
-        notificationsPlaceholder(box(canvas, 0.34, 0.06, 0.3, 0.16), 1),
-      ]
-      if (hasWebcam) {
-        const w = Math.round(canvas.width * 0.58)
-        const h = Math.round(w * (9 / 16))
-        sources.push(
-          webcamSource(
-            {
-              x: Math.round(canvas.width * 0.38),
-              y: Math.round(canvas.height * 0.12),
-              width: w,
-              height: h,
-            },
-            3,
-          ),
-        )
-      }
-      return { canvas, sources }
-    },
-  },
-  {
-    id: 'minimal-cam',
-    name: 'Minimal cam',
-    description: 'Full gameplay with a small webcam bottom-left only (no chat/notification slots).',
-    build: ({ profile, hasWebcam }) => {
-      const canvas = canvasFor(profile)
-      const sources: SceneSource[] = [gameplaySource(box(canvas, 0, 0, 1, 1))]
-      if (hasWebcam) {
-        sources.push(webcamSource(camBox(canvas, 0.03, 0.72, 0.18), 2))
-      }
-      return { canvas, sources }
-    },
-  },
-  {
-    id: 'broadcast-lower-third',
-    name: 'Broadcast lower third',
-    description:
-      'Gameplay full; notifications strip center-top; chat wide lower-third; webcam upper-right.',
+      'Gameplay fills the frame. Webcam sits bottom-right. Tall chat log is bottom-left. Notifications sit in the center.',
     build: ({ profile, hasWebcam }) => {
       const canvas = canvasFor(profile)
       return layoutFromParts(profile, {
         gameplay: box(canvas, 0, 0, 1, 1),
-        webcam: camBox(canvas, 0.78, 0.05, 0.18),
-        chat: box(canvas, 0.08, 0.78, 0.84, 0.18),
-        notifications: box(canvas, 0.25, 0.04, 0.5, 0.12),
+        webcam: camBox(canvas, 0.74, 0.74, 0.22),
+        chat: chatTallLeft(canvas),
+        notifications: notesCenter(canvas),
         hasWebcam,
       })
     },
   },
   {
-    id: 'symmetric-pip',
-    name: 'Symmetric PiP',
+    id: 'cam-main-game-top-right',
+    name: 'Cam full, game top-right',
     description:
-      'Gameplay large center; webcam and notification tiles on opposite corners; chat between them.',
+      'Webcam fills the frame where gameplay usually sits. Game capture is a top-right PiP. Tall chat log is bottom-left. Notifications sit in the center.',
     build: ({ profile, hasWebcam }) => {
       const canvas = canvasFor(profile)
       return layoutFromParts(profile, {
-        gameplay: box(canvas, 0.08, 0.1, 0.84, 0.58),
-        webcam: camBox(canvas, 0.04, 0.72, 0.22),
-        chat: box(canvas, 0.38, 0.72, 0.24, 0.22),
-        notifications: box(canvas, 0.74, 0.72, 0.22, 0.22),
+        gameplay: camBox(canvas, 0.74, 0.04, 0.22),
+        webcam: box(canvas, 0, 0, 1, 1),
+        chat: chatTallLeft(canvas),
+        notifications: notesCenter(canvas),
         hasWebcam,
+        gameplayZ: 3,
+        webcamZ: 1,
+      })
+    },
+  },
+  {
+    id: 'cam-main-game-bottom-right',
+    name: 'Cam full, game bottom-right',
+    description:
+      'Webcam fills the frame. Game capture is a bottom-right PiP. Tall chat log is bottom-left. Notifications sit in the center.',
+    build: ({ profile, hasWebcam }) => {
+      const canvas = canvasFor(profile)
+      return layoutFromParts(profile, {
+        gameplay: camBox(canvas, 0.74, 0.74, 0.22),
+        webcam: box(canvas, 0, 0, 1, 1),
+        chat: chatTallLeft(canvas),
+        notifications: notesCenter(canvas),
+        hasWebcam,
+        gameplayZ: 3,
+        webcamZ: 1,
+      })
+    },
+  },
+  {
+    id: 'cam-full-chat-right',
+    name: 'Cam full, chat right',
+    description:
+      'Webcam fills the frame. Tall chat log is centered on the right. Game capture is bottom-right. Notifications sit in the center.',
+    build: ({ profile, hasWebcam }) => {
+      const canvas = canvasFor(profile)
+      return layoutFromParts(profile, {
+        gameplay: camBox(canvas, 0.74, 0.74, 0.22),
+        webcam: box(canvas, 0, 0, 1, 1),
+        chat: chatCenterRight(canvas),
+        notifications: notesCenter(canvas),
+        hasWebcam,
+        gameplayZ: 3,
+        webcamZ: 1,
       })
     },
   },
@@ -284,14 +238,14 @@ export const OVERLAY_LAYOUT_PRESETS: OverlayLayoutPreset[] = [
 
 /** Default chat placeholder when the user enables Chat without an overlay preset. */
 export function defaultChatOverlaySlot(canvas: { width: number; height: number }): SceneSource {
-  return chatPlaceholder(box(canvas, 0.02, 0.68, 0.28, 0.28), 1)
+  return chatPlaceholder(chatTallLeft(canvas), 4)
 }
 
 /** Default notifications placeholder when the user enables Notifications without an overlay preset. */
 export function defaultNotificationsOverlaySlot(
   canvas: { width: number; height: number },
 ): SceneSource {
-  return notificationsPlaceholder(box(canvas, 0.62, 0.38, 0.34, 0.22), 1)
+  return notificationsPlaceholder(notesCenter(canvas), 5)
 }
 
 export function overlayPresetById(id: string): OverlayLayoutPreset | undefined {

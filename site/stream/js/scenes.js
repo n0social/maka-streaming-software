@@ -247,6 +247,7 @@
         chat: !!sourceActive.chat,
         notifications: !!sourceActive.notifications,
       },
+      overlayPreset: activeOverlayPresetId || '',
     };
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -286,6 +287,7 @@
         if (typeof data.layers[key] === 'boolean') layers[key] = data.layers[key];
       });
     }
+    if (typeof data.overlayPreset === 'string') activeOverlayPresetId = data.overlayPreset;
     if (data.sourceActive && typeof data.sourceActive === 'object') {
       Object.keys(sourceActive).forEach(function (key) {
         if (typeof data.sourceActive[key] === 'boolean') sourceActive[key] = data.sourceActive[key];
@@ -996,27 +998,122 @@
     if (el) el.hidden = !visible;
   }
 
+  var FULL_FRAME = { left: '0', top: '0', right: 'auto', bottom: 'auto', width: '100%', height: '100%', aspect: 'auto', z: '1' };
+  var PIP_TOP_RIGHT = { left: 'auto', right: '2%', top: '3%', bottom: 'auto', width: '24%', height: 'auto', aspect: '16 / 9', z: '4' };
+  var PIP_BOTTOM_RIGHT = { left: 'auto', right: '2%', top: 'auto', bottom: '3%', width: '24%', height: 'auto', aspect: '16 / 9', z: '4' };
+  var PIP_BOTTOM_LEFT = { left: '2%', right: 'auto', top: 'auto', bottom: '3%', width: '24%', height: 'auto', aspect: '16 / 9', z: '4' };
+  var CHAT_TALL_LEFT = { left: '2%', right: 'auto', top: '28%', bottom: 'auto', width: '26%', height: '68%', aspect: 'auto', z: '5' };
+  var CHAT_ABOVE_CAM = { left: '2%', right: 'auto', top: '4%', bottom: 'auto', width: '24%', height: '62%', aspect: 'auto', z: '5' };
+  var CHAT_CENTER_RIGHT = { left: 'auto', right: '2%', top: '12%', bottom: 'auto', width: '26%', height: '52%', aspect: 'auto', z: '5' };
+  var NOTES_CENTER = { left: '34%', right: 'auto', top: '40%', bottom: 'auto', width: '32%', height: '16%', aspect: 'auto', z: '6' };
+
+  var OVERLAY_LAYOUTS = {
+    'classic-gaming': {
+      label: 'Game full, cam top-right',
+      game: FULL_FRAME,
+      cam: PIP_TOP_RIGHT,
+      chat: CHAT_TALL_LEFT,
+      notes: NOTES_CENTER,
+    },
+    'game-cam-bottom-left': {
+      label: 'Game full, cam bottom-left',
+      game: FULL_FRAME,
+      cam: PIP_BOTTOM_LEFT,
+      chat: CHAT_ABOVE_CAM,
+      notes: NOTES_CENTER,
+    },
+    'game-cam-bottom-right': {
+      label: 'Game full, cam bottom-right',
+      game: FULL_FRAME,
+      cam: PIP_BOTTOM_RIGHT,
+      chat: CHAT_TALL_LEFT,
+      notes: NOTES_CENTER,
+    },
+    'cam-main-game-top-right': {
+      label: 'Cam full, game top-right',
+      game: Object.assign({}, PIP_TOP_RIGHT, { width: '26%', z: '4' }),
+      cam: Object.assign({}, FULL_FRAME, { z: '1' }),
+      chat: CHAT_TALL_LEFT,
+      notes: NOTES_CENTER,
+    },
+    'cam-main-game-bottom-right': {
+      label: 'Cam full, game bottom-right',
+      game: Object.assign({}, PIP_BOTTOM_RIGHT, { width: '26%', z: '4' }),
+      cam: Object.assign({}, FULL_FRAME, { z: '1' }),
+      chat: CHAT_TALL_LEFT,
+      notes: NOTES_CENTER,
+    },
+    'cam-full-chat-right': {
+      label: 'Cam full, chat right',
+      game: Object.assign({}, PIP_BOTTOM_RIGHT, { width: '26%', z: '4' }),
+      cam: Object.assign({}, FULL_FRAME, { z: '1' }),
+      chat: CHAT_CENTER_RIGHT,
+      notes: NOTES_CENTER,
+    },
+  };
+
+  function placeProgramBox(el, box) {
+    if (!el) return;
+    var keys = ['left', 'right', 'top', 'bottom', 'width', 'height', 'aspectRatio', 'zIndex'];
+    if (!box) {
+      keys.forEach(function (key) {
+        el.style[key] = '';
+      });
+      return;
+    }
+    el.style.left = box.left || '';
+    el.style.right = box.right || 'auto';
+    el.style.top = box.top || '';
+    el.style.bottom = box.bottom || 'auto';
+    el.style.width = box.width || '';
+    el.style.height = box.height || '';
+    el.style.aspectRatio = box.aspect || '';
+    el.style.zIndex = box.z || '';
+  }
+
+  function applyOverlayLayout(presetId) {
+    var layout = OVERLAY_LAYOUTS[presetId] || null;
+    var game = document.getElementById('program-video');
+    var cam = document.getElementById('program-cam');
+    var chat = document.getElementById('program-chat-slot');
+    var notes = document.getElementById('program-notifications-slot');
+    if (!layout) {
+      placeProgramBox(game, null);
+      placeProgramBox(cam, null);
+      placeProgramBox(chat, null);
+      placeProgramBox(notes, null);
+      if (chat) chat.hidden = !layers.chat;
+      if (notes) notes.hidden = !layers.notifications;
+      if (layers.chat) placeProgramBox(chat, CHAT_TALL_LEFT);
+      if (layers.notifications) placeProgramBox(notes, NOTES_CENTER);
+      return;
+    }
+    placeProgramBox(game, layout.game);
+    placeProgramBox(cam, layout.cam);
+    placeProgramBox(chat, layout.chat);
+    placeProgramBox(notes, layout.notes);
+    if (chat) chat.hidden = false;
+    if (notes) notes.hidden = false;
+  }
+
   function renderOverlayPicker(picker) {
-    var presets = [
-      { id: '', label: 'Follow scene' },
-      { id: 'chat-lower', label: 'Chat lower third' },
-      { id: 'notes-corner', label: 'Notifications corner' },
-      { id: 'broadcast', label: 'Chat and notifications' },
-    ];
+    var presets = [{ id: '', label: 'Follow scene' }].concat(
+      Object.keys(OVERLAY_LAYOUTS).map(function (id) {
+        return { id: id, label: OVERLAY_LAYOUTS[id].label };
+      }),
+    );
     appendPickerSection(picker, 'Overlay layouts');
     presets.forEach(function (preset) {
       appendPickerButton(picker, preset.label, activeOverlayPresetId === preset.id, function () {
         activeOverlayPresetId = preset.id;
-        var showChat = preset.id === 'chat-lower' || preset.id === 'broadcast';
-        var showNotes = preset.id === 'notes-corner' || preset.id === 'broadcast';
-        layers.overlay = Boolean(preset.id);
-        layers.chat = showChat;
-        layers.notifications = showNotes;
+        var layout = OVERLAY_LAYOUTS[preset.id];
+        layers.overlay = Boolean(layout);
+        layers.chat = Boolean(layout);
+        layers.notifications = Boolean(layout);
         sourceActive.browser = layers.overlay;
-        sourceActive.chat = showChat;
-        sourceActive.notifications = showNotes;
-        setProgramSlot('program-chat-slot', showChat);
-        setProgramSlot('program-notifications-slot', showNotes);
+        sourceActive.chat = layers.chat;
+        sourceActive.notifications = layers.notifications;
+        applyOverlayLayout(preset.id);
         syncSourceRows();
         emitAll();
         renderSourcePicker('browser');
@@ -1033,10 +1130,10 @@
       emitAll();
       renderSourcePicker('chat');
     });
-    appendPickerButton(picker, 'Placeholder panel', layers.chat, function () {
+    appendPickerButton(picker, 'Tall chat log', layers.chat, function () {
       layers.chat = true;
       sourceActive.chat = true;
-      setProgramSlot('program-chat-slot', true);
+      applyOverlayLayout(activeOverlayPresetId);
       syncSourceRows();
       emitAll();
       renderSourcePicker('chat');
@@ -1052,10 +1149,10 @@
       emitAll();
       renderSourcePicker('notifications');
     });
-    appendPickerButton(picker, 'Placeholder overlay', layers.notifications, function () {
+    appendPickerButton(picker, 'Center overlay', layers.notifications, function () {
       layers.notifications = true;
       sourceActive.notifications = true;
-      setProgramSlot('program-notifications-slot', true);
+      applyOverlayLayout(activeOverlayPresetId);
       syncSourceRows();
       emitAll();
       renderSourcePicker('notifications');
@@ -1349,6 +1446,8 @@
     highlightSceneSelection(activeSceneId);
     syncSourceRows();
     wirePreviewSync();
+    if (activeOverlayPresetId && !OVERLAY_LAYOUTS[activeOverlayPresetId]) activeOverlayPresetId = '';
+    applyOverlayLayout(activeOverlayPresetId);
     document.addEventListener('click', function (event) {
       if (!intermissionMenuOpen) return;
       var target = event.target;
