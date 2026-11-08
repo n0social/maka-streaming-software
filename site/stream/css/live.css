@@ -750,6 +750,69 @@
   min-width: 12rem;
   padding: 0.95rem 2.2rem;
 }
+
+/* Selected game art sits beside the wizard, only on the stream info step. */
+.go-live-wizard-dialog[data-step="details"] {
+  translate: -110px 0;
+}
+
+.go-live-game-card,
+.go-live-game-card:popover-open {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  padding: 0.55rem 0.55rem 0.7rem;
+  width: 168px;
+  border: none;
+  border-radius: 18px;
+  background: #fff;
+  color: #1a1408;
+  box-shadow: 0 18px 48px rgba(26, 20, 8, 0.28);
+  animation: maka-game-card-float 3.4s ease-in-out infinite;
+}
+
+.go-live-game-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 12px;
+  background: #1a1408;
+}
+
+.go-live-game-card p {
+  margin: 0.5rem 0.15rem 0.1rem;
+  font-family: "League Spartan", sans-serif;
+  font-size: 0.92rem;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.go-live-game-card:hover {
+  animation-play-state: paused;
+  translate: 0 -12px;
+}
+
+@keyframes maka-game-card-float {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -10px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .go-live-wizard-dialog[data-step="details"] {
+    translate: 0;
+  }
+
+  .go-live-game-card {
+    display: none !important;
+  }
+}
 @media (max-width: 760px) {
   .go-live-wizard-dialog { height: auto; max-height: calc(100vh - 1.5rem); }
   .go-live-wizard-card { grid-template-columns: 1fr; grid-template-rows: 180px 1px auto; }

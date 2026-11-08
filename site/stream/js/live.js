@@ -272,6 +272,9 @@
       wizardGameInput: doc.getElementById('go-live-wizard-game-input'),
       gamePicker: doc.getElementById('go-live-wizard-game-picker'),
       gameList: doc.getElementById('go-live-wizard-game-list'),
+      gameCard: doc.getElementById('go-live-game-card'),
+      gameCardImg: doc.getElementById('go-live-game-card-img'),
+      gameCardName: doc.getElementById('go-live-game-card-name'),
       wizardQuality: doc.getElementById('go-live-wizard-quality'),
       wizardGoStatus: doc.getElementById('go-live-wizard-go-status'),
       wizardTwitchKey: doc.getElementById('wizard-twitch-key'),
@@ -745,7 +748,73 @@
       if (entry) writeStoredGameImage(entry.name, entry.image);
       paintWizardGameTrigger(name, image);
       paintStreamThumb(image, name);
+      paintGameArtCard(name, image);
       markSelectedGameOption(name);
+    }
+
+    function paintGameArtCard(name, image) {
+      var card = els.gameCard;
+      if (!card) return;
+      var img = els.gameCardImg;
+      var label = els.gameCardName;
+      var shown = sanitizeGame(name);
+      if (label) label.textContent = shown;
+      if (img) {
+        img.alt = shown ? shown + ' box art' : '';
+        if (image) {
+          if (img.getAttribute('src') !== image) img.src = image;
+        } else {
+          img.removeAttribute('src');
+        }
+      }
+    }
+
+    function hideGameArtCard() {
+      var card = els.gameCard;
+      if (!card) return;
+      if (typeof card.hidePopover === 'function') {
+        try {
+          if (card.matches(':popover-open')) card.hidePopover();
+        } catch (_err) {
+          /* ignore */
+        }
+      }
+      card.hidden = true;
+    }
+
+    function positionGameArtCard() {
+      var dialog = els.wizardDialog;
+      var card = els.gameCard;
+      if (!dialog || !card) return;
+      var rect = dialog.getBoundingClientRect();
+      var width = card.offsetWidth || 168;
+      var gap = 18;
+      var left = rect.right + gap;
+      if (left + width > window.innerWidth - 8) left = window.innerWidth - width - 8;
+      var top = rect.top + Math.max(24, (rect.height - (card.offsetHeight || 280)) / 2);
+      card.style.left = Math.max(8, left) + 'px';
+      card.style.top = Math.max(8, top) + 'px';
+    }
+
+    function syncGameArtCard() {
+      var card = els.gameCard;
+      if (!card) return;
+      var wide = window.matchMedia('(min-width: 1101px)').matches;
+      var open = Boolean(els.wizardDialog && (els.wizardDialog.open || els.wizardDialog.hasAttribute('open')));
+      if (wizardStep !== 'details' || !open || !wide) {
+        hideGameArtCard();
+        return;
+      }
+      card.hidden = false;
+      if (typeof card.showPopover === 'function') {
+        try {
+          if (!card.matches(':popover-open')) card.showPopover();
+        } catch (_err) {
+          /* fixed card inside the dialog still shows */
+        }
+      }
+      positionGameArtCard();
+      window.requestAnimationFrame(positionGameArtCard);
     }
 
     function positionGameList() {
@@ -901,6 +970,7 @@
 
     function onGamePickerResize() {
       if (gameListOpen) positionGameList();
+      if (wizardStep === 'details') positionGameArtCard();
     }
 
     function syncStreamMetaDom(title, game) {
@@ -1308,6 +1378,7 @@
 
     function closeGoLiveWizard() {
       closeGameList();
+      hideGameArtCard();
       if (els.wizardDialog && els.wizardDialog.open) {
         try {
           els.wizardDialog.close();
@@ -1359,6 +1430,7 @@
     function renderGoLiveWizard() {
       if (wizardStep !== 'details') closeGameList();
       if (els.wizardDialog) els.wizardDialog.dataset.step = wizardStep;
+      syncGameArtCard();
       if (els.wizardPanelPlatform) els.wizardPanelPlatform.hidden = wizardStep !== 'platform';
       if (els.wizardPanelKey) els.wizardPanelKey.hidden = wizardStep !== 'key';
       if (els.wizardPanelDetails) els.wizardPanelDetails.hidden = wizardStep !== 'details';
