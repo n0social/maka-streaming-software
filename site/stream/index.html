@@ -6,158 +6,307 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Try Maka in your browser — webcam and screen share preview with optional WHIP to a local MAKA.relay."
+      content="Maka Studio — browser capture with WHIP to MAKA.relay."
     />
     <meta name="theme-color" content="#faf8f4" />
     <link rel="canonical" href="https://makalive.stream/stream/" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Maka" />
-    <meta property="og:title" content="Maka — browser stream try" />
+    <meta property="og:title" content="Maka Studio" />
     <meta
       property="og:description"
-      content="One-session browser capture. Full RTMP uses MAKA.relay on localhost:38473."
+      content="Streaming studio layout matched to the Maka desktop mock. RTMP encoding uses MAKA.relay."
     />
     <meta property="og:url" content="https://makalive.stream/stream/" />
     <meta property="og:image" content="https://makalive.stream/marketing/screenshot-desktop-1280x800.png" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://makalive.stream; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:38473 http://localhost:38473"
+      content="default-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://makalive.stream https://www.makalive.stream http://127.0.0.1:38473 http://localhost:38473"
     />
-    <title>Maka — browser stream</title>
+    <title>Maka Studio</title>
     <link rel="icon" type="image/png" href="/marketing/favicon-32.png?v=maka-m" sizes="32x32" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=League+Spartan:ital,wght@0,700;0,800;0,900;1,800;1,900&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=League+Spartan:ital,wght@0,500;0,600;0,700;0,800;1,700&display=swap"
       rel="stylesheet"
     />
-    <link
-      rel="preload"
-      as="style"
-      href="https://makalive.stream/maka.css?v=dc6d038"
-    />
-    <link
-      rel="stylesheet"
-      href="https://makalive.stream/maka.css?v=dc6d038"
-    />
-    <link rel="stylesheet" href="/stream/stream.css" />
+    <link rel="stylesheet" href="/stream/stream.css?v=stream9e0" />
   </head>
-  <body>
-    <div class="stream-app site-shell--full">
-      <header class="stream-top stream-top--minimal">
-        <div class="stream-status" aria-live="polite">
-          <span class="status-dot" id="relay-status-dot" data-state="warn"></span>
-          <span id="relay-status-text">Checking relay…</span>
+  <body class="stream-page">
+    <div class="stream-studio">
+      <header class="stream-topbar">
+        <div class="brand stream-top-brand">
+          <span class="mark" aria-hidden="true">M</span>
+          <span class="wordmark">Maka <span class="wordmark-studio">Studio</span></span>
+        </div>
+        <div class="studio-window-title">Maka Studio</div>
+        <div class="topbar-right">
+          <button type="button" class="win-btn" id="btn-settings" title="Stream setup" aria-label="Stream setup">
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+              <path fill="currentColor" d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.2 7.2 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.59.24-1.13.56-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.71 8.84a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.39.31.6.22l2.39-.96c.5.38 1.04.7 1.63.94l.36 2.54c.05.24.25.42.5.42h3.84c.25 0 .45-.18.5-.42l.36-2.54c.59-.24 1.13-.56 1.63-.94l2.39.96c.22.09.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z" />
+            </svg>
+          </button>
         </div>
       </header>
 
-      <div class="stream-main">
-        <div class="stream-stage-wrap">
-          <div class="program-frame">
-            <span class="program-label">Program</span>
+      <aside class="stream-sidebar stream-sidebar--left" aria-label="Scenes and sources">
+        <section class="studio-block">
+          <header class="studio-block-head">
+            <h2>Scenes</h2>
+            <button type="button" class="studio-icon-btn" id="btn-add-scene" title="Add scene" aria-label="Add scene">+</button>
+          </header>
+          <ul class="studio-list" id="scene-list" aria-label="Scenes"></ul>
+        </section>
+
+        <section class="studio-block">
+          <header class="studio-block-head">
+            <h2>Sources</h2>
+          </header>
+          <ul class="studio-list" aria-label="Sources">
+            <li>
+              <div class="studio-row">
+                <button type="button" class="studio-list-item" id="btn-screen">
+                  <span class="source-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="16" height="16">
+                      <rect x="3.5" y="5" width="17" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.7" />
+                      <path d="M8 19.5h8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+                    </svg>
+                  </span>
+                  Game Capture
+                </button>
+              </div>
+            </li>
+            <li>
+              <div class="studio-row">
+                <button type="button" class="studio-list-item" id="btn-webcam">
+                  <span class="source-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="16" height="16">
+                      <path d="M2.5 12S6.2 6.5 12 6.5 21.5 12 21.5 12 17.8 17.5 12 17.5 2.5 12 2.5 12z" fill="none" stroke="currentColor" stroke-width="1.7" />
+                      <circle cx="12" cy="12" r="2.4" fill="none" stroke="currentColor" stroke-width="1.7" />
+                    </svg>
+                  </span>
+                  Webcam
+                </button>
+              </div>
+            </li>
+            <li>
+              <div class="studio-row">
+                <button type="button" class="studio-list-item" id="btn-mic">
+                  <span class="source-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="16" height="16">
+                      <rect x="9" y="3.5" width="6" height="10" rx="3" fill="none" stroke="currentColor" stroke-width="1.7" />
+                      <path d="M6.5 11a5.5 5.5 0 0 0 11 0M12 16.5V20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+                    </svg>
+                  </span>
+                  Microphone
+                </button>
+              </div>
+            </li>
+            <li>
+              <div class="studio-row">
+                <button type="button" class="studio-list-item" id="btn-overlay" title="Choose an image to draw on the program. Click again to remove it.">
+                  <span class="source-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="16" height="16">
+                      <rect x="7" y="7" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.7" />
+                      <path d="M5 15V5h10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+                    </svg>
+                  </span>
+                  Overlay
+                </button>
+              </div>
+              <input type="file" id="overlay-file" accept="image/*" hidden />
+            </li>
+          </ul>
+        </section>
+
+        <footer class="studio-footer">
+          <span class="studio-status-dot" id="studio-status-dot" data-state="pending" aria-hidden="true"></span>
+          <span id="studio-status-text">Checking relay…</span>
+        </footer>
+      </aside>
+
+      <main class="stream-stage" aria-label="Program">
+        <div class="program-column">
+          <p class="program-label">
+            <span class="program-name" id="program-scene-name">Gameplay</span>
+            <span class="program-mode">• Live Output</span>
+          </p>
+          <div class="program-screen" id="program-screen">
             <canvas id="program-canvas" class="program-canvas" aria-label="Program preview"></canvas>
-            <p class="program-empty" id="program-empty">
-              Add webcam or share your screen to build a layout.<br />
-              Screen fills the frame; webcam appears as a gold picture-in-picture.
-            </p>
+            <p class="program-empty" id="program-empty">Select a display or window to start streaming</p>
+          </div>
+          <div class="program-stats" id="program-stats" aria-label="Program stream stats">
+            <span class="program-stat" id="program-output-mode">Studio Mode</span>
+            <span class="program-stat" id="stat-dropped">Dropped Frames: 0 (0.0%)</span>
+            <span class="program-stat" id="stat-fps">FPS: 0</span>
+            <span class="program-stat" id="stat-latency">0 ms</span>
+            <span class="program-stat program-stat-auto" id="stat-resolution">
+              <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                <path d="M20 12a8 8 0 1 1-2.2-5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                <path d="M20 5v5h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <span id="stat-resolution-text">1280×720</span>
+            </span>
           </div>
         </div>
+      </main>
 
-        <aside class="stream-sidebar" aria-label="Stream controls">
-          <div class="stream-block">
-            <h2>Sources</h2>
-            <p>Capture stays in your browser until you publish to a local relay.</p>
-            <div class="stream-actions">
-              <button type="button" class="btn btn-secondary" id="btn-webcam">Add webcam</button>
-              <button type="button" class="btn btn-secondary" id="btn-screen">Share screen</button>
-              <button type="button" class="btn btn-secondary" id="btn-mic">Add microphone</button>
+      <aside class="stream-sidebar stream-sidebar--right" aria-label="Mixer and stream controls">
+        <section class="studio-card">
+          <h2>Audio Mixer</h2>
+          <div class="audio-mixer" id="audio-mixer">
+            <div class="audio-channel" id="audio-desktop-row">
+              <span class="audio-channel-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                  <path fill="currentColor" d="M4 9.5v5h3.2L12 19V5L7.2 9.5H4zm11.2.2a3.6 3.6 0 0 1 0 4.6l1.2 1.1a5.2 5.2 0 0 0 0-6.8l-1.2 1.1z" />
+                </svg>
+              </span>
+              <span class="audio-channel-name">Desktop Audio</span>
+              <div class="audio-meter-track">
+                <div class="audio-meter" id="desktop-meter" style="width: 0%"></div>
+                <input type="range" class="audio-fader" id="fader-desktop" min="0" max="100" value="100" aria-label="Desktop Audio gain" />
+              </div>
+              <div class="audio-db" aria-hidden="true"><span>-30</span><span>-24</span><span>-18</span><span>-12</span><span>-6</span><span>0</span></div>
+            </div>
+            <div class="audio-channel" id="audio-mic-row">
+              <span class="audio-channel-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                  <path fill="currentColor" d="M4 9.5v5h3.2L12 19V5L7.2 9.5H4zm11.2.2a3.6 3.6 0 0 1 0 4.6l1.2 1.1a5.2 5.2 0 0 0 0-6.8l-1.2 1.1z" />
+                </svg>
+              </span>
+              <span class="audio-channel-name">Microphone</span>
+              <div class="audio-meter-track">
+                <div class="audio-meter" id="mic-meter" style="width: 0%"></div>
+                <input type="range" class="audio-fader" id="fader-mic" min="0" max="100" value="100" aria-label="Microphone gain" />
+              </div>
+              <div class="audio-db" aria-hidden="true"><span>-30</span><span>-24</span><span>-18</span><span>-12</span><span>-6</span><span>0</span></div>
             </div>
           </div>
+        </section>
 
-          <div class="stream-block">
-            <h2>Relay</h2>
-            <p id="relay-version-line">Connect to MAKA.relay on <code>127.0.0.1:38473</code>.</p>
-            <p class="stream-hint">
-              Dev without MAKArelay.exe: run <code>npm run web:relay</code> (see
-              <a href="https://github.com/n0social/maka-streaming-software/blob/main/docs/web-relay.md">web-relay docs</a>).
-            </p>
-            <label class="stream-field">
-              <span>Encode profile</span>
-              <select id="cfg-profile">
-                <option value="720p30">720p30</option>
-                <option value="720p60">720p60</option>
-                <option value="1080p30">1080p30</option>
-                <option value="1080p60">1080p60</option>
-                <option value="2k60">2k60</option>
-                <option value="4k60">4k60</option>
-              </select>
-            </label>
-            <label class="stream-field">
-              <span>Twitch stream key (optional, RAM only)</span>
-              <input id="cfg-twitch-key" type="password" autocomplete="off" placeholder="live_…" />
-            </label>
-            <label class="stream-field">
-              <span>YouTube stream key (optional)</span>
-              <input id="cfg-youtube-key" type="password" autocomplete="off" placeholder="xxxx-xxxx-…" />
-            </label>
-            <div class="stream-actions">
-              <button type="button" class="btn btn-secondary" id="btn-relay-refresh">Check relay</button>
-              <button type="button" class="btn btn-secondary" id="btn-config">Apply config</button>
-              <button type="button" class="btn btn-ghost" id="btn-verify">Verify keys</button>
-            </div>
-            <pre class="stream-status-json" id="relay-status-json" aria-live="polite"></pre>
+        <section class="studio-card">
+          <h2>Stream Controls</h2>
+          <div class="stream-controls-stack">
+            <button type="button" class="btn-go-live" id="btn-start">
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                <circle cx="12" cy="12" r="2.1" fill="currentColor" />
+                <path d="M8.2 8.2a5.2 5.2 0 0 0 0 7.6M15.8 8.2a5.2 5.2 0 0 1 0 7.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+                <path d="M5.8 5.8a8.6 8.6 0 0 0 0 12.4M18.2 5.8a8.6 8.6 0 0 1 0 12.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+              </svg>
+              <span id="btn-go-live-label">Go Live</span>
+            </button>
+            <button type="button" class="btn-quiet" id="btn-record" aria-pressed="false">
+              <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                <circle cx="12" cy="12" r="5.5" fill="none" stroke="currentColor" stroke-width="1.7" />
+              </svg>
+              <span data-record-label>Start Recording</span>
+            </button>
+            <button type="button" class="btn-quiet sr-only" id="btn-stop">End Live</button>
           </div>
+        </section>
 
-          <div class="stream-block">
-            <h2>Go live</h2>
-            <p>
-              WHIP to <code>127.0.0.1:38473</code> when MAKA.relay is running. Without it, preview
-              only — no RTMP from this page alone.
-            </p>
-            <div class="stream-actions">
-              <button type="button" class="btn btn-primary" id="btn-start">Start stream</button>
-              <button type="button" class="btn btn-ghost" id="btn-stop" disabled>Stop stream</button>
+        <section class="studio-card studio-card-info">
+          <header class="studio-block-head">
+            <h2>Stream Info</h2>
+          </header>
+          <div class="stream-preview">
+            <div class="stream-thumb" id="stream-thumb" role="img" aria-label="No preview"></div>
+            <div class="stream-meta">
+              <input class="stream-title" id="stream-title" type="text" maxlength="140" placeholder="Stream title" autocomplete="off" spellcheck="false" aria-label="Stream title" />
+              <input class="stream-category" id="stream-category" type="text" maxlength="80" placeholder="Category" autocomplete="off" spellcheck="false" aria-label="Stream category" />
+              <div class="stream-status-row">
+                <span class="stream-live-pill" id="stream-live-pill" data-live="false">Offline</span>
+                <span class="stream-duration" id="stream-duration">—</span>
+              </div>
             </div>
           </div>
+        </section>
+      </aside>
+    </div>
 
-          <div class="stream-block">
-            <h2>Log</h2>
-            <pre class="stream-log" id="stream-log"></pre>
-          </div>
-        </aside>
+    <div class="modal-backdrop" id="studio-settings" hidden role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <div class="modal modal-settings">
+        <header class="settings-head">
+          <h2 id="settings-title">Stream setup</h2>
+          <button type="button" class="win-btn" id="btn-settings-close" aria-label="Close setup">×</button>
+        </header>
+        <p class="stream-hint" id="relay-version-line">Checking relay…</p>
+        <div class="relay-chip stream-relay-chip" id="relay-chip" data-state="stopped" aria-live="polite">
+          <span class="dot status-dot" id="relay-status-dot" data-state="warn"></span>
+          <span id="relay-status-text">Checking relay…</span>
+        </div>
+        <p class="stream-error" id="stream-error" hidden role="alert"></p>
+        <div class="stream-destinations" id="stream-destinations">
+          <label class="stream-check">
+            <input type="checkbox" id="dest-twitch" checked />
+            <span>Twitch</span>
+          </label>
+          <label class="stream-field stream-field--key">
+            <span class="sr-only">Twitch stream key</span>
+            <input id="cfg-twitch-key" type="password" autocomplete="off" spellcheck="false" placeholder="live_… Twitch stream key" />
+          </label>
+          <label class="stream-check">
+            <input type="checkbox" id="dest-youtube" />
+            <span>YouTube</span>
+          </label>
+          <label class="stream-field stream-field--key">
+            <span class="sr-only">YouTube stream key</span>
+            <input id="cfg-youtube-key" type="password" autocomplete="off" spellcheck="false" placeholder="YouTube stream key" disabled />
+          </label>
+          <label class="stream-check">
+            <input type="checkbox" id="dest-custom" />
+            <span>Custom RTMP</span>
+          </label>
+          <label class="stream-field stream-field--key">
+            <span class="sr-only">Custom RTMP ingest URL</span>
+            <input id="cfg-custom-rtmp-url" type="text" autocomplete="off" spellcheck="false" placeholder="rtmps://…/app" disabled />
+          </label>
+          <label class="stream-field stream-field--key">
+            <span class="sr-only">Custom RTMP stream key</span>
+            <input id="cfg-custom-rtmp-key" type="password" autocomplete="off" spellcheck="false" placeholder="Stream key" disabled />
+          </label>
+        </div>
+        <label class="stream-field" for="cfg-profile">
+          <span>Encode profile</span>
+          <select id="cfg-profile">
+            <option value="720p30">720p30</option>
+            <option value="720p60">720p60</option>
+            <option value="1080p30">1080p30</option>
+            <option value="1080p60">1080p60</option>
+            <option value="2k60">2k60</option>
+            <option value="4k60">4k60</option>
+          </select>
+        </label>
+        <div class="stream-actions stream-actions--row">
+          <button type="button" class="btn-quiet" id="btn-config">Apply config</button>
+          <button type="button" class="btn-quiet" id="btn-verify">Verify keys</button>
+          <button type="button" class="btn-quiet" id="btn-relay-refresh">Check relay</button>
+        </div>
+        <details class="settings-log">
+          <summary>Log</summary>
+          <pre class="stream-log" id="stream-log"></pre>
+          <pre class="stream-status-json" id="relay-status-json" aria-live="polite"></pre>
+        </details>
       </div>
-
-      <footer class="stream-footer">
-        <span>Encode + platform keys → desktop Maka or MAKA.relay</span>
-        <span>
-          <a href="/studio-web/">Studio web</a> · <a href="/download.html">Download</a> ·
-          <a href="/preview/">Studio preview</a> ·
-          <a href="/">Home</a>
-        </span>
-      </footer>
     </div>
 
     <div class="modal-backdrop" id="relay-modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div class="modal">
         <h2 id="modal-title">Relay required for go-live</h2>
         <p>
-          This page previews capture in the browser. RTMP encoding runs in
-          <strong>MAKA.relay</strong> on your PC (port 38473). For local testing without downloading
-          MAKArelay.exe, run <code>npm run dev:web-studio</code> from the repo — then apply config and go
-          live here.
+          No relay responded at the configured base URL. On production, check
+          <a href="/relay/health"><code>/relay/health</code></a>. Locally, run
+          <code>npm run dev:web-studio</code> or install Maka with MAKA.relay on port 38473.
         </p>
         <div class="modal-actions">
-          <a class="btn btn-primary" href="/download.html">Download Maka</a>
-          <a class="btn btn-secondary" href="https://github.com/n0social/maka-streaming-software/blob/main/docs/web-relay.md">Web relay docs</a>
-          <button type="button" class="btn btn-ghost" id="modal-close">Keep previewing</button>
+          <a class="btn-go-live btn-go-live--link" href="/download.html">Download Maka</a>
+          <a class="btn-quiet" href="https://github.com/n0social/maka-streaming-software/blob/main/docs/web-relay.md">Web relay docs</a>
+          <button type="button" class="btn-quiet" id="modal-close">Keep previewing</button>
         </div>
       </div>
     </div>
 
-    <div class="mascot-corner" aria-hidden="true">
-      <img src="/assets/mascot/maka-mascot.svg" alt="" width="52" height="52" />
-    </div>
-
-    <script src="/stream/stream.js" defer></script>
+    <script src="/stream/stream.js?v=stream9e0" defer></script>
   </body>
 </html>
