@@ -1501,6 +1501,8 @@
     var mediaRecorder = null;
     var recordingChunks = [];
     var recordingActive = false;
+    var recordingStartedAt = 0;
+    var recordingMix = null;
     var pendingRecordingBlob = null;
     var pendingRecordingName = '';
     var platformPref = { twitch: false, youtube: false };
@@ -1539,6 +1541,86 @@
       if (liveTrack(streams.screen)) return streams.screen;
       if (liveTrack(streams.webcam)) return streams.webcam;
       return null;
+    }
+
+    function liveAudioTracks(stream) {
+      if (!stream || typeof stream.getAudioTracks !== 'function') return [];
+      return stream.getAudioTracks().filter(function (track) {
+        return track && track.readyState === 'live';
+      });
+    }
+
+    function mixerStream(id) {
+      if (!global.MakaStreamAudio || typeof global.MakaStreamAudio.getStream !== 'function') return null;
+      try {
+        return global.MakaStreamAudio.getStream(id);
+      } catch (_err) {
+        return null;
+      }
+    }
+
+    function connectRecordingSource(ctx, dest, stream, channelId) {
+      var tracks = liveAudioTracks(stream);
+      if (!tracks.length) return false;
+      var source = ctx.createMediaStreamSource(new MediaStream(tracks));
+      var gain = ctx.createGain();
+      var muted = false;
+      var gainDb = 0;
+      if (channelId && global.MakaStreamAudio) {
+        if (typeof global.MakaStreamAudio.isMuted === 'function') {
+          muted = global.MakaStreamAudio.isMuted(channelId);
+        }
+        if (typeof global.MakaStreamAudio.getGainDb === 'function') {
+          gainDb = global.MakaStreamAudio.getGainDb(channelId);
+        }
+      }
+      gain.gain.value = muted ? 0 : Math.pow(10, (Number(gainDb) || 0) / 20);
+      source.connect(gain);
+      gain.connect(dest);
+      return true;
+    }
+
+    async function buildRecordingStream(videoStream) {
+      var out = new MediaStream();
+      videoStream.getVideoTracks().forEach(function (track) {
+        if (track.readyState === 'live') out.addTrack(track);
+      });
+      var ctx = new AudioContext();
+      if (ctx.state === 'suspended') {
+        try {
+          await ctx.resume();
+        } catch (_err) {
+          /* autoplay policy */
+        }
+      }
+      var dest = ctx.createMediaStreamDestination();
+      var micOn = connectRecordingSource(ctx, dest, resolveMicStream(), 'mic');
+      var desktopOn = connectRecordingSource(ctx, dest, mixerStream('desktop'), 'desktop');
+      var gameOn = connectRecordingSource(ctx, dest, mixerStream('game'), 'game');
+      if (!micOn && !desktopOn && !gameOn) {
+        connectRecordingSource(ctx, dest, videoStream, null);
+      }
+      var mixed = dest.stream.getAudioTracks()[0];
+      if (mixed) out.addTrack(mixed);
+      else {
+        try {
+          await ctx.close();
+        } catch (_err) {
+          /* ignore */
+        }
+        ctx = null;
+      }
+      return { stream: out, ctx: ctx, micOn: micOn };
+    }
+
+    function closeRecordingMix() {
+      var mix = recordingMix;
+      recordingMix = null;
+      if (mix && mix.ctx) {
+        mix.ctx.close().catch(function () {
+          return undefined;
+        });
+      }
     }
 
     function setRecordingUi(active) {
@@ -1642,7 +1724,18 @@
         }
       });
       recordingChunks = [];
+      var durationMs = recordingStartedAt ? Date.now() - recordingStartedAt : 0;
+      recordingStartedAt = 0;
+      closeRecordingMix();
       syncRecordingAvailability();
+      if (blob && blob.size && global.MakaWebmSeek && typeof global.MakaWebmSeek.fixWebmBuffer === 'function') {
+        try {
+          var fixed = global.MakaWebmSeek.fixWebmBuffer(new Uint8Array(await blob.arrayBuffer()), durationMs);
+          blob = new Blob([fixed], { type: blob.type || 'video/webm' });
+        } catch (err) {
+          log('Could not index the recording for seeking: ' + (err instanceof Error ? err.message : err));
+        }
+      }
       if (!blob || !blob.size) {
         log('Recording produced no data.');
         if (destHint) destHint.textContent = 'Recording produced no data.';
@@ -1667,13 +1760,23 @@
       }
       var mime = pickRecorderMime();
       recordingChunks = [];
+      closeRecordingMix();
+      var mixed;
+      try {
+        mixed = await buildRecordingStream(stream);
+      } catch (err) {
+        log('Could not mix microphone into the recording: ' + (err instanceof Error ? err.message : err));
+        mixed = { stream: stream, ctx: null, micOn: false };
+      }
+      recordingMix = mixed;
       try {
         mediaRecorder = mime
-          ? new MediaRecorder(stream, { mimeType: mime })
-          : new MediaRecorder(stream);
+          ? new MediaRecorder(mixed.stream, { mimeType: mime, audioBitsPerSecond: 128000 })
+          : new MediaRecorder(mixed.stream);
       } catch (err) {
         log('Could not start recorder: ' + (err instanceof Error ? err.message : err));
         mediaRecorder = null;
+        closeRecordingMix();
         return;
       }
       mediaRecorder.ondataavailable = function (ev) {
@@ -1684,16 +1787,25 @@
         void stopRecordingAndSave();
       };
       try {
+        recordingStartedAt = Date.now();
         mediaRecorder.start(1000);
       } catch (err) {
         log('Recorder start failed: ' + (err instanceof Error ? err.message : err));
         mediaRecorder = null;
+        recordingStartedAt = 0;
+        closeRecordingMix();
         return;
       }
       setRecordingUi(true);
-      log('Recording preview stream locally (stop to download).');
+      if (mixed.micOn) {
+        log('Recording preview with microphone. Stop to choose where to save.');
+      } else {
+        log('Recording without a microphone. Pick a mic under Sources so the next take includes it.');
+      }
       if (destHint) {
-        destHint.textContent = 'Recording local preview… stop to download WebM.';
+        destHint.textContent = mixed.micOn
+          ? 'Recording preview and microphone…'
+          : 'Recording preview. No microphone is selected.';
       }
     }
 
