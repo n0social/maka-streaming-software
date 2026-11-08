@@ -10,6 +10,9 @@
  *     for capture — those rows are scenes layer visibility toggles only.
  *   - Scene cards / maka:scene-change update program chrome (stub card, webcam PIP);
  *     they must not start getDisplayMedia / getUserMedia. Scene name is not overlaid.
+ *   - #program-cam and #program-video stay hidden while that Sources row is
+ *     unhighlighted (data-active="0"). syncUi, startWebcam, setWebcamStream, and
+ *     scene events must not show them again until the row is highlighted.
  *
  * From shell:
  *   import { initPreview } from './preview.js'
@@ -235,8 +238,10 @@ export function initPreview(root) {
   let webcamStream = null;
   /** Last requested / observed displaySurface for audio routing. */
   let lastDisplaySurface = 'browser';
-  /** Show PIP chrome even without a live track (matches app mock). */
-  let webcamPipDesired = true;
+  /** Show the webcam box (live track or offline placeholder). Row highlight wins once set. */
+  let webcamPipDesired = false;
+  /** Show #program-video when a share is live. Unhighlighted keeps the black bed. */
+  let gameCaptureDesired = false;
   let destroyed = false;
   /** @type {MutationObserver | null} */
   let liveClassObserver = null;
@@ -250,6 +255,26 @@ export function initPreview(root) {
     return false;
   }
 
+  /**
+   * Sources row gold state, once scenes has written it.
+   * @returns {boolean | null} null when the row has not been synced yet
+   */
+  function sourceRowShown(id) {
+    if (typeof document === 'undefined') return null;
+    const row = document.getElementById(id);
+    if (!row) return null;
+    const active = row.getAttribute('data-active');
+    if (active === '1') return true;
+    if (active === '0') return false;
+    return null;
+  }
+
+  function wantsShown(id, fallback) {
+    const row = sourceRowShown(id);
+    if (row === null) return fallback;
+    return row;
+  }
+
   function syncUi() {
     if (destroyed) return;
     const hasScreen = Boolean(
@@ -258,20 +283,23 @@ export function initPreview(root) {
     const hasCam = Boolean(
       webcamStream && webcamStream.getVideoTracks().some((t) => t.readyState === 'live'),
     );
+    const showGame = wantsShown('studio-source-game', gameCaptureDesired) && hasScreen;
+    const showCam = wantsShown('studio-source-webcam', webcamPipDesired);
     const live = isProgramLive();
 
-    // Game Capture owns the full program bed. Webcam never fills the stage alone.
-    if (hasScreen) {
+    // Game Capture owns the picture. Hiding it leaves the black bed — never a full-frame webcam.
+    if (showGame) {
       if (els.program.srcObject !== screenStream) els.program.srcObject = screenStream;
       els.program.hidden = false;
       void els.program.play().catch(() => undefined);
     } else {
-      els.program.srcObject = null;
+      // Keep a live share attached so highlighting the row shows the same stream.
+      if (!hasScreen) els.program.srcObject = null;
       els.program.hidden = true;
     }
 
     if (els.cam) {
-      if (webcamPipDesired) {
+      if (showCam) {
         els.cam.hidden = false;
         if (hasCam && els.camVideo) {
           if (els.camVideo.srcObject !== webcamStream) els.camVideo.srcObject = webcamStream;
@@ -288,6 +316,7 @@ export function initPreview(root) {
         }
       } else {
         els.cam.hidden = true;
+        // Detach the element only. The MediaStreamTrack keeps running.
         if (els.camVideo) els.camVideo.srcObject = null;
       }
     }
@@ -297,7 +326,7 @@ export function initPreview(root) {
       els.empty.hidden = true;
     }
 
-    if (els.stage) els.stage.dataset.gameBed = hasScreen ? 'capture' : 'black';
+    if (els.stage) els.stage.dataset.gameBed = showGame ? 'capture' : 'black';
 
     const detail = {
       hasScreen,
@@ -339,7 +368,18 @@ export function initPreview(root) {
   }
 
   function setWebcamPipVisible(show) {
-    webcamPipDesired = Boolean(show);
+    const row = sourceRowShown('studio-source-webcam');
+    if (row === false) webcamPipDesired = false;
+    else if (row === true) webcamPipDesired = true;
+    else webcamPipDesired = Boolean(show);
+    syncUi();
+  }
+
+  function setGameVisible(show) {
+    const row = sourceRowShown('studio-source-game');
+    if (row === false) gameCaptureDesired = false;
+    else if (row === true) gameCaptureDesired = true;
+    else gameCaptureDesired = Boolean(show);
     syncUi();
   }
 
@@ -447,7 +487,6 @@ export function initPreview(root) {
           }
         });
       }
-      webcamPipDesired = true;
       syncUi();
       return stream;
     } catch (err) {
@@ -514,7 +553,6 @@ export function initPreview(root) {
     if (destroyed) return null;
     if (!opts.keepPreviousTracks) stopTracks(webcamStream);
     webcamStream = stream || null;
-    if (webcamStream) webcamPipDesired = true;
     if (webcamStream) {
       const track = webcamStream.getVideoTracks()[0];
       if (track) {
@@ -706,12 +744,7 @@ export function initPreview(root) {
     liveClassObserver.observe(programHost, { attributes: true, attributeFilter: ['class'] });
   }
 
-  // Default: show webcam PIP mock like the exe (offline until capture).
-  if (els.cam) els.cam.hidden = false;
-  if (els.camOffline) {
-    els.camOffline.hidden = false;
-    els.camOffline.textContent = WEBCAM_OFFLINE;
-  }
+  // Stay hidden until the Webcam / Game Capture rows are highlighted.
   syncUi();
 
   const api = {
@@ -719,6 +752,7 @@ export function initPreview(root) {
     setSceneName,
     setSceneCard,
     setWebcamPipVisible,
+    setGameVisible,
     setChromeVisible,
     startScreen,
     startWebcam,

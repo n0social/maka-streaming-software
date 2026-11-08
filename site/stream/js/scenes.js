@@ -2,8 +2,9 @@
  * Maka Stream — Scenes + Sources panel (browser port of Electron studio left rail).
  *
  * Click contract (with preview.js — do not double-fire):
- *   - Source row (.studio-source-toggle) click → toggle layer visibility / enabled only
- *     (toggleLayerForSourceKind). Never starts getDisplayMedia / getUserMedia.
+ *   - Source row (.studio-source-toggle) click → toggle sourceHighlighted and that
+ *     source's on-stage visibility together (gold = shown, plain = hidden).
+ *     Never starts getDisplayMedia / getUserMedia. Microphone has no program box.
  *   - Source ⋯ menu ([data-source-menu]) → expand/collapse the device/tab picker.
  *     Picker picks start capture: Game → getDisplayMedia; Webcam → getUserMedia(deviceId);
  *     Mic → list audioinputs; capture wired to MakaStreamAudio.setStream('mic').
@@ -328,7 +329,6 @@
 
   function previewSceneDetail(scene) {
     var bumper = scene ? bumperPreset(scene.id) : null;
-    var webcamPip = scene ? scene.id === 'gaming-cam' : false;
     return {
       sceneId: scene ? scene.id : activeSceneId,
       scene: scene ? cloneScene(scene) : null,
@@ -348,7 +348,7 @@
               brand: 'MAKA',
             }
           : null,
-      webcamPip: webcamPip && layers.cam,
+      webcamPip: !!sourceHighlighted.webcam,
       layers: {
         game: layers.game,
         cam: layers.cam,
@@ -819,6 +819,7 @@
     void preview.startScreen({ displaySurface: surface }).then(function (stream) {
       if (stream) {
         markSourceActive('game', true);
+        sourceHighlighted.game = true;
       } else {
         // User cancelled or UA denied — keep prior state unless no live screen.
         var streams = typeof preview.getStreams === 'function' ? preview.getStreams() : null;
@@ -826,6 +827,7 @@
         if (!streams || !streams.screen) selectedDisplaySurface = null;
       }
       syncSourcePickerVisibility();
+      applySourceVisibility();
       emitAll();
     });
   }
@@ -848,12 +850,14 @@
     void preview.startWebcam({ deviceId: deviceId || undefined }).then(function (stream) {
       if (stream) {
         markSourceActive('webcam', true);
+        sourceHighlighted.webcam = true;
       } else {
         var streams = typeof preview.getStreams === 'function' ? preview.getStreams() : null;
         markSourceActive('webcam', Boolean(streams && streams.webcam));
         if (!streams || !streams.webcam) selectedCameraId = '';
       }
       syncSourcePickerVisibility();
+      applySourceVisibility();
       emitAll();
     });
   }
@@ -1135,29 +1139,51 @@
     el.style.zIndex = box.z || '';
   }
 
+  function overlayPresetActive() {
+    return !!(activeOverlayPresetId && OVERLAY_LAYOUTS[activeOverlayPresetId]);
+  }
+
+  /** Gold highlight is on-stage visibility. Preview must not show a row that is off. */
+  function applySourceVisibility() {
+    var preview = getPreviewApi();
+    if (preview && typeof preview.setWebcamPipVisible === 'function') {
+      preview.setWebcamPipVisible(!!sourceHighlighted.webcam);
+    } else {
+      setProgramSlot('program-cam', !!sourceHighlighted.webcam);
+    }
+    if (preview && typeof preview.setGameVisible === 'function') {
+      preview.setGameVisible(!!sourceHighlighted.game);
+    } else if (!sourceHighlighted.game) {
+      setProgramSlot('program-video', false);
+    }
+    applyOverlayLayout(activeOverlayPresetId);
+  }
+
   function applyOverlayLayout(presetId) {
     var layout = OVERLAY_LAYOUTS[presetId] || null;
     var game = document.getElementById('program-video');
     var cam = document.getElementById('program-cam');
     var chat = document.getElementById('program-chat-slot');
     var notes = document.getElementById('program-notifications-slot');
+    var showChat = !!sourceHighlighted.chat;
+    var showNotes = !!sourceHighlighted.notifications;
     if (!layout) {
       placeProgramBox(game, null);
       placeProgramBox(cam, null);
       placeProgramBox(chat, null);
       placeProgramBox(notes, null);
-      if (chat) chat.hidden = !layers.chat;
-      if (notes) notes.hidden = !layers.notifications;
-      if (layers.chat) placeProgramBox(chat, CHAT_TALL_LEFT);
-      if (layers.notifications) placeProgramBox(notes, NOTES_CENTER);
+      if (chat) chat.hidden = !showChat;
+      if (notes) notes.hidden = !showNotes;
+      if (showChat) placeProgramBox(chat, CHAT_TALL_LEFT);
+      if (showNotes) placeProgramBox(notes, NOTES_CENTER);
       return;
     }
     placeProgramBox(game, layout.game);
     placeProgramBox(cam, layout.cam);
     placeProgramBox(chat, layout.chat);
     placeProgramBox(notes, layout.notes);
-    if (chat) chat.hidden = false;
-    if (notes) notes.hidden = false;
+    if (chat) chat.hidden = !showChat;
+    if (notes) notes.hidden = !showNotes;
   }
 
   function renderOverlayPicker(picker) {
@@ -1177,8 +1203,17 @@
         sourceActive.browser = layers.overlay;
         sourceActive.chat = layers.chat;
         sourceActive.notifications = layers.notifications;
-        applyOverlayLayout(preset.id);
+        if (layout) {
+          sourceHighlighted.browser = true;
+          sourceHighlighted.chat = true;
+          sourceHighlighted.notifications = true;
+        } else {
+          sourceHighlighted.browser = false;
+          sourceHighlighted.chat = false;
+          sourceHighlighted.notifications = false;
+        }
         syncSourceRows();
+        applySourceVisibility();
         emitAll();
         renderSourcePicker('browser');
       });
@@ -1186,38 +1221,42 @@
   }
 
   function renderChatPicker(picker) {
-    appendPickerButton(picker, 'Chat off', !layers.chat, function () {
+    appendPickerButton(picker, 'Chat off', !sourceHighlighted.chat, function () {
       layers.chat = false;
       sourceActive.chat = false;
-      setProgramSlot('program-chat-slot', false);
+      sourceHighlighted.chat = false;
       syncSourceRows();
+      applySourceVisibility();
       emitAll();
       renderSourcePicker('chat');
     });
-    appendPickerButton(picker, 'Tall chat log', layers.chat, function () {
+    appendPickerButton(picker, 'Tall chat log', sourceHighlighted.chat, function () {
       layers.chat = true;
       sourceActive.chat = true;
-      applyOverlayLayout(activeOverlayPresetId);
+      sourceHighlighted.chat = true;
       syncSourceRows();
+      applySourceVisibility();
       emitAll();
       renderSourcePicker('chat');
     });
   }
 
   function renderNotificationsPicker(picker) {
-    appendPickerButton(picker, 'Notifications off', !layers.notifications, function () {
+    appendPickerButton(picker, 'Notifications off', !sourceHighlighted.notifications, function () {
       layers.notifications = false;
       sourceActive.notifications = false;
-      setProgramSlot('program-notifications-slot', false);
+      sourceHighlighted.notifications = false;
       syncSourceRows();
+      applySourceVisibility();
       emitAll();
       renderSourcePicker('notifications');
     });
-    appendPickerButton(picker, 'Center overlay', layers.notifications, function () {
+    appendPickerButton(picker, 'Center overlay', sourceHighlighted.notifications, function () {
       layers.notifications = true;
       sourceActive.notifications = true;
-      applyOverlayLayout(activeOverlayPresetId);
+      sourceHighlighted.notifications = true;
       syncSourceRows();
+      applySourceVisibility();
       emitAll();
       renderSourcePicker('notifications');
     });
@@ -1268,14 +1307,18 @@
       return;
     }
     if (!btn.title) {
-      btn.title = 'Highlight this source';
+      btn.title = 'Show or hide this source';
     }
     btn.addEventListener('click', function (event) {
       if (event.target.closest && event.target.closest('[data-source-menu]')) return;
-      if (Object.prototype.hasOwnProperty.call(sourceHighlighted, kind)) {
-        sourceHighlighted[kind] = !sourceHighlighted[kind];
+      if (!Object.prototype.hasOwnProperty.call(sourceHighlighted, kind)) return;
+      sourceHighlighted[kind] = !sourceHighlighted[kind];
+      if (kind === 'browser' && overlayPresetActive()) {
+        sourceHighlighted.chat = sourceHighlighted.browser;
+        sourceHighlighted.notifications = sourceHighlighted.browser;
       }
       syncSourceRows();
+      applySourceVisibility();
       writeStorage();
     });
 
@@ -1514,7 +1557,7 @@
     syncSourceRows();
     wirePreviewSync();
     if (activeOverlayPresetId && !OVERLAY_LAYOUTS[activeOverlayPresetId]) activeOverlayPresetId = '';
-    applyOverlayLayout(activeOverlayPresetId);
+    applySourceVisibility();
     document.addEventListener('click', function (event) {
       if (!intermissionMenuOpen) return;
       var target = event.target;
