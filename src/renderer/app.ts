@@ -11,7 +11,6 @@ import {
   ENCODE_PROFILE_ORDER,
   ENCODE_PROFILES,
   encodeProfileSpec,
-  formatResolutionLabel,
   normalizeEncodeProfileId,
   type EncodeProfileId,
 } from '../shared/stream-encode-profiles'
@@ -47,6 +46,12 @@ import {
 } from './whip'
 import { OnboardingTour } from './onboarding'
 import { SetupWizard } from './onboarding-wizard'
+import {
+  GoLiveWizard,
+  readStoredStreamGame,
+  readStoredStreamTitle,
+  type GoLiveWizardPlatform,
+} from './go-live-wizard'
 import { initMarketplace } from './marketplace'
 import {
   getPhoneTracksSnapshot,
@@ -1607,6 +1612,9 @@ async function endLive(): Promise<void> {
     btnGoLive.disabled = false
     btnGoLive.dataset.live = '0'
     btnGoLive.textContent = 'Go Live'
+    updateGoLiveLabel(false)
+    updateStreamInfo(false)
+    stopLiveDuration()
   }
 }
 
@@ -1676,6 +1684,9 @@ async function goLive(): Promise<void> {
     destHint.textContent = 'Live — keys stay in relay RAM. End Live to tear down WHIP.'
     btnGoLive.dataset.live = '1'
     btnGoLive.textContent = 'End Live'
+    updateGoLiveLabel(true)
+    updateStreamInfo(true)
+    startLiveDuration()
   } catch (err) {
     sessionLiveIntent = false
     setDestError(err instanceof Error ? err.message : String(err))
@@ -1686,6 +1697,8 @@ async function goLive(): Promise<void> {
     }
     btnGoLive.dataset.live = '0'
     btnGoLive.textContent = 'Go Live'
+    updateGoLiveLabel(false)
+    updateStreamInfo(false)
   } finally {
     goingLive = false
     btnGoLive.disabled = false
@@ -1697,7 +1710,7 @@ async function onGoLiveClick(): Promise<void> {
     await endLive()
     return
   }
-  await goLive()
+  goLiveWizard.open()
 }
 
 async function onVerifyKeys(): Promise<void> {
@@ -2454,19 +2467,14 @@ const btnGoLiveSidebar = document.getElementById('btn-go-live-sidebar') as HTMLB
 const programStats = document.getElementById('program-stats')
 const statDropped = document.getElementById('stat-dropped')
 const statFps = document.getElementById('stat-fps')
+const statLatency = document.getElementById('stat-latency')
 const statResolution = document.getElementById('stat-resolution')
 
 // Scene selection handler
 async function selectScene(sceneTemplate: string): Promise<void> {
-  console.log('Selecting scene:', sceneTemplate)
-  // Wire to existing scene template system if available
-  // For now, just log the selection
-  // The actual scene templates are: gaming-cam, desk-only, browse-showcase
-  if (sceneTemplate === 'gaming-cam' || sceneTemplate === 'desk-only' || sceneTemplate === 'browse-showcase') {
-    // These exist and can be wired to the scene API
-    console.log('Valid scene template:', sceneTemplate)
-  } else {
-    console.log('Scene template not implemented:', sceneTemplate)
+  for (const button of document.querySelectorAll<HTMLButtonElement>('.studio-list-item[data-scene]')) {
+    if (button.dataset.scene === sceneTemplate) button.dataset.active = '1'
+    else delete button.dataset.active
   }
 }
 
@@ -2501,10 +2509,9 @@ if (btnAddSceneAlt) {
   })
 }
 
-// Go Live sidebar button (wire to existing Go Live)
 if (btnGoLiveSidebar) {
   btnGoLiveSidebar.addEventListener('click', () => {
-    btnGoLive.click()
+    void onGoLiveClick()
   })
 }
 
@@ -2520,13 +2527,17 @@ function updateProgramStats(snapshot?: RelaySnapshot | null): void {
   const spec = encodeProfileSpec(profile)
   const dropped = droppedFramesFromRelay(snapshot)
   if (statDropped) {
-    statDropped.textContent = `Dropped: ${dropped}`
+    statDropped.textContent =
+      dropped === 0 ? 'Dropped Frames: 0 (0.0%)' : `Dropped Frames: ${dropped}`
   }
   if (statFps) {
     statFps.textContent = `FPS: ${spec.fps}`
   }
+  if (statLatency) {
+    statLatency.textContent = '—'
+  }
   if (statResolution) {
-    statResolution.textContent = formatResolutionLabel(profile)
+    statResolution.textContent = `Auto (${spec.width}×${spec.height})`
   }
 }
 
@@ -2548,43 +2559,137 @@ const streamDuration = document.getElementById('stream-duration') as HTMLElement
 // Update Go Live button label based on streaming state
 function updateGoLiveLabel(isLive: boolean): void {
   if (btnGoLiveLabel) {
-    btnGoLiveLabel.textContent = isLive ? 'End Streaming' : 'Start Streaming'
+    btnGoLiveLabel.textContent = isLive ? 'End Live' : 'Go Live'
   }
 }
 
-// Update stream info display
+let liveStartedAt: number | null = null
+let liveDurationTimer: ReturnType<typeof setInterval> | null = null
+
+function formatLiveDuration(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000))
+  const hours = String(Math.floor(total / 3600)).padStart(2, '0')
+  const minutes = String(Math.floor((total % 3600) / 60)).padStart(2, '0')
+  const seconds = String(total % 60).padStart(2, '0')
+  return `${hours}:${minutes}:${seconds}`
+}
+
+function startLiveDuration(): void {
+  liveStartedAt = Date.now()
+  if (streamDuration) streamDuration.textContent = '00:00:00'
+  if (liveDurationTimer) clearInterval(liveDurationTimer)
+  liveDurationTimer = setInterval(() => {
+    if (liveStartedAt == null || !streamDuration) return
+    streamDuration.textContent = formatLiveDuration(Date.now() - liveStartedAt)
+  }, 1000)
+}
+
+function stopLiveDuration(): void {
+  if (liveDurationTimer) clearInterval(liveDurationTimer)
+  liveDurationTimer = null
+  liveStartedAt = null
+  if (streamDuration) streamDuration.textContent = '—'
+}
+
+function showStreamCard(title: string, game: string): void {
+  if (streamTitle) streamTitle.textContent = title || 'Untitled stream'
+  if (streamCategory) streamCategory.textContent = game || 'Just Chatting'
+}
+
 function updateStreamInfo(isLive: boolean): void {
   if (streamLivePill) {
     streamLivePill.dataset.live = isLive ? 'true' : 'false'
     streamLivePill.textContent = isLive ? 'Live' : 'Offline'
   }
-  
-  // Don't fake viewer count or duration - show placeholder when not live
-  if (streamViewers) {
-    streamViewers.textContent = isLive ? '—' : '—'
-  }
-  if (streamDuration) {
-    streamDuration.textContent = isLive ? '—' : '—'
-  }
+  if (streamViewers) streamViewers.textContent = '—'
 }
 
-// Wire existing Go Live button to update labels
-const originalGoLiveHandler = btnGoLive.onclick
-btnGoLive.addEventListener('click', () => {
-  // Update UI after state change
-  setTimeout(() => {
-    const isLive = btnGoLive.textContent?.includes('End') || false
-    updateGoLiveLabel(isLive)
-    updateStreamInfo(isLive)
-  }, 100)
-})
+const goLiveWizard = new GoLiveWizard(
+  document.getElementById('go-live-wizard-dialog') as HTMLDialogElement,
+  document.getElementById('go-live-wizard-step')!,
+  document.getElementById('go-live-wizard-title')!,
+  document.getElementById('go-live-wizard-body')!,
+  document.getElementById('go-live-wizard-panel-platform')!,
+  document.getElementById('go-live-wizard-panel-key')!,
+  document.getElementById('go-live-wizard-panel-details')!,
+  document.getElementById('go-live-wizard-panel-validate')!,
+  document.getElementById('go-live-wizard-panel-go')!,
+  document.getElementById('wizard-twitch-key') as HTMLInputElement,
+  document.getElementById('wizard-youtube-key') as HTMLInputElement,
+  document.getElementById('wizard-custom-url') as HTMLInputElement,
+  document.getElementById('wizard-custom-key') as HTMLInputElement,
+  document.getElementById('wizard-key-hint')!,
+  document.getElementById('go-live-wizard-title-input') as HTMLInputElement,
+  document.getElementById('go-live-wizard-game-input') as HTMLInputElement,
+  document.getElementById('go-live-wizard-quality') as HTMLSelectElement,
+  document.getElementById('go-live-wizard-status')!,
+  document.getElementById('go-live-wizard-go-status')!,
+  document.getElementById('wizard-platform-custom') as HTMLButtonElement,
+  document.getElementById('go-live-wizard-back') as HTMLButtonElement,
+  document.getElementById('go-live-wizard-next') as HTMLButtonElement,
+  document.getElementById('go-live-wizard-cancel') as HTMLButtonElement,
+  {
+    isLive: () => isSessionLive(),
+    labMode: () => labMode,
+    hasCustomRtmp: () => !destCustomBlock.hidden,
+    readKeys: () => ({
+      twitchKey: twitchKey.value,
+      youtubeKey: youtubeKey.value,
+      customUrl: customRtmpUrl.value,
+      customKey: customRtmpKey.value,
+    }),
+    applyDestination: (platform: GoLiveWizardPlatform, key: string, customUrl: string) => {
+      destTwitch.checked = platform === 'twitch'
+      destYoutube.checked = platform === 'youtube'
+      destCustom.checked = platform === 'custom'
+      if (platform === 'twitch') twitchKey.value = key.trim()
+      if (platform === 'youtube') youtubeKey.value = key.trim()
+      if (platform === 'custom') {
+        customRtmpUrl.value = customUrl.trim()
+        customRtmpKey.value = key.trim()
+      }
+      syncDestinationInputs()
+    },
+    readEncodeProfile: () => selectedProfile(),
+    applyEncodeProfile: (id) => onEncodeProfileChanged(id),
+    applyStreamInfo: (title, game) => showStreamCard(title, game),
+    validateRelay: async () => {
+      try {
+        const twitch = destTwitch.checked ? twitchKey.value : ''
+        const youtube = destYoutube.checked ? youtubeKey.value : ''
+        const customUrl = destCustom.checked ? customRtmpUrl.value.trim() : ''
+        const customKey = destCustom.checked ? customRtmpKey.value.trim() : ''
+        if (!labMode) {
+          const keysOk = validateRelayStreamKeys({
+            twitchKey: twitch,
+            youtubeKey: youtube,
+            customRtmpUrl: customUrl,
+            customRtmpKey: customKey,
+            customEnabled: destCustom.checked,
+          })
+          if (!keysOk.ok) return { ok: false, message: keysOk.message }
+        }
+        let snapshot = await window.tabcast.getRelay()
+        if (!snapshot.health) snapshot = await window.tabcast.startRelay()
+        if (!snapshot.health) return { ok: false, message: snapshot.error ?? 'Relay is not ready.' }
+        await postRelayConfig(snapshot.health, relayConfigForIngest('primary'))
+        const result = await verifyRelayConfig(snapshot.health)
+        if (!result.ok) return { ok: false, message: result.message ?? 'Verification failed' }
+        return { ok: true, message: result.message ?? 'Relay ready.' }
+      } catch (err) {
+        return { ok: false, message: err instanceof Error ? err.message : String(err) }
+      }
+    },
+    goLive: () => goLive(),
+    endLive: () => endLive(),
+  },
+)
 
-// Wire sidebar Go Live button to main Go Live
-if (btnGoLiveSidebar) {
-  btnGoLiveSidebar.addEventListener('click', () => {
-    btnGoLive.click()
-  })
-}
+populateEncodeProfileSelect(
+  document.getElementById('go-live-wizard-quality') as HTMLSelectElement,
+  'sidebar',
+)
+showStreamCard(readStoredStreamTitle(), readStoredStreamGame())
 
 // Desktop and Game audio faders (disabled, no-op)
 // These are shown but don't do anything since the features aren't implemented
