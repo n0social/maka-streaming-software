@@ -53,17 +53,9 @@
     var params = new URLSearchParams(window.location.search);
     var relayParam = (params.get('relay') || '').trim().replace(/\/$/, '');
     if (relayParam) return [relayParam];
-    var list = ['http://127.0.0.1:' + RELAY_PORT, 'http://localhost:' + RELAY_PORT];
-    // Same-origin /relay is for health/status staging only (nginx → droplet mock).
-    // WHIP media needs a loopback sidecar — see isPublishableRelayBase().
-    try {
-      if (window.location && window.location.origin && window.location.protocol !== 'file:') {
-        list.push(String(window.location.origin).replace(/\/$/, '') + '/relay');
-      }
-    } catch (_err) {
-      /* ignore */
-    }
-    return list;
+    // Only a relay on this computer counts. The site /relay path is a server mock
+    // and must not show as "Relay connected".
+    return ['http://127.0.0.1:' + RELAY_PORT, 'http://localhost:' + RELAY_PORT];
   }
 
   function isLoopbackRelayBase(base) {
@@ -466,6 +458,7 @@
         var base = relayCandidates[i];
         try {
           var hit = await probeOne(base);
+          if (!isPublishableRelayBase(hit.base)) continue;
           relayBase = hit.base;
           relayHealth = hit.health;
           relayDetected = true;
@@ -1735,21 +1728,10 @@
       if (youtubeKeyField) youtubeKeyField.hidden = platform !== 'youtube';
       if (els.keyModalTitle) {
         els.keyModalTitle.textContent =
-          platform === 'twitch' ? 'Twitch stream key' : 'YouTube stream key';
+          platform === 'twitch' ? 'Twitch Stream Key' : 'YouTube Stream Key';
       }
-      if (els.keyModalArmLabel) {
-        els.keyModalArmLabel.textContent =
-          platform === 'twitch' ? 'Arm Twitch for Go Live' : 'Arm YouTube for Go Live';
-      }
-      if (els.keyModalArm) {
-        // Opening from a chip defaults to armed; uncheck to disarm on Save.
-        els.keyModalArm.checked = true;
-      }
-      if (els.keyIngestHint) {
-        els.keyIngestHint.innerHTML =
-          platform === 'twitch'
-            ? 'Ingest hint: <code>rtmp://live.twitch.tv/app/&lt;key&gt;</code> — paste the key only; MAKArelay builds the RTMP URL.'
-            : 'Ingest hint: <code>rtmp://a.rtmp.youtube.com/live2/&lt;key&gt;</code> — paste the key only; MAKArelay builds the RTMP URL.';
+      if (els.keyModalLede) {
+        els.keyModalLede.textContent = 'Save your stream key here for future streams!';
       }
       if (els.keyModal) els.keyModal.hidden = false;
       var focusInput = platform === 'twitch' ? twitchInput : youtubeInput;
@@ -1771,37 +1753,29 @@
 
     function saveStreamKeyModal() {
       var platform = keyModalPlatform;
-      var arm = els.keyModalArm ? Boolean(els.keyModalArm.checked) : true;
       var twitchInput = doc.getElementById('web-twitch-key');
       var youtubeInput = doc.getElementById('web-youtube-key');
       var partial = {};
+      var saved = '';
       if (platform === 'twitch') {
-        partial.twitchKey = twitchInput
-          ? String(twitchInput.value || '')
-              .trim()
-              .slice(0, 256)
-          : '';
-        partial.destTwitch = arm;
+        saved = twitchInput ? String(twitchInput.value || '').trim().slice(0, 256) : '';
+        partial.twitchKey = saved;
+        partial.destTwitch = saved.length > 0;
       } else {
-        partial.youtubeKey = youtubeInput
-          ? String(youtubeInput.value || '')
-              .trim()
-              .slice(0, 256)
-          : '';
-        partial.destYoutube = arm;
+        saved = youtubeInput ? String(youtubeInput.value || '').trim().slice(0, 256) : '';
+        partial.youtubeKey = saved;
+        partial.destYoutube = saved.length > 0;
       }
       persistDestinations(partial);
       var next = {
-        twitch: platform === 'twitch' ? arm : platformPref.twitch,
-        youtube: platform === 'youtube' ? arm : platformPref.youtube,
+        twitch: platform === 'twitch' ? saved.length > 0 : platformPref.twitch,
+        youtube: platform === 'youtube' ? saved.length > 0 : platformPref.youtube,
       };
       persistPlatformPref(next);
       closeStreamKeyModal();
       log(
         (platform === 'twitch' ? 'Twitch' : 'YouTube') +
-          (arm
-            ? ' — stream key saved locally for relay /config on Go Live.'
-            : ' — destination cleared for Go Live.'),
+          (saved.length ? ' stream key saved.' : ' stream key cleared.'),
       );
     }
 

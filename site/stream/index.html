@@ -32,13 +32,13 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/maka.css?v=dc6d035" />
-    <link rel="stylesheet" href="./stream.css?v=dc6d051" />
-    <link rel="stylesheet" href="./css/shell.css?v=dc6d051" />
-    <link rel="stylesheet" href="./css/preview-stage.css?v=dc6d051" />
-    <link rel="stylesheet" href="./css/scenes.css?v=dc6d051" />
-    <link rel="stylesheet" href="./css/audio.css?v=dc6d051" />
-    <link rel="stylesheet" href="./css/live.css?v=dc6d051" />
-    <link rel="stylesheet" href="./css/settings.css?v=dc6d051" />
+    <link rel="stylesheet" href="./stream.css?v=dc6d053" />
+    <link rel="stylesheet" href="./css/shell.css?v=dc6d053" />
+    <link rel="stylesheet" href="./css/preview-stage.css?v=dc6d053" />
+    <link rel="stylesheet" href="./css/scenes.css?v=dc6d053" />
+    <link rel="stylesheet" href="./css/audio.css?v=dc6d053" />
+    <link rel="stylesheet" href="./css/live.css?v=dc6d053" />
+    <link rel="stylesheet" href="./css/settings.css?v=dc6d053" />
   </head>
   <body data-mode="studio" class="stream-studio">
     <div class="app" id="studio-app" data-shell="studio">
@@ -54,7 +54,7 @@
         <div class="tabs" role="presentation" data-hook="modes" aria-hidden="true"></div>
         <div class="relay-chip" id="relay-chip" data-state="stopped" data-hook="relay">
           <span class="dot status-dot" id="relay-status-dot" data-state="warn"></span>
-          <span id="relay-label"><span id="relay-status-text">Relay offline</span></span>
+          <span id="relay-label"><span id="relay-status-text">Relay not detected</span></span>
           <button
             type="button"
             class="relay-refresh"
@@ -242,44 +242,30 @@
               aria-labelledby="stream-key-modal-title"
             >
               <div class="stream-key-modal">
-                <h2 id="stream-key-modal-title">Twitch stream key</h2>
+                <h2 id="stream-key-modal-title">Twitch Stream Key</h2>
                 <p class="stream-key-modal-lede" id="stream-key-modal-lede">
-                  Paste your stream key for local relay <code>/config</code>. Keys stay in this
-                  browser and are sent only to <code>127.0.0.1:38473</code> when you Go Live —
-                  never to this website’s CDN.
+                  Save your stream key here for future streams!
                 </p>
-                <label class="stream-key-modal-arm">
-                  <input type="checkbox" id="stream-key-modal-arm" checked />
-                  <span id="stream-key-modal-arm-label">Arm Twitch for Go Live</span>
-                </label>
                 <label class="stream-key-modal-field" id="dest-twitch-field">
-                  <span class="field-label" id="stream-key-modal-field-label">Twitch stream key</span>
                   <input
                     type="password"
                     id="web-twitch-key"
                     class="key-input"
                     autocomplete="off"
                     spellcheck="false"
-                    placeholder="live_… from Twitch Dashboard → Settings → Stream"
                     aria-label="Twitch stream key"
                   />
                 </label>
                 <label class="stream-key-modal-field" id="dest-youtube-field" hidden>
-                  <span class="field-label">YouTube stream key</span>
                   <input
                     type="password"
                     id="web-youtube-key"
                     class="key-input"
                     autocomplete="off"
                     spellcheck="false"
-                    placeholder="YouTube Studio → Go live → Stream key"
                     aria-label="YouTube stream key"
                   />
                 </label>
-                <p class="hint tight stream-key-ingest-hint" id="stream-key-ingest-hint">
-                  Ingest hint: <code>rtmp://live.twitch.tv/app/&lt;key&gt;</code> — paste the key
-                  only; MAKArelay builds the RTMP URL.
-                </p>
                 <div class="modal-actions stream-key-modal-actions">
                   <button type="button" class="btn btn-primary" id="stream-key-modal-save">Save</button>
                   <button type="button" class="btn btn-ghost" id="stream-key-modal-cancel">Cancel</button>
@@ -561,11 +547,11 @@
     </dialog>
 
     <!-- Module hooks (feature modules owned elsewhere) -->
-    <script type="module" src="./js/shell.js?v=dc6d051"></script>
-    <script type="module" src="./js/scenes.js?v=dc6d051"></script>
-    <script type="module" src="./js/preview.js?v=dc6d051"></script>
-    <script type="module" src="./js/audio.js?v=dc6d051"></script>
-    <script type="module" src="./js/live.js?v=dc6d051"></script>
-    <script type="module" src="./js/settings.js?v=dc6d051"></script>
+    <script type="module" src="./js/shell.js?v=dc6d053"></script>
+    <script type="module" src="./js/scenes.js?v=dc6d053"></script>
+    <script type="module" src="./js/preview.js?v=dc6d053"></script>
+    <script type="module" src="./js/audio.js?v=dc6d053"></script>
+    <script type="module" src="./js/live.js?v=dc6d053"></script>
+    <script type="module" src="./js/settings.js?v=dc6d053"></script>
   </body>
 </html>
