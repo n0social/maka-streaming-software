@@ -26,34 +26,38 @@
       </div>
     </div>
     <div class="app">
+      <div id="app-intro" class="app-intro">
+        <main class="app-intro-hero">
+          <img
+            class="app-intro-wordmark"
+            src="assets/maka-wordmark.png"
+            alt="MAKA"
+            width="760"
+            height="237"
+            draggable="false"
+          />
+          <nav class="app-intro-actions" aria-label="Primary actions">
+            <button type="button" class="app-intro-btn app-intro-btn-stream" id="app-intro-stream">Stream</button>
+            <button type="button" class="app-intro-btn app-intro-btn-github" id="app-intro-github">Github</button>
+          </nav>
+        </main>
+        <footer class="app-intro-footer">MAKA · MIT</footer>
+      </div>
       <header class="topbar">
-        <div class="brand drag">
-          <span class="mark" aria-hidden="true"></span>
+        <div class="brand drag" data-tour="modes">
+          <span class="mark" aria-hidden="true">M</span>
           <div class="brand-lockup">
             <strong class="wordmark">Maka Studio</strong>
             <span class="brand-tag" id="brand-tag" hidden>Streaming studio</span>
           </div>
-          <span class="version" id="app-version-label">0.2</span>
+          <span class="version" id="app-version-label">0.2.6</span>
         </div>
-        <div class="tabs" role="tablist" data-tour="modes" aria-label="Streaming studio">
-          <button
-            type="button"
-            class="tab tab-primary active"
-            data-tab="studio"
-            id="tab-stream"
-            role="tab"
-            aria-selected="true"
-            title="Return to the three-column studio layout"
-          >
-            Stream
-          </button>
-        </div>
+        <div class="topbar-spacer"></div>
         <div class="relay-chip" id="relay-chip" data-state="stopped" data-tour="relay">
           <span class="dot"></span>
           <span id="relay-label">Relay offline</span>
         </div>
         <button type="button" class="ghost" id="btn-settings" title="Settings" aria-pressed="false">Settings</button>
-        <button type="button" class="go-live" id="btn-go-live" data-tour="go-live">Go Live</button>
         <div class="win-controls no-drag">
           <button type="button" id="btn-win-min" aria-label="Minimize">─</button>
           <button type="button" id="btn-win-max" aria-label="Maximize">□</button>
@@ -374,12 +378,12 @@
               <span class="program-stat" id="stat-dropped">Dropped Frames: 0 (0.0%)</span>
               <span class="program-stat" id="stat-fps">FPS: 30</span>
               <span class="program-stat program-stat-latency" id="stat-latency" title="Stream latency">—</span>
-              <div class="program-stats-platforms" role="group" aria-label="Stream destinations">
-                <button type="button" class="platform-chip platform-chip-btn" id="plat-twitch" data-state="off" aria-haspopup="dialog">
+              <div class="program-stats-platforms" role="group" aria-label="Stream destinations" data-tour="destinations">
+                <button type="button" class="platform-chip platform-chip-btn" id="plat-twitch" data-state="off" aria-haspopup="dialog" title="Save the Twitch stream key and chat link">
                   Twitch
                 </button>
                 <span class="program-stats-platform-sep" aria-hidden="true">|</span>
-                <button type="button" class="platform-chip platform-chip-btn" id="plat-youtube" data-state="off" aria-haspopup="dialog">
+                <button type="button" class="platform-chip platform-chip-btn" id="plat-youtube" data-state="off" aria-haspopup="dialog" title="Save the YouTube stream key and chat link">
                   YouTube
                 </button>
               </div>
@@ -442,7 +446,7 @@
         <div class="studio-block studio-block-compact studio-block-controls">
           <h2>Stream Controls</h2>
           <div class="stream-controls-stack">
-            <button type="button" class="btn-block btn-primary btn-go-live" id="btn-go-live-sidebar">
+            <button type="button" class="btn-block btn-primary btn-go-live" id="btn-go-live-sidebar" data-tour="go-live">
               <span class="btn-icon btn-icon-live" aria-hidden="true">((•))</span>
               <span id="btn-go-live-label">Go Live</span>
             </button>
@@ -469,6 +473,7 @@
             type="button"
             class="btn-block btn-secondary btn-open-marketplace"
             id="btn-open-marketplace"
+            data-tour="addons"
             aria-haspopup="dialog"
             aria-controls="marketplace-dialog"
           >
@@ -634,7 +639,7 @@
     <dialog id="platform-key-dialog" class="platform-key-dialog">
       <form method="dialog" id="platform-key-form" class="platform-key-form">
         <h2 id="platform-key-dialog-title">Stream key</h2>
-        <p class="hint tight" id="platform-key-hint">Saved locally when you click Save. Relay still holds keys in RAM while live.</p>
+        <p class="hint tight" id="platform-key-hint">Save the stream key and the chat and notifications link. Go Live fills these in for this platform.</p>
         <div class="platform-key-panel" id="platform-key-panel-twitch" data-platform="twitch">
           <label class="check">
             <input type="checkbox" id="dest-twitch" checked />
@@ -648,6 +653,16 @@
             autocomplete="off"
             spellcheck="false"
             placeholder="live_… Twitch stream key"
+          />
+          <label class="field-label" for="twitch-chat-link">Chat and notifications</label>
+          <input
+            id="twitch-chat-link"
+            class="key-input"
+            type="text"
+            maxlength="120"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="channel or https://twitch.tv/channel"
           />
         </div>
         <div class="platform-key-panel" id="platform-key-panel-youtube" data-platform="youtube" hidden>
@@ -665,7 +680,18 @@
             placeholder="YouTube stream key"
             disabled
           />
+          <label class="field-label" for="youtube-chat-link">Chat and notifications</label>
+          <input
+            id="youtube-chat-link"
+            class="key-input"
+            type="text"
+            maxlength="512"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="https://www.youtube.com/watch?v=…"
+          />
         </div>
+        <p class="hint tight" id="platform-key-status" hidden></p>
         <div class="row platform-key-dialog-actions">
           <button type="submit" value="save" class="primary" id="platform-key-save">Save</button>
           <button type="submit" value="cancel">Cancel</button>

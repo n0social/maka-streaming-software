@@ -68,7 +68,13 @@ const report = await evaluate(send, `(async () => {
     if (!el) throw new Error('missing ' + selector)
     el.click()
   }
-  await wait(600)
+  await wait(400)
+  const intro = document.getElementById('app-intro')
+  if (intro && !intro.hidden) document.getElementById('app-intro-stream')?.click()
+  await wait(400)
+  const tour = document.getElementById('onboarding-root')
+  if (tour && !tour.hidden) document.getElementById('onboarding-skip')?.click()
+  await wait(200)
   click('[data-scene-menu="intermission"]')
   const timerVisible = !document.getElementById('scene-menu-timer-5').hidden
   click('[data-intermission-min="5"]')
@@ -87,7 +93,7 @@ const report = await evaluate(send, `(async () => {
   click('#scene-image-menu-delete')
   await wait(400)
   const customGone = !customId || !document.querySelector('[data-scene="' + customId + '"]')
-  click('#btn-go-live')
+  click('#btn-go-live-sidebar')
   await wait(500)
   const wizardOpen = document.getElementById('go-live-wizard-dialog').open
   if (wizardOpen) document.getElementById('go-live-wizard-dialog').close()

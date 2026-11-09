@@ -72,6 +72,12 @@ export function coerceSettings(partial: unknown): Partial<AppSettings> {
   if (typeof p.streamChannel === 'string') {
     out.streamChannel = p.streamChannel.trim().replace(/^@/, '').replace(/\s+/g, '').slice(0, 64)
   }
+  if (typeof p.streamTwitchChatLink === 'string') {
+    out.streamTwitchChatLink = p.streamTwitchChatLink.trim().slice(0, 120)
+  }
+  if (typeof p.streamYoutubeChatLink === 'string') {
+    out.streamYoutubeChatLink = p.streamYoutubeChatLink.trim().slice(0, 512)
+  }
   if (typeof p.streamIncludeChat === 'boolean') {
     out.streamIncludeChat = p.streamIncludeChat
   }

@@ -1164,7 +1164,7 @@ app.whenReady().then(() => {
       mainWindow.webContents.send('diagnostics:event', event)
     }
   })
-  recordDiagnostic('info', 'app.boot', 'Maka 0.2 starting')
+  recordDiagnostic('info', 'app.boot', `Maka ${app.getVersion()} starting`)
   settings = loadSettings()
 
   allowCapturePermissions()

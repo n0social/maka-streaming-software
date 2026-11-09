@@ -45,6 +45,10 @@ export type AppSettings = {
   streamDescription: string
   /** Twitch login or YouTube live video id. Chat and alerts follow this. */
   streamChannel: string
+  /** Saved from the Twitch button. Go Live fills the Twitch chat field from this. */
+  streamTwitchChatLink: string
+  /** Saved from the YouTube button. Go Live fills the YouTube chat field from this. */
+  streamYoutubeChatLink: string
   streamAlertBoxUrl: string
   /** Chat and in-stream alerts follow streamChannel when this is on. */
   streamIncludeChat: boolean
@@ -91,6 +95,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   streamCategory: '',
   streamDescription: '',
   streamChannel: '',
+  streamTwitchChatLink: '',
+  streamYoutubeChatLink: '',
   streamAlertBoxUrl: '',
   streamIncludeChat: false,
   preferredMicDeviceId: '',

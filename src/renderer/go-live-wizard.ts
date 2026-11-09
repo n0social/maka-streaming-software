@@ -22,6 +22,8 @@ export type GoLiveStreamInfo = {
   description: string
   channel: string
   includeChat: boolean
+  twitchChatLink: string
+  youtubeChatLink: string
 }
 
 export type GoLiveWizardBindings = {
@@ -142,6 +144,8 @@ export class GoLiveWizard {
         this.refreshKeyGate()
         this.syncChatVisibility()
         this.syncDescriptionField()
+        const link = this.platform === 'youtube' ? this.youtubeChat.value : this.twitchChannel.value
+        this.chatInclude.checked = Boolean(link.trim())
       })
     })
     this.twitchKey.addEventListener('input', () => {
@@ -220,8 +224,9 @@ export class GoLiveWizard {
     this.titleInput.value = info.title
     this.descriptionInput.value = sanitizeYouTubeDescription(info.description)
     this.paintDescriptionCount()
-    this.chatInclude.checked = info.includeChat
-    this.hydrateChatFields(info.channel)
+    const savedLink = this.platform === 'youtube' ? info.youtubeChatLink : info.twitchChatLink
+    this.chatInclude.checked = Boolean(savedLink.trim())
+    this.hydrateChatFields(info)
     this.paintGameTrigger(info.game, this.imageForGame(info.game))
     this.step = 'platform'
     this.busy = false
@@ -240,12 +245,13 @@ export class GoLiveWizard {
     if (this.dialog.open) this.dialog.close()
   }
 
-  private hydrateChatFields(channel: string): void {
-    if (this.platform === 'youtube' && youtubeVideoId(channel)) {
-      this.youtubeChat.value = `https://www.youtube.com/watch?v=${youtubeVideoId(channel)}`
-    } else if (this.platform === 'twitch') {
-      this.twitchChannel.value = channel
-    }
+  private hydrateChatFields(info: GoLiveStreamInfo): void {
+    this.twitchChannel.value = info.twitchChatLink
+    const youtubeId = youtubeVideoId(info.youtubeChatLink)
+    this.youtubeChat.value =
+      info.youtubeChatLink && youtubeId && !/^https?:/i.test(info.youtubeChatLink.trim())
+        ? `https://www.youtube.com/watch?v=${youtubeId}`
+        : info.youtubeChatLink
   }
 
   private async loadGames(): Promise<void> {
@@ -491,6 +497,8 @@ export class GoLiveWizard {
       description: this.descriptionValue(),
       channel: info.channel,
       includeChat: info.includeChat,
+      twitchChatLink: info.twitchChatLink,
+      youtubeChatLink: info.youtubeChatLink,
     })
     this.bindings.applyEncodeProfile(this.qualitySelect.value as EncodeProfileId)
   }
@@ -503,6 +511,8 @@ export class GoLiveWizard {
       description: this.descriptionValue(),
       channel: this.channelValue(),
       includeChat: this.chatInclude.checked && Boolean(this.channelValue()),
+      twitchChatLink: this.twitchChannel.value.trim().slice(0, 120),
+      youtubeChatLink: this.youtubeChat.value.trim().slice(0, 512),
     })
   }
 

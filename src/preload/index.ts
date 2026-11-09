@@ -55,6 +55,8 @@ export type AppSettings = {
   streamCategory: string
   streamDescription: string
   streamChannel: string
+  streamTwitchChatLink: string
+  streamYoutubeChatLink: string
   streamAlertBoxUrl: string
   streamIncludeChat: boolean
   preferredMicDeviceId: string

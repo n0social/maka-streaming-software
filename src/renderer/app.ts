@@ -59,6 +59,7 @@ import {
 } from '../shared/ingest-failover'
 import { validateRelayStreamKeys, KICK_RTMP_URL } from '../shared/stream-keys'
 import { buildRelayConfigRequest, sanitizeStreamCategory, sanitizeStreamTitle, type RelayStudioSettings } from '../shared/relay-config'
+import { isTwitchLogin, normalizeTwitchChannel, youtubeVideoId } from '../shared/stream-wizard'
 import type { StreamDestinationSettings } from '../shared/stream-destination-settings'
 import { GoLiveWizard, type GoLiveWizardPlatform } from './go-live-wizard'
 import {
@@ -211,13 +212,16 @@ const destTwitch = document.getElementById('dest-twitch') as HTMLInputElement
 const destYoutube = document.getElementById('dest-youtube') as HTMLInputElement
 const twitchKey = document.getElementById('twitch-key') as HTMLInputElement
 const youtubeKey = document.getElementById('youtube-key') as HTMLInputElement
+const twitchChatLinkInput = document.getElementById('twitch-chat-link') as HTMLInputElement
+const youtubeChatLinkInput = document.getElementById('youtube-chat-link') as HTMLInputElement
+const platformKeyStatus = document.getElementById('platform-key-status') as HTMLElement
 const destHint = document.getElementById('dest-hint')!
 const destError = document.getElementById('dest-error')!
 const ffmpegLog = document.getElementById('ffmpeg-log')!
 const diagDrawer = document.getElementById('diag-drawer')!
 const settingsViewRoot = document.getElementById('settings-view')!
 const btnSettings = document.getElementById('btn-settings') as HTMLButtonElement
-const btnGoLive = document.getElementById('btn-go-live') as HTMLButtonElement
+const btnGoLive = document.getElementById('btn-go-live-sidebar') as HTMLButtonElement
 const layerGame = document.getElementById('layer-game')!
 const layerCam = document.getElementById('layer-cam')!
 const layerMic = document.getElementById('layer-mic')!
@@ -319,6 +323,8 @@ let customScenes: CustomScene[] = []
 let intermissionEndsAtMs: number | null = null
 let intermissionTimer: ReturnType<typeof setInterval> | null = null
 let streamChannel = ''
+let streamTwitchChatLink = ''
+let streamYoutubeChatLink = ''
 let streamAlertBoxUrl = ''
 let streamIncludeChat = false
 const gameArtByName = new Map<string, string>()
@@ -1282,9 +1288,7 @@ function renderRelay(snapshot: RelaySnapshot): void {
 
   btnGoLive.dataset.live = live ? '1' : '0'
   btnGoLive.dataset.exhausted = liveRecoveryExhausted ? '1' : '0'
-  if (!goingLive && !liveReconnecting) {
-    btnGoLive.textContent = live ? 'End Live' : 'Go Live'
-  }
+  if (!goingLive && !liveReconnecting) updateGoLiveLabel(live)
 
   const lines = snapshot.status?.ffmpegLog
   if (lines?.length) {
@@ -1615,7 +1619,7 @@ function markLiveRecoveryExhausted(reason: string, detail?: string): void {
   const label = liveRecoveryReasonLabel(reason)
   const extra = detail ? ` ${detail}` : ''
   setDestError(
-    `Live stream dropped (${label}).${extra} Use Retry connection or End Live.`,
+    `Live stream dropped (${label}).${extra} Use Retry connection or End Stream.`,
   )
   mountRetryConnectionHint(false)
   void window.tabcast.getRelay().then(renderRelay)
@@ -1631,8 +1635,8 @@ function markLiveRecoveryFatal(reason: string, detail?: string): void {
   const label = liveRecoveryReasonLabel(reason)
   const extra = (detail ?? reason.replace(/^rtmp:/, '')).trim()
   const keyHint = enabledDestinationKeysEmpty()
-    ? ' Enter stream keys in Destinations, then Retry connection or End Live.'
-    : ' Use Retry connection or End Live.'
+    ? ' Enter stream keys in Destinations, then Retry connection or End Stream.'
+    : ' Use Retry connection or End Stream.'
   setDestError(`Live stream stopped (${label}).${extra ? ` ${extra}` : ''}${keyHint}`)
   mountRetryConnectionHint(true)
   void window.tabcast.getRelay().then(renderRelay)
@@ -1861,16 +1865,63 @@ function applyWizardPlatform(platform: GoLiveWizardPlatform): void {
 
 type PlatformKeyTarget = 'twitch' | 'youtube'
 
+function resolvedChatChannel(platform: PlatformKeyTarget, raw: string): string {
+  if (platform === 'twitch') {
+    const login = normalizeTwitchChannel(raw)
+    return isTwitchLogin(login) ? login : ''
+  }
+  return youtubeVideoId(raw)
+}
+
+function applySavedChatLinks(platform: PlatformKeyTarget, include: boolean, channel: string): void {
+  lastStreamPlatform = platform
+  streamChannel = include ? channel : ''
+  streamIncludeChat = include
+  layerEnabled.chat = include
+  layerEnabled.notifications = include
+  syncChatFeed()
+  syncPlatformAlerts()
+  updateStudioMixControls()
+  refreshProgramPreviewLayout()
+}
+
 function openPlatformKeyDialog(platform: PlatformKeyTarget): void {
   platformKeyPanelTwitch.hidden = platform !== 'twitch'
   platformKeyPanelYoutube.hidden = platform !== 'youtube'
-  platformKeyDialogTitle.textContent =
-    platform === 'twitch' ? 'Twitch stream key' : 'YouTube stream key'
+  platformKeyDialogTitle.textContent = platform === 'twitch' ? 'Twitch' : 'YouTube'
+  twitchChatLinkInput.value = streamTwitchChatLink
+  youtubeChatLinkInput.value = streamYoutubeChatLink
+  platformKeyStatus.hidden = true
+  platformKeyStatus.textContent = ''
   syncDestinationInputs()
   platformKeyDialog.showModal()
   const input = platform === 'twitch' ? twitchKey : youtubeKey
   requestAnimationFrame(() => {
     if (!input.disabled) input.focus()
+  })
+}
+
+async function savePlatformCredentials(platform: PlatformKeyTarget): Promise<void> {
+  const rawLink = (platform === 'twitch' ? twitchChatLinkInput.value : youtubeChatLinkInput.value).trim()
+  if (platform === 'twitch') streamTwitchChatLink = rawLink.slice(0, 120)
+  else streamYoutubeChatLink = rawLink.slice(0, 512)
+  const channel = resolvedChatChannel(platform, rawLink)
+  const include = Boolean(channel)
+  if (rawLink && !include) {
+    platformKeyStatus.hidden = false
+    platformKeyStatus.textContent =
+      platform === 'twitch'
+        ? 'Key saved. That chat link is not a Twitch channel yet.'
+        : 'Key saved. That chat link is not a YouTube live video yet.'
+  }
+  applySavedChatLinks(platform, include, channel)
+  await persistStreamDestinationsFromUi()
+  await window.tabcast.setSettings({
+    lastStreamPlatform: platform,
+    streamTwitchChatLink,
+    streamYoutubeChatLink,
+    streamChannel,
+    streamIncludeChat,
   })
 }
 
@@ -2973,13 +3024,13 @@ function mountRetryConnectionHint(fatal: boolean): void {
     void runLiveRecovery('manual-retry')
   })
   destHint.append(retry)
-  destHint.append(' or End Live to stop.')
+  destHint.append(' or End Stream to stop.')
 }
 
 async function endLive(): Promise<void> {
   goingLive = true
   btnGoLive.disabled = true
-  btnGoLive.textContent = 'Ending…'
+  setGoLiveButtonLabel('Ending…')
   setDestError(null)
   sessionLiveIntent = false
   stopWhipVideoWatchdog()
@@ -3006,14 +3057,14 @@ async function endLive(): Promise<void> {
     goingLive = false
     btnGoLive.disabled = false
     btnGoLive.dataset.live = '0'
-    btnGoLive.textContent = 'Go Live'
+    setGoLiveButtonLabel('Go Live')
   }
 }
 
 async function goLive(): Promise<void> {
   goingLive = true
   btnGoLive.disabled = true
-  btnGoLive.textContent = 'Starting…'
+  setGoLiveButtonLabel('Starting…')
   setDestError(null)
 
   try {
@@ -3075,9 +3126,9 @@ async function goLive(): Promise<void> {
     syncWhipAvTracks()
     await window.tabcast.refreshRelay()
     await dispatchAddonLiveEvents('live.start')
-    destHint.textContent = 'Live — keys stay in relay RAM. End Live to tear down WHIP.'
+    destHint.textContent = 'Live — keys stay in relay RAM. End Stream to tear down WHIP.'
     btnGoLive.dataset.live = '1'
-    btnGoLive.textContent = 'End Live'
+    setGoLiveButtonLabel('End Stream')
   } catch (err) {
     sessionLiveIntent = false
     const message = err instanceof Error ? err.message : String(err)
@@ -3089,7 +3140,7 @@ async function goLive(): Promise<void> {
       whipPublisher = null
     }
     btnGoLive.dataset.live = '0'
-    btnGoLive.textContent = 'Go Live'
+    setGoLiveButtonLabel('Go Live')
     throw err instanceof Error ? err : new Error(message)
   } finally {
     goingLive = false
@@ -3519,10 +3570,9 @@ platYoutube.addEventListener('click', () => {
 
 platformKeyForm.addEventListener('submit', (event) => {
   const submitter = (event as SubmitEvent).submitter as HTMLButtonElement | null
-  if (submitter?.value === 'save') {
-    void persistStreamDestinationsFromUi()
-  }
-  void window.tabcast.getRelay().then(renderPlatformStatus)
+  if (submitter?.value !== 'save') return
+  const platform: PlatformKeyTarget = platformKeyPanelYoutube.hidden ? 'twitch' : 'youtube'
+  void savePlatformCredentials(platform).then(() => window.tabcast.getRelay().then(renderPlatformStatus))
 })
 
 async function teardownLiveSession(): Promise<void> {
@@ -3926,12 +3976,23 @@ updateBannerDismiss.addEventListener('click', () => {
 window.tabcast.onUpdateStatus(renderUpdateBanner)
 
 
-void window.tabcast.getSettings().then((s) => {
-  if (!s.setupWizardComplete) {
-    window.setTimeout(() => setupWizard.start(), 600)
-  } else if (!s.onboardingComplete) {
-    window.setTimeout(() => onboardingTour.start(), 800)
-  }
+const appIntro = document.getElementById('app-intro') as HTMLElement
+document.body.dataset.intro = '1'
+
+function enterStudioFromIntro(): void {
+  appIntro.hidden = true
+  delete document.body.dataset.intro
+  void window.tabcast.getSettings().then((s) => {
+    if (s.onboardingComplete) return
+    window.setTimeout(() => onboardingTour.start(), 200)
+  })
+}
+
+document.getElementById('app-intro-stream')!.addEventListener('click', () => {
+  enterStudioFromIntro()
+})
+document.getElementById('app-intro-github')!.addEventListener('click', () => {
+  void window.tabcast.openExternal('https://github.com/n0social/maka-streaming-software/releases')
 })
 // Scene buttons
 const sceneGameplay = document.getElementById('scene-gameplay') as HTMLButtonElement
@@ -3947,7 +4008,6 @@ const audioMixer = document.getElementById('audio-mixer')
 // Stream info
 const streamStatus = document.getElementById('stream-status')
 const streamInfo = document.getElementById('stream-info')
-const btnGoLiveSidebar = document.getElementById('btn-go-live-sidebar') as HTMLButtonElement
 
 // Program stats
 const programStats = document.getElementById('program-stats')
@@ -4246,8 +4306,8 @@ function syncChatFeed(): void {
     programChatHint.hidden = false
     programChatHint.textContent =
       overlayPlatform() === 'youtube'
-        ? 'YouTube chat uses the live video id from Go Live'
-        : 'Twitch chat uses the channel from Go Live'
+        ? 'YouTube chat uses the link saved on the YouTube button'
+        : 'Twitch chat uses the link saved on the Twitch button'
     return
   }
   if (programChatView.src !== url) programChatView.src = url
@@ -4408,6 +4468,8 @@ const goLiveWizard = new GoLiveWizard(goLiveWizardDialog, {
       description: relayStudioSettings.streamDescription,
       channel: streamChannel,
       includeChat: streamIncludeChat,
+      twitchChatLink: streamTwitchChatLink,
+      youtubeChatLink: streamYoutubeChatLink,
     }),
     applyStreamInfo: (info) => {
       const nextChannel = info.channel.trim().replace(/^@/, '')
@@ -4418,9 +4480,12 @@ const goLiveWizard = new GoLiveWizard(goLiveWizardDialog, {
         streamCategory: sanitizeStreamCategory(info.game),
         streamDescription: info.description.replace(/\r\n/g, '\n').slice(0, 200),
       }
+      streamTwitchChatLink = info.twitchChatLink.trim().slice(0, 120)
+      streamYoutubeChatLink = info.youtubeChatLink.trim().slice(0, 512)
       streamChannel = nextChannel
       streamIncludeChat = info.includeChat
       layerEnabled.chat = info.includeChat
+      layerEnabled.notifications = info.includeChat
       syncStreamInfoFields()
       if (overlaysChanged) {
         syncChatFeed()
@@ -4431,6 +4496,8 @@ const goLiveWizard = new GoLiveWizard(goLiveWizardDialog, {
         streamCategory: relayStudioSettings.streamCategory,
         streamDescription: relayStudioSettings.streamDescription,
         streamChannel,
+        streamTwitchChatLink,
+        streamYoutubeChatLink,
         streamIncludeChat,
       })
     },
@@ -4445,16 +4512,6 @@ openGoLiveFlow = () => {
   void window.tabcast.getSettings().then((s) => {
     lastStreamPlatform = s.lastStreamPlatform ?? 'none'
     goLiveWizard.open()
-  })
-}
-
-if (btnGoLiveSidebar) {
-  btnGoLiveSidebar.addEventListener('click', () => {
-    if (isSessionLive()) {
-      void endLive()
-      return
-    }
-    openGoLiveFlow()
   })
 }
 
@@ -4834,10 +4891,12 @@ if (vcamCopyFrame) {
 void ensureVcamCapability()
 
 // Update Go Live button label based on streaming state
+function setGoLiveButtonLabel(text: string): void {
+  if (btnGoLiveLabel) btnGoLiveLabel.textContent = text
+}
+
 function updateGoLiveLabel(isLive: boolean): void {
-  if (btnGoLiveLabel) {
-    btnGoLiveLabel.textContent = isLive ? 'End Live' : 'Go Live'
-  }
+  setGoLiveButtonLabel(isLive ? 'End Stream' : 'Go Live')
 }
 
 let liveSessionStartedAt: number | null = null
@@ -4884,9 +4943,11 @@ async function loadGameArt(): Promise<void> {
     /* catalogue is optional until the wizard step loads it */
   }
 }
-function applyRelayStudioSettingsFromAppSettings(s: { streamTitle?: string; streamCategory?: string; streamDescription?: string; streamChannel?: string; streamAlertBoxUrl?: string; streamIncludeChat?: boolean; audioMicBitrateKbps: number; audioDesktopBitrateKbps: number; videoEncoderPreference: RelayStudioSettings['videoEncoderPreference']; gpuPreference: string }): void {
+function applyRelayStudioSettingsFromAppSettings(s: { streamTitle?: string; streamCategory?: string; streamDescription?: string; streamChannel?: string; streamTwitchChatLink?: string; streamYoutubeChatLink?: string; streamAlertBoxUrl?: string; streamIncludeChat?: boolean; audioMicBitrateKbps: number; audioDesktopBitrateKbps: number; videoEncoderPreference: RelayStudioSettings['videoEncoderPreference']; gpuPreference: string }): void {
   relayStudioSettings = { streamTitle: sanitizeStreamTitle(s.streamTitle ?? ''), streamCategory: sanitizeStreamCategory(s.streamCategory ?? ''), streamDescription: (s.streamDescription ?? '').replace(/\r\n/g, '\n').slice(0, 200), audioMicBitrateKbps: s.audioMicBitrateKbps, audioDesktopBitrateKbps: s.audioDesktopBitrateKbps, videoEncoderPreference: s.videoEncoderPreference, gpuPreference: s.gpuPreference || 'default' }
   streamChannel = (s.streamChannel ?? '').trim().replace(/^@/, '')
+  streamTwitchChatLink = (s.streamTwitchChatLink ?? '').trim()
+  streamYoutubeChatLink = (s.streamYoutubeChatLink ?? '').trim()
   streamAlertBoxUrl = alertBoxPageUrl(s.streamAlertBoxUrl ?? '') ?? ''
   streamIncludeChat = Boolean(s.streamIncludeChat)
   layerEnabled.chat = streamIncludeChat
