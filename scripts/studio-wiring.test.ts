@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { nextCustomSceneId, removeCustomScene } from '../src/shared/custom-scenes.ts'
 import { alertBoxPageUrl, alertCard, parseTwitchIrcAlert, streamChatUrl } from '../src/shared/stream-overlays.ts'
+import { isTwitchStreamKey, streamKeyValid, youtubeVideoId } from '../src/shared/stream-wizard.ts'
 import {
   dropPercentLabel,
   frameIntervalMs,
@@ -59,5 +60,13 @@ assert.equal(streamChatUrl('twitch', 'MakaLive'), 'https://www.twitch.tv/popout/
 assert.equal(streamChatUrl('youtube', 'dQw4w9WgXcQ'), 'https://www.youtube.com/live_chat?is_popout=1&v=dQw4w9WgXcQ')
 assert.equal(alertBoxPageUrl('http://streamlabs.example/box'), null)
 assert.equal(alertBoxPageUrl('https://streamlabs.com/alert-box/live/example'), 'https://streamlabs.com/alert-box/live/example')
+assert.equal(isTwitchStreamKey('live_abc123def456789'), true)
+assert.equal(streamKeyValid('youtube', 'abcd-efgh-ijkl-mnop'), true)
+assert.equal(youtubeVideoId('https://www.youtube.com/watch?v=dQw4w9WgXcQ'), 'dQw4w9WgXcQ')
+const wizardHtml = readFileSync(new URL('../src/renderer/app.html', import.meta.url), 'utf8')
+assert.match(wizardHtml, /id="wizard-platform-twitch"/)
+assert.match(wizardHtml, /id="go-live-wizard-panel-details"/)
+assert.match(wizardHtml, /id="go-live-wizard-panel-chat"/)
+assert.equal(wizardHtml.includes('go-live-wizard-panel-validate'), false)
 
 console.log('studio-wiring tests passed')

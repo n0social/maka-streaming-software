@@ -55,6 +55,7 @@ export type AppSettings = {
   streamCategory: string
   streamChannel: string
   streamAlertBoxUrl: string
+  streamIncludeChat: boolean
   preferredMicDeviceId: string
   preferredDesktopAudioOutputDeviceId: string
   audioMicBitrateKbps: number

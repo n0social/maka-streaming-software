@@ -321,6 +321,7 @@ let intermissionEndsAtMs: number | null = null
 let intermissionTimer: ReturnType<typeof setInterval> | null = null
 let streamChannel = ''
 let streamAlertBoxUrl = ''
+let streamIncludeChat = false
 let twitchAlertFeed: TwitchAlertFeed | null = null
 const streamAlertQueue: StreamAlert[] = []
 let streamAlertTimer: ReturnType<typeof setTimeout> | null = null
@@ -4185,7 +4186,7 @@ function syncPlatformAlerts(): void {
   twitchAlertFeed?.stop()
   twitchAlertFeed = null
   syncAlertBox()
-  if (alertBoxPageUrl(streamAlertBoxUrl)) return
+  if (!streamIncludeChat || alertBoxPageUrl(streamAlertBoxUrl)) return
   const platform = overlayPlatform()
   if (platform !== 'twitch' || !streamChannel.trim()) return
   twitchAlertFeed = startTwitchAlertFeed(streamChannel, presentStreamAlert)
@@ -4240,7 +4241,7 @@ function platformChatUrl(): string | null {
 }
 
 function syncChatFeed(): void {
-  const url = platformChatUrl()
+  const url = streamIncludeChat ? platformChatUrl() : null
   if (!url) {
     programChatView.removeAttribute('src')
     programChatView.hidden = true
@@ -4252,7 +4253,6 @@ function syncChatFeed(): void {
         : 'Twitch chat uses the channel from Go Live'
     return
   }
-  layerEnabled.chat = true
   if (programChatView.src !== url) programChatView.src = url
   programChatView.hidden = false
   programChatHint.hidden = true
@@ -4375,45 +4375,18 @@ if (btnAddSceneAlt) {
 }
 
 const goLiveWizardDialog = document.getElementById('go-live-wizard-dialog') as HTMLDialogElement
-const goLiveWizard = new GoLiveWizard(
-  goLiveWizardDialog,
-  document.getElementById('go-live-wizard-step')!,
-  document.getElementById('go-live-wizard-title')!,
-  document.getElementById('go-live-wizard-body')!,
-  document.getElementById('go-live-wizard-status')!,
-  document.getElementById('go-live-wizard-panel-platform')!,
-  document.getElementById('go-live-wizard-panel-key')!,
-  document.getElementById('go-live-wizard-panel-validate')!,
-  document.getElementById('go-live-wizard-panel-go')!,
-  document.querySelectorAll<HTMLInputElement>('input[name="go-live-platform"]'),
-  document.getElementById('wizard-twitch-key') as HTMLInputElement,
-  document.getElementById('wizard-youtube-key') as HTMLInputElement,
-  document.getElementById('wizard-custom-rtmp-url') as HTMLInputElement,
-  document.getElementById('wizard-custom-rtmp-key') as HTMLInputElement,
-  document.getElementById('go-live-wizard-custom-fields')!,
-  document.getElementById('go-live-wizard-quality') as HTMLSelectElement,
-  document.getElementById('go-live-wizard-go-status')!,
-  document.getElementById('go-live-wizard-back') as HTMLButtonElement,
-  document.getElementById('go-live-wizard-next') as HTMLButtonElement,
-  document.getElementById('go-live-wizard-cancel') as HTMLButtonElement,
-  {
-    hasCustomRtmp: () => !destCustomBlock.hidden,
+const goLiveWizard = new GoLiveWizard(goLiveWizardDialog, {
     isLive: () => isSessionLive(),
     readUi: () => ({
       destTwitch: destTwitch.checked,
       destYoutube: destYoutube.checked,
-      destCustom: destCustom.checked,
       twitchKey: twitchKey.value,
       youtubeKey: youtubeKey.value,
-      customUrl: customRtmpUrl.value,
-      customKey: customRtmpKey.value,
     }),
     applyPlatform: applyWizardPlatform,
     applyKeys: (partial) => {
       if (partial.twitchKey !== undefined) twitchKey.value = partial.twitchKey
       if (partial.youtubeKey !== undefined) youtubeKey.value = partial.youtubeKey
-      if (partial.customUrl !== undefined) customRtmpUrl.value = partial.customUrl
-      if (partial.customKey !== undefined) customRtmpKey.value = partial.customKey
       syncDestinationInputs()
       void persistStreamDestinationsFromUi()
     },
@@ -4434,22 +4407,21 @@ const goLiveWizard = new GoLiveWizard(
     readPreferredPlatform: () => lastStreamPlatform,
     readStreamInfo: () => ({
       title: relayStudioSettings.streamTitle,
-      category: relayStudioSettings.streamCategory,
+      game: relayStudioSettings.streamCategory || 'Just Chatting',
       channel: streamChannel,
-      alertBox: streamAlertBoxUrl,
+      includeChat: streamIncludeChat,
     }),
     applyStreamInfo: (info) => {
       const nextChannel = info.channel.trim().replace(/^@/, '')
-      const nextAlertBox = alertBoxPageUrl(info.alertBox) ?? ''
-      const overlaysChanged = nextChannel !== streamChannel || nextAlertBox !== streamAlertBoxUrl
+      const overlaysChanged = nextChannel !== streamChannel || info.includeChat !== streamIncludeChat
       relayStudioSettings = {
         ...relayStudioSettings,
         streamTitle: sanitizeStreamTitle(info.title),
-        streamCategory: sanitizeStreamCategory(info.category),
+        streamCategory: sanitizeStreamCategory(info.game),
       }
       streamChannel = nextChannel
-      streamAlertBoxUrl = nextAlertBox
-      if (streamChannel) layerEnabled.chat = true
+      streamIncludeChat = info.includeChat
+      layerEnabled.chat = info.includeChat
       syncStreamInfoFields()
       if (overlaysChanged) {
         syncChatFeed()
@@ -4459,7 +4431,7 @@ const goLiveWizard = new GoLiveWizard(
         streamTitle: relayStudioSettings.streamTitle,
         streamCategory: relayStudioSettings.streamCategory,
         streamChannel,
-        streamAlertBoxUrl,
+        streamIncludeChat,
       })
     },
   },
@@ -4888,10 +4860,12 @@ function syncStreamInfoFields(): void {
   streamTitleText.textContent = title || 'Untitled stream'
   streamCategoryText.textContent = category || 'Category comes from Go Live'
 }
-function applyRelayStudioSettingsFromAppSettings(s: { streamTitle?: string; streamCategory?: string; streamChannel?: string; streamAlertBoxUrl?: string; audioMicBitrateKbps: number; audioDesktopBitrateKbps: number; videoEncoderPreference: RelayStudioSettings['videoEncoderPreference']; gpuPreference: string }): void {
+function applyRelayStudioSettingsFromAppSettings(s: { streamTitle?: string; streamCategory?: string; streamChannel?: string; streamAlertBoxUrl?: string; streamIncludeChat?: boolean; audioMicBitrateKbps: number; audioDesktopBitrateKbps: number; videoEncoderPreference: RelayStudioSettings['videoEncoderPreference']; gpuPreference: string }): void {
   relayStudioSettings = { streamTitle: sanitizeStreamTitle(s.streamTitle ?? ''), streamCategory: sanitizeStreamCategory(s.streamCategory ?? ''), audioMicBitrateKbps: s.audioMicBitrateKbps, audioDesktopBitrateKbps: s.audioDesktopBitrateKbps, videoEncoderPreference: s.videoEncoderPreference, gpuPreference: s.gpuPreference || 'default' }
   streamChannel = (s.streamChannel ?? '').trim().replace(/^@/, '')
   streamAlertBoxUrl = alertBoxPageUrl(s.streamAlertBoxUrl ?? '') ?? ''
+  streamIncludeChat = Boolean(s.streamIncludeChat)
+  layerEnabled.chat = streamIncludeChat
   syncStreamInfoFields()
   syncChatFeed()
   syncPlatformAlerts()
@@ -4902,6 +4876,7 @@ async function persistStreamMetaFromInputs(): Promise<void> {
     streamCategory: relayStudioSettings.streamCategory,
     streamChannel,
     streamAlertBoxUrl,
+    streamIncludeChat,
   })
   syncStreamInfoFields()
 }

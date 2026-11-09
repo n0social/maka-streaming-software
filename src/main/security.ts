@@ -69,6 +69,9 @@ export function coerceSettings(partial: unknown): Partial<AppSettings> {
   if (typeof p.streamChannel === 'string') {
     out.streamChannel = p.streamChannel.trim().replace(/^@/, '').replace(/\s+/g, '').slice(0, 64)
   }
+  if (typeof p.streamIncludeChat === 'boolean') {
+    out.streamIncludeChat = p.streamIncludeChat
+  }
   if (typeof p.streamAlertBoxUrl === 'string') {
     const raw = p.streamAlertBoxUrl.trim().slice(0, 500)
     try {
