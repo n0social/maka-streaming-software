@@ -53,6 +53,8 @@ export type AppSettings = {
   lastStreamPlatform: StreamPlatformPreference
   streamTitle: string
   streamCategory: string
+  streamChannel: string
+  streamAlertBoxUrl: string
   preferredMicDeviceId: string
   preferredDesktopAudioOutputDeviceId: string
   audioMicBitrateKbps: number

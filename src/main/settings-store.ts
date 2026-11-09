@@ -42,6 +42,9 @@ export type AppSettings = {
   lastStreamPlatform: StreamPlatformPreference
   streamTitle: string
   streamCategory: string
+  /** Twitch login or YouTube live video id. Chat and alerts follow this. */
+  streamChannel: string
+  streamAlertBoxUrl: string
   preferredMicDeviceId: string
   /** Windows loopback output device (audiooutput); empty = default playback device. */
   preferredDesktopAudioOutputDeviceId: string
@@ -83,6 +86,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   lastStreamPlatform: 'none',
   streamTitle: '',
   streamCategory: '',
+  streamChannel: '',
+  streamAlertBoxUrl: '',
   preferredMicDeviceId: '',
   preferredDesktopAudioOutputDeviceId: '',
   audioMicBitrateKbps: 160,

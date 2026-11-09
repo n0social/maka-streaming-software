@@ -1430,20 +1430,60 @@ dd {
   display: none !important;
 }
 
-.program-notifications-feed {
-  list-style: none;
-  margin: 0;
-  padding: 0.2rem 0.35rem 0.35rem;
-  width: 100%;
-  overflow: auto;
-  font-size: 0.58rem;
-  line-height: 1.3;
-  color: #1a1408;
-  text-align: left;
+.program-notifications-slot[data-alert='0'] {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
 }
 
-.program-notifications-feed li + li {
-  margin-top: 0.2rem;
+.program-notifications-slot[data-alert='1'] {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  align-items: stretch;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.program-alert-box {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: transparent;
+}
+
+.program-alert {
+  width: 100%;
+  text-align: left;
+  background: rgba(26, 20, 8, 0.92);
+  color: #faf8f4;
+  border-radius: 0.45rem;
+  padding: 0.45rem 0.55rem;
+}
+
+.program-alert-kicker {
+  margin: 0;
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: #ffc40c;
+}
+
+.program-alert-name,
+.program-alert-amount,
+.program-alert-message {
+  margin: 0.12rem 0 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.program-alert-message {
+  font-weight: 500;
+  color: #f6f3ec;
 }
 
 .program-overlay-slot-label {

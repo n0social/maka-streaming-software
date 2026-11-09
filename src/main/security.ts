@@ -66,6 +66,18 @@ export function coerceSettings(partial: unknown): Partial<AppSettings> {
   if (typeof p.streamCategory === 'string') {
     out.streamCategory = p.streamCategory.trim().replace(/\s+/g, ' ').slice(0, 100)
   }
+  if (typeof p.streamChannel === 'string') {
+    out.streamChannel = p.streamChannel.trim().replace(/^@/, '').replace(/\s+/g, '').slice(0, 64)
+  }
+  if (typeof p.streamAlertBoxUrl === 'string') {
+    const raw = p.streamAlertBoxUrl.trim().slice(0, 500)
+    try {
+      const url = new URL(raw)
+      out.streamAlertBoxUrl = url.protocol === 'https:' ? url.toString() : ''
+    } catch {
+      out.streamAlertBoxUrl = ''
+    }
+  }
   if (typeof p.preferredMicDeviceId === 'string') {
     const id = p.preferredMicDeviceId.trim()
     out.preferredMicDeviceId = id.length <= 512 ? id : id.slice(0, 512)

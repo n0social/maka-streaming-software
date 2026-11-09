@@ -92,6 +92,8 @@ function applySettingsToForm(s: AppSettings): void {
     s.lastStreamPlatform
   ;(document.getElementById('set-stream-title') as HTMLInputElement).value = s.streamTitle
   ;(document.getElementById('set-stream-category') as HTMLInputElement).value = s.streamCategory
+  ;(document.getElementById('set-stream-channel') as HTMLInputElement).value = s.streamChannel ?? ''
+  ;(document.getElementById('set-alert-box-url') as HTMLInputElement).value = s.streamAlertBoxUrl ?? ''
   ;(document.getElementById('set-mic-bitrate') as HTMLSelectElement).value = String(
     s.audioMicBitrateKbps,
   )
@@ -184,8 +186,11 @@ export function initSettingsView(tabcast: TabcastBridge, hooks: SettingsViewHook
     void tabcast.setSettings({ lastStreamPlatform: value })
   })
 
-  const persistStreamMetaField = (key: 'streamTitle' | 'streamCategory', raw: string) => {
-    const value = raw.trim().replace(/\s+/g, ' ').slice(0, key === 'streamTitle' ? 140 : 100)
+  const persistStreamMetaField = (key: 'streamTitle' | 'streamCategory' | 'streamChannel', raw: string) => {
+    const value =
+      key === 'streamChannel'
+        ? raw.trim().replace(/^@/, '').replace(/\s+/g, '').slice(0, 64)
+        : raw.trim().replace(/\s+/g, ' ').slice(0, key === 'streamTitle' ? 140 : 100)
     void tabcast.setSettings({ [key]: value }).then(() => hooks.onRelayStudioSettingsChange())
   }
   document.getElementById('set-stream-title')!.addEventListener('change', (e) => {
@@ -193,6 +198,14 @@ export function initSettingsView(tabcast: TabcastBridge, hooks: SettingsViewHook
   })
   document.getElementById('set-stream-category')!.addEventListener('change', (e) => {
     persistStreamMetaField('streamCategory', (e.target as HTMLInputElement).value)
+  })
+  document.getElementById('set-stream-channel')!.addEventListener('change', (e) => {
+    persistStreamMetaField('streamChannel', (e.target as HTMLInputElement).value)
+  })
+  document.getElementById('set-alert-box-url')!.addEventListener('change', (e) => {
+    void tabcast.setSettings({ streamAlertBoxUrl: (e.target as HTMLInputElement).value.trim() }).then(() => {
+      hooks.onRelayStudioSettingsChange()
+    })
   })
 
   micSelect.addEventListener('change', () => {

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { nextCustomSceneId, removeCustomScene } from '../src/shared/custom-scenes.ts'
+import { alertBoxPageUrl, alertCard, parseTwitchIrcAlert, streamChatUrl } from '../src/shared/stream-overlays.ts'
 import {
   dropPercentLabel,
   frameIntervalMs,
@@ -46,5 +47,17 @@ const appTs = readFileSync(new URL('../src/renderer/app.ts', import.meta.url), '
 assert.equal(appTs.includes("console.log('Checking panel:'"), false)
 assert.equal(appTs.includes("panel.addonId === 'com.tabcast.discord-now-live'"), false)
 assert.match(appTs, /openGoLiveFlow\(\)/)
+assert.equal(appTs.includes('Twitch (add key)'), false)
+assert.equal(appTs.includes('pushStudioNotice'), false)
+
+const cheer = parseTwitchIrcAlert(
+  '@display-name=Ada;bits=500;id=abc :ada!ada@ada.tmi.twitch.tv PRIVMSG #maka :cheer500 hello',
+)
+assert.equal(cheer?.kind, 'cheer')
+assert.equal(alertCard(cheer!).headline, 'Ada cheered 500 bits')
+assert.equal(streamChatUrl('twitch', 'MakaLive'), 'https://www.twitch.tv/popout/makalive/chat?popout=')
+assert.equal(streamChatUrl('youtube', 'dQw4w9WgXcQ'), 'https://www.youtube.com/live_chat?is_popout=1&v=dQw4w9WgXcQ')
+assert.equal(alertBoxPageUrl('http://streamlabs.example/box'), null)
+assert.equal(alertBoxPageUrl('https://streamlabs.com/alert-box/live/example'), 'https://streamlabs.com/alert-box/live/example')
 
 console.log('studio-wiring tests passed')

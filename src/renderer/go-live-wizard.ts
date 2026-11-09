@@ -29,6 +29,8 @@ export type GoLiveWizardBindings = {
   readEncodeProfile: () => EncodeProfileId
   applyEncodeProfile: (id: EncodeProfileId) => void
   readPreferredPlatform: () => 'twitch' | 'youtube' | 'none'
+  readStreamInfo: () => { title: string; category: string; channel: string; alertBox: string }
+  applyStreamInfo: (info: { title: string; category: string; channel: string; alertBox: string }) => void
 }
 
 export class GoLiveWizard {
@@ -76,6 +78,34 @@ export class GoLiveWizard {
       this.bindings.applyEncodeProfile(this.wizardQualitySelect.value as EncodeProfileId)
       this.syncGoStepQualityStatus()
     })
+    for (const input of [this.streamTitleInput, this.streamCategoryInput, this.streamChannelInput, this.alertBoxInput]) {
+      input.addEventListener('input', () => this.publishStreamInfo())
+    }
+  }
+
+  private get streamTitleInput(): HTMLInputElement {
+    return this.dialog.querySelector('#go-live-wizard-stream-title') as HTMLInputElement
+  }
+
+  private get streamCategoryInput(): HTMLInputElement {
+    return this.dialog.querySelector('#go-live-wizard-stream-category') as HTMLInputElement
+  }
+
+  private get streamChannelInput(): HTMLInputElement {
+    return this.dialog.querySelector('#go-live-wizard-stream-channel') as HTMLInputElement
+  }
+
+  private get alertBoxInput(): HTMLInputElement {
+    return this.dialog.querySelector('#go-live-wizard-alert-box') as HTMLInputElement
+  }
+
+  private publishStreamInfo(): void {
+    this.bindings.applyStreamInfo({
+      title: this.streamTitleInput.value,
+      category: this.streamCategoryInput.value,
+      channel: this.streamChannelInput.value,
+      alertBox: this.alertBoxInput.value,
+    })
   }
 
   private syncGoStepQualityStatus(): void {
@@ -111,6 +141,11 @@ export class GoLiveWizard {
     if (this.wizardQualitySelect.value !== profile) {
       this.wizardQualitySelect.value = profile
     }
+    const info = this.bindings.readStreamInfo()
+    this.streamTitleInput.value = info.title
+    this.streamCategoryInput.value = info.category
+    this.streamChannelInput.value = info.channel
+    this.alertBoxInput.value = info.alertBox
     this.step = 'platform'
     this.lastValidateMessage = ''
     this.render()
@@ -166,7 +201,7 @@ export class GoLiveWizard {
     } else {
       this.titleEl.textContent = 'Go live'
       this.bodyEl.textContent =
-        'Start publishing WHIP to the local relay. End Live from the same button when you are finished.'
+        'Set the title, category, and channel shown in Stream Info. Chat and in-stream alerts follow that channel. Paste a Streamlabs or StreamElements alert box to use that service’s notifications.'
       this.statusEl.textContent = this.lastValidateMessage
       this.syncGoStepQualityStatus()
       this.btnBack.hidden = false
@@ -224,6 +259,7 @@ export class GoLiveWizard {
 
     if (this.step === 'go') {
       this.btnNext.disabled = true
+      this.publishStreamInfo()
       try {
         await this.bindings.goLive()
         this.close()

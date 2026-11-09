@@ -81,6 +81,7 @@ const report = await evaluate(send, `(async () => {
   const custom = document.querySelector('[data-custom-scene-row] [data-scene-menu]')
   const customId = custom?.dataset.sceneMenu || ''
   custom?.click()
+  const uploadLabel = document.getElementById('scene-image-menu-pick')?.textContent?.trim() || ''
   const deleteVisible = !document.getElementById('scene-menu-delete').hidden
   click('#scene-image-menu-delete')
   await wait(400)
@@ -89,7 +90,6 @@ const report = await evaluate(send, `(async () => {
   await wait(500)
   const wizardOpen = document.getElementById('go-live-wizard-dialog').open
   if (wizardOpen) document.getElementById('go-live-wizard-dialog').close()
-  const notices = document.getElementById('program-notifications-feed').textContent
   const fps = document.getElementById('stat-fps').textContent
   const viewers = document.getElementById('stream-viewers').textContent
   return {
@@ -97,15 +97,19 @@ const report = await evaluate(send, `(async () => {
     subtitle,
     scene,
     customId,
+    uploadLabel,
     deleteVisible,
     customGone,
     wizardOpen,
-    notices,
     fps,
     viewers,
     chatHint: document.getElementById('program-chat-hint').textContent,
     audioDisabled: document.getElementById('btn-desktop-audio-settings').disabled,
     thumbHidden,
+    encodeInStats: Boolean(document.querySelector('.program-stats-right #program-quality-select')),
+    addKeyLine: Boolean(document.getElementById('stream-destinations-hint')),
+    alertCard: Boolean(document.getElementById('program-alert')),
+    streamTitle: document.getElementById('stream-title-text')?.textContent || '',
   }
 })()`)
 
@@ -116,9 +120,12 @@ if (report.scene !== 'intermission') failures.push('intermission scene not selec
 if (!String(report.subtitle).startsWith('Back in')) failures.push('timer subtitle missing: ' + report.subtitle)
 if (!report.customId.startsWith('custom-')) failures.push('custom scene was not added')
 if (!report.deleteVisible) failures.push('delete scene hidden')
+if (report.uploadLabel !== 'Upload image…') failures.push('custom scene menu missing upload image: ' + report.uploadLabel)
 if (!report.customGone) failures.push('custom scene was not deleted')
 if (!report.wizardOpen) failures.push('top-bar Go Live did not open the wizard')
-if (!String(report.notices).includes('Intermission')) failures.push('notification feed empty')
+if (report.encodeInStats) failures.push('encode profile is still in the stats bar')
+if (report.addKeyLine) failures.push('stream info still has an add-key line')
+if (!report.alertCard) failures.push('in-stream alert card missing')
 if (!String(report.fps).startsWith('FPS:')) failures.push('fps stat missing')
 if (report.viewers !== 'Offline') failures.push('viewer label: ' + report.viewers)
 if (report.audioDisabled) failures.push('desktop audio gear is disabled')

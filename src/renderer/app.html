@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:38473 ws://127.0.0.1:*; frame-src https: http://127.0.0.1:*; object-src 'none'; base-uri 'self'; form-action 'none'"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:38473 ws://127.0.0.1:* wss://irc-ws.chat.twitch.tv:443; frame-src https: http://127.0.0.1:*; object-src 'none'; base-uri 'self'; form-action 'none'"
     />
     <title>Maka — Streaming</title>
     <meta name="theme-color" content="#faf8f4" />
@@ -319,9 +319,9 @@
               <video id="program-browser-video" autoplay muted playsinline></video>
               <span class="program-browser-tag">Search tab</span>
             </div>
-            <div class="program-overlay-slot program-chat-slot" id="program-chat-slot" hidden>
+            <div class="program-overlay-slot program-chat-slot" id="program-chat-slot" data-live-feed="0" hidden>
               <span class="program-overlay-slot-label">Chat</span>
-              <span class="program-overlay-slot-hint" id="program-chat-hint">Pick a chat from the Chat menu</span>
+              <span class="program-overlay-slot-hint" id="program-chat-hint">Channel chat appears after Go Live has a channel</span>
               <webview
                 id="program-chat-view"
                 class="program-chat-view"
@@ -330,10 +330,20 @@
                 hidden
               ></webview>
             </div>
-            <div class="program-overlay-slot program-notifications-slot" id="program-notifications-slot" hidden>
-              <span class="program-overlay-slot-label">Notifications</span>
-              <span class="program-overlay-slot-hint" id="program-notifications-hint">Studio events show up here</span>
-              <ul id="program-notifications-feed" class="program-notifications-feed" hidden></ul>
+            <div class="program-overlay-slot program-notifications-slot" id="program-notifications-slot" data-alert="0" hidden>
+              <webview
+                id="program-alert-box"
+                class="program-alert-box"
+                partition="persist:tabcast-browse"
+                webpreferences="contextIsolation=yes"
+                hidden
+              ></webview>
+              <div id="program-alert" class="program-alert" hidden>
+                <p class="program-alert-kicker" id="program-alert-kicker">Cheer</p>
+                <p class="program-alert-name" id="program-alert-name"></p>
+                <p class="program-alert-amount" id="program-alert-amount"></p>
+                <p class="program-alert-message" id="program-alert-message"></p>
+              </div>
             </div>
             <div class="program-scene-card" id="program-scene-card" hidden>
               <div class="program-scene-card-inner">
@@ -387,17 +397,6 @@
                 </button>
               </div>
               <span class="program-stat program-stat-bitrate" id="stat-bitrate">—</span>
-              <label class="program-stats-field program-stats-field-encode">
-                <span class="sr-only">Encode profile</span>
-                <select
-                  id="program-quality-select"
-                  class="program-stats-select program-stats-select-encode"
-                  aria-label="Encode profile"
-                  title="Stream resolution, frame rate, and target bitrate"
-                >
-                  <option value="720p30" selected>720p @ 30fps</option>
-                </select>
-              </label>
             </div>
           </div>
         </div>
@@ -500,9 +499,8 @@
                 <div class="stream-thumb-placeholder" id="stream-thumb-placeholder">No preview</div>
               </div>
               <div class="stream-meta">
-                <input type="text" id="stream-title-input" class="stream-title-input" maxlength="140" autocomplete="off" placeholder="Stream title" aria-label="Stream title" />
-                <input type="text" id="stream-category-input" class="stream-category-input" maxlength="100" autocomplete="off" placeholder="Category or game" aria-label="Stream category" />
-                <p class="stream-destinations" id="stream-destinations-hint"></p>
+                <p class="stream-title" id="stream-title-text">Untitled stream</p>
+                <p class="stream-category" id="stream-category-text">Category comes from Go Live</p>
                 <div class="stream-status-row">
                   <span class="stream-live-pill" id="stream-live-pill" data-live="false">Offline</span>
                   <span class="stream-viewers" id="stream-viewers" title="Viewer count when you go live">Offline</span>
@@ -565,7 +563,12 @@
                 <h2>Streaming</h2>
                 <label class="field-label" for="set-encode-profile">Default encode quality</label>
                 <select id="set-encode-profile" class="select"></select>
-                <p class="hint tight">Same preset as the program stats bar. Used for relay and local recording.</p>
+                <p class="hint tight">Default quality. Go Live can change it before you start.</p>
+                <label class="field-label" for="set-stream-channel">Channel</label>
+                <input id="set-stream-channel" class="key-input" type="text" maxlength="64" autocomplete="off" spellcheck="false" placeholder="Twitch channel or YouTube video id" />
+                <label class="field-label" for="set-alert-box-url">Alert box</label>
+                <input id="set-alert-box-url" class="key-input" type="url" maxlength="500" autocomplete="off" spellcheck="false" placeholder="Streamlabs or StreamElements alert box URL" />
+                <p class="hint tight">Cheers, subs, gift subs, and raids from the Twitch channel play here. A Streamlabs or StreamElements alert box replaces those cards with that service’s notifications.</p>
                 <label class="field-label" for="set-last-platform">Last go-live platform</label>
                 <select id="set-last-platform" class="select">
                   <option value="none">Not set</option>
@@ -748,9 +751,17 @@
           <p class="go-live-wizard-status" id="go-live-wizard-status" data-state="idle">Press Validate to continue.</p>
         </div>
         <div id="go-live-wizard-panel-go" hidden>
+          <label class="field-label" for="go-live-wizard-stream-title">Stream title</label>
+          <input id="go-live-wizard-stream-title" class="key-input" type="text" maxlength="140" autocomplete="off" />
+          <label class="field-label" for="go-live-wizard-stream-category">Category</label>
+          <input id="go-live-wizard-stream-category" class="key-input" type="text" maxlength="100" autocomplete="off" />
+          <label class="field-label" for="go-live-wizard-stream-channel">Channel</label>
+          <input id="go-live-wizard-stream-channel" class="key-input" type="text" maxlength="64" autocomplete="off" spellcheck="false" placeholder="Twitch channel or YouTube video id" />
+          <label class="field-label" for="go-live-wizard-alert-box">Alert box</label>
+          <input id="go-live-wizard-alert-box" class="key-input" type="url" maxlength="500" autocomplete="off" spellcheck="false" placeholder="Optional Streamlabs or StreamElements URL" />
           <label class="field-label" for="go-live-wizard-quality">Stream quality</label>
           <select id="go-live-wizard-quality" class="program-stats-select program-stats-select-encode" aria-label="Stream quality"></select>
-          <p class="hint tight">Matches the encode preset in the program stats bar. Changes here update that preset.</p>
+          <p class="hint tight">Title, category, channel, and quality are saved from this step. Chat and in-stream alerts follow the channel.</p>
           <p class="go-live-wizard-status" id="go-live-wizard-go-status"></p>
         </div>
         <div class="row platform-key-dialog-actions go-live-wizard-actions">
@@ -809,7 +820,7 @@
           <button type="button" id="scene-image-menu-stop-timer">Stop timer</button>
         </li>
         <li id="scene-menu-image-pick">
-          <button type="button" id="scene-image-menu-pick">Choose image…</button>
+          <button type="button" id="scene-image-menu-pick">Upload image…</button>
         </li>
         <li id="scene-menu-image-clear">
           <button type="button" id="scene-image-menu-clear">Clear image</button>
@@ -883,6 +894,12 @@
         <input id="custom-rtmp-key" class="key-input" type="password" autocomplete="off" spellcheck="false" placeholder="Stream key" disabled />
       </div>
       <div class="source-list" id="source-list"></div>
+      <label class="program-stats-field program-stats-field-encode">
+        <span class="sr-only">Encode profile</span>
+        <select id="program-quality-select" class="program-stats-select program-stats-select-encode" aria-label="Encode profile" tabindex="-1">
+          <option value="720p30" selected>720p @ 30fps</option>
+        </select>
+      </label>
       <select id="camera-select" class="av-device-select" tabindex="-1" aria-hidden="true"><option value="">No camera</option></select>
       <select id="mic-select" class="av-device-select" tabindex="-1" aria-hidden="true"><option value="">No microphone</option></select>
       <input id="cam-scale" type="range" min="12" max="40" value="22" />

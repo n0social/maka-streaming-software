@@ -36,6 +36,8 @@ import {
   measuredFps,
   viewerStatusLabel,
 } from '../shared/studio-controls'
+import { alertBoxPageUrl, alertCard, streamChatUrl, type StreamAlert, type StreamChatPlatform } from '../shared/stream-overlays'
+import { startTwitchAlertFeed, type TwitchAlertFeed } from './twitch-alert-feed'
 import { isSceneStubId, SCENE_TEMPLATES, sceneStubPreset } from '../shared/scene-templates'
 import {
   sceneImageMaskMode,
@@ -163,14 +165,17 @@ const sceneMenuImageClearRow = document.getElementById('scene-menu-image-clear')
 const sceneMenuDeleteRow = document.getElementById('scene-menu-delete')!
 const programChatHint = document.getElementById('program-chat-hint')!
 const programChatView = document.getElementById('program-chat-view') as HTMLElement & { src: string }
-const programNotificationsHint = document.getElementById('program-notifications-hint')!
-const programNotificationsFeed = document.getElementById('program-notifications-feed')!
+const programAlertBox = document.getElementById('program-alert-box') as HTMLElement & { src: string }
+const programAlert = document.getElementById('program-alert')!
+const programAlertKicker = document.getElementById('program-alert-kicker')!
+const programAlertName = document.getElementById('program-alert-name')!
+const programAlertAmount = document.getElementById('program-alert-amount')!
+const programAlertMessage = document.getElementById('program-alert-message')!
 const streamThumbCanvas = document.getElementById('stream-thumb-canvas') as HTMLCanvasElement
 const streamThumbPlaceholder = document.getElementById('stream-thumb-placeholder')!
 const streamThumb = document.getElementById('stream-thumb') as HTMLElement | null
-const streamTitleInput = document.getElementById('stream-title-input') as HTMLInputElement | null
-const streamCategoryInput = document.getElementById('stream-category-input') as HTMLInputElement | null
-const streamDestinationsHint = document.getElementById('stream-destinations-hint') as HTMLElement | null
+const streamTitleText = document.getElementById('stream-title-text')!
+const streamCategoryText = document.getElementById('stream-category-text')!
 const streamLivePill = document.getElementById('stream-live-pill') as HTMLElement | null
 const streamViewers = document.getElementById('stream-viewers') as HTMLElement | null
 const streamDuration = document.getElementById('stream-duration') as HTMLElement | null
@@ -314,7 +319,12 @@ let sceneImageMenuTargetId: string | null = null
 let customScenes: CustomScene[] = []
 let intermissionEndsAtMs: number | null = null
 let intermissionTimer: ReturnType<typeof setInterval> | null = null
-const studioNotices: string[] = []
+let streamChannel = ''
+let streamAlertBoxUrl = ''
+let twitchAlertFeed: TwitchAlertFeed | null = null
+const streamAlertQueue: StreamAlert[] = []
+let streamAlertTimer: ReturnType<typeof setTimeout> | null = null
+let shownAlertIds = new Set<string>()
 let captureClockFrames = 0
 let captureClockStartedAt = 0
 let measuredCaptureFps: number | null = null
@@ -550,7 +560,6 @@ async function refreshDesktopAudioCapture(fromGesture = false): Promise<void> {
     applyDesktopGameAudioTrackEnabled()
     desktopMeterHandle = startAudioLevelMeter(stream, setDesktopMeterLevel)
     syncWhipAvTracks()
-    pushStudioNotice('Desktop audio connected')
   } finally {
     desktopAudioStarting = false
     syncSystemAudioChannelUi()
@@ -584,7 +593,6 @@ async function refreshGameAudioCapture(fromGesture = false): Promise<void> {
   gameMeterHandle = startAudioLevelMeter(stream, setGameMeterLevel)
   syncWhipAvTracks()
   syncSystemAudioChannelUi()
-  pushStudioNotice('Game audio connected')
 }
 
 async function refreshDesktopAudioOutputDevices(): Promise<void> {
@@ -1002,7 +1010,8 @@ function applyProgramPreviewLayout(layout: SceneLayout): void {
   }
 
   const notifications = sourceById('notifications')
-  const showNotifications = layerEnabled.notifications && Boolean(notifications)
+  const alertVisible = !programAlert.hidden || !programAlertBox.hidden
+  const showNotifications = layerEnabled.notifications && Boolean(notifications) && alertVisible
   programNotificationsSlot.hidden = !showNotifications
   if (showNotifications && notifications) {
     applySourceBox(programNotificationsSlot, notifications, canvas)
@@ -2976,7 +2985,6 @@ async function endLive(): Promise<void> {
     await stopRelayStream(snapshot.health)
     await window.tabcast.refreshRelay()
     await dispatchAddonLiveEvents('live.end')
-    pushStudioNotice('Ended live')
   } catch (err) {
     setDestError(err instanceof Error ? err.message : String(err))
   } finally {
@@ -3027,7 +3035,6 @@ async function goLive(): Promise<void> {
       throw new Error(snapshot.error ?? 'Relay is not ready. Start the relay first.')
     }
 
-    maybeFillStreamTitleFromBrowseTab()
     await persistStreamMetaFromInputs()
     const profile = selectedProfile()
     sessionIngestTarget = 'primary'
@@ -3054,7 +3061,6 @@ async function goLive(): Promise<void> {
     await window.tabcast.refreshRelay()
     await dispatchAddonLiveEvents('live.start')
     destHint.textContent = 'Live — keys stay in relay RAM. End Live to tear down WHIP.'
-    pushStudioNotice('Went live')
     btnGoLive.dataset.live = '1'
     btnGoLive.textContent = 'End Live'
   } catch (err) {
@@ -4111,40 +4117,78 @@ async function selectScene(sceneTemplate: string): Promise<void> {
   syncLayerTracks()
   syncSceneProgramPresentation()
   refreshProgramPreviewLayout()
-  pushStudioNotice(`Scene: ${sceneLabel(sceneTemplate)}`)
   if (isSessionLive()) {
     await pushSceneLayout().catch(() => undefined)
   }
 }
 
-function sceneLabel(sceneId: string): string {
-  const custom = customScenes.find((scene) => scene.id === sceneId)
-  if (custom) return custom.name
-  const preset = sceneStubPreset(sceneId)
-  if (preset) return preset.title
-  const template = SCENE_TEMPLATES.find((scene) => scene.id === sceneId)
-  return template?.name ?? sceneId
+function overlayPlatform(): StreamChatPlatform {
+  if (lastStreamPlatform === 'twitch' || lastStreamPlatform === 'youtube') return lastStreamPlatform
+  if (destYoutube.checked && !destTwitch.checked) return 'youtube'
+  if (destTwitch.checked) return 'twitch'
+  return 'none'
 }
 
-function pushStudioNotice(message: string): void {
-  const stamp = new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-  studioNotices.unshift(`${stamp}  ${message}`)
-  if (studioNotices.length > 8) studioNotices.length = 8
-  renderStudioNotices()
+function presentStreamAlert(alert: StreamAlert): void {
+  if (shownAlertIds.has(alert.id)) return
+  shownAlertIds.add(alert.id)
+  streamAlertQueue.push(alert)
+  if (streamAlertQueue.length === 1) playNextStreamAlert()
 }
 
-function renderStudioNotices(): void {
-  programNotificationsFeed.replaceChildren()
-  for (const line of studioNotices) {
-    const item = document.createElement('li')
-    item.textContent = line
-    programNotificationsFeed.append(item)
+function playNextStreamAlert(): void {
+  const alert = streamAlertQueue[0]
+  if (!alert || alertBoxPageUrl(streamAlertBoxUrl)) {
+    programAlert.hidden = true
+    if (!alertBoxPageUrl(streamAlertBoxUrl)) {
+      programNotificationsSlot.dataset.alert = '0'
+    }
+    refreshProgramPreviewLayout()
+    return
   }
-  const hasNotes = studioNotices.length > 0
-  programNotificationsFeed.hidden = !hasNotes
-  programNotificationsHint.hidden = hasNotes
-  programNotificationsSlot.dataset.liveFeed = hasNotes ? '1' : '0'
-  if (!hasNotes) programNotificationsHint.textContent = 'Studio events show up here'
+  const card = alertCard(alert)
+  programAlertKicker.textContent = card.kicker
+  programAlertName.textContent = card.headline
+  programAlertAmount.textContent = ''
+  programAlertMessage.textContent = card.detail
+  programAlert.hidden = false
+  programNotificationsSlot.dataset.alert = '1'
+  layerEnabled.notifications = true
+  refreshProgramPreviewLayout()
+  if (streamAlertTimer) clearTimeout(streamAlertTimer)
+  streamAlertTimer = setTimeout(() => {
+    streamAlertQueue.shift()
+    playNextStreamAlert()
+  }, 6500)
+}
+
+function syncAlertBox(): void {
+  const page = alertBoxPageUrl(streamAlertBoxUrl)
+  if (!page) {
+    programAlertBox.removeAttribute('src')
+    programAlertBox.hidden = true
+    if (streamAlertQueue.length === 0) {
+      programNotificationsSlot.hidden = true
+      programNotificationsSlot.dataset.alert = '0'
+    }
+    return
+  }
+  if (programAlertBox.src !== page) programAlertBox.src = page
+  programAlertBox.hidden = false
+  programAlert.hidden = true
+  programNotificationsSlot.dataset.alert = '1'
+  layerEnabled.notifications = true
+  refreshProgramPreviewLayout()
+}
+
+function syncPlatformAlerts(): void {
+  twitchAlertFeed?.stop()
+  twitchAlertFeed = null
+  syncAlertBox()
+  if (alertBoxPageUrl(streamAlertBoxUrl)) return
+  const platform = overlayPlatform()
+  if (platform !== 'twitch' || !streamChannel.trim()) return
+  twitchAlertFeed = startTwitchAlertFeed(streamChannel, presentStreamAlert)
 }
 
 function paintIntermissionCard(): void {
@@ -4162,7 +4206,6 @@ function ensureIntermissionTimer(): void {
   intermissionTimer = setInterval(() => {
     paintIntermissionCard()
     if (intermissionEndsAtMs != null && Date.now() >= intermissionEndsAtMs) {
-      pushStudioNotice('Intermission over')
       intermissionEndsAtMs = null
     }
   }, 250)
@@ -4172,19 +4215,16 @@ function startIntermissionTimer(minutes: number): void {
   if (!isIntermissionMinutes(minutes)) return
   intermissionEndsAtMs = intermissionEndsAt(Date.now(), minutes)
   ensureIntermissionTimer()
-  pushStudioNotice(`Intermission ${minutes} min`)
   void selectScene('intermission')
 }
 
 function stopIntermissionTimer(): void {
   intermissionEndsAtMs = null
   paintIntermissionCard()
-  pushStudioNotice('Intermission timer stopped')
 }
 
 async function deleteCustomScene(sceneId: string): Promise<void> {
   if (!isCustomSceneId(sceneId)) return
-  const removed = customScenes.find((scene) => scene.id === sceneId)
   const next = removeCustomScene(customScenes, sceneId)
   if (activeSceneTemplateId === sceneId) {
     await selectScene('gaming-cam')
@@ -4193,33 +4233,31 @@ async function deleteCustomScene(sceneId: string): Promise<void> {
   if (sceneImagePaths[sceneId]) {
     await persistSceneImage(sceneId, null)
   }
-  pushStudioNotice(`Deleted ${removed?.name ?? 'custom scene'}`)
 }
 
-function chatFeedUrl(): string | null {
-  if (!layerEnabled.chat || activeChatSourceId === 'off' || activeChatSourceId === 'placeholder') return null
-  const preset = CHAT_PRESET_URLS[activeChatSourceId]
-  if (preset) return preset
-  const tab = browseTabsCache.find((entry) => entry.id === activeChatSourceId)
-  return tab?.url || null
+function platformChatUrl(): string | null {
+  return streamChatUrl(overlayPlatform(), streamChannel)
 }
 
 function syncChatFeed(): void {
-  const url = chatFeedUrl()
+  const url = platformChatUrl()
   if (!url) {
     programChatView.removeAttribute('src')
     programChatView.hidden = true
     programChatSlot.dataset.liveFeed = '0'
     programChatHint.hidden = false
-    programChatHint.textContent = layerEnabled.chat
-      ? 'Placeholder panel — pick Twitch or YouTube chat to embed it'
-      : 'Pick a chat from the Chat menu'
+    programChatHint.textContent =
+      overlayPlatform() === 'youtube'
+        ? 'YouTube chat uses the live video id from Go Live'
+        : 'Twitch chat uses the channel from Go Live'
     return
   }
+  layerEnabled.chat = true
   if (programChatView.src !== url) programChatView.src = url
   programChatView.hidden = false
   programChatHint.hidden = true
   programChatSlot.dataset.liveFeed = '1'
+  programChatSlot.hidden = false
 }
 
 // Wire scene buttons
@@ -4394,6 +4432,36 @@ const goLiveWizard = new GoLiveWizard(
     readEncodeProfile: () => selectedProfile(),
     applyEncodeProfile: (id) => onEncodeProfileChanged(id),
     readPreferredPlatform: () => lastStreamPlatform,
+    readStreamInfo: () => ({
+      title: relayStudioSettings.streamTitle,
+      category: relayStudioSettings.streamCategory,
+      channel: streamChannel,
+      alertBox: streamAlertBoxUrl,
+    }),
+    applyStreamInfo: (info) => {
+      const nextChannel = info.channel.trim().replace(/^@/, '')
+      const nextAlertBox = alertBoxPageUrl(info.alertBox) ?? ''
+      const overlaysChanged = nextChannel !== streamChannel || nextAlertBox !== streamAlertBoxUrl
+      relayStudioSettings = {
+        ...relayStudioSettings,
+        streamTitle: sanitizeStreamTitle(info.title),
+        streamCategory: sanitizeStreamCategory(info.category),
+      }
+      streamChannel = nextChannel
+      streamAlertBoxUrl = nextAlertBox
+      if (streamChannel) layerEnabled.chat = true
+      syncStreamInfoFields()
+      if (overlaysChanged) {
+        syncChatFeed()
+        syncPlatformAlerts()
+      }
+      void window.tabcast.setSettings({
+        streamTitle: relayStudioSettings.streamTitle,
+        streamCategory: relayStudioSettings.streamCategory,
+        streamChannel,
+        streamAlertBoxUrl,
+      })
+    },
   },
 )
 
@@ -4746,7 +4814,6 @@ if (btnStartVcam) {
         stopProgramOutputCompositorIfIdle()
         setVcamUi(false)
         destHint.textContent = 'Virtual camera stopped.'
-        pushStudioNotice('Virtual camera stopped')
         return
       }
       try {
@@ -4761,7 +4828,6 @@ if (btnStartVcam) {
         destHint.textContent = output.devicePath
           ? `Virtual camera writing to ${output.devicePath} and the Maka Virtual Camera window.`
           : 'Virtual camera window is open. Other apps can capture that window. Shift+click for a system-camera fallback.'
-        pushStudioNotice(output.devicePath ? `Virtual camera ${output.devicePath}` : 'Virtual camera window open')
       } catch (err) {
         setDestError(err instanceof Error ? err.message : String(err))
       }
@@ -4816,44 +4882,28 @@ function formatStreamDuration(ms: number): string {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
-function streamDestinationsSummary(): string {
-  const parts: string[] = []
-  if (destTwitch.checked) {
-    parts.push(twitchKey.value.trim() ? 'Twitch' : 'Twitch (add key)')
-  }
-  if (destYoutube.checked) {
-    parts.push(youtubeKey.value.trim() ? 'YouTube' : 'YouTube (add key)')
-  }
-  if (destCustom.checked) {
-    parts.push(customRtmpKey.value.trim() ? 'Custom RTMP' : 'Custom RTMP (add key)')
-  }
-  if (parts.length === 0) return 'No destination — enable Twitch or YouTube in the stats bar'
-  return parts.join(' · ')
-}
-
 function syncStreamInfoFields(): void {
-  if (streamTitleInput && streamTitleInput !== document.activeElement) streamTitleInput.value = relayStudioSettings.streamTitle
-  if (streamCategoryInput && streamCategoryInput !== document.activeElement) streamCategoryInput.value = relayStudioSettings.streamCategory
-  if (streamDestinationsHint) streamDestinationsHint.textContent = streamDestinationsSummary()
+  const title = relayStudioSettings.streamTitle.trim()
+  const category = relayStudioSettings.streamCategory.trim()
+  streamTitleText.textContent = title || 'Untitled stream'
+  streamCategoryText.textContent = category || 'Category comes from Go Live'
 }
-function applyRelayStudioSettingsFromAppSettings(s: { streamTitle?: string; streamCategory?: string; audioMicBitrateKbps: number; audioDesktopBitrateKbps: number; videoEncoderPreference: RelayStudioSettings['videoEncoderPreference']; gpuPreference: string }): void {
+function applyRelayStudioSettingsFromAppSettings(s: { streamTitle?: string; streamCategory?: string; streamChannel?: string; streamAlertBoxUrl?: string; audioMicBitrateKbps: number; audioDesktopBitrateKbps: number; videoEncoderPreference: RelayStudioSettings['videoEncoderPreference']; gpuPreference: string }): void {
   relayStudioSettings = { streamTitle: sanitizeStreamTitle(s.streamTitle ?? ''), streamCategory: sanitizeStreamCategory(s.streamCategory ?? ''), audioMicBitrateKbps: s.audioMicBitrateKbps, audioDesktopBitrateKbps: s.audioDesktopBitrateKbps, videoEncoderPreference: s.videoEncoderPreference, gpuPreference: s.gpuPreference || 'default' }
+  streamChannel = (s.streamChannel ?? '').trim().replace(/^@/, '')
+  streamAlertBoxUrl = alertBoxPageUrl(s.streamAlertBoxUrl ?? '') ?? ''
   syncStreamInfoFields()
+  syncChatFeed()
+  syncPlatformAlerts()
 }
 async function persistStreamMetaFromInputs(): Promise<void> {
-  const title = sanitizeStreamTitle(streamTitleInput?.value ?? '')
-  const category = sanitizeStreamCategory(streamCategoryInput?.value ?? '')
-  relayStudioSettings = { ...relayStudioSettings, streamTitle: title, streamCategory: category }
-  await window.tabcast.setSettings({ streamTitle: title, streamCategory: category })
+  await window.tabcast.setSettings({
+    streamTitle: relayStudioSettings.streamTitle,
+    streamCategory: relayStudioSettings.streamCategory,
+    streamChannel,
+    streamAlertBoxUrl,
+  })
   syncStreamInfoFields()
-}
-function maybeFillStreamTitleFromBrowseTab(): void {
-  if (relayStudioSettings.streamTitle.trim()) return
-  const active = browseTabsCache.find((t) => t.active)
-  const tabTitle = active?.title?.trim()
-  if (!tabTitle || tabTitle === 'New Tab') return
-  relayStudioSettings = { ...relayStudioSettings, streamTitle: sanitizeStreamTitle(tabTitle) }
-  if (streamTitleInput) streamTitleInput.value = relayStudioSettings.streamTitle
 }
 function syncStreamInfoMeta(): void { syncStreamInfoFields() }
 
@@ -4947,10 +4997,6 @@ btnGameAudioSettings.addEventListener('click', () => {
   void refreshGameAudioCapture(false)
   studioSourceGame.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
 })
-
-function onStreamMetaFieldCommit(): void { void persistStreamMetaFromInputs().then(() => repostRelayConfigIfLive()) }
-if (streamTitleInput) { streamTitleInput.addEventListener('change', onStreamMetaFieldCommit); streamTitleInput.addEventListener('blur', onStreamMetaFieldCommit) }
-if (streamCategoryInput) { streamCategoryInput.addEventListener('change', onStreamMetaFieldCommit); streamCategoryInput.addEventListener('blur', onStreamMetaFieldCommit) }
 
 function sampleCaptureClock(): void {
   const videos = [programVideo, programCamVideo, programBrowserVideo]
