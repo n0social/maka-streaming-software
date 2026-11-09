@@ -2,6 +2,8 @@ import {
   RELAY_TRACK_STREAM_IDS,
   type RelayTrackStreamId,
 } from '../shared/tabcast'
+import { RELAY_CONTROL_RETRY_ATTEMPTS, liveRetryBackoffMs, relayControlStatusShouldRetry } from '../shared/live-retry'
+import { hardenWhipMediaSdp } from '../shared/whip-sdp'
 import { rewriteWhipOfferMsids } from '../shared/whip-msid'
 
 export const WHIP_VIDEO_WATCHDOG_POLL_MS = 2_000
@@ -305,7 +307,14 @@ export async function publishWhip(
   headers: Record<string, string> = {},
   onConnectionStateChange?: (state: RTCPeerConnectionState) => void,
 ): Promise<WhipPublisher> {
-  const pc = new RTCPeerConnection({ iceServers: [] })
+  // Media stays on UDP. `all` keeps a TCP candidate for networks that block UDP.
+  // The offer/answer itself is HTTP, so a dropped session is re-signaled on TCP.
+  const pc = new RTCPeerConnection({
+    iceServers: [],
+    bundlePolicy: 'max-bundle',
+    rtcpMuxPolicy: 'require',
+    iceTransportPolicy: 'all',
+  })
 
   const notifyConnection = () => {
     onConnectionStateChange?.(pc.connectionState)
@@ -326,7 +335,7 @@ export async function publishWhip(
   const offer = await pc.createOffer()
   await pc.setLocalDescription({
     type: 'offer',
-    sdp: rewriteWhipOfferMsids(offer.sdp ?? '', streamIds),
+    sdp: rewriteWhipOfferMsids(hardenWhipMediaSdp(offer.sdp ?? ''), streamIds),
   })
   await waitForIceGathering(pc)
 
@@ -336,17 +345,29 @@ export async function publishWhip(
     throw new Error('WHIP offer produced empty SDP')
   }
 
-  let response: Response
-  try {
-    response = await fetch(whipUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/sdp', ...headers },
-      body: localSdp,
-    })
-  } catch (error) {
+  let response: Response | null = null
+  let lastError: Error | null = null
+  for (let attempt = 0; attempt < RELAY_CONTROL_RETRY_ATTEMPTS; attempt += 1) {
+    try {
+      response = await fetch(whipUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/sdp', ...headers },
+        body: localSdp,
+        signal: AbortSignal.timeout(8_000),
+      })
+      if (response.ok || !relayControlStatusShouldRetry(response.status)) break
+      lastError = new Error(`WHIP publish failed (${response.status})`)
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error('Network error')
+      response = null
+    }
+    if (attempt + 1 < RELAY_CONTROL_RETRY_ATTEMPTS) {
+      await new Promise((resolve) => setTimeout(resolve, liveRetryBackoffMs(attempt)))
+    }
+  }
+  if (!response) {
     pc.close()
-    const message = error instanceof Error ? error.message : 'Network error'
-    throw new Error(`WHIP publish failed: ${message}`)
+    throw new Error(`WHIP publish failed: ${lastError?.message ?? 'Network error'}`)
   }
 
   if (!response.ok) {

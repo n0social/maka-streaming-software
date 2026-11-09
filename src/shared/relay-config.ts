@@ -57,7 +57,8 @@ export function buildRelayConfigRequest(
   const description = (studio.streamDescription ?? '').replace(/\r\n/g, '\n').slice(0, 200).trim()
   if (title) body.streamTitle = title
   if (category) body.streamCategory = category
-  if (youtube && description) body.streamDescription = description
+  // Twitch has no broadcast description. Send an empty value so a retry clears one.
+  body.streamDescription = youtube && description ? description : ''
 
   if (Number.isFinite(studio.audioMicBitrateKbps)) {
     body.audioMicBitrateKbps = Math.round(studio.audioMicBitrateKbps)

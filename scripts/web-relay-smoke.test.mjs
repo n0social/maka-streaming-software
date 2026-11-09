@@ -60,6 +60,27 @@ try {
   }
   console.log('OK youtube description', youtubeStatus.broadcast.description)
 
+  const twitchAgain = await fetch(`${base}/config`, {
+    method: 'POST',
+    headers: { ...auth, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      twitchKey: 'live_test_key_1234567890',
+      youtubeKey: '',
+      streamTitle: 'Sunday raid',
+      streamCategory: 'Just Chatting',
+      streamDescription: '',
+    }),
+  })
+  if (!twitchAgain.ok) throw new Error(`twitch reconfig failed ${twitchAgain.status}`)
+  const twitchAgainStatus = await (await fetch(`${base}/status`, { headers: auth })).json()
+  if (twitchAgainStatus.broadcast?.description) {
+    throw new Error(`Twitch retry kept a description: ${JSON.stringify(twitchAgainStatus.broadcast)}`)
+  }
+  if (twitchAgainStatus.broadcast?.twitch !== true || twitchAgainStatus.broadcast?.title !== 'Sunday raid') {
+    throw new Error(`Twitch retry dropped title or destination: ${JSON.stringify(twitchAgainStatus.broadcast)}`)
+  }
+  console.log('OK twitch retry cleared description', twitchAgainStatus.broadcast)
+
   const verifyRes = await fetch(`${base}/config/verify`, { method: 'POST', headers: auth })
   const verify = await verifyRes.json()
   if (!verifyRes.ok || verify.ok !== true) throw new Error(`verify: ${JSON.stringify(verify)}`)

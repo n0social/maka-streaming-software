@@ -1,3 +1,8 @@
+import {
+  RELAY_CONTROL_RETRY_ATTEMPTS,
+  liveRetryBackoffMs,
+  relayControlStatusShouldRetry,
+} from '../shared/live-retry'
 import type { RelaySnapshot } from '../shared/relay-snapshot'
 import { encodeProfileSpec, normalizeEncodeProfileId } from '../shared/stream-encode-profiles'
 import {
@@ -25,6 +30,29 @@ function relayFetch(input: string, init?: RequestInit): Promise<Response> {
   })
 }
 
+function waitRetry(attemptIndex: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, liveRetryBackoffMs(attemptIndex)))
+}
+
+/** TCP control request. A dropped packet or a 5xx gets another attempt; a 4xx does not. */
+async function relayFetchRetry(input: string, init: RequestInit | undefined, attempts = RELAY_CONTROL_RETRY_ATTEMPTS): Promise<Response> {
+  let lastResponse: Response | null = null
+  let lastError: Error | null = null
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      const res = await relayFetch(input, { ...init, signal: AbortSignal.timeout(RELAY_FETCH_MS) })
+      if (res.ok || !relayControlStatusShouldRetry(res.status) || attempt + 1 >= attempts) return res
+      lastResponse = res
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err))
+      if (attempt + 1 >= attempts) throw lastError
+    }
+    await waitRetry(attempt)
+  }
+  if (lastResponse) return lastResponse
+  throw lastError ?? new Error('Relay request failed')
+}
+
 export function authHeaders(health: RelayHealth | null): Record<string, string> {
   if (!health?.relayToken) return {}
   return { Authorization: `Bearer ${health.relayToken}` }
@@ -34,7 +62,7 @@ export async function postRelayConfig(
   health: RelayHealth,
   body: RelayConfigRequest,
 ): Promise<void> {
-  const res = await relayFetch(`${RELAY_BASE_URL}${RELAY_CONFIG_PATH}`, {
+  const res = await relayFetchRetry(`${RELAY_BASE_URL}${RELAY_CONFIG_PATH}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -65,7 +93,7 @@ export async function verifyRelayConfig(health: RelayHealth): Promise<RelayVerif
 }
 
 export async function postSceneLayout(health: RelayHealth, layout: SceneLayout): Promise<void> {
-  const res = await relayFetch(`${RELAY_BASE_URL}${RELAY_SCENE_PATH}`, {
+  const res = await relayFetchRetry(`${RELAY_BASE_URL}${RELAY_SCENE_PATH}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -153,6 +181,7 @@ export {
   liveRecoveryReasonLabel,
   liveRetryBackoffMs,
   MAX_LIVE_RETRY_ATTEMPTS,
+  WHIP_DISCONNECT_GRACE_MS,
 } from '../shared/live-retry'
 
 export async function fetchRelayStatus(health: RelayHealth): Promise<RelayStatusResponse | null> {

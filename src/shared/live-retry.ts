@@ -12,6 +12,21 @@ export function liveRetryBackoffMs(attemptIndex: number): number {
   return Math.min(LIVE_RETRY_MAX_MS, LIVE_RETRY_BASE_MS * 2 ** capped)
 }
 
+/** TCP control posts (config, scene, WHIP signaling) before the attempt is given up. */
+export const RELAY_CONTROL_RETRY_ATTEMPTS = 3
+
+/**
+ * UDP media can blip into `disconnected` and recover on its own.
+ * Wait this long before tearing the session down and signaling again over TCP.
+ */
+export const WHIP_DISCONNECT_GRACE_MS = 2_000
+
+/** 408/429/5xx are worth another TCP attempt. Auth and validation failures are not. */
+export function relayControlStatusShouldRetry(status: number): boolean {
+  if (status === 408 || status === 429) return true
+  return status >= 500
+}
+
 const FATAL_INGEST_PATTERNS: RegExp[] = [
   /\b401\b/,
   /\b403\b/,

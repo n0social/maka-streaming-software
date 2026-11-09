@@ -77,6 +77,7 @@ import {
   liveRecoveryReasonLabel,
   liveRetryBackoffMs,
   MAX_LIVE_RETRY_ATTEMPTS,
+  WHIP_DISCONNECT_GRACE_MS,
   postRelayConfig,
   postSceneLayout,
   relayNeedsLiveBootstrap,
@@ -260,6 +261,7 @@ let liveRecoveryReason: string | null = null
 let liveRecoveryFatal = false
 let sessionLiveIntent = false
 let liveReconnectTimer: ReturnType<typeof setTimeout> | null = null
+let whipDisconnectTimer: ReturnType<typeof setTimeout> | null = null
 let liveReconnectRunId = 0
 let programStream: MediaStream | null = null
 let browserStream: MediaStream | null = null
@@ -1204,8 +1206,16 @@ function clearLiveReconnectTimer(): void {
   }
 }
 
+function clearWhipDisconnectTimer(): void {
+  if (whipDisconnectTimer) {
+    clearTimeout(whipDisconnectTimer)
+    whipDisconnectTimer = null
+  }
+}
+
 function cancelLiveRecovery(): void {
   clearLiveReconnectTimer()
+  clearWhipDisconnectTimer()
   liveReconnectRunId += 1
   liveReconnecting = false
   liveRecoveryReason = null
@@ -1430,6 +1440,7 @@ function relaySnapshotNeedsRecovery(snapshot: RelaySnapshot): boolean {
 function onWhipConnectionState(state: RTCPeerConnectionState): void {
   if (!sessionLiveIntent) return
   if (state === 'connected') {
+    clearWhipDisconnectTimer()
     liveRecoveryAttempts = 0
     liveRecoveryExhausted = false
     liveRecoveryFatal = false
@@ -1440,7 +1451,22 @@ function onWhipConnectionState(state: RTCPeerConnectionState): void {
     void window.tabcast.getRelay().then(renderRelay)
     return
   }
-  if (state === 'failed' || state === 'disconnected' || state === 'closed') {
+  if (state === 'disconnected') {
+    // UDP can recover without a new offer. Wait, then re-signal over TCP.
+    if (whipDisconnectTimer || goingLive || liveReconnecting) return
+    stopWhipVideoWatchdog()
+    whipDisconnectTimer = setTimeout(() => {
+      whipDisconnectTimer = null
+      if (!sessionLiveIntent || goingLive || liveReconnecting) return
+      const current = whipPublisher?.pc.connectionState
+      if (current === 'connected' || current === 'connecting') return
+      clearWhipStreamMetrics()
+      queueLiveRecovery('whip:disconnected')
+    }, WHIP_DISCONNECT_GRACE_MS)
+    return
+  }
+  if (state === 'failed' || state === 'closed') {
+    clearWhipDisconnectTimer()
     stopWhipVideoWatchdog()
     clearWhipStreamMetrics()
     if (goingLive || liveReconnecting) return
@@ -1480,13 +1506,10 @@ function queueLiveRecovery(reason: string, detail?: string): void {
   }, delay)
 }
 
-async function repostRelayConfigIfNeeded(snapshot: RelaySnapshot): Promise<RelaySnapshot> {
+async function repostStreamInfo(snapshot: RelaySnapshot): Promise<RelaySnapshot> {
   if (!snapshot.health) return snapshot
-  if (sessionIngestTarget !== 'backup' && !relayNeedsLiveBootstrap(snapshot)) {
-    return snapshot
-  }
-
   await postRelayConfig(snapshot.health, relayConfigForIngest(sessionIngestTarget))
+  await pushSceneLayout()
   return snapshot
 }
 
@@ -1539,12 +1562,9 @@ async function runLiveRecovery(reason: string): Promise<void> {
       throw new Error(snapshot.error)
     }
 
-    snapshot = await repostRelayConfigIfNeeded(snapshot)
+    snapshot = await repostStreamInfo(snapshot)
     await window.tabcast.refreshRelay()
     snapshot = await window.tabcast.getRelay()
-    if (relayNeedsLiveBootstrap(snapshot)) {
-      await pushSceneLayout()
-    }
 
     if (!snapshot.health) {
       throw new Error('Relay health missing after reconnect wait.')

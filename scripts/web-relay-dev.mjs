@@ -259,6 +259,7 @@ async function handleRequest(req, res) {
       return
     }
     relayConfig = { ...relayConfig, ...body }
+    if (!relayConfig.youtubeKey) relayConfig.streamDescription = ''
     if (body.profile && !body.bitrateMbps) {
       const bitrates = {
         '720p30': 3,
@@ -271,10 +272,11 @@ async function handleRequest(req, res) {
       relayConfig.bitrateMbps = bitrates[body.profile] ?? relayConfig.bitrateMbps
     }
     console.log(
-      '[config] profile=%s title=%s game=%s twitch=%s youtube=%s',
+      '[config] profile=%s title=%s game=%s description=%s twitch=%s youtube=%s',
       relayConfig.profile,
       relayConfig.streamTitle || '',
       relayConfig.streamCategory || '',
+      relayConfig.youtubeKey ? relayConfig.streamDescription || '' : '',
       Boolean(relayConfig.twitchKey),
       Boolean(relayConfig.youtubeKey),
     )
@@ -317,6 +319,14 @@ async function handleRequest(req, res) {
     return
   }
 
+  if (req.method === 'POST' && path === '/drop') {
+    await closeAllWhipSessions()
+    relayPhase = 'idle'
+    logFfmpeg('WHIP dropped for reconnect test')
+    sendJson(res, 200, { ok: true, dropped: true })
+    return
+  }
+
   if (req.method === 'POST' && path === '/stop') {
     await closeAllWhipSessions()
     relayPhase = 'idle'
@@ -329,7 +339,11 @@ async function handleRequest(req, res) {
   if (req.method === 'POST' && path === '/whip') {
     const offerSdp = (await readBody(req)).toString('utf8')
     const msids = [...offerSdp.matchAll(/^a=msid:(\S+)/gm)].map((match) => match[1])
-    console.log(`[whip] offer msids=${msids.join(',') || 'none'} bytes=${offerSdp.length}`)
+    const nack = /^a=rtcp-fb:\d+ nack$/m.test(offerSdp)
+    const fec = /useinbandfec=1/.test(offerSdp)
+    const udp = (offerSdp.match(/a=candidate:[^\n]*\budp\b/gi) ?? []).length
+    const tcp = (offerSdp.match(/a=candidate:[^\n]*\btcp\b/gi) ?? []).length
+    console.log(`[whip] offer msids=${msids.join(',') || 'none'} nack=${nack} fec=${fec} udp=${udp} tcp=${tcp} bytes=${offerSdp.length}`)
     if (!offerSdp.trim()) {
       sendText(res, 400, 'Expected SDP body')
       return
