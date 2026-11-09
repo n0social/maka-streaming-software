@@ -53,6 +53,7 @@ export type AppSettings = {
   lastStreamPlatform: StreamPlatformPreference
   streamTitle: string
   streamCategory: string
+  streamDescription: string
   streamChannel: string
   streamAlertBoxUrl: string
   streamIncludeChat: boolean

@@ -33,7 +33,7 @@ export function coerceSettings(partial: unknown): Partial<AppSettings> {
     out.bitrateProfile = '1080p60'
   }
   if (p.startupMode === 'studio' || p.startupMode === 'browse') {
-    out.startupMode = p.startupMode
+    out.startupMode = 'studio'
   }
   if (typeof p.minimizeToTrayWhileLive === 'boolean') {
     out.minimizeToTrayWhileLive = p.minimizeToTrayWhileLive
@@ -65,6 +65,9 @@ export function coerceSettings(partial: unknown): Partial<AppSettings> {
   }
   if (typeof p.streamCategory === 'string') {
     out.streamCategory = p.streamCategory.trim().replace(/\s+/g, ' ').slice(0, 100)
+  }
+  if (typeof p.streamDescription === 'string') {
+    out.streamDescription = p.streamDescription.replace(/\r\n/g, '\n').slice(0, 200)
   }
   if (typeof p.streamChannel === 'string') {
     out.streamChannel = p.streamChannel.trim().replace(/^@/, '').replace(/\s+/g, '').slice(0, 64)

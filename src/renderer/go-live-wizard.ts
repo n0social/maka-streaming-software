@@ -5,8 +5,10 @@ import {
   normalizeTwitchChannel,
   sanitizeStreamGame,
   sanitizeStreamWizardTitle,
+  sanitizeYouTubeDescription,
   streamKeyValid,
   youtubeVideoId,
+  YOUTUBE_DESCRIPTION_LIMIT,
 } from '../shared/stream-wizard'
 
 export type GoLiveWizardPlatform = 'twitch' | 'youtube' | 'custom'
@@ -17,6 +19,7 @@ type WizardStep = 'platform' | 'key' | 'details' | 'chat' | 'go'
 export type GoLiveStreamInfo = {
   title: string
   game: string
+  description: string
   channel: string
   includeChat: boolean
 }
@@ -69,6 +72,9 @@ export class GoLiveWizard {
   private readonly youtubeKey: HTMLInputElement
   private readonly keyHint: HTMLElement
   private readonly titleInput: HTMLInputElement
+  private readonly descriptionField: HTMLElement
+  private readonly descriptionInput: HTMLTextAreaElement
+  private readonly descriptionCount: HTMLElement
   private readonly gameButton: HTMLButtonElement
   private readonly gameList: HTMLElement
   private readonly qualitySelect: HTMLSelectElement
@@ -106,6 +112,9 @@ export class GoLiveWizard {
     this.youtubeKey = q('wizard-youtube-key')
     this.keyHint = q('wizard-key-hint')
     this.titleInput = q('go-live-wizard-title-input')
+    this.descriptionField = q('go-live-wizard-description-field')
+    this.descriptionInput = q<HTMLTextAreaElement>('go-live-wizard-description')
+    this.descriptionCount = q('go-live-wizard-description-count')
     this.gameButton = q('go-live-wizard-game-input')
     this.gameList = q('go-live-wizard-game-list')
     this.qualitySelect = q('go-live-wizard-quality')
@@ -132,6 +141,7 @@ export class GoLiveWizard {
         this.syncKeyPanel()
         this.refreshKeyGate()
         this.syncChatVisibility()
+        this.syncDescriptionField()
       })
     })
     this.twitchKey.addEventListener('input', () => {
@@ -149,6 +159,11 @@ export class GoLiveWizard {
     this.twitchChannel.addEventListener('input', () => this.publishChat())
     this.youtubeChat.addEventListener('input', () => this.publishChat())
     this.titleInput.addEventListener('change', () => this.publishDetails())
+    this.descriptionInput.addEventListener('input', () => {
+      this.descriptionInput.value = sanitizeYouTubeDescription(this.descriptionInput.value)
+      this.paintDescriptionCount()
+      this.publishDetails()
+    })
     this.gameButton.addEventListener('click', () => this.setGameListOpen(!this.gameListOpen))
     this.dialog.addEventListener('cancel', (event) => {
       if (!this.gameListOpen && !this.blockDialogCancel) return
@@ -203,6 +218,8 @@ export class GoLiveWizard {
     if (this.qualitySelect.value !== profile) this.qualitySelect.value = profile
     const info = this.bindings.readStreamInfo()
     this.titleInput.value = info.title
+    this.descriptionInput.value = sanitizeYouTubeDescription(info.description)
+    this.paintDescriptionCount()
     this.chatInclude.checked = info.includeChat
     this.hydrateChatFields(info.channel)
     this.paintGameTrigger(info.game, this.imageForGame(info.game))
@@ -453,11 +470,25 @@ export class GoLiveWizard {
     }
   }
 
+  private descriptionValue(): string {
+    return this.platform === 'youtube' ? sanitizeYouTubeDescription(this.descriptionInput.value) : ''
+  }
+
+  private paintDescriptionCount(): void {
+    const length = sanitizeYouTubeDescription(this.descriptionInput.value).length
+    this.descriptionCount.textContent = `${length}/${YOUTUBE_DESCRIPTION_LIMIT}`
+  }
+
+  private syncDescriptionField(): void {
+    this.descriptionField.hidden = this.platform !== 'youtube'
+  }
+
   private publishDetails(): void {
     const info = this.bindings.readStreamInfo()
     this.bindings.applyStreamInfo({
       title: sanitizeStreamWizardTitle(this.titleInput.value),
       game: this.gameName(),
+      description: this.descriptionValue(),
       channel: info.channel,
       includeChat: info.includeChat,
     })
@@ -469,6 +500,7 @@ export class GoLiveWizard {
     this.bindings.applyStreamInfo({
       title: sanitizeStreamWizardTitle(this.titleInput.value),
       game: this.gameName(),
+      description: this.descriptionValue(),
       channel: this.channelValue(),
       includeChat: this.chatInclude.checked && Boolean(this.channelValue()),
     })
@@ -499,6 +531,7 @@ export class GoLiveWizard {
     } else if (this.step === 'details') {
       this.titleEl.textContent = 'Stream info'
       this.bodyEl.textContent = ''
+      this.syncDescriptionField()
     } else if (this.step === 'chat') {
       this.titleEl.textContent = 'Chat + Notifications'
       this.bodyEl.textContent = 'Saved with the Twitch and YouTube buttons under the preview.'

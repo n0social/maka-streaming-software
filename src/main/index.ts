@@ -208,6 +208,10 @@ function layoutBrowserPane(win: BrowserWindow): void {
 }
 
 function setAppMode(mode: ShellMode): void {
+  if (mode === 'browse') {
+    setAppMode('studio')
+    return
+  }
   if (mode === 'settings') {
     if (appMode === 'studio' || appMode === 'browse') {
       workspaceBeforeSettings = appMode
@@ -221,19 +225,9 @@ function setAppMode(mode: ShellMode): void {
   }
 
   appMode = mode
-  if (mode === 'browse' && mainWindow && !mainWindow.isDestroyed()) {
-    browse.attach(mainWindow)
-    browse.ensureSeeded()
-  }
   if (mainWindow && !mainWindow.isDestroyed()) {
     layoutBrowserPane(mainWindow)
     mainWindow.webContents.send('app:mode', mode)
-    if (mode === 'browse') {
-      mainWindow.webContents.send('browser:tabs', browse.list())
-      if (settings.openChatOnBrowse) {
-        openChatPopout(chatUrlFromBrowse())
-      }
-    }
   }
 }
 
@@ -330,7 +324,7 @@ function openChatPopout(url?: string): void {
 
 function createMainWindow(): BrowserWindow {
   settings = loadSettings()
-  appMode = settings.startupMode
+  appMode = 'studio'
 
   const win = new BrowserWindow({
     width: 1600,

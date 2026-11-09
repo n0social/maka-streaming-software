@@ -23,7 +23,6 @@ export const SETTINGS_TAB_IDS = [
   'audio',
   'video',
   'recording',
-  'modes',
   'help',
 ] as const
 
@@ -42,6 +41,8 @@ export type AppSettings = {
   lastStreamPlatform: StreamPlatformPreference
   streamTitle: string
   streamCategory: string
+  /** YouTube live description. Twitch does not take one. */
+  streamDescription: string
   /** Twitch login or YouTube live video id. Chat and alerts follow this. */
   streamChannel: string
   streamAlertBoxUrl: string
@@ -88,6 +89,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   lastStreamPlatform: 'none',
   streamTitle: '',
   streamCategory: '',
+  streamDescription: '',
   streamChannel: '',
   streamAlertBoxUrl: '',
   streamIncludeChat: false,

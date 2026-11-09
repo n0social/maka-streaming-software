@@ -117,6 +117,13 @@ function statusPayload() {
   return {
     status: relayPhase,
     profile: relayConfig.profile,
+    broadcast: {
+      title: relayConfig.streamTitle || '',
+      game: relayConfig.streamCategory || '',
+      description: relayConfig.youtubeKey ? relayConfig.streamDescription || '' : '',
+      twitch: Boolean(relayConfig.twitchKey),
+      youtube: Boolean(relayConfig.youtubeKey),
+    },
     platforms: Object.keys(platforms).length ? platforms : undefined,
     whipSessionActive: whipSessions.size > 0,
     error: relayError ?? undefined,
@@ -262,7 +269,14 @@ async function handleRequest(req, res) {
       }
       relayConfig.bitrateMbps = bitrates[body.profile] ?? relayConfig.bitrateMbps
     }
-    console.log('[config] updated profile=%s', relayConfig.profile)
+    console.log(
+      '[config] profile=%s title=%s game=%s twitch=%s youtube=%s',
+      relayConfig.profile,
+      relayConfig.streamTitle || '',
+      relayConfig.streamCategory || '',
+      Boolean(relayConfig.twitchKey),
+      Boolean(relayConfig.youtubeKey),
+    )
     sendJson(res, 200, { ok: true })
     return
   }

@@ -171,9 +171,7 @@ const programAlertKicker = document.getElementById('program-alert-kicker')!
 const programAlertName = document.getElementById('program-alert-name')!
 const programAlertAmount = document.getElementById('program-alert-amount')!
 const programAlertMessage = document.getElementById('program-alert-message')!
-const streamThumbCanvas = document.getElementById('stream-thumb-canvas') as HTMLCanvasElement
-const streamThumbPlaceholder = document.getElementById('stream-thumb-placeholder')!
-const streamThumb = document.getElementById('stream-thumb') as HTMLElement | null
+const streamThumbImg = document.getElementById('stream-thumb-img') as HTMLImageElement
 const streamTitleText = document.getElementById('stream-title-text')!
 const streamCategoryText = document.getElementById('stream-category-text')!
 const streamLivePill = document.getElementById('stream-live-pill') as HTMLElement | null
@@ -188,7 +186,6 @@ const micSelect = document.getElementById('mic-select') as HTMLSelectElement
 const programQualitySelect = document.getElementById(
   'program-quality-select',
 ) as HTMLSelectElement
-const programOutputMode = document.getElementById('program-output-mode') as HTMLSelectElement
 const platformKeyDialog = document.getElementById('platform-key-dialog') as HTMLDialogElement
 const platformKeyForm = document.getElementById('platform-key-form') as HTMLFormElement
 const platformKeyPanelTwitch = document.getElementById('platform-key-panel-twitch')!
@@ -289,7 +286,7 @@ let labMode = false
 let recordingSaveFolder = ''
 let lastStreamPlatform: 'twitch' | 'youtube' | 'none' = 'none'
 let browseTabsCache: BrowseTabInfo[] = []
-let relayStudioSettings: RelayStudioSettings = { streamTitle: '', streamCategory: '', audioMicBitrateKbps: 160, audioDesktopBitrateKbps: 160, videoEncoderPreference: 'system', gpuPreference: 'default' }
+let relayStudioSettings: RelayStudioSettings = { streamTitle: '', streamCategory: '', streamDescription: '', audioMicBitrateKbps: 160, audioDesktopBitrateKbps: 160, videoEncoderPreference: 'system', gpuPreference: 'default' }
 let pcCameraBeforePhone = ''
 let pcMicBeforePhone = ''
 let preferPhoneCamera = false
@@ -322,6 +319,7 @@ let intermissionTimer: ReturnType<typeof setInterval> | null = null
 let streamChannel = ''
 let streamAlertBoxUrl = ''
 let streamIncludeChat = false
+const gameArtByName = new Map<string, string>()
 let twitchAlertFeed: TwitchAlertFeed | null = null
 const streamAlertQueue: StreamAlert[] = []
 let streamAlertTimer: ReturnType<typeof setTimeout> | null = null
@@ -370,10 +368,6 @@ function applyMode(mode: AppMode): void {
   navrow.hidden = !browseOpen
   browsetabs.hidden = !browseOpen
   settingsViewRoot.hidden = !settingsOpen
-
-  if (programOutputMode && (mode === 'studio' || mode === 'browse') && programOutputMode.value !== mode) {
-    programOutputMode.value = mode
-  }
 
   if (brandTag) {
     if (settingsOpen) {
@@ -3167,15 +3161,6 @@ for (const tab of document.querySelectorAll<HTMLButtonElement>('.tab')) {
   })
 }
 
-if (programOutputMode) {
-  programOutputMode.addEventListener('change', () => {
-    const mode = programOutputMode.value as AppMode
-    if (mode !== 'studio' && mode !== 'browse') return
-    void window.tabcast.setMode(mode)
-    void window.tabcast.setSettings({ startupMode: mode })
-  })
-}
-
 urlForm.addEventListener('submit', (event) => {
   event.preventDefault()
   void window.tabcast.navigate(urlInput.value)
@@ -3241,10 +3226,6 @@ const settingsView = initSettingsView(window.tabcast, {
     destHint.textContent = labMode
       ? 'Demo mode on — key format checks skipped (for testing and walkthroughs).'
       : 'Keys stay in relay RAM only. Go Live publishes WHIP to localhost.'
-  },
-  onStartupModeChange: (mode) => {
-    if (currentMode === 'settings') return
-    void window.tabcast.setMode(mode)
   },
   onEncodeProfileChange: (id) => {
     syncEncodeProfileSelects(id)
@@ -3738,12 +3719,6 @@ window.addEventListener('keydown', (event) => {
   if (event.key === 'F9' || (event.ctrlKey && event.key.toLowerCase() === 'm')) {
     event.preventDefault()
     toggleMicMute()
-  }
-  if (event.ctrlKey && event.key.toLowerCase() === 'b') {
-    event.preventDefault()
-    const next = currentMode === 'browse' ? 'studio' : 'browse'
-    void window.tabcast.setMode(next)
-    void window.tabcast.setSettings({ startupMode: next })
   }
 })
 
@@ -4408,6 +4383,7 @@ const goLiveWizard = new GoLiveWizard(goLiveWizardDialog, {
     readStreamInfo: () => ({
       title: relayStudioSettings.streamTitle,
       game: relayStudioSettings.streamCategory || 'Just Chatting',
+      description: relayStudioSettings.streamDescription,
       channel: streamChannel,
       includeChat: streamIncludeChat,
     }),
@@ -4418,6 +4394,7 @@ const goLiveWizard = new GoLiveWizard(goLiveWizardDialog, {
         ...relayStudioSettings,
         streamTitle: sanitizeStreamTitle(info.title),
         streamCategory: sanitizeStreamCategory(info.game),
+        streamDescription: info.description.replace(/\r\n/g, '\n').slice(0, 200),
       }
       streamChannel = nextChannel
       streamIncludeChat = info.includeChat
@@ -4430,6 +4407,7 @@ const goLiveWizard = new GoLiveWizard(goLiveWizardDialog, {
       void window.tabcast.setSettings({
         streamTitle: relayStudioSettings.streamTitle,
         streamCategory: relayStudioSettings.streamCategory,
+        streamDescription: relayStudioSettings.streamDescription,
         streamChannel,
         streamIncludeChat,
       })
@@ -4856,12 +4834,36 @@ function formatStreamDuration(ms: number): string {
 
 function syncStreamInfoFields(): void {
   const title = relayStudioSettings.streamTitle.trim()
-  const category = relayStudioSettings.streamCategory.trim()
-  streamTitleText.textContent = title || 'Untitled stream'
-  streamCategoryText.textContent = category || 'Category comes from Go Live'
+  const game = relayStudioSettings.streamCategory.trim()
+  streamTitleText.textContent = title
+  streamCategoryText.textContent = game
+  const image = game ? gameArtByName.get(game.toLowerCase()) : ''
+  if (image) {
+    if (streamThumbImg.getAttribute('src') !== image) streamThumbImg.src = image
+    streamThumbImg.alt = `${game} box art`
+    streamThumbImg.hidden = false
+  } else {
+    streamThumbImg.hidden = true
+    streamThumbImg.removeAttribute('src')
+    streamThumbImg.alt = ''
+  }
 }
-function applyRelayStudioSettingsFromAppSettings(s: { streamTitle?: string; streamCategory?: string; streamChannel?: string; streamAlertBoxUrl?: string; streamIncludeChat?: boolean; audioMicBitrateKbps: number; audioDesktopBitrateKbps: number; videoEncoderPreference: RelayStudioSettings['videoEncoderPreference']; gpuPreference: string }): void {
-  relayStudioSettings = { streamTitle: sanitizeStreamTitle(s.streamTitle ?? ''), streamCategory: sanitizeStreamCategory(s.streamCategory ?? ''), audioMicBitrateKbps: s.audioMicBitrateKbps, audioDesktopBitrateKbps: s.audioDesktopBitrateKbps, videoEncoderPreference: s.videoEncoderPreference, gpuPreference: s.gpuPreference || 'default' }
+
+async function loadGameArt(): Promise<void> {
+  try {
+    const response = await fetch(new URL('data/game-catalogue.json', window.location.href).toString())
+    if (!response.ok) return
+    const data = (await response.json()) as { games?: { name?: string; image?: string }[] }
+    for (const game of data.games ?? []) {
+      if (game.name && game.image) gameArtByName.set(game.name.toLowerCase(), game.image)
+    }
+    syncStreamInfoFields()
+  } catch {
+    /* catalogue is optional until the wizard step loads it */
+  }
+}
+function applyRelayStudioSettingsFromAppSettings(s: { streamTitle?: string; streamCategory?: string; streamDescription?: string; streamChannel?: string; streamAlertBoxUrl?: string; streamIncludeChat?: boolean; audioMicBitrateKbps: number; audioDesktopBitrateKbps: number; videoEncoderPreference: RelayStudioSettings['videoEncoderPreference']; gpuPreference: string }): void {
+  relayStudioSettings = { streamTitle: sanitizeStreamTitle(s.streamTitle ?? ''), streamCategory: sanitizeStreamCategory(s.streamCategory ?? ''), streamDescription: (s.streamDescription ?? '').replace(/\r\n/g, '\n').slice(0, 200), audioMicBitrateKbps: s.audioMicBitrateKbps, audioDesktopBitrateKbps: s.audioDesktopBitrateKbps, videoEncoderPreference: s.videoEncoderPreference, gpuPreference: s.gpuPreference || 'default' }
   streamChannel = (s.streamChannel ?? '').trim().replace(/^@/, '')
   streamAlertBoxUrl = alertBoxPageUrl(s.streamAlertBoxUrl ?? '') ?? ''
   streamIncludeChat = Boolean(s.streamIncludeChat)
@@ -4874,6 +4876,7 @@ async function persistStreamMetaFromInputs(): Promise<void> {
   await window.tabcast.setSettings({
     streamTitle: relayStudioSettings.streamTitle,
     streamCategory: relayStudioSettings.streamCategory,
+    streamDescription: relayStudioSettings.streamDescription,
     streamChannel,
     streamAlertBoxUrl,
     streamIncludeChat,
@@ -4999,42 +5002,12 @@ function sampleCaptureClock(): void {
   captureClockStartedAt = now
 }
 
-function paintStreamThumb(): void {
-  const ctx = streamThumbCanvas.getContext('2d')
-  if (!ctx) return
-  const video = [programVideo, programCamVideo, programBrowserVideo].find(
-    (item) => !item.hidden && item.videoWidth > 0 && item.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA,
-  )
-  if (video) {
-    ctx.drawImage(video, 0, 0, streamThumbCanvas.width, streamThumbCanvas.height)
-    streamThumbCanvas.hidden = false
-    streamThumbPlaceholder.hidden = true
-    return
-  }
-  if (!programSceneCard.hidden) {
-    ctx.fillStyle = '#f6f3ec'
-    ctx.fillRect(0, 0, streamThumbCanvas.width, streamThumbCanvas.height)
-    ctx.fillStyle = '#ffc40c'
-    ctx.fillRect(0, 0, streamThumbCanvas.width, 8)
-    ctx.fillStyle = '#1a1408'
-    ctx.font = '700 13px system-ui, sans-serif'
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    const title = programSceneCardTitle.textContent ?? 'Scene'
-    ctx.fillText(title, streamThumbCanvas.width / 2, streamThumbCanvas.height / 2)
-    streamThumbCanvas.hidden = false
-    streamThumbPlaceholder.hidden = true
-    return
-  }
-  streamThumbCanvas.hidden = true
-  streamThumbPlaceholder.hidden = false
-}
-
 setInterval(() => {
   sampleCaptureClock()
-  paintStreamThumb()
   updateProgramStats(lastRelaySnapshot)
 }, 500)
+
+void loadGameArt()
 
 // Initialize stream info
 highlightSceneSelection(activeSceneTemplateId)

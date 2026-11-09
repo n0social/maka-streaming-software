@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { nextCustomSceneId, removeCustomScene } from '../src/shared/custom-scenes.ts'
 import { alertBoxPageUrl, alertCard, parseTwitchIrcAlert, streamChatUrl } from '../src/shared/stream-overlays.ts'
-import { isTwitchStreamKey, streamKeyValid, youtubeVideoId } from '../src/shared/stream-wizard.ts'
+import { isTwitchStreamKey, sanitizeYouTubeDescription, streamKeyValid, youtubeVideoId } from '../src/shared/stream-wizard.ts'
 import {
   dropPercentLabel,
   frameIntervalMs,
@@ -68,5 +68,17 @@ assert.match(wizardHtml, /id="wizard-platform-twitch"/)
 assert.match(wizardHtml, /id="go-live-wizard-panel-details"/)
 assert.match(wizardHtml, /id="go-live-wizard-panel-chat"/)
 assert.equal(wizardHtml.includes('go-live-wizard-panel-validate'), false)
+assert.equal(wizardHtml.includes('Category comes from Go Live'), false)
+assert.match(wizardHtml, /id="stream-thumb-img"/)
+const relayConfig = readFileSync(new URL('../src/shared/relay-config.ts', import.meta.url), 'utf8')
+assert.match(relayConfig, /body\.streamTitle = title/)
+assert.match(relayConfig, /body\.streamCategory = category/)
+assert.match(relayConfig, /body\.streamDescription = description/)
+assert.equal(sanitizeYouTubeDescription('x'.repeat(240)).length, 200)
+assert.match(wizardHtml, /id="go-live-wizard-description"/)
+assert.match(wizardHtml, /maxlength="200"/)
+assert.equal(wizardHtml.includes('id="program-output-mode"'), false)
+assert.equal(wizardHtml.includes('Browser Mode'), false)
+assert.match(appTs, /postRelayConfig\(snapshot\.health, relayConfigForIngest\('primary'\)\)/)
 
 console.log('studio-wiring tests passed')

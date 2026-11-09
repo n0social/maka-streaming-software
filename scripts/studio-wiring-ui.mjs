@@ -75,7 +75,8 @@ const report = await evaluate(send, `(async () => {
   await wait(700)
   const subtitle = document.getElementById('program-scene-card-subtitle').textContent
   const scene = document.getElementById('program-scene-card').dataset.scene
-  const thumbHidden = document.getElementById('stream-thumb-canvas').hidden
+  const category = document.getElementById('stream-category-text')?.textContent || ''
+  const gameCardHidden = document.getElementById('stream-thumb-img')?.hidden !== false
   click('#btn-add-scene-alt')
   await wait(500)
   const custom = document.querySelector('[data-custom-scene-row] [data-scene-menu]')
@@ -105,7 +106,8 @@ const report = await evaluate(send, `(async () => {
     viewers,
     chatHint: document.getElementById('program-chat-hint').textContent,
     audioDisabled: document.getElementById('btn-desktop-audio-settings').disabled,
-    thumbHidden,
+    category,
+    gameCardHidden,
     encodeInStats: Boolean(document.querySelector('.program-stats-right #program-quality-select')),
     addKeyLine: Boolean(document.getElementById('stream-destinations-hint')),
     alertCard: Boolean(document.getElementById('program-alert')),
@@ -129,7 +131,8 @@ if (!report.alertCard) failures.push('in-stream alert card missing')
 if (!String(report.fps).startsWith('FPS:')) failures.push('fps stat missing')
 if (report.viewers !== 'Offline') failures.push('viewer label: ' + report.viewers)
 if (report.audioDisabled) failures.push('desktop audio gear is disabled')
-if (report.thumbHidden) failures.push('stream thumb was not painted for the intermission card')
+if (String(report.category).includes('comes from')) failures.push('stream info still has a description line')
+if (report.category && report.gameCardHidden) failures.push('game card hidden for ' + report.category)
 if (failures.length) {
   console.error(failures.join('\n'))
   process.exit(1)

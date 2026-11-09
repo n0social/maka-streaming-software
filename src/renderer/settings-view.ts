@@ -1,4 +1,4 @@
-import type { AppSettings, TabcastBridge, WorkspaceMode } from '../preload/index'
+import type { AppSettings, TabcastBridge } from '../preload/index'
 
 const SETTINGS_TAB_IDS = [
   'general',
@@ -6,7 +6,6 @@ const SETTINGS_TAB_IDS = [
   'audio',
   'video',
   'recording',
-  'modes',
   'help',
 ] as const
 
@@ -19,7 +18,6 @@ import { ENCODE_PROFILE_ORDER, encodeProfileSpec } from '../shared/stream-encode
 
 export type SettingsViewHooks = {
   onLabModeChange: (labMode: boolean) => void
-  onStartupModeChange: (mode: WorkspaceMode) => void
   onEncodeProfileChange: (profile: AppSettings['bitrateProfile']) => void
   onRecordingFolderChange: (folder: string) => void
   onPreferredMicChange: (deviceId: string) => void
@@ -71,17 +69,9 @@ async function populateMicDevices(select: HTMLSelectElement): Promise<void> {
   if (current) select.value = current
 }
 
-function updateStartupLabel(mode: WorkspaceMode): void {
-  const el = document.getElementById('settings-startup-label')
-  if (!el) return
-  el.textContent =
-    mode === 'browse' ? 'Startup: Browser Mode' : 'Startup: Studio Mode'
-}
-
 function applySettingsToForm(s: AppSettings): void {
   ;(document.getElementById('set-tray-live') as HTMLInputElement).checked =
     s.minimizeToTrayWhileLive
-  ;(document.getElementById('set-open-chat') as HTMLInputElement).checked = s.openChatOnBrowse
   ;(document.getElementById('set-lab-mode') as HTMLInputElement).checked = s.labMode
   ;(document.getElementById('set-auto-update') as HTMLInputElement).checked =
     s.autoCheckUpdatesOnStartup
@@ -106,7 +96,6 @@ function applySettingsToForm(s: AppSettings): void {
   const folderInput = document.getElementById('set-recording-folder') as HTMLInputElement
   folderInput.value = s.recordingSaveFolder || ''
   folderInput.placeholder = s.recordingSaveFolder ? '' : 'Choose a folder…'
-  updateStartupLabel(s.startupMode)
   const tab = s.settingsActiveTab
   if (isSettingsTabId(tab)) {
     setActiveSettingsTab(document.getElementById('settings-view') as HTMLElement, tab)
@@ -170,7 +159,6 @@ export function initSettingsView(tabcast: TabcastBridge, hooks: SettingsViewHook
   }
 
   persistCheckbox('set-tray-live', 'minimizeToTrayWhileLive')
-  persistCheckbox('set-open-chat', 'openChatOnBrowse')
   persistCheckbox('set-lab-mode', 'labMode')
   persistCheckbox('set-auto-update', 'autoCheckUpdatesOnStartup')
 
@@ -247,16 +235,6 @@ export function initSettingsView(tabcast: TabcastBridge, hooks: SettingsViewHook
       })
     })
   })
-
-  for (const btn of root.querySelectorAll<HTMLButtonElement>('[data-set-startup]')) {
-    btn.addEventListener('click', () => {
-      const mode = btn.dataset.setStartup as WorkspaceMode
-      void tabcast.setSettings({ startupMode: mode }).then((s) => {
-        updateStartupLabel(s.startupMode)
-        hooks.onStartupModeChange(s.startupMode)
-      })
-    })
-  }
 
   document.getElementById('btn-replay-setup')!.addEventListener('click', () => {
     hooks.onReplaySetup()

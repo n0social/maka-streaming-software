@@ -14,6 +14,7 @@ export type RelayIngestInput = {
 export type RelayStudioSettings = {
   streamTitle: string
   streamCategory: string
+  streamDescription: string
   audioMicBitrateKbps: number
   audioDesktopBitrateKbps: number
   videoEncoderPreference: VideoEncoderPreference
@@ -53,8 +54,10 @@ export function buildRelayConfigRequest(
 
   const title = sanitizeStreamTitle(studio.streamTitle)
   const category = sanitizeStreamCategory(studio.streamCategory)
+  const description = (studio.streamDescription ?? '').replace(/\r\n/g, '\n').slice(0, 200).trim()
   if (title) body.streamTitle = title
   if (category) body.streamCategory = category
+  if (youtube && description) body.streamDescription = description
 
   if (Number.isFinite(studio.audioMicBitrateKbps)) {
     body.audioMicBitrateKbps = Math.round(studio.audioMicBitrateKbps)

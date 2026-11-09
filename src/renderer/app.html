@@ -357,19 +357,6 @@
             <p class="program-empty" id="program-empty">Select a display or window to start streaming</p>
           </section>
           <div class="program-stats" id="program-stats" aria-label="Program stream stats">
-            <div class="program-stats-left">
-              <label class="program-stats-field">
-                <span class="sr-only">Studio or browser layout</span>
-                <select
-                  id="program-output-mode"
-                  class="program-stats-select"
-                  title="Studio Mode shows the program and sidebars; Browser Mode opens the built-in browser"
-                >
-                  <option value="studio" selected>Studio Mode</option>
-                  <option value="browse">Browser Mode</option>
-                </select>
-              </label>
-            </div>
             <div class="program-stats-center" aria-live="polite">
               <span
                 class="program-stat program-stat-recording"
@@ -495,12 +482,11 @@
           <div class="stream-info" id="stream-info">
             <div class="stream-preview">
               <div class="stream-thumb" id="stream-thumb">
-                <canvas id="stream-thumb-canvas" class="stream-thumb-canvas" width="168" height="168" hidden></canvas>
-                <div class="stream-thumb-placeholder" id="stream-thumb-placeholder">No preview</div>
+                <img id="stream-thumb-img" class="stream-thumb-img" alt="" width="96" height="128" hidden />
               </div>
               <div class="stream-meta">
-                <p class="stream-title" id="stream-title-text">Untitled stream</p>
-                <p class="stream-category" id="stream-category-text">Category comes from Go Live</p>
+                <p class="stream-title" id="stream-title-text"></p>
+                <p class="stream-category" id="stream-category-text"></p>
                 <div class="stream-status-row">
                   <span class="stream-live-pill" id="stream-live-pill" data-live="false">Offline</span>
                   <span class="stream-viewers" id="stream-viewers" title="Viewer count when you go live">Offline</span>
@@ -522,7 +508,7 @@
         <div class="settings-view-inner">
           <header class="settings-view-header">
             <h1 class="settings-view-title">Settings</h1>
-            <p class="settings-view-lead">Preferences for streaming, recording, and workspace layout.</p>
+            <p class="settings-view-lead">Preferences for streaming and recording.</p>
           </header>
           <div class="settings-layout">
             <nav class="settings-tabs" aria-label="Settings categories">
@@ -531,7 +517,6 @@
               <button type="button" class="settings-tab" data-settings-tab="audio">Audio</button>
               <button type="button" class="settings-tab" data-settings-tab="video">Video / System</button>
               <button type="button" class="settings-tab" data-settings-tab="recording">Recording</button>
-              <button type="button" class="settings-tab" data-settings-tab="modes">Studio &amp; Browser</button>
               <button type="button" class="settings-tab" data-settings-tab="help">Help</button>
             </nav>
             <div class="settings-panels">
@@ -540,10 +525,6 @@
                 <label class="check">
                   <input type="checkbox" id="set-tray-live" />
                   Minimize to tray while live
-                </label>
-                <label class="check">
-                  <input type="checkbox" id="set-open-chat" />
-                  Open chat pop-out when entering Browser Mode
                 </label>
                 <label class="check">
                   <input type="checkbox" id="set-lab-mode" />
@@ -634,23 +615,6 @@
                 <p class="hint tight">
                   When set, stopping a recording saves automatically here (timestamped filename). Shift+click Stop Recording to pick another path.
                 </p>
-              </div>
-              <div class="settings-panel" id="settings-panel-modes" data-settings-panel="modes" hidden>
-                <h2>Studio &amp; Browser</h2>
-                <p class="hint tight">Pick which workspace opens when you launch Maka. You can switch anytime from the program stats bar.</p>
-                <div class="settings-mode-cards">
-                  <article class="settings-mode-card" data-workspace-mode="studio">
-                    <h3>Studio Mode</h3>
-                    <p>Three-column layout with scenes, program preview, mixer, and go-live controls. Best for composing your stream.</p>
-                    <button type="button" class="btn-block" data-set-startup="studio">Use Studio on startup</button>
-                  </article>
-                  <article class="settings-mode-card" data-workspace-mode="browse">
-                    <h3>Browser Mode</h3>
-                    <p>Full-window built-in browser for Twitch, YouTube Studio, and chat. Studio sidebars are hidden until you switch back.</p>
-                    <button type="button" class="btn-block" data-set-startup="browse">Use Browser on startup</button>
-                  </article>
-                </div>
-                <p class="hint tight" id="settings-startup-label">Startup: Studio Mode</p>
               </div>
               <div class="settings-panel" id="settings-panel-help" data-settings-panel="help" hidden>
                 <h2>Help</h2>
@@ -751,6 +715,11 @@
                   <span class="game-picker-trigger-label">Just Chatting</span>
                 </button>
                 <ul id="go-live-wizard-game-list" class="game-picker-list" role="listbox" aria-labelledby="go-live-wizard-game-label" hidden popover="manual"></ul>
+              </div>
+              <div id="go-live-wizard-description-field" hidden>
+                <label class="field-label" for="go-live-wizard-description">Description</label>
+                <textarea id="go-live-wizard-description" class="key-input go-live-wizard-description" maxlength="200" rows="4" placeholder="Shown on the YouTube broadcast"></textarea>
+                <p class="go-live-wizard-char-count" id="go-live-wizard-description-count">0/200</p>
               </div>
               <label class="field-label" for="go-live-wizard-quality">Encode profile</label>
               <select id="go-live-wizard-quality" class="select program-stats-select-encode" aria-label="Encode profile"></select>

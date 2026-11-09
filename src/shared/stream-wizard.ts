@@ -3,8 +3,15 @@
 const TWITCH_LOGIN = /^[A-Za-z0-9_]{4,25}$/
 const YOUTUBE_VIDEO_ID = /^[A-Za-z0-9_-]{11}$/
 
+export const YOUTUBE_DESCRIPTION_LIMIT = 200
+
 export function sanitizeStreamWizardTitle(raw: string): string {
   return raw.trim().replace(/\s+/g, ' ').slice(0, 140)
+}
+
+/** YouTube live broadcasts accept a description. Twitch's live update does not. */
+export function sanitizeYouTubeDescription(raw: string): string {
+  return raw.replace(/\r\n/g, '\n').slice(0, YOUTUBE_DESCRIPTION_LIMIT)
 }
 
 export function sanitizeStreamGame(raw: string): string {
