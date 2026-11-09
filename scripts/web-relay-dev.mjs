@@ -173,7 +173,8 @@ async function handleWhipPost(res, offerSdp) {
   pc.ontrack = (ev) => {
     const kind = ev.track?.kind ?? 'unknown'
     const id = ev.track?.id ?? '?'
-    console.log(`[whip] inbound track kind=${kind} id=${id}`)
+    const streamId = ev.streams?.[0]?.id ?? ''
+    console.log(`[whip] inbound track kind=${kind} id=${id} stream=${streamId}`)
   }
 
   try {
@@ -327,6 +328,8 @@ async function handleRequest(req, res) {
 
   if (req.method === 'POST' && path === '/whip') {
     const offerSdp = (await readBody(req)).toString('utf8')
+    const msids = [...offerSdp.matchAll(/^a=msid:(\S+)/gm)].map((match) => match[1])
+    console.log(`[whip] offer msids=${msids.join(',') || 'none'} bytes=${offerSdp.length}`)
     if (!offerSdp.trim()) {
       sendText(res, 400, 'Expected SDP body')
       return

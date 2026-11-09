@@ -3060,7 +3060,8 @@ async function goLive(): Promise<void> {
     btnGoLive.textContent = 'End Live'
   } catch (err) {
     sessionLiveIntent = false
-    setDestError(err instanceof Error ? err.message : String(err))
+    const message = err instanceof Error ? err.message : String(err)
+    setDestError(message)
     stopWhipVideoWatchdog()
     clearWhipStreamMetrics()
     if (whipPublisher) {
@@ -3069,6 +3070,7 @@ async function goLive(): Promise<void> {
     }
     btnGoLive.dataset.live = '0'
     btnGoLive.textContent = 'Go Live'
+    throw err instanceof Error ? err : new Error(message)
   } finally {
     goingLive = false
     btnGoLive.disabled = false

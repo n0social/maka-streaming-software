@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { nextCustomSceneId, removeCustomScene } from '../src/shared/custom-scenes.ts'
 import { alertBoxPageUrl, alertCard, parseTwitchIrcAlert, streamChatUrl } from '../src/shared/stream-overlays.ts'
 import { isTwitchStreamKey, sanitizeYouTubeDescription, streamKeyValid, youtubeVideoId } from '../src/shared/stream-wizard.ts'
+import { rewriteWhipOfferMsids } from '../src/shared/whip-msid.ts'
 import {
   dropPercentLabel,
   frameIntervalMs,
@@ -77,6 +78,24 @@ assert.match(relayConfig, /body\.streamDescription = description/)
 assert.equal(sanitizeYouTubeDescription('x'.repeat(240)).length, 200)
 assert.match(wizardHtml, /id="go-live-wizard-description"/)
 assert.match(wizardHtml, /maxlength="200"/)
+const labeled = rewriteWhipOfferMsids(
+  [
+    'v=0',
+    'a=msid-semantic: WMS old-video old-audio',
+    'm=video 9 UDP/TLS/RTP/SAVPF 96',
+    'a=msid:old-video track-v',
+    'a=ssrc:1 msid:old-video track-v',
+    'm=audio 9 UDP/TLS/RTP/SAVPF 111',
+    'a=msid:old-audio track-a',
+    'a=ssrc:2 msid:old-audio track-a',
+    '',
+  ].join('\n'),
+  ['gameplay', 'desktop-audio'],
+)
+assert.match(labeled, /a=msid:gameplay track-v/)
+assert.match(labeled, /a=msid:desktop-audio track-a/)
+assert.match(labeled, /a=ssrc:2 msid:desktop-audio track-a/)
+assert.match(labeled, /a=msid-semantic: WMS gameplay desktop-audio/)
 assert.equal(wizardHtml.includes('id="program-output-mode"'), false)
 assert.equal(wizardHtml.includes('Browser Mode'), false)
 assert.match(appTs, /postRelayConfig\(snapshot\.health, relayConfigForIngest\('primary'\)\)/)
