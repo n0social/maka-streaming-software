@@ -49,6 +49,7 @@ import {
 } from './auto-update'
 import { PhonePairServer, phoneWebRtcIceServersForSession } from './phone-pair'
 import { getVirtualCameraCapability } from './virtual-camera'
+import { createVcamOutputController } from './vcam-output'
 import { pickSceneImageFile, readSceneImageDataUrl } from './scene-image-io'
 import { saveRecording } from './recording-io'
 import { listGpuOptions } from './gpu-info'
@@ -164,6 +165,16 @@ function loadAppUi(win: BrowserWindow): void {
   }
 }
 
+function loadVcamUi(win: BrowserWindow): void {
+  if (isDev && process.env.ELECTRON_RENDERER_URL) {
+    void win.loadURL(`${process.env.ELECTRON_RENDERER_URL}/vcam-output.html`)
+  } else {
+    void win.loadFile(join(__dirname, '../renderer/vcam-output.html'))
+  }
+}
+
+const vcamOutput = createVcamOutputController()
+
 function layoutBrowserPane(win: BrowserWindow): void {
   if (appMode === 'settings') {
     browse.setVisible(false)
@@ -197,6 +208,10 @@ function layoutBrowserPane(win: BrowserWindow): void {
 }
 
 function setAppMode(mode: ShellMode): void {
+  if (mode === 'browse') {
+    setAppMode('studio')
+    return
+  }
   if (mode === 'settings') {
     if (appMode === 'studio' || appMode === 'browse') {
       workspaceBeforeSettings = appMode
@@ -210,19 +225,9 @@ function setAppMode(mode: ShellMode): void {
   }
 
   appMode = mode
-  if (mode === 'browse' && mainWindow && !mainWindow.isDestroyed()) {
-    browse.attach(mainWindow)
-    browse.ensureSeeded()
-  }
   if (mainWindow && !mainWindow.isDestroyed()) {
     layoutBrowserPane(mainWindow)
     mainWindow.webContents.send('app:mode', mode)
-    if (mode === 'browse') {
-      mainWindow.webContents.send('browser:tabs', browse.list())
-      if (settings.openChatOnBrowse) {
-        openChatPopout(chatUrlFromBrowse())
-      }
-    }
   }
 }
 
@@ -319,7 +324,7 @@ function openChatPopout(url?: string): void {
 
 function createMainWindow(): BrowserWindow {
   settings = loadSettings()
-  appMode = settings.startupMode
+  appMode = 'studio'
 
   const win = new BrowserWindow({
     width: 1600,
@@ -576,6 +581,20 @@ function registerIpc(): void {
   ipcMain.handle('vcam:get-capability', (event) => {
     if (!studioOk(event)) return getVirtualCameraCapability()
     return getVirtualCameraCapability()
+  })
+  ipcMain.handle('vcam:output-open', (event) => {
+    if (!studioOk(event)) return { devicePath: null }
+    vcamOutput.open({ preload: preloadPath(), load: loadVcamUi })
+    return { devicePath: vcamOutput.devicePath() }
+  })
+  ipcMain.handle('vcam:output-close', (event) => {
+    if (!studioOk(event)) return
+    vcamOutput.close()
+  })
+  ipcMain.on('vcam:frame', (event, dataUrl: unknown) => {
+    if (!isStudioSender(event.sender)) return
+    if (typeof dataUrl !== 'string') return
+    vcamOutput.pushFrame(dataUrl)
   })
   ipcMain.handle('system:list-gpu-options', async () => listGpuOptions())
 
@@ -1125,6 +1144,8 @@ async function shutdownApp(): Promise<void> {
     await waitForRendererQuitReady(6000)
   }
 
+  vcamOutput.close()
+
   if (chatWindow && !chatWindow.isDestroyed()) {
     chatWindow.close()
     chatWindow = null
@@ -1143,7 +1164,7 @@ app.whenReady().then(() => {
       mainWindow.webContents.send('diagnostics:event', event)
     }
   })
-  recordDiagnostic('info', 'app.boot', 'Maka 0.2 starting')
+  recordDiagnostic('info', 'app.boot', `Maka ${app.getVersion()} starting`)
   settings = loadSettings()
 
   allowCapturePermissions()

@@ -22,9 +22,22 @@ import {
   isDeskOnlyLikeScene,
   MAX_CUSTOM_SCENES,
   nextCustomSceneId,
+  removeCustomScene,
   resolveSceneLayoutTemplateId,
   type CustomScene,
 } from '../shared/custom-scenes'
+import {
+  dropPercentLabel,
+  frameIntervalMs,
+  intermissionEndsAt,
+  intermissionSubtitle,
+  isIntermissionMinutes,
+  mbpsFromByteDelta,
+  measuredFps,
+  viewerStatusLabel,
+} from '../shared/studio-controls'
+import { alertBoxPageUrl, alertCard, streamChatUrl, type StreamAlert, type StreamChatPlatform } from '../shared/stream-overlays'
+import { startTwitchAlertFeed, type TwitchAlertFeed } from './twitch-alert-feed'
 import { isSceneStubId, SCENE_TEMPLATES, sceneStubPreset } from '../shared/scene-templates'
 import {
   sceneImageMaskMode,
@@ -46,6 +59,7 @@ import {
 } from '../shared/ingest-failover'
 import { validateRelayStreamKeys, KICK_RTMP_URL } from '../shared/stream-keys'
 import { buildRelayConfigRequest, sanitizeStreamCategory, sanitizeStreamTitle, type RelayStudioSettings } from '../shared/relay-config'
+import { isTwitchLogin, normalizeTwitchChannel, streamKeyValid, youtubeVideoId } from '../shared/stream-wizard'
 import type { StreamDestinationSettings } from '../shared/stream-destination-settings'
 import { GoLiveWizard, type GoLiveWizardPlatform } from './go-live-wizard'
 import {
@@ -64,6 +78,7 @@ import {
   liveRecoveryReasonLabel,
   liveRetryBackoffMs,
   MAX_LIVE_RETRY_ATTEMPTS,
+  WHIP_DISCONNECT_GRACE_MS,
   postRelayConfig,
   postSceneLayout,
   relayNeedsLiveBootstrap,
@@ -85,6 +100,7 @@ import { startAudioLevelMeter, setHorizontalMeterLevel, type AudioLevelMeter } f
 import {
   parseCapturePlatform,
   startDesktopLoopbackAudio,
+  startDisplayShareAudio,
   startGameLinkedAudio,
   stopMediaStream,
   systemAudioCaptureSupported,
@@ -138,6 +154,32 @@ const sceneImageMenuDialog = document.getElementById('scene-image-menu-dialog') 
 const sceneImageMenuPick = document.getElementById('scene-image-menu-pick') as HTMLButtonElement
 const sceneImageMenuClear = document.getElementById('scene-image-menu-clear') as HTMLButtonElement
 const sceneImageMenuCancel = document.getElementById('scene-image-menu-cancel') as HTMLButtonElement
+const sceneImageMenuDelete = document.getElementById('scene-image-menu-delete') as HTMLButtonElement
+const sceneMenuTimerStop = document.getElementById('scene-image-menu-stop-timer') as HTMLButtonElement
+const sceneMenuTimerRows = [
+  document.getElementById('scene-menu-timer-5')!,
+  document.getElementById('scene-menu-timer-15')!,
+  document.getElementById('scene-menu-timer-30')!,
+  document.getElementById('scene-menu-timer-stop')!,
+]
+const sceneMenuImagePickRow = document.getElementById('scene-menu-image-pick')!
+const sceneMenuImageClearRow = document.getElementById('scene-menu-image-clear')!
+const sceneMenuDeleteRow = document.getElementById('scene-menu-delete')!
+const programChatHint = document.getElementById('program-chat-hint')!
+const programChatView = document.getElementById('program-chat-view') as HTMLElement & { src: string }
+const programAlertBox = document.getElementById('program-alert-box') as HTMLElement & { src: string }
+const programAlert = document.getElementById('program-alert')!
+const programAlertKicker = document.getElementById('program-alert-kicker')!
+const programAlertName = document.getElementById('program-alert-name')!
+const programAlertAmount = document.getElementById('program-alert-amount')!
+const programAlertMessage = document.getElementById('program-alert-message')!
+const streamThumbImg = document.getElementById('stream-thumb-img') as HTMLImageElement
+const streamTitleText = document.getElementById('stream-title-text')!
+const streamCategoryText = document.getElementById('stream-category-text')!
+const streamLivePill = document.getElementById('stream-live-pill') as HTMLElement | null
+const streamViewers = document.getElementById('stream-viewers') as HTMLElement | null
+const streamDuration = document.getElementById('stream-duration') as HTMLElement | null
+const btnGoLiveLabel = document.getElementById('btn-go-live-label') as HTMLElement | null
 const programCam = document.getElementById('program-cam')!
 const programCamVideo = document.getElementById('program-cam-video') as HTMLVideoElement
 const programCamOffline = document.getElementById('program-cam-offline')!
@@ -146,12 +188,12 @@ const micSelect = document.getElementById('mic-select') as HTMLSelectElement
 const programQualitySelect = document.getElementById(
   'program-quality-select',
 ) as HTMLSelectElement
-const programOutputMode = document.getElementById('program-output-mode') as HTMLSelectElement
 const platformKeyDialog = document.getElementById('platform-key-dialog') as HTMLDialogElement
 const platformKeyForm = document.getElementById('platform-key-form') as HTMLFormElement
 const platformKeyPanelTwitch = document.getElementById('platform-key-panel-twitch')!
 const platformKeyPanelYoutube = document.getElementById('platform-key-panel-youtube')!
 const platformKeyDialogTitle = document.getElementById('platform-key-dialog-title')!
+const platformKeySave = document.getElementById('platform-key-save') as HTMLButtonElement
 const camScale = document.getElementById('cam-scale') as HTMLInputElement
 const micMeter = document.getElementById('mic-meter')!
 const desktopMeter = document.getElementById('desktop-meter')!
@@ -171,13 +213,16 @@ const destTwitch = document.getElementById('dest-twitch') as HTMLInputElement
 const destYoutube = document.getElementById('dest-youtube') as HTMLInputElement
 const twitchKey = document.getElementById('twitch-key') as HTMLInputElement
 const youtubeKey = document.getElementById('youtube-key') as HTMLInputElement
+const twitchChatLinkInput = document.getElementById('twitch-chat-link') as HTMLInputElement
+const youtubeChatLinkInput = document.getElementById('youtube-chat-link') as HTMLInputElement
+const platformKeyStatus = document.getElementById('platform-key-status') as HTMLElement
 const destHint = document.getElementById('dest-hint')!
 const destError = document.getElementById('dest-error')!
 const ffmpegLog = document.getElementById('ffmpeg-log')!
 const diagDrawer = document.getElementById('diag-drawer')!
 const settingsViewRoot = document.getElementById('settings-view')!
 const btnSettings = document.getElementById('btn-settings') as HTMLButtonElement
-const btnGoLive = document.getElementById('btn-go-live') as HTMLButtonElement
+const btnGoLive = document.getElementById('btn-go-live-sidebar') as HTMLButtonElement
 const layerGame = document.getElementById('layer-game')!
 const layerCam = document.getElementById('layer-cam')!
 const layerMic = document.getElementById('layer-mic')!
@@ -221,6 +266,7 @@ let liveRecoveryReason: string | null = null
 let liveRecoveryFatal = false
 let sessionLiveIntent = false
 let liveReconnectTimer: ReturnType<typeof setTimeout> | null = null
+let whipDisconnectTimer: ReturnType<typeof setTimeout> | null = null
 let liveReconnectRunId = 0
 let programStream: MediaStream | null = null
 let browserStream: MediaStream | null = null
@@ -247,7 +293,7 @@ let labMode = false
 let recordingSaveFolder = ''
 let lastStreamPlatform: 'twitch' | 'youtube' | 'none' = 'none'
 let browseTabsCache: BrowseTabInfo[] = []
-let relayStudioSettings: RelayStudioSettings = { streamTitle: '', streamCategory: '', audioMicBitrateKbps: 160, audioDesktopBitrateKbps: 160, videoEncoderPreference: 'system', gpuPreference: 'default' }
+let relayStudioSettings: RelayStudioSettings = { streamTitle: '', streamCategory: '', streamDescription: '', audioMicBitrateKbps: 160, audioDesktopBitrateKbps: 160, videoEncoderPreference: 'system', gpuPreference: 'default' }
 let pcCameraBeforePhone = ''
 let pcMicBeforePhone = ''
 let preferPhoneCamera = false
@@ -275,6 +321,29 @@ const sceneImagePaths: Partial<Record<string, string>> = {}
 const sceneImageDataUrlCache = new Map<string, string>()
 let sceneImageMenuTargetId: string | null = null
 let customScenes: CustomScene[] = []
+let intermissionEndsAtMs: number | null = null
+let intermissionTimer: ReturnType<typeof setInterval> | null = null
+let streamChannel = ''
+let streamTwitchChatLink = ''
+let streamYoutubeChatLink = ''
+let streamAlertBoxUrl = ''
+let streamIncludeChat = false
+const gameArtByName = new Map<string, string>()
+let twitchAlertFeed: TwitchAlertFeed | null = null
+const streamAlertQueue: StreamAlert[] = []
+let streamAlertTimer: ReturnType<typeof setTimeout> | null = null
+let shownAlertIds = new Set<string>()
+let captureClockFrames = 0
+let captureClockStartedAt = 0
+let measuredCaptureFps: number | null = null
+let playbackDroppedFrames = 0
+let playbackTotalFrames = 0
+let whipBytesSample: { bytes: number; at: number } | null = null
+let measuredWhipMbps: number | null = null
+const CHAT_PRESET_URLS: Record<string, string> = {
+  'pin-chat': 'https://www.twitch.tv/popout/directory/chat?popout=',
+  'pin-yt-chat': 'https://studio.youtube.com/livestreaming/chat',
+}
 const studioScenesList = document.getElementById('studio-scenes-list')!
 const studioAddSceneRow = document.getElementById('studio-add-scene-row')!
 /** Empty = follow the active scene template; set when user picks an overlay layout preset. */
@@ -308,10 +377,6 @@ function applyMode(mode: AppMode): void {
   navrow.hidden = !browseOpen
   browsetabs.hidden = !browseOpen
   settingsViewRoot.hidden = !settingsOpen
-
-  if (programOutputMode && (mode === 'studio' || mode === 'browse') && programOutputMode.value !== mode) {
-    programOutputMode.value = mode
-  }
 
   if (brandTag) {
     if (settingsOpen) {
@@ -398,34 +463,38 @@ function setGameMeterLevel(percent: number): void {
 
 function syncSystemAudioChannelUi(): void {
   const supported = systemAudioCaptureSupported(capturePlatform)
-  audioDesktopChannel.dataset.captureUnavailable = supported ? '0' : '1'
-  audioGameChannel.dataset.captureUnavailable = supported ? '0' : '1'
+  const desktopLive = Boolean(desktopAudioStream)
+  const gameLive = Boolean(gameAudioStream)
+  audioDesktopChannel.dataset.captureUnavailable = supported && desktopLive ? '0' : '1'
+  audioGameChannel.dataset.captureUnavailable = supported && gameLive ? '0' : '1'
   audioDesktopChannel.dataset.muted = desktopAudioMuted ? '1' : '0'
   audioGameChannel.dataset.muted = gameAudioMuted ? '1' : '0'
   btnDesktopAudioSettings.disabled = !supported
   btnGameAudioSettings.disabled = !supported
+  audioDesktopLabel.textContent = 'Desktop Audio'
+  audioGameLabel.textContent = 'Game Audio'
 
   if (!supported) {
-    audioDesktopChannel.title = 'System audio capture requires Windows'
-    audioGameChannel.title = 'System audio capture requires Windows'
-    audioDesktopLabel.textContent = 'Desktop Audio'
-    audioGameLabel.textContent = 'Game Audio'
+    audioDesktopChannel.title = 'System audio capture is not available on this host'
+    audioGameChannel.title = 'System audio capture is not available on this host'
     return
   }
 
-  audioDesktopChannel.title = desktopAudioMuted
-    ? 'Desktop audio muted for stream (click name to unmute)'
-    : 'Full system loopback — click name to mute for stream'
-  const gameLinked = Boolean(selectedSourceId) && captureKind === 'desktop'
-  if (!gameLinked) {
-    audioGameLabel.textContent = 'Game Audio'
-    audioGameChannel.title = 'Select a display or window capture to link game audio'
+  if (!desktopLive) {
+    audioDesktopChannel.title = 'No desktop audio yet. Click the name or gear to share system audio.'
+  } else {
+    audioDesktopChannel.title = desktopAudioMuted
+      ? 'Desktop audio muted for stream (click name to unmute)'
+      : 'Desktop audio live — click name to mute for stream'
+  }
+
+  if (!gameLive) {
+    audioGameChannel.title =
+      'No game audio yet. Click the name or gear to link the gameplay source, or share a window with audio.'
   } else if (gameAudioMuted) {
     audioGameChannel.title = 'Game audio muted for stream (click name to unmute)'
-    audioGameLabel.textContent = 'Game Audio'
   } else {
-    audioGameChannel.title = 'Audio from gameplay capture — click name to mute for stream'
-    audioGameLabel.textContent = 'Game Audio'
+    audioGameChannel.title = 'Game audio live — click name to mute for stream'
   }
 }
 
@@ -466,7 +535,14 @@ function stopGameAudioCapture(): void {
   gameAudioStream = null
 }
 
-async function refreshDesktopAudioCapture(): Promise<void> {
+async function openDesktopAudioStream(fromGesture: boolean): Promise<MediaStream | null> {
+  const loopback = await startDesktopLoopbackAudio(preferredDesktopOutputDeviceId)
+  if (loopback) return loopback
+  if (!fromGesture) return null
+  return startDisplayShareAudio()
+}
+
+async function refreshDesktopAudioCapture(fromGesture = false): Promise<void> {
   if (!systemAudioCaptureSupported(capturePlatform)) {
     stopDesktopAudioCapture()
     syncSystemAudioChannelUi()
@@ -476,8 +552,11 @@ async function refreshDesktopAudioCapture(): Promise<void> {
   desktopAudioStarting = true
   stopDesktopAudioCapture()
   try {
-    const stream = await startDesktopLoopbackAudio(preferredDesktopOutputDeviceId)
+    const stream = await openDesktopAudioStream(fromGesture)
     if (!stream) {
+      if (fromGesture) {
+        setDestError('Could not open desktop audio. Share a screen or window that includes audio.')
+      }
       syncSystemAudioChannelUi()
       return
     }
@@ -491,7 +570,7 @@ async function refreshDesktopAudioCapture(): Promise<void> {
   }
 }
 
-async function refreshGameAudioCapture(): Promise<void> {
+async function refreshGameAudioCapture(fromGesture = false): Promise<void> {
   if (!systemAudioCaptureSupported(capturePlatform)) {
     stopGameAudioCapture()
     syncSystemAudioChannelUi()
@@ -502,13 +581,13 @@ async function refreshGameAudioCapture(): Promise<void> {
     captureKind === 'desktop' && selectedSourceId && selectedSourceId !== BROWSE_CAPTURE_SOURCE_ID
       ? selectedSourceId
       : null
-  if (!sourceId) {
-    syncSystemAudioChannelUi()
-    syncWhipAvTracks()
-    return
-  }
-  const stream = await startGameLinkedAudio(sourceId)
+  let stream: MediaStream | null = null
+  if (sourceId) stream = await startGameLinkedAudio(sourceId)
+  if (!stream && fromGesture) stream = await startDisplayShareAudio()
   if (!stream) {
+    if (fromGesture) {
+      setDestError('Could not open game audio. Pick a gameplay source or share a window with audio.')
+    }
     syncSystemAudioChannelUi()
     syncWhipAvTracks()
     return
@@ -674,7 +753,10 @@ function syncSceneProgramPresentation(): void {
     programSceneCard.hidden = false
     programSceneCard.dataset.scene = activeSceneTemplateId
     programSceneCardTitle.textContent = preset.title
-    programSceneCardSubtitle.textContent = preset.subtitle
+    programSceneCardSubtitle.textContent =
+      activeSceneTemplateId === 'intermission'
+        ? intermissionSubtitle(Date.now(), intermissionEndsAtMs, preset.subtitle)
+        : preset.subtitle
     programVideo.hidden = true
     programCam.hidden = true
     programBrowser.hidden = true
@@ -761,7 +843,7 @@ function updateStudioStatusFooter(snapshot: RelaySnapshot): void {
   }
   if (snapshot.lifecycle === 'stopped') {
     studioStatusDot.dataset.state = 'warn'
-    studioStatusText.textContent = 'Relay offline — start when ready'
+    studioStatusText.textContent = 'Relay is off'
     return
   }
   studioStatusDot.dataset.state = 'ok'
@@ -932,7 +1014,8 @@ function applyProgramPreviewLayout(layout: SceneLayout): void {
   }
 
   const notifications = sourceById('notifications')
-  const showNotifications = layerEnabled.notifications && Boolean(notifications)
+  const alertVisible = !programAlert.hidden || !programAlertBox.hidden
+  const showNotifications = layerEnabled.notifications && Boolean(notifications) && alertVisible
   programNotificationsSlot.hidden = !showNotifications
   if (showNotifications && notifications) {
     applySourceBox(programNotificationsSlot, notifications, canvas)
@@ -1130,8 +1213,16 @@ function clearLiveReconnectTimer(): void {
   }
 }
 
+function clearWhipDisconnectTimer(): void {
+  if (whipDisconnectTimer) {
+    clearTimeout(whipDisconnectTimer)
+    whipDisconnectTimer = null
+  }
+}
+
 function cancelLiveRecovery(): void {
   clearLiveReconnectTimer()
+  clearWhipDisconnectTimer()
   liveReconnectRunId += 1
   liveReconnecting = false
   liveRecoveryReason = null
@@ -1198,9 +1289,7 @@ function renderRelay(snapshot: RelaySnapshot): void {
 
   btnGoLive.dataset.live = live ? '1' : '0'
   btnGoLive.dataset.exhausted = liveRecoveryExhausted ? '1' : '0'
-  if (!goingLive && !liveReconnecting) {
-    btnGoLive.textContent = live ? 'End Live' : 'Go Live'
-  }
+  if (!goingLive && !liveReconnecting) updateGoLiveLabel(live)
 
   const lines = snapshot.status?.ffmpegLog
   if (lines?.length) {
@@ -1245,12 +1334,14 @@ function renderPlatformStatus(snapshot: RelaySnapshot): void {
     live,
     platforms?.twitch,
   )
+  platTwitch.dataset.key = streamKeyValid('twitch', twitchKey.value) ? 'valid' : 'missing'
   platYoutube.dataset.state = platformChipState(
     destYoutube.checked,
     Boolean(youtubeKey.value.trim()),
     live,
     platforms?.youtube,
   )
+  platYoutube.dataset.key = streamKeyValid('youtube', youtubeKey.value) ? 'valid' : 'missing'
   platCustom.dataset.state = platformChipState(
     destCustom.checked,
     Boolean(customRtmpKey.value.trim()),
@@ -1273,6 +1364,8 @@ function stopWhipVideoWatchdog(): void {
 
 function clearWhipStreamMetrics(): void {
   whipStreamMetrics = null
+  whipBytesSample = null
+  measuredWhipMbps = null
 }
 
 function startWhipStatsSamplerForPublisher(): void {
@@ -1284,6 +1377,16 @@ function startWhipStatsSamplerForPublisher(): void {
     isLive: () => sessionLiveIntent && !goingLive && !liveReconnecting,
     onMetrics: (metrics) => {
       whipStreamMetrics = metrics
+      if (metrics.outboundVideoBytesSent != null) {
+        const now = Date.now()
+        if (whipBytesSample && now > whipBytesSample.at) {
+          measuredWhipMbps = mbpsFromByteDelta(
+            metrics.outboundVideoBytesSent - whipBytesSample.bytes,
+            now - whipBytesSample.at,
+          )
+        }
+        whipBytesSample = { bytes: metrics.outboundVideoBytesSent, at: now }
+      }
       updateProgramStats(lastRelaySnapshot)
       if (isSessionLive()) updateStreamInfo(true, lastRelaySnapshot)
     },
@@ -1344,6 +1447,7 @@ function relaySnapshotNeedsRecovery(snapshot: RelaySnapshot): boolean {
 function onWhipConnectionState(state: RTCPeerConnectionState): void {
   if (!sessionLiveIntent) return
   if (state === 'connected') {
+    clearWhipDisconnectTimer()
     liveRecoveryAttempts = 0
     liveRecoveryExhausted = false
     liveRecoveryFatal = false
@@ -1354,7 +1458,22 @@ function onWhipConnectionState(state: RTCPeerConnectionState): void {
     void window.tabcast.getRelay().then(renderRelay)
     return
   }
-  if (state === 'failed' || state === 'disconnected' || state === 'closed') {
+  if (state === 'disconnected') {
+    // UDP can recover without a new offer. Wait, then re-signal over TCP.
+    if (whipDisconnectTimer || goingLive || liveReconnecting) return
+    stopWhipVideoWatchdog()
+    whipDisconnectTimer = setTimeout(() => {
+      whipDisconnectTimer = null
+      if (!sessionLiveIntent || goingLive || liveReconnecting) return
+      const current = whipPublisher?.pc.connectionState
+      if (current === 'connected' || current === 'connecting') return
+      clearWhipStreamMetrics()
+      queueLiveRecovery('whip:disconnected')
+    }, WHIP_DISCONNECT_GRACE_MS)
+    return
+  }
+  if (state === 'failed' || state === 'closed') {
+    clearWhipDisconnectTimer()
     stopWhipVideoWatchdog()
     clearWhipStreamMetrics()
     if (goingLive || liveReconnecting) return
@@ -1394,13 +1513,10 @@ function queueLiveRecovery(reason: string, detail?: string): void {
   }, delay)
 }
 
-async function repostRelayConfigIfNeeded(snapshot: RelaySnapshot): Promise<RelaySnapshot> {
+async function repostStreamInfo(snapshot: RelaySnapshot): Promise<RelaySnapshot> {
   if (!snapshot.health) return snapshot
-  if (sessionIngestTarget !== 'backup' && !relayNeedsLiveBootstrap(snapshot)) {
-    return snapshot
-  }
-
   await postRelayConfig(snapshot.health, relayConfigForIngest(sessionIngestTarget))
+  await pushSceneLayout()
   return snapshot
 }
 
@@ -1453,12 +1569,9 @@ async function runLiveRecovery(reason: string): Promise<void> {
       throw new Error(snapshot.error)
     }
 
-    snapshot = await repostRelayConfigIfNeeded(snapshot)
+    snapshot = await repostStreamInfo(snapshot)
     await window.tabcast.refreshRelay()
     snapshot = await window.tabcast.getRelay()
-    if (relayNeedsLiveBootstrap(snapshot)) {
-      await pushSceneLayout()
-    }
 
     if (!snapshot.health) {
       throw new Error('Relay health missing after reconnect wait.')
@@ -1509,7 +1622,7 @@ function markLiveRecoveryExhausted(reason: string, detail?: string): void {
   const label = liveRecoveryReasonLabel(reason)
   const extra = detail ? ` ${detail}` : ''
   setDestError(
-    `Live stream dropped (${label}).${extra} Use Retry connection or End Live.`,
+    `Live stream dropped (${label}).${extra} Use Retry connection or End Stream.`,
   )
   mountRetryConnectionHint(false)
   void window.tabcast.getRelay().then(renderRelay)
@@ -1525,8 +1638,8 @@ function markLiveRecoveryFatal(reason: string, detail?: string): void {
   const label = liveRecoveryReasonLabel(reason)
   const extra = (detail ?? reason.replace(/^rtmp:/, '')).trim()
   const keyHint = enabledDestinationKeysEmpty()
-    ? ' Enter stream keys in Destinations, then Retry connection or End Live.'
-    : ' Use Retry connection or End Live.'
+    ? ' Enter stream keys in Destinations, then Retry connection or End Stream.'
+    : ' Use Retry connection or End Stream.'
   setDestError(`Live stream stopped (${label}).${extra ? ` ${extra}` : ''}${keyHint}`)
   mountRetryConnectionHint(true)
   void window.tabcast.getRelay().then(renderRelay)
@@ -1755,16 +1868,65 @@ function applyWizardPlatform(platform: GoLiveWizardPlatform): void {
 
 type PlatformKeyTarget = 'twitch' | 'youtube'
 
+function resolvedChatChannel(platform: PlatformKeyTarget, raw: string): string {
+  if (platform === 'twitch') {
+    const login = normalizeTwitchChannel(raw)
+    return isTwitchLogin(login) ? login : ''
+  }
+  return youtubeVideoId(raw)
+}
+
+function applySavedChatLinks(platform: PlatformKeyTarget, include: boolean, channel: string): void {
+  lastStreamPlatform = platform
+  streamChannel = include ? channel : ''
+  streamIncludeChat = include
+  layerEnabled.chat = include
+  layerEnabled.notifications = include
+  syncChatFeed()
+  syncPlatformAlerts()
+  updateStudioMixControls()
+  refreshProgramPreviewLayout()
+}
+
 function openPlatformKeyDialog(platform: PlatformKeyTarget): void {
   platformKeyPanelTwitch.hidden = platform !== 'twitch'
   platformKeyPanelYoutube.hidden = platform !== 'youtube'
-  platformKeyDialogTitle.textContent =
-    platform === 'twitch' ? 'Twitch stream key' : 'YouTube stream key'
+  platformKeyDialogTitle.textContent = platform === 'twitch' ? 'Twitch' : 'YouTube'
+  platformKeySave.textContent = platform === 'twitch' ? 'Save Twitch key' : 'Save YouTube key'
+  twitchChatLinkInput.value = streamTwitchChatLink
+  youtubeChatLinkInput.value = streamYoutubeChatLink
+  platformKeyStatus.hidden = true
+  platformKeyStatus.textContent = ''
   syncDestinationInputs()
-  platformKeyDialog.showModal()
   const input = platform === 'twitch' ? twitchKey : youtubeKey
+  input.disabled = false
+  platformKeyDialog.showModal()
   requestAnimationFrame(() => {
-    if (!input.disabled) input.focus()
+    input.focus()
+  })
+}
+
+async function savePlatformCredentials(platform: PlatformKeyTarget): Promise<void> {
+  const rawLink = (platform === 'twitch' ? twitchChatLinkInput.value : youtubeChatLinkInput.value).trim()
+  if (platform === 'twitch') streamTwitchChatLink = rawLink.slice(0, 120)
+  else streamYoutubeChatLink = rawLink.slice(0, 512)
+  const channel = resolvedChatChannel(platform, rawLink)
+  const include = Boolean(channel)
+  if (rawLink && !include) {
+    platformKeyStatus.hidden = false
+    platformKeyStatus.textContent =
+      platform === 'twitch'
+        ? 'Key saved. That chat link is not a Twitch channel yet.'
+        : 'Key saved. That chat link is not a YouTube live video yet.'
+  }
+  applySavedChatLinks(platform, include, channel)
+  await persistStreamDestinationsFromUi()
+  await window.tabcast.setSettings({
+    lastStreamPlatform: platform,
+    streamTwitchChatLink,
+    streamYoutubeChatLink,
+    streamChannel,
+    streamIncludeChat,
   })
 }
 
@@ -1923,6 +2085,7 @@ function isChatLikeTab(tab: BrowseTabInfo): boolean {
 function syncChatSourceRow(): void {
   if (!layerEnabled.chat) {
     studioSourceChat.querySelector('.studio-list-text')!.textContent = 'Chat'
+    syncChatFeed()
     return
   }
   if (activeChatSourceId === 'placeholder') {
@@ -1935,6 +2098,7 @@ function syncChatSourceRow(): void {
     return
   }
   studioSourceChat.querySelector('.studio-list-text')!.textContent = 'Chat — on'
+  syncChatFeed()
 }
 
 async function refreshSourcePicker(kind: SourceKind): Promise<void> {
@@ -2865,13 +3029,13 @@ function mountRetryConnectionHint(fatal: boolean): void {
     void runLiveRecovery('manual-retry')
   })
   destHint.append(retry)
-  destHint.append(' or End Live to stop.')
+  destHint.append(' or End Stream to stop.')
 }
 
 async function endLive(): Promise<void> {
   goingLive = true
   btnGoLive.disabled = true
-  btnGoLive.textContent = 'Ending…'
+  setGoLiveButtonLabel('Ending…')
   setDestError(null)
   sessionLiveIntent = false
   stopWhipVideoWatchdog()
@@ -2898,14 +3062,14 @@ async function endLive(): Promise<void> {
     goingLive = false
     btnGoLive.disabled = false
     btnGoLive.dataset.live = '0'
-    btnGoLive.textContent = 'Go Live'
+    setGoLiveButtonLabel('Go Live')
   }
 }
 
 async function goLive(): Promise<void> {
   goingLive = true
   btnGoLive.disabled = true
-  btnGoLive.textContent = 'Starting…'
+  setGoLiveButtonLabel('Starting…')
   setDestError(null)
 
   try {
@@ -2942,7 +3106,6 @@ async function goLive(): Promise<void> {
       throw new Error(snapshot.error ?? 'Relay is not ready. Start the relay first.')
     }
 
-    maybeFillStreamTitleFromBrowseTab()
     await persistStreamMetaFromInputs()
     const profile = selectedProfile()
     sessionIngestTarget = 'primary'
@@ -2968,12 +3131,13 @@ async function goLive(): Promise<void> {
     syncWhipAvTracks()
     await window.tabcast.refreshRelay()
     await dispatchAddonLiveEvents('live.start')
-    destHint.textContent = 'Live — keys stay in relay RAM. End Live to tear down WHIP.'
+    destHint.textContent = 'Live — keys stay in relay RAM. End Stream to tear down WHIP.'
     btnGoLive.dataset.live = '1'
-    btnGoLive.textContent = 'End Live'
+    setGoLiveButtonLabel('End Stream')
   } catch (err) {
     sessionLiveIntent = false
-    setDestError(err instanceof Error ? err.message : String(err))
+    const message = err instanceof Error ? err.message : String(err)
+    setDestError(message)
     stopWhipVideoWatchdog()
     clearWhipStreamMetrics()
     if (whipPublisher) {
@@ -2981,11 +3145,16 @@ async function goLive(): Promise<void> {
       whipPublisher = null
     }
     btnGoLive.dataset.live = '0'
-    btnGoLive.textContent = 'Go Live'
+    setGoLiveButtonLabel('Go Live')
+    throw err instanceof Error ? err : new Error(message)
   } finally {
     goingLive = false
     btnGoLive.disabled = false
   }
+}
+
+let openGoLiveFlow = (): void => {
+  void goLive()
 }
 
 async function onGoLiveClick(): Promise<void> {
@@ -2993,7 +3162,7 @@ async function onGoLiveClick(): Promise<void> {
     await endLive()
     return
   }
-  await goLive()
+  openGoLiveFlow()
 }
 
 async function verifyStreamKeys(): Promise<{ ok: boolean; message: string }> {
@@ -3070,15 +3239,6 @@ for (const tab of document.querySelectorAll<HTMLButtonElement>('.tab')) {
   })
 }
 
-if (programOutputMode) {
-  programOutputMode.addEventListener('change', () => {
-    const mode = programOutputMode.value as AppMode
-    if (mode !== 'studio' && mode !== 'browse') return
-    void window.tabcast.setMode(mode)
-    void window.tabcast.setSettings({ startupMode: mode })
-  })
-}
-
 urlForm.addEventListener('submit', (event) => {
   event.preventDefault()
   void window.tabcast.navigate(urlInput.value)
@@ -3144,10 +3304,6 @@ const settingsView = initSettingsView(window.tabcast, {
     destHint.textContent = labMode
       ? 'Demo mode on — key format checks skipped (for testing and walkthroughs).'
       : 'Keys stay in relay RAM only. Go Live publishes WHIP to localhost.'
-  },
-  onStartupModeChange: (mode) => {
-    if (currentMode === 'settings') return
-    void window.tabcast.setMode(mode)
   },
   onEncodeProfileChange: (id) => {
     syncEncodeProfileSelects(id)
@@ -3286,9 +3442,6 @@ async function renderAddonPanels(): Promise<void> {
   }
 
   for (const panel of panels) {
-    // Filter out Discord addon from UI
-    console.log('Checking panel:', panel.addonId); if (panel.addonId === 'com.tabcast.discord-now-live') { console.log('Filtering out Discord'); continue; }
-
     const section = document.createElement('section')
     section.className = 'addon-panel'
     section.innerHTML = `<h3>${escapeHtml(panel.title)}</h3>`
@@ -3422,10 +3575,9 @@ platYoutube.addEventListener('click', () => {
 
 platformKeyForm.addEventListener('submit', (event) => {
   const submitter = (event as SubmitEvent).submitter as HTMLButtonElement | null
-  if (submitter?.value === 'save') {
-    void persistStreamDestinationsFromUi()
-  }
-  void window.tabcast.getRelay().then(renderPlatformStatus)
+  if (submitter?.value !== 'save') return
+  const platform: PlatformKeyTarget = platformKeyPanelYoutube.hidden ? 'twitch' : 'youtube'
+  void savePlatformCredentials(platform).then(() => window.tabcast.getRelay().then(renderPlatformStatus))
 })
 
 async function teardownLiveSession(): Promise<void> {
@@ -3645,12 +3797,6 @@ window.addEventListener('keydown', (event) => {
     event.preventDefault()
     toggleMicMute()
   }
-  if (event.ctrlKey && event.key.toLowerCase() === 'b') {
-    event.preventDefault()
-    const next = currentMode === 'browse' ? 'studio' : 'browse'
-    void window.tabcast.setMode(next)
-    void window.tabcast.setSettings({ startupMode: next })
-  }
 })
 
 window.tabcast.onMode(applyMode)
@@ -3835,12 +3981,23 @@ updateBannerDismiss.addEventListener('click', () => {
 window.tabcast.onUpdateStatus(renderUpdateBanner)
 
 
-void window.tabcast.getSettings().then((s) => {
-  if (!s.setupWizardComplete) {
-    window.setTimeout(() => setupWizard.start(), 600)
-  } else if (!s.onboardingComplete) {
-    window.setTimeout(() => onboardingTour.start(), 800)
-  }
+const appIntro = document.getElementById('app-intro') as HTMLElement
+document.body.dataset.intro = '1'
+
+function enterStudioFromIntro(): void {
+  appIntro.hidden = true
+  delete document.body.dataset.intro
+  void window.tabcast.getSettings().then((s) => {
+    if (s.onboardingComplete) return
+    window.setTimeout(() => onboardingTour.start(), 200)
+  })
+}
+
+document.getElementById('app-intro-stream')!.addEventListener('click', () => {
+  enterStudioFromIntro()
+})
+document.getElementById('app-intro-github')!.addEventListener('click', () => {
+  void window.tabcast.openExternal('https://github.com/n0social/maka-streaming-software/releases')
 })
 // Scene buttons
 const sceneGameplay = document.getElementById('scene-gameplay') as HTMLButtonElement
@@ -3856,7 +4013,6 @@ const audioMixer = document.getElementById('audio-mixer')
 // Stream info
 const streamStatus = document.getElementById('stream-status')
 const streamInfo = document.getElementById('stream-info')
-const btnGoLiveSidebar = document.getElementById('btn-go-live-sidebar') as HTMLButtonElement
 
 // Program stats
 const programStats = document.getElementById('program-stats')
@@ -4029,6 +4185,143 @@ async function selectScene(sceneTemplate: string): Promise<void> {
   }
 }
 
+function overlayPlatform(): StreamChatPlatform {
+  if (lastStreamPlatform === 'twitch' || lastStreamPlatform === 'youtube') return lastStreamPlatform
+  if (destYoutube.checked && !destTwitch.checked) return 'youtube'
+  if (destTwitch.checked) return 'twitch'
+  return 'none'
+}
+
+function presentStreamAlert(alert: StreamAlert): void {
+  if (shownAlertIds.has(alert.id)) return
+  shownAlertIds.add(alert.id)
+  streamAlertQueue.push(alert)
+  if (streamAlertQueue.length === 1) playNextStreamAlert()
+}
+
+function playNextStreamAlert(): void {
+  const alert = streamAlertQueue[0]
+  if (!alert || alertBoxPageUrl(streamAlertBoxUrl)) {
+    programAlert.hidden = true
+    if (!alertBoxPageUrl(streamAlertBoxUrl)) {
+      programNotificationsSlot.dataset.alert = '0'
+    }
+    refreshProgramPreviewLayout()
+    return
+  }
+  const card = alertCard(alert)
+  programAlertKicker.textContent = card.kicker
+  programAlertName.textContent = card.headline
+  programAlertAmount.textContent = ''
+  programAlertMessage.textContent = card.detail
+  programAlert.hidden = false
+  programNotificationsSlot.dataset.alert = '1'
+  layerEnabled.notifications = true
+  refreshProgramPreviewLayout()
+  if (streamAlertTimer) clearTimeout(streamAlertTimer)
+  streamAlertTimer = setTimeout(() => {
+    streamAlertQueue.shift()
+    playNextStreamAlert()
+  }, 6500)
+}
+
+function syncAlertBox(): void {
+  const page = alertBoxPageUrl(streamAlertBoxUrl)
+  if (!page) {
+    programAlertBox.removeAttribute('src')
+    programAlertBox.hidden = true
+    if (streamAlertQueue.length === 0) {
+      programNotificationsSlot.hidden = true
+      programNotificationsSlot.dataset.alert = '0'
+    }
+    return
+  }
+  if (programAlertBox.src !== page) programAlertBox.src = page
+  programAlertBox.hidden = false
+  programAlert.hidden = true
+  programNotificationsSlot.dataset.alert = '1'
+  layerEnabled.notifications = true
+  refreshProgramPreviewLayout()
+}
+
+function syncPlatformAlerts(): void {
+  twitchAlertFeed?.stop()
+  twitchAlertFeed = null
+  syncAlertBox()
+  if (!streamIncludeChat || alertBoxPageUrl(streamAlertBoxUrl)) return
+  const platform = overlayPlatform()
+  if (platform !== 'twitch' || !streamChannel.trim()) return
+  twitchAlertFeed = startTwitchAlertFeed(streamChannel, presentStreamAlert)
+}
+
+function paintIntermissionCard(): void {
+  if (activeSceneTemplateId !== 'intermission' || programSceneCard.hidden) return
+  const preset = sceneStubPreset('intermission')
+  programSceneCardSubtitle.textContent = intermissionSubtitle(
+    Date.now(),
+    intermissionEndsAtMs,
+    preset?.subtitle ?? 'Short break — back shortly',
+  )
+}
+
+function ensureIntermissionTimer(): void {
+  if (intermissionTimer != null) return
+  intermissionTimer = setInterval(() => {
+    paintIntermissionCard()
+    if (intermissionEndsAtMs != null && Date.now() >= intermissionEndsAtMs) {
+      intermissionEndsAtMs = null
+    }
+  }, 250)
+}
+
+function startIntermissionTimer(minutes: number): void {
+  if (!isIntermissionMinutes(minutes)) return
+  intermissionEndsAtMs = intermissionEndsAt(Date.now(), minutes)
+  ensureIntermissionTimer()
+  void selectScene('intermission')
+}
+
+function stopIntermissionTimer(): void {
+  intermissionEndsAtMs = null
+  paintIntermissionCard()
+}
+
+async function deleteCustomScene(sceneId: string): Promise<void> {
+  if (!isCustomSceneId(sceneId)) return
+  const next = removeCustomScene(customScenes, sceneId)
+  if (activeSceneTemplateId === sceneId) {
+    await selectScene('gaming-cam')
+  }
+  await persistCustomScenes(next)
+  if (sceneImagePaths[sceneId]) {
+    await persistSceneImage(sceneId, null)
+  }
+}
+
+function platformChatUrl(): string | null {
+  return streamChatUrl(overlayPlatform(), streamChannel)
+}
+
+function syncChatFeed(): void {
+  const url = streamIncludeChat ? platformChatUrl() : null
+  if (!url) {
+    programChatView.removeAttribute('src')
+    programChatView.hidden = true
+    programChatSlot.dataset.liveFeed = '0'
+    programChatHint.hidden = false
+    programChatHint.textContent =
+      overlayPlatform() === 'youtube'
+        ? 'YouTube chat uses the link saved on the YouTube button'
+        : 'Twitch chat uses the link saved on the Twitch button'
+    return
+  }
+  if (programChatView.src !== url) programChatView.src = url
+  programChatView.hidden = false
+  programChatHint.hidden = true
+  programChatSlot.dataset.liveFeed = '1'
+  programChatSlot.hidden = false
+}
+
 // Wire scene buttons
 if (sceneGameplay) {
   sceneGameplay.addEventListener('click', () => selectScene('gaming-cam'))
@@ -4048,8 +4341,16 @@ if (sceneEnding) {
 
 function openSceneImageMenuFromTarget(menu: HTMLElement): void {
   const id = menu.dataset.sceneMenu
-  if (!id || !sceneSupportsImageUpload(id)) return
+  if (!id) return
+  const custom = isCustomSceneId(id)
+  const timer = id === 'intermission'
+  const image = sceneSupportsImageUpload(id)
+  if (!custom && !timer && !image) return
   sceneImageMenuTargetId = id
+  for (const row of sceneMenuTimerRows) row.hidden = !timer
+  sceneMenuImagePickRow.hidden = !image
+  sceneMenuImageClearRow.hidden = !image
+  sceneMenuDeleteRow.hidden = !custom
   sceneImageMenuClear.disabled = !sceneImagePaths[id]
   sceneImageMenuDialog.showModal()
 }
@@ -4097,6 +4398,27 @@ sceneImageMenuCancel.addEventListener('click', () => {
   sceneImageMenuDialog.close()
 })
 
+sceneImageMenuDialog.addEventListener('click', (event) => {
+  const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-intermission-min]')
+  if (!button) return
+  const minutes = Number(button.dataset.intermissionMin)
+  sceneImageMenuDialog.close()
+  startIntermissionTimer(minutes)
+})
+
+sceneMenuTimerStop.addEventListener('click', () => {
+  sceneImageMenuDialog.close()
+  stopIntermissionTimer()
+  void selectScene('intermission')
+})
+
+sceneImageMenuDelete.addEventListener('click', () => {
+  sceneImageMenuDialog.close()
+  const target = sceneImageMenuTargetId
+  if (!target) return
+  void deleteCustomScene(target)
+})
+
 btnSceneImagePick.addEventListener('click', () => {
   if (!sceneSupportsImageUpload(activeSceneTemplateId)) return
   void chooseSceneImage(activeSceneTemplateId)
@@ -4115,45 +4437,18 @@ if (btnAddSceneAlt) {
 }
 
 const goLiveWizardDialog = document.getElementById('go-live-wizard-dialog') as HTMLDialogElement
-const goLiveWizard = new GoLiveWizard(
-  goLiveWizardDialog,
-  document.getElementById('go-live-wizard-step')!,
-  document.getElementById('go-live-wizard-title')!,
-  document.getElementById('go-live-wizard-body')!,
-  document.getElementById('go-live-wizard-status')!,
-  document.getElementById('go-live-wizard-panel-platform')!,
-  document.getElementById('go-live-wizard-panel-key')!,
-  document.getElementById('go-live-wizard-panel-validate')!,
-  document.getElementById('go-live-wizard-panel-go')!,
-  document.querySelectorAll<HTMLInputElement>('input[name="go-live-platform"]'),
-  document.getElementById('wizard-twitch-key') as HTMLInputElement,
-  document.getElementById('wizard-youtube-key') as HTMLInputElement,
-  document.getElementById('wizard-custom-rtmp-url') as HTMLInputElement,
-  document.getElementById('wizard-custom-rtmp-key') as HTMLInputElement,
-  document.getElementById('go-live-wizard-custom-fields')!,
-  document.getElementById('go-live-wizard-quality') as HTMLSelectElement,
-  document.getElementById('go-live-wizard-go-status')!,
-  document.getElementById('go-live-wizard-back') as HTMLButtonElement,
-  document.getElementById('go-live-wizard-next') as HTMLButtonElement,
-  document.getElementById('go-live-wizard-cancel') as HTMLButtonElement,
-  {
-    hasCustomRtmp: () => !destCustomBlock.hidden,
+const goLiveWizard = new GoLiveWizard(goLiveWizardDialog, {
     isLive: () => isSessionLive(),
     readUi: () => ({
       destTwitch: destTwitch.checked,
       destYoutube: destYoutube.checked,
-      destCustom: destCustom.checked,
       twitchKey: twitchKey.value,
       youtubeKey: youtubeKey.value,
-      customUrl: customRtmpUrl.value,
-      customKey: customRtmpKey.value,
     }),
     applyPlatform: applyWizardPlatform,
     applyKeys: (partial) => {
       if (partial.twitchKey !== undefined) twitchKey.value = partial.twitchKey
       if (partial.youtubeKey !== undefined) youtubeKey.value = partial.youtubeKey
-      if (partial.customUrl !== undefined) customRtmpUrl.value = partial.customUrl
-      if (partial.customKey !== undefined) customRtmpKey.value = partial.customKey
       syncDestinationInputs()
       void persistStreamDestinationsFromUi()
     },
@@ -4172,6 +4467,45 @@ const goLiveWizard = new GoLiveWizard(
     readEncodeProfile: () => selectedProfile(),
     applyEncodeProfile: (id) => onEncodeProfileChanged(id),
     readPreferredPlatform: () => lastStreamPlatform,
+    readStreamInfo: () => ({
+      title: relayStudioSettings.streamTitle,
+      game: relayStudioSettings.streamCategory || 'Just Chatting',
+      description: relayStudioSettings.streamDescription,
+      channel: streamChannel,
+      includeChat: streamIncludeChat,
+      twitchChatLink: streamTwitchChatLink,
+      youtubeChatLink: streamYoutubeChatLink,
+    }),
+    applyStreamInfo: (info) => {
+      const nextChannel = info.channel.trim().replace(/^@/, '')
+      const overlaysChanged = nextChannel !== streamChannel || info.includeChat !== streamIncludeChat
+      relayStudioSettings = {
+        ...relayStudioSettings,
+        streamTitle: sanitizeStreamTitle(info.title),
+        streamCategory: sanitizeStreamCategory(info.game),
+        streamDescription: info.description.replace(/\r\n/g, '\n').slice(0, 200),
+      }
+      streamTwitchChatLink = info.twitchChatLink.trim().slice(0, 120)
+      streamYoutubeChatLink = info.youtubeChatLink.trim().slice(0, 512)
+      streamChannel = nextChannel
+      streamIncludeChat = info.includeChat
+      layerEnabled.chat = info.includeChat
+      layerEnabled.notifications = info.includeChat
+      syncStreamInfoFields()
+      if (overlaysChanged) {
+        syncChatFeed()
+        syncPlatformAlerts()
+      }
+      void window.tabcast.setSettings({
+        streamTitle: relayStudioSettings.streamTitle,
+        streamCategory: relayStudioSettings.streamCategory,
+        streamDescription: relayStudioSettings.streamDescription,
+        streamChannel,
+        streamTwitchChatLink,
+        streamYoutubeChatLink,
+        streamIncludeChat,
+      })
+    },
   },
 )
 
@@ -4179,12 +4513,10 @@ populateEncodeProfileSelect(
   document.getElementById('go-live-wizard-quality') as HTMLSelectElement,
 )
 
-if (btnGoLiveSidebar) {
-  btnGoLiveSidebar.addEventListener('click', () => {
-    void window.tabcast.getSettings().then((s) => {
-      lastStreamPlatform = s.lastStreamPlatform ?? 'none'
-      goLiveWizard.open()
-    })
+openGoLiveFlow = () => {
+  void window.tabcast.getSettings().then((s) => {
+    lastStreamPlatform = s.lastStreamPlatform ?? 'none'
+    goLiveWizard.open()
   })
 }
 
@@ -4278,35 +4610,62 @@ function updateProgramStats(snapshot?: RelaySnapshot | null): void {
   const spec = encodeProfileSpec(profile)
   const sessionLive = snapshot?.lifecycle === 'live' || isSessionLive()
   const whipMetrics = sessionLive ? whipStreamMetrics : null
-  const { dropped, encoded } = droppedFramesForProgramStats(snapshot, whipMetrics)
-  const dropPct = formatDropPercent(dropped, encoded)
+  const playbackActive = playbackTotalFrames > 0
+  const { dropped, encoded } = playbackActive && !sessionLive
+    ? { dropped: playbackDroppedFrames, encoded: playbackTotalFrames }
+    : droppedFramesForProgramStats(snapshot, whipMetrics)
+  const dropPct = playbackActive && !sessionLive
+    ? dropPercentLabel(playbackDroppedFrames, playbackTotalFrames)
+    : formatDropPercent(dropped, encoded)
   const targetMbps = spec.bitrateMbps
   const observedMbps = relayObservedBitrateMbps(snapshot)
-  const displayMbps = sessionLive && observedMbps != null ? observedMbps : targetMbps
+  const displayMbps =
+    sessionLive && measuredWhipMbps != null
+      ? measuredWhipMbps
+      : sessionLive && observedMbps != null
+        ? observedMbps
+        : targetMbps
+  const measuredFpsNow =
+    measuredCaptureFps ??
+    (sessionLive ? whipMetrics?.outboundVideoFramesPerSecond ?? null : null)
+  const fpsLabel = measuredFpsNow ?? spec.fps
+  const fpsMeasured = measuredFpsNow != null
 
   if (statDropped) {
     statDropped.textContent = `Dropped Frames: ${dropped} (${dropPct}%)`
+    statDropped.title = playbackActive
+      ? 'Dropped frames from the program video element'
+      : 'Dropped frames from the relay or WHIP sender'
   }
   if (statFps) {
-    statFps.textContent = `FPS: ${spec.fps}`
+    statFps.textContent = `FPS: ${fpsLabel}`
+    statFps.title = fpsMeasured
+      ? 'Measured capture or outbound frame rate'
+      : `${spec.menuLabel} encode target`
   }
   if (statLatency) {
-    const latencyMs = sessionLive ? programLatencyMs(snapshot, whipMetrics) : undefined
-    if (latencyMs != null) {
-      statLatency.textContent = formatLatencyStat(latencyMs)
+    const networkMs = sessionLive ? programLatencyMs(snapshot, whipMetrics) : undefined
+    const localMs = frameIntervalMs(measuredFpsNow)
+    if (networkMs != null) {
+      statLatency.textContent = formatLatencyStat(networkMs)
       statLatency.title =
         relayLatencyMs(snapshot) != null
           ? 'Stream latency reported by relay'
           : 'WHIP round-trip time to local relay'
+    } else if (localMs != null) {
+      statLatency.textContent = formatLatencyStat(localMs)
+      statLatency.title = 'Local frame interval from the capture clock. Network RTT appears after go-live.'
     } else {
       statLatency.textContent = '—'
-      statLatency.title = sessionLive
-        ? 'Latency not available yet (waiting for WHIP or relay stats)'
-        : 'Stream latency'
+      statLatency.title = 'Latency appears once a capture or live session reports frames'
     }
   }
   if (statBitrate) {
-    statBitrate.textContent = formatMbpsLabel(displayMbps)
+    const measuredBits = sessionLive && (measuredWhipMbps != null || observedMbps != null)
+    statBitrate.textContent = measuredBits ? formatMbpsLabel(displayMbps) : `${formatMbpsLabel(targetMbps)} target`
+    statBitrate.title = measuredBits
+      ? 'Measured from WHIP bytes sent or relay status'
+      : `${spec.menuLabel} encode target until the session reports a bitrate`
   }
   if (programQualitySelect) {
     programQualitySelect.title = sessionLive
@@ -4352,6 +4711,7 @@ const programRecording = createProgramRecording({
 const programVirtualCamera = createProgramVirtualCamera({
   ...programOutputDeps,
   compositor: programOutputCompositor,
+  publishFrame: (jpeg) => window.tabcast.pushVcamFrame(jpeg),
 })
 
 let vcamCapability: VcamCapability | null = null
@@ -4484,21 +4844,24 @@ if (btnStartVcam) {
       await ensureVcamCapability()
       if (programVirtualCamera.isActive()) {
         programVirtualCamera.stop()
+        await window.tabcast.closeVcamOutput()
         stopProgramOutputCompositorIfIdle()
         setVcamUi(false)
-        destHint.textContent = 'Virtual camera preview stopped.'
+        destHint.textContent = 'Virtual camera stopped.'
         return
       }
       try {
         setDestError(null)
+        const output = await window.tabcast.openVcamOutput()
         programVirtualCamera.start()
         setVcamUi(true)
         if (!vcamInfoSeen && vcamCapability && !vcamCapability.canOutputToDevice) {
           vcamInfoSeen = true
           openVcamInfoDialog()
         }
-        destHint.textContent =
-          'Virtual camera preview active (program compositor). Other apps cannot use Maka as a camera device in this build — Shift+click Virtual Camera for OBS fallback steps.'
+        destHint.textContent = output.devicePath
+          ? `Virtual camera writing to ${output.devicePath} and the Maka Virtual Camera window.`
+          : 'Virtual camera window is open. Other apps can capture that window. Shift+click for a system-camera fallback.'
       } catch (err) {
         setDestError(err instanceof Error ? err.message : String(err))
       }
@@ -4531,22 +4894,14 @@ if (vcamCopyFrame) {
 }
 
 void ensureVcamCapability()
-const btnGoLiveLabel = document.getElementById('btn-go-live-label') as HTMLElement | null
-
-// Stream info elements
-const streamThumb = document.getElementById('stream-thumb') as HTMLElement | null
-const streamTitleInput = document.getElementById('stream-title-input') as HTMLInputElement | null
-const streamCategoryInput = document.getElementById('stream-category-input') as HTMLInputElement | null
-const streamDestinationsHint = document.getElementById('stream-destinations-hint') as HTMLElement | null
-const streamLivePill = document.getElementById('stream-live-pill') as HTMLElement | null
-const streamViewers = document.getElementById('stream-viewers') as HTMLElement | null
-const streamDuration = document.getElementById('stream-duration') as HTMLElement | null
 
 // Update Go Live button label based on streaming state
+function setGoLiveButtonLabel(text: string): void {
+  if (btnGoLiveLabel) btnGoLiveLabel.textContent = text
+}
+
 function updateGoLiveLabel(isLive: boolean): void {
-  if (btnGoLiveLabel) {
-    btnGoLiveLabel.textContent = isLive ? 'End Live' : 'Go Live'
-  }
+  setGoLiveButtonLabel(isLive ? 'End Stream' : 'Go Live')
 }
 
 let liveSessionStartedAt: number | null = null
@@ -4563,44 +4918,58 @@ function formatStreamDuration(ms: number): string {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
-function streamDestinationsSummary(): string {
-  const parts: string[] = []
-  if (destTwitch.checked) {
-    parts.push(twitchKey.value.trim() ? 'Twitch' : 'Twitch (add key)')
+function syncStreamInfoFields(): void {
+  const title = relayStudioSettings.streamTitle.trim()
+  const game = relayStudioSettings.streamCategory.trim()
+  streamTitleText.textContent = title
+  streamCategoryText.textContent = game
+  const image = game ? gameArtByName.get(game.toLowerCase()) : ''
+  if (image) {
+    if (streamThumbImg.getAttribute('src') !== image) streamThumbImg.src = image
+    streamThumbImg.alt = `${game} box art`
+    streamThumbImg.hidden = false
+  } else {
+    streamThumbImg.hidden = true
+    streamThumbImg.removeAttribute('src')
+    streamThumbImg.alt = ''
   }
-  if (destYoutube.checked) {
-    parts.push(youtubeKey.value.trim() ? 'YouTube' : 'YouTube (add key)')
-  }
-  if (destCustom.checked) {
-    parts.push(customRtmpKey.value.trim() ? 'Custom RTMP' : 'Custom RTMP (add key)')
-  }
-  if (parts.length === 0) return 'No destination — enable Twitch or YouTube in the stats bar'
-  return parts.join(' · ')
 }
 
-function syncStreamInfoFields(): void {
-  if (streamTitleInput && streamTitleInput !== document.activeElement) streamTitleInput.value = relayStudioSettings.streamTitle
-  if (streamCategoryInput && streamCategoryInput !== document.activeElement) streamCategoryInput.value = relayStudioSettings.streamCategory
-  if (streamDestinationsHint) streamDestinationsHint.textContent = streamDestinationsSummary()
+async function loadGameArt(): Promise<void> {
+  try {
+    const response = await fetch(new URL('data/game-catalogue.json', window.location.href).toString())
+    if (!response.ok) return
+    const data = (await response.json()) as { games?: { name?: string; image?: string }[] }
+    for (const game of data.games ?? []) {
+      if (game.name && game.image) gameArtByName.set(game.name.toLowerCase(), game.image)
+    }
+    syncStreamInfoFields()
+  } catch {
+    /* catalogue is optional until the wizard step loads it */
+  }
 }
-function applyRelayStudioSettingsFromAppSettings(s: { streamTitle?: string; streamCategory?: string; audioMicBitrateKbps: number; audioDesktopBitrateKbps: number; videoEncoderPreference: RelayStudioSettings['videoEncoderPreference']; gpuPreference: string }): void {
-  relayStudioSettings = { streamTitle: sanitizeStreamTitle(s.streamTitle ?? ''), streamCategory: sanitizeStreamCategory(s.streamCategory ?? ''), audioMicBitrateKbps: s.audioMicBitrateKbps, audioDesktopBitrateKbps: s.audioDesktopBitrateKbps, videoEncoderPreference: s.videoEncoderPreference, gpuPreference: s.gpuPreference || 'default' }
+function applyRelayStudioSettingsFromAppSettings(s: { streamTitle?: string; streamCategory?: string; streamDescription?: string; streamChannel?: string; streamTwitchChatLink?: string; streamYoutubeChatLink?: string; streamAlertBoxUrl?: string; streamIncludeChat?: boolean; audioMicBitrateKbps: number; audioDesktopBitrateKbps: number; videoEncoderPreference: RelayStudioSettings['videoEncoderPreference']; gpuPreference: string }): void {
+  relayStudioSettings = { streamTitle: sanitizeStreamTitle(s.streamTitle ?? ''), streamCategory: sanitizeStreamCategory(s.streamCategory ?? ''), streamDescription: (s.streamDescription ?? '').replace(/\r\n/g, '\n').slice(0, 200), audioMicBitrateKbps: s.audioMicBitrateKbps, audioDesktopBitrateKbps: s.audioDesktopBitrateKbps, videoEncoderPreference: s.videoEncoderPreference, gpuPreference: s.gpuPreference || 'default' }
+  streamChannel = (s.streamChannel ?? '').trim().replace(/^@/, '')
+  streamTwitchChatLink = (s.streamTwitchChatLink ?? '').trim()
+  streamYoutubeChatLink = (s.streamYoutubeChatLink ?? '').trim()
+  streamAlertBoxUrl = alertBoxPageUrl(s.streamAlertBoxUrl ?? '') ?? ''
+  streamIncludeChat = Boolean(s.streamIncludeChat)
+  layerEnabled.chat = streamIncludeChat
   syncStreamInfoFields()
+  syncChatFeed()
+  syncPlatformAlerts()
 }
 async function persistStreamMetaFromInputs(): Promise<void> {
-  const title = sanitizeStreamTitle(streamTitleInput?.value ?? '')
-  const category = sanitizeStreamCategory(streamCategoryInput?.value ?? '')
-  relayStudioSettings = { ...relayStudioSettings, streamTitle: title, streamCategory: category }
-  await window.tabcast.setSettings({ streamTitle: title, streamCategory: category })
+  await window.tabcast.setSettings({
+    streamTitle: relayStudioSettings.streamTitle,
+    streamCategory: relayStudioSettings.streamCategory,
+    streamDescription: relayStudioSettings.streamDescription,
+    streamChannel,
+    streamAlertBoxUrl,
+    streamIncludeChat,
+  })
   syncStreamInfoFields()
-}
-function maybeFillStreamTitleFromBrowseTab(): void {
-  if (relayStudioSettings.streamTitle.trim()) return
-  const active = browseTabsCache.find((t) => t.active)
-  const tabTitle = active?.title?.trim()
-  if (!tabTitle || tabTitle === 'New Tab') return
-  relayStudioSettings = { ...relayStudioSettings, streamTitle: sanitizeStreamTitle(tabTitle) }
-  if (streamTitleInput) streamTitleInput.value = relayStudioSettings.streamTitle
 }
 function syncStreamInfoMeta(): void { syncStreamInfoFields() }
 
@@ -4631,20 +5000,10 @@ function updateStreamInfo(isLive: boolean, snapshot?: RelaySnapshot | null): voi
     streamLivePill.textContent = isLive ? 'Live' : 'Offline'
   }
   if (streamViewers) {
-    if (!isLive) {
-      streamViewers.textContent = 'Offline'
-      streamViewers.title = 'Viewer count when you go live'
-    } else {
-      const viewers = viewerCountFromRelay(snapshot ?? lastRelaySnapshot)
-      if (viewers != null) {
-        streamViewers.textContent = `Viewers: ${formatViewerCount(viewers)}`
-        streamViewers.title = 'Live viewer count from relay / platform ingest'
-      } else {
-        streamViewers.textContent = 'Viewers: —'
-        streamViewers.title =
-          'Relay has not reported viewer count (needs platform API support in TabcastRelay)'
-      }
-    }
+    const viewers = isLive ? viewerCountFromRelay(snapshot ?? lastRelaySnapshot) : null
+    const label = viewerStatusLabel(isLive, viewers)
+    streamViewers.textContent = viewers != null && isLive ? `Viewers: ${formatViewerCount(viewers)}` : label.text
+    streamViewers.title = label.title
   }
   setLiveDurationClock(isLive)
 }
@@ -4653,6 +5012,10 @@ void initSystemAudioCapture()
 
 audioDesktopLabel.addEventListener('click', () => {
   if (!systemAudioCaptureSupported(capturePlatform)) return
+  if (!desktopAudioStream) {
+    void refreshDesktopAudioCapture(true)
+    return
+  }
   desktopAudioMuted = !desktopAudioMuted
   applyDesktopGameAudioTrackEnabled()
   syncWhipAvTracks()
@@ -4661,7 +5024,10 @@ audioDesktopLabel.addEventListener('click', () => {
 
 audioGameLabel.addEventListener('click', () => {
   if (!systemAudioCaptureSupported(capturePlatform)) return
-  if (!gameAudioStream) return
+  if (!gameAudioStream) {
+    void refreshGameAudioCapture(true)
+    return
+  }
   gameAudioMuted = !gameAudioMuted
   applyDesktopGameAudioTrackEnabled()
   syncWhipAvTracks()
@@ -4670,6 +5036,10 @@ audioGameLabel.addEventListener('click', () => {
 
 btnDesktopAudioSettings.addEventListener('click', () => {
   if (!systemAudioCaptureSupported(capturePlatform)) return
+  if (!desktopAudioStream) {
+    void refreshDesktopAudioCapture(true)
+    return
+  }
   const show = desktopAudioOutputSelect.hidden
   desktopAudioOutputSelect.hidden = !show
   btnDesktopAudioSettings.setAttribute('aria-expanded', show ? 'true' : 'false')
@@ -4686,17 +5056,46 @@ desktopAudioOutputSelect.addEventListener('change', () => {
 
 btnGameAudioSettings.addEventListener('click', () => {
   if (!systemAudioCaptureSupported(capturePlatform)) return
-  if (!selectedSourceId || captureKind !== 'desktop') {
-    setDestError('Select a display or window under Gameplay to link game audio.')
+  if (!gameAudioStream) {
+    void refreshGameAudioCapture(true)
     return
   }
-  void refreshGameAudioCapture()
+  void refreshGameAudioCapture(false)
   studioSourceGame.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
 })
 
-function onStreamMetaFieldCommit(): void { void persistStreamMetaFromInputs().then(() => repostRelayConfigIfLive()) }
-if (streamTitleInput) { streamTitleInput.addEventListener('change', onStreamMetaFieldCommit); streamTitleInput.addEventListener('blur', onStreamMetaFieldCommit) }
-if (streamCategoryInput) { streamCategoryInput.addEventListener('change', onStreamMetaFieldCommit); streamCategoryInput.addEventListener('blur', onStreamMetaFieldCommit) }
+function sampleCaptureClock(): void {
+  const videos = [programVideo, programCamVideo, programBrowserVideo]
+  let frames = 0
+  let dropped = 0
+  for (const video of videos) {
+    if (typeof video.getVideoPlaybackQuality !== 'function') continue
+    const quality = video.getVideoPlaybackQuality()
+    frames += quality.totalVideoFrames
+    dropped += quality.droppedVideoFrames
+  }
+  playbackTotalFrames = frames
+  playbackDroppedFrames = dropped
+  const now = performance.now()
+  if (captureClockStartedAt > 0 && frames > captureClockFrames) {
+    measuredCaptureFps = measuredFps(frames - captureClockFrames, now - captureClockStartedAt)
+  } else if (frames === captureClockFrames) {
+    const track = [programStream, cameraStream, browserStream]
+      .flatMap((stream) => stream?.getVideoTracks() ?? [])
+      .find((item) => item.readyState === 'live')
+    const reported = track?.getSettings().frameRate
+    if (typeof reported === 'number' && reported > 0) measuredCaptureFps = Math.round(reported)
+  }
+  captureClockFrames = frames
+  captureClockStartedAt = now
+}
+
+setInterval(() => {
+  sampleCaptureClock()
+  updateProgramStats(lastRelaySnapshot)
+}, 500)
+
+void loadGameArt()
 
 // Initialize stream info
 highlightSceneSelection(activeSceneTemplateId)

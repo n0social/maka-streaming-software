@@ -23,7 +23,6 @@ export const SETTINGS_TAB_IDS = [
   'audio',
   'video',
   'recording',
-  'modes',
   'help',
 ] as const
 
@@ -42,6 +41,17 @@ export type AppSettings = {
   lastStreamPlatform: StreamPlatformPreference
   streamTitle: string
   streamCategory: string
+  /** YouTube live description. Twitch does not take one. */
+  streamDescription: string
+  /** Twitch login or YouTube live video id. Chat and alerts follow this. */
+  streamChannel: string
+  /** Saved from the Twitch button. Go Live fills the Twitch chat field from this. */
+  streamTwitchChatLink: string
+  /** Saved from the YouTube button. Go Live fills the YouTube chat field from this. */
+  streamYoutubeChatLink: string
+  streamAlertBoxUrl: string
+  /** Chat and in-stream alerts follow streamChannel when this is on. */
+  streamIncludeChat: boolean
   preferredMicDeviceId: string
   /** Windows loopback output device (audiooutput); empty = default playback device. */
   preferredDesktopAudioOutputDeviceId: string
@@ -83,6 +93,12 @@ const DEFAULT_SETTINGS: AppSettings = {
   lastStreamPlatform: 'none',
   streamTitle: '',
   streamCategory: '',
+  streamDescription: '',
+  streamChannel: '',
+  streamTwitchChatLink: '',
+  streamYoutubeChatLink: '',
+  streamAlertBoxUrl: '',
+  streamIncludeChat: false,
   preferredMicDeviceId: '',
   preferredDesktopAudioOutputDeviceId: '',
   audioMicBitrateKbps: 160,

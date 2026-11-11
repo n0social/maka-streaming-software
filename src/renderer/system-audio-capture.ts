@@ -1,6 +1,7 @@
 /**
- * Windows WASAPI loopback / per-window desktop audio via Chromium desktop capture.
- * Linux and macOS return null streams (UI shows honest 0% meters).
+ * Desktop and game audio via Chromium's desktop-capture loopback.
+ * Windows uses WASAPI. Linux and macOS use the same capture constraints when
+ * the session can open them, and fall back to a display-share prompt.
  */
 
 export type SystemAudioCapturePlatform = 'win32' | 'darwin' | 'linux' | 'other'
@@ -11,7 +12,25 @@ export function parseCapturePlatform(raw: string | undefined): SystemAudioCaptur
 }
 
 export function systemAudioCaptureSupported(platform: SystemAudioCapturePlatform): boolean {
-  return platform === 'win32'
+  return platform === 'win32' || platform === 'linux' || platform === 'darwin'
+}
+
+/** User-gesture fallback when silent loopback is refused. */
+export async function startDisplayShareAudio(): Promise<MediaStream | null> {
+  try {
+    const stream = await navigator.mediaDevices.getDisplayMedia({
+      audio: true,
+      video: { width: 16, height: 16, frameRate: 1 },
+    })
+    const audio = stream.getAudioTracks()
+    if (!audio.length) {
+      stopMediaStream(stream)
+      return null
+    }
+    return stripVideoTracks(stream)
+  } catch {
+    return null
+  }
 }
 
 type MandatoryDesktopAudio = MediaTrackConstraints & {

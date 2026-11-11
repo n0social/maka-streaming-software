@@ -1,6 +1,6 @@
 {
   "name": "tabcast-browser",
-  "version": "0.2.4",
+  "version": "0.2.6",
   "private": false,
   "description": "Maka — free Windows streaming software for game capture and RTMP live streaming (Electron studio + local WHIP relay). OBS-light alternative for Twitch and YouTube.",
   "keywords": [
@@ -50,7 +50,10 @@
     "web:relay": "node scripts/web-relay-dev.mjs",
     "dev:web-studio": "node scripts/web-studio-dev.mjs --with-relay",
     "dev:web-studio:site": "node scripts/web-studio-dev.mjs",
-    "test:web-relay": "node scripts/web-relay-smoke.test.mjs --spawn"
+    "test:web-relay": "node scripts/web-relay-smoke.test.mjs --spawn",
+    "test:studio-wiring": "node --experimental-strip-types scripts/studio-wiring.test.ts",
+    "test:studio-ui": "node scripts/studio-wiring-ui.mjs",
+    "dev:studio": "electron-vite dev"
   },
   "devDependencies": {
     "@types/node": "^22.15.29",
