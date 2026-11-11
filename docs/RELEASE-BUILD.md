@@ -21,7 +21,7 @@ Outputs: `dist-installer/Maka-Setup-<version>.exe`, `dist-installer/latest.yml`,
 
 | Input | Use |
 | --- | --- |
-| `ref` | Branch or tag to build (e.g. `cursor/release-pack-0.2.7-c0c7` or `main`) |
+| `ref` | Branch or tag to build (e.g. `cursor/release-pack-0.2.6-c0c7` or `main`) |
 | `upload_release` | `true` to attach files to a **draft** GitHub Release |
 | `tag_name` | Required when `upload_release` is true (e.g. `maka.streaming.v0.2.7`) |
 
