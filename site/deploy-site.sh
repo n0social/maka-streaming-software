@@ -20,6 +20,11 @@ cp "${SRC_DIR}/404.html" "${WEB_ROOT}/404.html"
 cp "${SRC_DIR}/maka.css" "${WEB_ROOT}/maka.css"
 cp "${SRC_DIR}/robots.txt" "${WEB_ROOT}/robots.txt"
 cp "${SRC_DIR}/sitemap.xml" "${WEB_ROOT}/sitemap.xml"
+cp "${SRC_DIR}/seo.json" "${WEB_ROOT}/seo.json"
+mkdir -p "${WEB_ROOT}/downloads"
+if [ -f "${SRC_DIR}/browser-manifest.json" ]; then
+  cp "${SRC_DIR}/browser-manifest.json" "${WEB_ROOT}/downloads/browser-manifest.json"
+fi
 
 mkdir -p "${WEB_ROOT}/stream"
 cp "${SRC_DIR}/stream/index.html" "${WEB_ROOT}/stream/index.html"
@@ -65,7 +70,7 @@ curl -sk -o /dev/null -w "preview:%{http_code}\n" "https://127.0.0.1/preview/" -
 curl -sk -o /dev/null -w "legacy:%{http_code}\n" "https://127.0.0.1/legacy.html" -H "Host: ${SITE_HOST}"
 curl -sk -o /dev/null -w "stream:%{http_code}\n" "https://127.0.0.1/stream/" -H "Host: ${SITE_HOST}"
 curl -sk -o /dev/null -w "marketing:%{http_code}\n" "https://127.0.0.1/marketing/download-now.png" -H "Host: ${SITE_HOST}"
-curl -sk -o /dev/null -w "setup:%{http_code}\n" "https://127.0.0.1/downloads/Maka-Setup-0.2.5.exe" -H "Host: ${SITE_HOST}"
+curl -sk -o /dev/null -w "setup:%{http_code}\n" "https://127.0.0.1/downloads/Maka-Setup-0.2.6.exe" -H "Host: ${SITE_HOST}"
 
 css_ct="$(curl -skI "https://127.0.0.1/maka.css?v=${CSS_BUILD}" -H "Host: ${SITE_HOST}" | awk -F': ' 'tolower($1)=="content-type"{print $2}' | tr -d '\r')"
 css_tmp="$(mktemp)"

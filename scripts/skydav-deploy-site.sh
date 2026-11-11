@@ -30,4 +30,8 @@ echo "--- public origin checks ---"
 curl -sI "https://${SITE_HOST}/maka.css?v=dc6d036" | grep -iE '^(HTTP|content-type|last-modified)' || true
 curl -s "https://${SITE_HOST}/" | grep -o 'maka.css?v=[^"]*' | head -1 || true
 
+if [[ "${SKYDAV_SYNC_RELEASE:-1}" != "0" ]]; then
+  RELEASE_TAG="${RELEASE_TAG:-v0.2.6.2}" bash "${ROOT}/scripts/skydav-sync-release-assets.sh"
+fi
+
 echo "Deploy complete: https://${SITE_HOST}/"
