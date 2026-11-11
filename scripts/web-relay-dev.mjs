@@ -345,6 +345,7 @@ async function handleRequest(req, res) {
   }
 
   if (req.method === 'POST' && path === '/whip') {
+    if (!requireAuth(req, res)) return
     const offerSdp = (await readBody(req)).toString('utf8')
     const msids = [...offerSdp.matchAll(/^a=msid:(\S+)/gm)].map((match) => match[1])
     const nack = /^a=rtcp-fb:\d+ nack$/m.test(offerSdp)
@@ -361,6 +362,7 @@ async function handleRequest(req, res) {
   }
 
   if (req.method === 'DELETE' && path.startsWith('/whip/')) {
+    if (!requireAuth(req, res)) return
     const sessionId = path.slice('/whip/'.length)
     const session = whipSessions.get(sessionId)
     if (session) {

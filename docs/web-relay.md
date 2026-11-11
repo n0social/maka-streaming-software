@@ -45,10 +45,10 @@ Base URL: `http://127.0.0.1:38473` (`RELAY_DEFAULT_PORT` in `src/shared/tabcast.
 | `POST` | `/config/verify` | Bearer | Validate keys with platforms (mock accepts shape only) |
 | `POST` | `/scene` | Bearer | Scene layout JSON (`SceneLayout`) |
 | `POST` | `/stop` | Bearer optional in app | Tear down encode + WHIP |
-| `POST` | `/whip` | No* | WHIP publish (`Content-Type: application/sdp`, trickle-less offer) |
-| `DELETE` | `/whip/{id}` | No* | End WHIP session (`Location` from POST response) |
+| `POST` | `/whip` | Bearer | WHIP publish (`Content-Type: application/sdp`, trickle-less offer) |
+| `DELETE` | `/whip/{id}` | Bearer | End WHIP session (`Location` from POST response) |
 
-\*Desktop WHIP publish does not send Bearer today; protected routes use `Authorization: Bearer {relayToken}` from `/health`.
+All mutating relay routes (including WHIP) use `Authorization: Bearer {relayToken}` from `GET /health`. The desktop app fetches `/health` immediately before each WHIP POST/DELETE so the token is never stale.
 
 ### `GET /health` → `RelayHealth`
 

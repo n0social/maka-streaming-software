@@ -1518,7 +1518,7 @@ async function runLiveRecovery(reason: string): Promise<void> {
       throw new Error('Relay health missing after reconnect wait.')
     }
 
-    whipPublisher = await attachWhipPublisher(snapshot.health)
+    whipPublisher = await attachWhipPublisher(await refreshRelayHealthForWhip())
     syncWhipAvTracks()
     await window.tabcast.refreshRelay()
 
@@ -1653,10 +1653,20 @@ function relayBearerToken(headers: Record<string, string>): string {
   return match?.[1]?.trim() ?? ''
 }
 
+async function refreshRelayHealthForWhip(): Promise<RelayHealth> {
+  const snapshot = await window.tabcast.refreshRelay()
+  const health = snapshot.health
+  if (!health?.relayToken?.trim()) {
+    throw new Error(
+      snapshot.error ?? 'Relay token missing — wait for MAKArelay Ready or press Start relay.',
+    )
+  }
+  return health
+}
+
 const electronWhipSignaling: WhipSignaling = {
   postOffer: async (localSdp, headers) => {
     const token = relayBearerToken(headers)
-    const whipUrl = whipUrlFromHealth({ ok: true, version: '', streamUrl: '', relayToken: token })
     try {
       return await window.tabcast.publishWhipOffer(localSdp, token)
     } catch (err) {
@@ -1666,14 +1676,11 @@ const electronWhipSignaling: WhipSignaling = {
         /fetch failed/i.test(message) ||
         /ECONNREFUSED|ENOTFOUND|ETIMEDOUT/i.test(message)
       if (!ipcOrTransport) throw err
-      return postWhipOfferHttp(whipUrl, localSdp, headers)
+      const health = await refreshRelayHealthForWhip()
+      return postWhipOfferHttp(whipUrlFromHealth(health), localSdp, authHeaders(health))
     }
   },
-  deleteResource: (resourceUrl, headers) => {
-    const token = relayBearerToken(headers)
-    if (!token) return Promise.resolve()
-    return window.tabcast.closeWhipResource(resourceUrl, token)
-  },
+  deleteResource: (resourceUrl) => window.tabcast.closeWhipResource(resourceUrl, ''),
 }
 
 async function ensureRelayReadyForLive(): Promise<RelaySnapshot> {
@@ -3044,7 +3051,7 @@ async function goLive(): Promise<void> {
     liveRecoveryReason = null
     sessionLiveIntent = true
 
-    whipPublisher = await attachWhipPublisher(snapshot.health!)
+    whipPublisher = await attachWhipPublisher(await refreshRelayHealthForWhip())
     syncWhipAvTracks()
     await window.tabcast.refreshRelay()
     await dispatchAddonLiveEvents('live.start')

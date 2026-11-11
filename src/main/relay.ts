@@ -574,6 +574,11 @@ export class RelayManager {
     this.stopping = false
   }
 
+  /** Latest `GET /health` (for WHIP/config auth — do not reuse stale renderer tokens). */
+  async fetchHealthLive(): Promise<RelayHealth> {
+    return localizeRelayHealth(await fetchJson<RelayHealth>(RELAY_HEALTH_PATH))
+  }
+
   async refresh(): Promise<void> {
     try {
       const [rawHealth, status] = await Promise.all([
