@@ -95,9 +95,26 @@ export function loadAddonSettings(addonId: string): AddonSettings {
   }
 }
 
+const CLEARABLE_ADDON_KEYS = [
+  'customRtmpUrl',
+  'customRtmpKey',
+  'backupRtmpUrl',
+  'backupRtmpKey',
+] as const
+
 export function saveAddonSettings(addonId: string, partial: unknown): AddonSettings {
   if (!isValidAddonId(addonId)) return {}
-  const merged = { ...loadAddonSettings(addonId), ...coerceAddonSettings(partial) }
+  const prev = loadAddonSettings(addonId)
+  const coerced = coerceAddonSettings(partial)
+  const merged: AddonSettings = { ...prev, ...coerced }
+  if (partial && typeof partial === 'object') {
+    const raw = partial as Record<string, unknown>
+    for (const key of CLEARABLE_ADDON_KEYS) {
+      if (!(key in raw)) continue
+      const value = raw[key]
+      if (typeof value === 'string' && !value.trim()) delete merged[key]
+    }
+  }
   writeFileSync(settingsPath(addonId), `${JSON.stringify(merged, null, 2)}\n`, 'utf8')
   return merged
 }

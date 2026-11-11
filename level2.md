@@ -155,8 +155,8 @@ These must ship before calling Maka “production ready” for general download.
 | 1 | [Code signing](./docs/CODE-SIGNING.md) | **Infra ready** — set `CSC_LINK` + run `npm run dist:signed` |
 | 2 | Auto-update | Pending |
 | 3 | Onboarding phase 2 | Partial (tour shipped) |
-| 4 | CI/CD | Pending |
-| 5 | Live session lifecycle | Mostly done |
+| 4 | CI/CD | **Done** — `.github/workflows/ci.yml` and `release.yml` |
+| 5 | Live session lifecycle | **Done** — `before-quit` awaits relay + WHIP teardown |
 
 ---
 
@@ -181,14 +181,13 @@ These must ship before calling Maka “production ready” for general download.
 
 ### 4. CI/CD pipeline
 
-- **Today:** No `.github/workflows/`.
-- **Need:** On tag — `typecheck` → `build` → `verify --offline` → `dist` → sign → attach to Release.
-- **Add:** `npm run dist:ci` = typecheck + build + verify + dist.
+- **Today:** `.github/workflows/ci.yml` (typecheck, build, verify) and `release.yml` (tag → installer). `npm run dist:ci` publishes when `MAKA_PUBLISH` is set.
+- **Still open:** signing secrets on every release, delta updates.
 
 ### 5. Live session lifecycle
 
-- **Today:** WHIP/relay may survive abrupt quit.
-- **Need:** `before-quit` await `relay.stop()` + WHIP `close()`; tray “Stop & Quit” path.
+- **Today:** `app.on('before-quit')` awaits `shutdownApp()` (WHIP close + relay stop). Tray quit uses the same path.
+- **Still open:** a dedicated tray “Stop & Quit” label if the default quit wording is unclear.
 
 ---
 
@@ -198,10 +197,14 @@ Ship in the first post-0.2 minor (0.2.x or 0.3.0).
 
 ### Reliability
 
-- Runtime relay **SHA-256** verify against `relay-manifest.json` (`relay.ts`).
-- WHIP **reconnect** with backoff and user-visible “Reconnecting…” state.
-- **`fetch-relay.mjs`** writes manifest after download; **`verify.mjs`** reads manifest size/hash.
-- **`before-quit`** awaits relay shutdown; orphan process detection in diagnostics.
+Status as of the 3.0 line (stable installer remains **v0.2.6.2** until the next tag):
+
+- **Done:** Runtime relay **SHA-256** check against `relay-manifest.json` in `src/main/relay.ts`.
+- **Done:** WHIP **reconnect** with backoff and a relay-chip “reconnecting (n/30)” line (`src/shared/live-retry.ts`, `src/renderer/app.ts`).
+- **Done:** `fetch-relay.mjs` writes the manifest; `verify.mjs` checks size/hash offline.
+- **Done:** `before-quit` awaits relay shutdown.
+- **Done:** Backup RTMP ingest fields live in **Settings → Streaming** (not only the hidden legacy host). A session **connection log** records recovery, failover, encode step-down, and fatal stops (`src/shared/qos-log.ts`, diagnostics source `qos`).
+- **Still open:** Windows Graphics Capture fallback when desktop capture is black; relay honoring mid-live encode hints.
 
 ### Settings & UX completeness
 

@@ -103,12 +103,28 @@ export function liveRecoveryAttemptCap(reason: string, detail?: string): number 
 }
 
 export function liveRecoveryReasonLabel(reason: string): string {
-  if (reason.startsWith('rtmp:')) return 'Stream error'
-  if (reason === 'relay:restart' || reason === 'relay:error') return 'Relay restarted'
-  if (reason === 'whip:no-video') return 'No video'
-  if (reason.startsWith('whip:')) return 'Connection lost'
-  if (reason === 'relay:health' || reason === 'relay:recover' || reason === 'manual-retry') {
-    return 'Connection lost'
+  if (reason.startsWith('rtmp:')) return 'Ingest error'
+  switch (reason) {
+    case 'relay:restart':
+      return 'Relay restarted'
+    case 'relay:error':
+      return 'Relay error'
+    case 'relay:health':
+      return 'Relay health lost'
+    case 'relay:recover':
+      return 'Relay recovering'
+    case 'manual-retry':
+      return 'Manual retry'
+    case 'whip:no-video':
+      return 'Outbound video stalled'
+    case 'whip:disconnected':
+      return 'WHIP disconnected'
+    case 'whip:failed':
+      return 'WHIP failed'
+    case 'whip:closed':
+      return 'WHIP closed'
+    default:
+      if (reason.startsWith('whip:')) return `WHIP ${reason.slice('whip:'.length)}`
+      return 'Connection lost'
   }
-  return 'Connection lost'
 }

@@ -84,14 +84,30 @@ function liveRecoveryAttemptCap(reason, detail) {
 }
 
 function liveRecoveryReasonLabel(reason) {
-  if (reason.startsWith('rtmp:')) return 'Stream error'
-  if (reason === 'relay:restart' || reason === 'relay:error') return 'Relay restarted'
-  if (reason === 'whip:no-video') return 'No video'
-  if (reason.startsWith('whip:')) return 'Connection lost'
-  if (reason === 'relay:health' || reason === 'relay:recover' || reason === 'manual-retry') {
-    return 'Connection lost'
+  if (reason.startsWith('rtmp:')) return 'Ingest error'
+  switch (reason) {
+    case 'relay:restart':
+      return 'Relay restarted'
+    case 'relay:error':
+      return 'Relay error'
+    case 'relay:health':
+      return 'Relay health lost'
+    case 'relay:recover':
+      return 'Relay recovering'
+    case 'manual-retry':
+      return 'Manual retry'
+    case 'whip:no-video':
+      return 'Outbound video stalled'
+    case 'whip:disconnected':
+      return 'WHIP disconnected'
+    case 'whip:failed':
+      return 'WHIP failed'
+    case 'whip:closed':
+      return 'WHIP closed'
+    default:
+      if (reason.startsWith('whip:')) return `WHIP ${reason.slice('whip:'.length)}`
+      return 'Connection lost'
   }
-  return 'Connection lost'
 }
 
 import assert from 'node:assert/strict'
@@ -100,10 +116,11 @@ assert.equal(liveRetryBackoffMs(0), 1_000)
 assert.equal(liveRetryBackoffMs(4), 15_000)
 assert.equal(MAX_LIVE_RETRY_ATTEMPTS, 30)
 
-assert.equal(liveRecoveryReasonLabel('whip:failed'), 'Connection lost')
-assert.equal(liveRecoveryReasonLabel('whip:no-video'), 'No video')
+assert.equal(liveRecoveryReasonLabel('whip:failed'), 'WHIP failed')
+assert.equal(liveRecoveryReasonLabel('whip:no-video'), 'Outbound video stalled')
+assert.equal(liveRecoveryReasonLabel('relay:health'), 'Relay health lost')
 assert.equal(liveRecoveryReasonLabel('relay:restart'), 'Relay restarted')
-assert.equal(liveRecoveryReasonLabel('rtmp:broken pipe'), 'Stream error')
+assert.equal(liveRecoveryReasonLabel('rtmp:broken pipe'), 'Ingest error')
 
 const fatalReason = 'rtmp:Twitch ingest rejected stream (HTTP 403 Forbidden)'
 assert.equal(isFatalLiveRecoveryReason(fatalReason), true)

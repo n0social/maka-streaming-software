@@ -532,6 +532,17 @@
                   While live, congestion (dropped frames, high RTT, or bitrate well under target) walks one rung down the ladder (two rungs if severe): 4K60 → … → 720p30 → Cloud.
                   Changing the quality menu while live holds that choice for the rest of the session. Keyframe interval and B-frame hints go with the profile on POST /config.
                 </p>
+                <h3>Backup ingest</h3>
+                <label class="field-label" for="backup-rtmp-url">Backup RTMP URL</label>
+                <input id="backup-rtmp-url" class="key-input" type="text" autocomplete="off" spellcheck="false" placeholder="rtmps://…/app" />
+                <label class="field-label" for="backup-rtmp-key">Backup stream key</label>
+                <input id="backup-rtmp-key" class="key-input" type="password" autocomplete="off" spellcheck="false" placeholder="Stream key" />
+                <p class="hint tight">
+                  If the primary Twitch, YouTube, or custom ingest fails, the next reconnect publishes here. Leave blank to stay on the primary ingest.
+                </p>
+                <h3>Connection log</h3>
+                <pre id="qos-event-log" class="hint tight qos-event-log">No connection events this session.</pre>
+                <p class="hint tight">Same events are written to the diagnostics log (source <code>qos</code>) for export.</p>
               </div>
               <div class="settings-panel" id="settings-panel-audio" data-settings-panel="audio" hidden>
                 <h2>Audio</h2>
@@ -881,8 +892,6 @@
       <pre id="ffmpeg-log" hidden></pre>
       <div id="addon-panels"></div>
       <span id="plat-custom" data-state="off" hidden></span>
-      <input id="backup-rtmp-url" type="text" />
-      <input id="backup-rtmp-key" type="password" />
       <button type="button" id="btn-capture-browse"></button>
       <button type="button" id="btn-start-relay"></button>
       <button type="button" id="btn-stop-relay"></button>

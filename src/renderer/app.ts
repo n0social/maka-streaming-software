@@ -60,6 +60,7 @@ import {
 import { validateRelayStreamKeys, KICK_RTMP_URL } from '../shared/stream-keys'
 import { buildRelayConfigRequest, sanitizeStreamCategory, sanitizeStreamTitle, type RelayStudioSettings } from '../shared/relay-config'
 import { emptyEncodeAdaptState, observeEncodeAdapt, type EncodeAdaptState } from '../shared/encode-adapt'
+import { formatQosLog, pushQosEvent, type QosEvent, type QosEventKind } from '../shared/qos-log'
 import { isTwitchLogin, normalizeTwitchChannel, streamKeyValid, youtubeVideoId } from '../shared/stream-wizard'
 import type { StreamDestinationSettings } from '../shared/stream-destination-settings'
 import { GoLiveWizard, type GoLiveWizardPlatform } from './go-live-wizard'
@@ -1453,6 +1454,7 @@ function queueLiveRecovery(reason: string, detail?: string): void {
   }
 
   liveRecoveryReason = reason
+  recordQos('recovery', reason, { detail, attempt: liveRecoveryAttempts + 1 })
   const delay = liveRetryBackoffMs(liveRecoveryAttempts)
   liveReconnectTimer = setTimeout(() => {
     liveReconnectTimer = null
@@ -1478,11 +1480,19 @@ async function runLiveRecovery(reason: string): Promise<void> {
   destHint.textContent = liveReconnectStatusLine()
   void window.tabcast.getRelay().then(renderRelay)
 
+  const previousIngest = sessionIngestTarget
   sessionIngestTarget = nextIngestTargetAfterFailedRecovery(
     sessionIngestTarget,
     reason,
     backupIngestFromUi(),
   )
+  if (sessionIngestTarget === 'backup' && previousIngest !== 'backup') {
+    recordQos('failover', reason, {
+      detail: 'Switched to backup ingest',
+      attempt: liveRecoveryAttempts,
+      ingest: 'backup',
+    })
+  }
 
   try {
     if (!primaryVideoStreamForWhip()) {
@@ -1568,6 +1578,7 @@ function markLiveRecoveryExhausted(reason: string, detail?: string): void {
   clearLiveReconnectTimer()
   const label = liveRecoveryReasonLabel(reason)
   const extra = detail ? ` ${detail}` : ''
+  recordQos('recovery', reason, { detail, attempt: liveRecoveryAttempts, label: `${label} (retries exhausted)` })
   setDestError(
     `Live stream dropped (${label}).${extra} Use Retry connection or End Stream.`,
   )
@@ -1583,6 +1594,7 @@ function markLiveRecoveryFatal(reason: string, detail?: string): void {
   if (liveRecoveryAttempts < 1) liveRecoveryAttempts = 1
   clearLiveReconnectTimer()
   const label = liveRecoveryReasonLabel(reason)
+  recordQos('fatal', reason, { detail, attempt: liveRecoveryAttempts })
   const extra = (detail ?? reason.replace(/^rtmp:/, '')).trim()
   const keyHint = enabledDestinationKeysEmpty()
     ? ' Enter stream keys in Destinations, then Retry connection or End Stream.'
@@ -1844,6 +1856,7 @@ function maybeAdaptEncode(sample: {
     const label = encodeProfileSpec(result.next).menuLabel
     onEncodeProfileChanged(result.next, 'adapt')
     destHint.textContent = `Encode stepped down to ${label} — connection congested.`
+    recordQos('encode', `encode:${result.next}`, { label: `Encode stepped down to ${label}`, detail: label })
   } finally {
     applyingAdaptiveEncode = false
   }
@@ -1913,8 +1926,6 @@ function syncDestinationInputs(): void {
   const customEnabled = destCustom.checked
   customRtmpUrl.disabled = !customEnabled
   customRtmpKey.disabled = !customEnabled
-  backupRtmpUrl.disabled = !customEnabled
-  backupRtmpKey.disabled = !customEnabled
   syncStreamInfoMeta()
 }
 
@@ -2013,13 +2024,56 @@ async function loadCustomRtmpSettings(): Promise<void> {
 }
 
 async function persistCustomRtmpSettings(): Promise<void> {
-  if (destCustomBlock.hidden) return
-  await window.tabcast.setAddonSettings(CUSTOM_RTM_ADDON_ID, {
-    customRtmpUrl: customRtmpUrl.value.trim(),
-    customRtmpKey: customRtmpKey.value.trim() || undefined,
-    backupRtmpUrl: backupRtmpUrl.value.trim() || undefined,
-    backupRtmpKey: backupRtmpKey.value.trim() || undefined,
-  })
+  const body: {
+    customRtmpUrl?: string
+    customRtmpKey?: string
+    backupRtmpUrl: string
+    backupRtmpKey: string
+  } = {
+    backupRtmpUrl: backupRtmpUrl.value.trim(),
+    backupRtmpKey: backupRtmpKey.value.trim(),
+  }
+  if (!destCustomBlock.hidden) {
+    body.customRtmpUrl = customRtmpUrl.value.trim()
+    body.customRtmpKey = customRtmpKey.value.trim()
+  }
+  await window.tabcast.setAddonSettings(CUSTOM_RTM_ADDON_ID, body)
+}
+
+let qosEvents: QosEvent[] = []
+
+function paintQosLog(): void {
+  const el = document.getElementById('qos-event-log')
+  if (el) el.textContent = formatQosLog(qosEvents)
+}
+
+function recordQos(
+  kind: QosEventKind,
+  reason: string,
+  extra?: { detail?: string; attempt?: number; ingest?: 'primary' | 'backup'; label?: string },
+): void {
+  const event: QosEvent = {
+    at: new Date().toISOString(),
+    kind,
+    reason,
+    label: extra?.label ?? liveRecoveryReasonLabel(reason),
+    detail: extra?.detail,
+    attempt: extra?.attempt,
+    ingest: extra?.ingest ?? sessionIngestTarget,
+  }
+  qosEvents = pushQosEvent(qosEvents, event)
+  paintQosLog()
+  void window.tabcast.recordDiagnostic({
+    level: kind === 'fatal' ? 'error' : 'warn',
+    source: 'qos',
+    message: `${event.kind}: ${event.label}`,
+    detail: {
+      reason: event.reason,
+      detail: event.detail ?? '',
+      attempt: event.attempt ?? 0,
+      ingest: event.ingest ?? 'primary',
+    },
+  }).catch(() => undefined)
 }
 
 type SourceKind = 'game' | 'webcam' | 'mic' | 'browser' | 'chat' | 'notifications'
@@ -3480,6 +3534,12 @@ document.getElementById('btn-verify-keys')!.addEventListener('click', () => {
   void onVerifyKeys()
 })
 
+for (const el of [backupRtmpUrl, backupRtmpKey]) {
+  el.addEventListener('change', () => {
+    void persistCustomRtmpSettings()
+  })
+}
+
 programQualitySelect.addEventListener('change', () => {
   onEncodeProfileChanged(normalizeEncodeProfileId(programQualitySelect.value))
 })
@@ -3573,6 +3633,7 @@ void window.tabcast.getSettings().then((s) => {
     micSelect.dataset.preferredMic = s.preferredMicDeviceId
   }
   preferredDesktopOutputDeviceId = s.preferredDesktopAudioOutputDeviceId ?? ''
+  void loadCustomRtmpSettings()
   if (systemAudioCaptureSupported(capturePlatform)) {
     void refreshDesktopAudioOutputDevices().then(() => refreshDesktopAudioCapture())
   }
