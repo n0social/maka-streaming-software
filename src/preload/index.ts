@@ -70,6 +70,8 @@ export type AppSettings = {
   sceneImages: Partial<Record<string, string>>
   customScenes: Array<{ id: string; name: string }>
   streamDestinations: StreamDestinationSettings
+  backupRtmpUrl: string
+  backupRtmpKey: string
 }
 
 export type AppVersionInfo = {
@@ -155,6 +157,7 @@ export type AddonSettingsSnapshot = {
   turnUsername?: string
   turnCredentialConfigured?: boolean
   backupRtmpUrl?: string
+  backupRtmpKey?: string
   backupRtmpKeyConfigured?: boolean
 }
 
@@ -239,6 +242,12 @@ export type TabcastBridge = {
   ) => Promise<AddonActionResult>
   revealRelay: () => Promise<string>
   listDiagnostics: () => Promise<DiagEvent[]>
+  recordDiagnostic: (event: {
+    level?: 'info' | 'warn' | 'error' | 'fatal'
+    source?: string
+    message: string
+    detail?: Record<string, string | number>
+  }) => Promise<void>
   clearDiagnostics: () => Promise<DiagEvent[]>
   exportDiagnostics: () => Promise<string>
   verifySystem: () => Promise<VerifyReport>
@@ -357,6 +366,7 @@ const api: TabcastBridge = {
     ipcRenderer.invoke('addons:run-action', addonId, actionId, ctx),
   revealRelay: () => ipcRenderer.invoke('relay:reveal'),
   listDiagnostics: () => ipcRenderer.invoke('diagnostics:list'),
+  recordDiagnostic: (event) => ipcRenderer.invoke('diagnostics:record', event),
   clearDiagnostics: () => ipcRenderer.invoke('diagnostics:clear'),
   exportDiagnostics: () => ipcRenderer.invoke('diagnostics:export'),
   verifySystem: () => ipcRenderer.invoke('diagnostics:verify'),

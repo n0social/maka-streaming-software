@@ -4,6 +4,7 @@ import { shell } from 'electron'
 import {
   addonFolderName,
   addonHasPermission,
+  isValidAddonId,
   isValidCatalogId,
   validateManifest,
 } from '../shared/addon-api'
@@ -106,8 +107,7 @@ export class AddonHost {
   }
 
   getAddonSettings(addonId: string): AddonSettingsSnapshot {
-    const manifest = this.manifests.get(addonId)
-    if (!manifest) return {}
+    if (!isValidAddonId(addonId)) return {}
     const settings = loadAddonSettings(addonId)
     return {
       discordWebhookUrl: settings.discordWebhookUrl ? '••••••••' : undefined,
@@ -117,14 +117,14 @@ export class AddonHost {
       turnUsername: settings.turnUsername,
       turnCredentialConfigured: Boolean(settings.turnCredential),
       backupRtmpUrl: settings.backupRtmpUrl,
+      backupRtmpKey: settings.backupRtmpKey,
       backupRtmpKeyConfigured: Boolean(settings.backupRtmpKey),
     }
   }
 
   setAddonSettings(addonId: string, partial: unknown): AddonInstallResult {
-    const manifest = this.manifests.get(addonId)
-    if (!manifest) {
-      return { ok: false, message: 'Addon not installed' }
+    if (!isValidAddonId(addonId)) {
+      return { ok: false, message: 'Invalid addon id' }
     }
     saveAddonSettings(addonId, partial)
     return { ok: true, message: 'Addon settings saved' }

@@ -11,6 +11,7 @@ Full-page tabbed settings opened from the top bar **Settings** button (toggle: c
 | **General** | `set-tray-live`, `set-lab-mode`, `set-auto-update` | `minimizeToTrayWhileLive`, `labMode`, `autoCheckUpdatesOnStartup` | **Yes** | Tray minimize while live (`maybeMinimizeToTray`); demo key validation; packaged startup update check (`initAutoUpdate` + 12s delay). |
 | **General** | Version lines | (read-only) | **Yes** | `app:get-version-info` — `app.getVersion()` + relay health version. |
 | **Streaming** | `set-encode-profile` | `bitrateProfile` | **Yes** | `buildRelayConfigRequest` → `profile` + `bitrateMbps` on `POST /config`. |
+| **Streaming** | `backup-rtmp-url`, `backup-rtmp-key` | addon `com.tabcast.custom-rtmp` `backupRtmpUrl` / `backupRtmpKey` | **Yes** | Failover ingest on the next RTMP recovery. Connection log `#qos-event-log`. |
 | **Streaming** | `set-last-platform` | `lastStreamPlatform` | **Partial** | UI default / mirror; go-live wizard writes `twitch` / `youtube` when platform chosen. |
 | **Streaming** | `set-stream-title`, `set-stream-category` | `streamTitle`, `streamCategory` | **Partial** | Stream Info + Settings; `/config` fields (v0.1.0 relay ignores). |
 | **Audio** | `set-mic-device`, `set-mic-bitrate`, `set-desktop-bitrate` | `preferredMicDeviceId`, `audioMicBitrateKbps`, `audioDesktopBitrateKbps` | **Partial** | Mic → capture; bitrates on `/config` (v0.1.0 fixed AAC). |

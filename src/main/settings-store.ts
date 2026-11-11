@@ -69,6 +69,9 @@ export type AppSettings = {
   customScenes: CustomScene[]
   /** Twitch/YouTube enable flags and stream keys saved from the stats bar dialog. */
   streamDestinations: StreamDestinationSettings
+  /** Failover RTMP target. Used when primary ingest fails. Empty string clears. */
+  backupRtmpUrl: string
+  backupRtmpKey: string
 }
 
 export type SavedBrowseTab = {
@@ -112,6 +115,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   sceneImages: {},
   customScenes: [],
   streamDestinations: { ...DEFAULT_STREAM_DESTINATIONS },
+  backupRtmpUrl: '',
+  backupRtmpKey: '',
 }
 
 function storeDir(): string {

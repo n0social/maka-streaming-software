@@ -970,6 +970,13 @@ body[data-mode='settings'] #brand-tag {
   margin-top: 0.55rem;
 }
 
+.qos-event-log {
+  max-height: 9rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-family: ui-monospace, monospace;
+}
+
 .btn-block {
   width: 100%;
   margin-bottom: 0.65rem;

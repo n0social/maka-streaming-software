@@ -47,6 +47,16 @@ export function coerceSettings(partial: unknown): Partial<AppSettings> {
   if (typeof p.autoCheckUpdatesOnStartup === 'boolean') {
     out.autoCheckUpdatesOnStartup = p.autoCheckUpdatesOnStartup
   }
+  if (typeof p.backupRtmpUrl === 'string') {
+    const url = p.backupRtmpUrl.trim().slice(0, 512)
+    if (!url || /^rtmps?:\/\/[a-zA-Z0-9.-]+(?::\d+)?(?:\/[\w./-]*)?$/i.test(url)) {
+      out.backupRtmpUrl = url
+    }
+  }
+  if (typeof p.backupRtmpKey === 'string') {
+    const key = p.backupRtmpKey.trim().slice(0, 256)
+    if (!key || key.length >= 8) out.backupRtmpKey = key
+  }
   if (typeof p.recordingSaveFolder === 'string') {
     const folder = p.recordingSaveFolder.trim()
     out.recordingSaveFolder = folder.length <= 4096 ? folder : folder.slice(0, 4096)

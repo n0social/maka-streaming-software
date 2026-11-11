@@ -1063,6 +1063,24 @@ function registerIpc(): void {
     if (!studioOk(event)) return []
     return getDiagnostics()
   })
+  ipcMain.handle('diagnostics:record', (event, payload: unknown) => {
+    if (!studioOk(event)) return
+    const body = payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : {}
+    const level =
+      body.level === 'info' || body.level === 'warn' || body.level === 'error' || body.level === 'fatal'
+        ? body.level
+        : 'info'
+    const source = typeof body.source === 'string' && body.source.trim() ? body.source.trim().slice(0, 48) : 'qos'
+    const message = typeof body.message === 'string' && body.message.trim() ? body.message.trim().slice(0, 300) : 'qos'
+    const detail: Record<string, string | number> = {}
+    if (body.detail && typeof body.detail === 'object') {
+      for (const [key, value] of Object.entries(body.detail as Record<string, unknown>)) {
+        if (typeof value === 'string') detail[key.slice(0, 32)] = value.slice(0, 240)
+        else if (typeof value === 'number' && Number.isFinite(value)) detail[key.slice(0, 32)] = value
+      }
+    }
+    recordDiagnostic(level, source, message, undefined, detail)
+  })
   ipcMain.handle('diagnostics:clear', (event) => {
     if (!studioOk(event)) return []
     clearDiagnostics()
