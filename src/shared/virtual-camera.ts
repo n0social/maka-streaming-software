@@ -13,4 +13,8 @@ export type VcamCapability = {
   /** Human-readable limitation when `canOutputToDevice` is false. */
   limitationMessage: string
   recommendedFallback: VcamFallbackInfo | null
+  /** Separate window other apps can capture as a camera source. */
+  mirrorWindow: boolean
+  /** v4l2loopback node when one is present, otherwise null. */
+  devicePath: string | null
 }

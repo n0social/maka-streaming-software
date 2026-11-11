@@ -190,7 +190,7 @@ export class SetupWizard {
     statusEl.textContent = lines.join('\n')
     statusEl.dataset.state = 'fail'
     bodyEl.textContent =
-      'Relay is not ready. Use Start relay in the sidebar, or run npm run fetch:relay if the binary is missing. Then click Check relay again.'
+      'The relay starts with Maka and stops when you close the app. It is not ready yet. Check again in a moment.'
     nextBtn.disabled = false
     nextBtn.textContent = 'Check relay'
   }

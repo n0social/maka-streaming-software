@@ -15,5 +15,6 @@
     "src/preload/**/*",
     "src/shared/phone-ice-servers.ts",
     "scripts/**/*"
-  ]
+  ],
+  "exclude": ["scripts/studio-wiring.test.ts"]
 }

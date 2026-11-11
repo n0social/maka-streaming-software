@@ -26,16 +26,71 @@ try {
   const configRes = await fetch(`${base}/config`, {
     method: 'POST',
     headers: { ...auth, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ profile: '720p30', twitchKey: 'live_test_key_1234567890' }),
+    body: JSON.stringify({
+      profile: '720p30',
+      twitchKey: 'live_test_key_1234567890',
+      streamTitle: 'Sunday raid',
+      streamCategory: 'Just Chatting',
+    }),
   })
   if (!configRes.ok) throw new Error(`config failed ${configRes.status}`)
 
   const statusRes = await fetch(`${base}/status`, { headers: auth })
   const status = await statusRes.json()
   if (!statusRes.ok || status.status !== 'idle') throw new Error(`status: ${JSON.stringify(status)}`)
-  console.log('OK config + status')
+  if (status.broadcast?.title !== 'Sunday raid' || status.broadcast?.game !== 'Just Chatting' || status.broadcast?.twitch !== true) {
+    throw new Error(`broadcast metadata was not stored: ${JSON.stringify(status.broadcast)}`)
+  }
+  console.log('OK config + status', status.broadcast)
+  if (status.broadcast.description) throw new Error('Twitch broadcast stored a description')
 
-  const verifyRes = await fetch(`${base}/config/verify`, { method: 'POST', headers: auth })
+  const youtubeRes = await fetch(`${base}/config`, {
+    method: 'POST',
+    headers: { ...auth, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      twitchKey: '',
+      youtubeKey: 'abcd-efgh-ijkl-mnop',
+      streamDescription: 'A short YouTube description.',
+    }),
+  })
+  if (!youtubeRes.ok) throw new Error(`youtube config failed ${youtubeRes.status}`)
+  const youtubeStatus = await (await fetch(`${base}/status`, { headers: auth })).json()
+  if (youtubeStatus.broadcast?.description !== 'A short YouTube description.' || youtubeStatus.broadcast?.youtube !== true) {
+    throw new Error(`YouTube description was not stored: ${JSON.stringify(youtubeStatus.broadcast)}`)
+  }
+  console.log('OK youtube description', youtubeStatus.broadcast.description)
+
+  const twitchAgain = await fetch(`${base}/config`, {
+    method: 'POST',
+    headers: { ...auth, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      twitchKey: 'live_test_key_1234567890',
+      youtubeKey: '',
+      streamTitle: 'Sunday raid',
+      streamCategory: 'Just Chatting',
+      streamDescription: '',
+    }),
+  })
+  if (!twitchAgain.ok) throw new Error(`twitch reconfig failed ${twitchAgain.status}`)
+  const twitchAgainStatus = await (await fetch(`${base}/status`, { headers: auth })).json()
+  if (twitchAgainStatus.broadcast?.description) {
+    throw new Error(`Twitch retry kept a description: ${JSON.stringify(twitchAgainStatus.broadcast)}`)
+  }
+  if (twitchAgainStatus.broadcast?.twitch !== true || twitchAgainStatus.broadcast?.title !== 'Sunday raid') {
+    throw new Error(`Twitch retry dropped title or destination: ${JSON.stringify(twitchAgainStatus.broadcast)}`)
+  }
+  console.log('OK twitch retry cleared description', twitchAgainStatus.broadcast)
+
+  const verifyRes = await fetch(`${base}/config/verify`, {
+    method: 'POST',
+    headers: { ...auth, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      profile: '720p30',
+      twitchKey: 'live_test_key_1234567890',
+      streamTitle: 'Sunday raid',
+      streamCategory: 'Just Chatting',
+    }),
+  })
   const verify = await verifyRes.json()
   if (!verifyRes.ok || verify.ok !== true) throw new Error(`verify: ${JSON.stringify(verify)}`)
   console.log('OK verify')

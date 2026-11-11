@@ -46,6 +46,8 @@ export type RelayConfigRequest = {
   bitrateMbps?: number
   streamTitle?: string
   streamCategory?: string
+  /** YouTube broadcast description. Omitted for Twitch. */
+  streamDescription?: string
   audioMicBitrateKbps?: number
   audioDesktopBitrateKbps?: number
   videoEncoderPreference?: 'system' | 'hardware' | 'software'

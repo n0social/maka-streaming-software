@@ -166,7 +166,12 @@
 
   async function verifyRelayConfig() {
     if (!relayHealth) throw new Error('Relay not connected');
-    const res = await relayFetch(PATHS.verify, { method: 'POST' });
+    const body = buildConfigBody();
+    const res = await relayFetch(PATHS.verify, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
     if (!res.ok) throw new Error(`Verify HTTP ${res.status}`);
     const data = await res.json();
     log(data.ok ? 'Verify OK — ' + (data.message || '') : 'Verify failed — ' + (data.message || ''));

@@ -5,7 +5,7 @@ import type { PhonePairSnapshot, PhoneWebRtcSessionDescription } from '../shared
 import type { EncodeProfileId } from '../shared/stream-encode-profiles'
 import type { StreamDestinationSettings } from '../shared/stream-destination-settings'
 import type { VcamCapability } from '../shared/virtual-camera'
-export type WorkspaceMode = 'studio' | 'browse'
+export type WorkspaceMode = 'studio'
 export type AppMode = WorkspaceMode | 'settings'
 
 export type CaptureSource = {
@@ -38,7 +38,6 @@ export type AppSettings = {
   bitrateProfile: EncodeProfileId
   startupMode: WorkspaceMode
   minimizeToTrayWhileLive: boolean
-  openChatOnBrowse: boolean
   labMode: boolean
   autoCheckUpdatesOnStartup: boolean
   recordingSaveFolder: string
@@ -53,6 +52,12 @@ export type AppSettings = {
   lastStreamPlatform: StreamPlatformPreference
   streamTitle: string
   streamCategory: string
+  streamDescription: string
+  streamChannel: string
+  streamTwitchChatLink: string
+  streamYoutubeChatLink: string
+  streamAlertBoxUrl: string
+  streamIncludeChat: boolean
   preferredMicDeviceId: string
   preferredDesktopAudioOutputDeviceId: string
   audioMicBitrateKbps: number
@@ -170,6 +175,8 @@ export type TabcastBridge = {
   startRelay: () => Promise<RelaySnapshot>
   stopRelay: () => Promise<RelaySnapshot>
   refreshRelay: () => Promise<RelaySnapshot>
+  publishWhipOffer: (sdp: string, relayToken: string) => Promise<{ answerSdp: string; resourceUrl: string | null }>
+  closeWhipResource: (resourceUrl: string, relayToken: string) => Promise<void>
   onRelayUpdate: (cb: (snapshot: RelaySnapshot) => void) => () => void
   getMode: () => Promise<AppMode>
   getWorkspaceMode: () => Promise<WorkspaceMode>
@@ -178,6 +185,10 @@ export type TabcastBridge = {
   onMode: (cb: (mode: AppMode) => void) => () => void
   getVersionInfo: () => Promise<AppVersionInfo>
   getVcamCapability: () => Promise<VcamCapability>
+  openVcamOutput: () => Promise<{ devicePath: string | null }>
+  closeVcamOutput: () => Promise<void>
+  pushVcamFrame: (dataUrl: string) => void
+  onVcamFrame: (cb: (dataUrl: string) => void) => () => void
   listGpuOptions: () => Promise<GpuOption[]>
   pickRecordingFolder: () => Promise<PickRecordingFolderResult>
   navigate: (url: string) => Promise<string | null>
@@ -275,6 +286,9 @@ const api: TabcastBridge = {
   startRelay: () => ipcRenderer.invoke('relay:start'),
   stopRelay: () => ipcRenderer.invoke('relay:stop'),
   refreshRelay: () => ipcRenderer.invoke('relay:refresh'),
+  publishWhipOffer: (sdp, relayToken) => ipcRenderer.invoke('whip:publish', { sdp, token: relayToken }),
+  closeWhipResource: (resourceUrl, relayToken) =>
+    ipcRenderer.invoke('whip:close', { resourceUrl, token: relayToken }).then(() => undefined),
   onRelayUpdate: (cb) => {
     const handler = (_event: Electron.IpcRendererEvent, snapshot: RelaySnapshot) => cb(snapshot)
     ipcRenderer.on('relay:update', handler)
@@ -286,6 +300,16 @@ const api: TabcastBridge = {
   exitSettingsMode: () => ipcRenderer.invoke('app:exit-settings'),
   getVersionInfo: () => ipcRenderer.invoke('app:get-version-info'),
   getVcamCapability: () => ipcRenderer.invoke('vcam:get-capability'),
+  openVcamOutput: () => ipcRenderer.invoke('vcam:output-open'),
+  closeVcamOutput: () => ipcRenderer.invoke('vcam:output-close'),
+  pushVcamFrame: (dataUrl) => {
+    ipcRenderer.send('vcam:frame', dataUrl)
+  },
+  onVcamFrame: (cb) => {
+    const handler = (_event: Electron.IpcRendererEvent, dataUrl: string) => cb(dataUrl)
+    ipcRenderer.on('vcam:frame', handler)
+    return () => ipcRenderer.removeListener('vcam:frame', handler)
+  },
   listGpuOptions: () => ipcRenderer.invoke('system:list-gpu-options'),
   pickRecordingFolder: () => ipcRenderer.invoke('recording:pick-folder'),
   onMode: (cb) => {

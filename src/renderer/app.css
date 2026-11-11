@@ -55,69 +55,10 @@ body {
   height: 100%;
   display: grid;
   grid-template-columns: var(--left) 1fr var(--right);
-  grid-template-rows: 34px 0fr 0fr 1fr;
+  grid-template-rows: 34px 1fr;
   grid-template-areas:
     "top top top"
-    "btabs btabs btabs"
-    "nav nav nav"
     "left stage right";
-}
-
-body[data-mode='browse'] .app {
-  grid-template-columns: 1fr;
-  grid-template-rows: 40px 36px 44px minmax(0, 1fr);
-  grid-template-areas:
-    'top'
-    'btabs'
-    'nav'
-    'stage';
-}
-
-/* Browse mode: Chrome guest shell only — no studio columns or program chrome */
-body[data-mode='browse'] .sidebar,
-body[data-mode='browse'] .studio-sidebar,
-body[data-mode='browse'] aside.sidebar {
-  display: none !important;
-}
-
-body[data-mode='browse'] .program-column,
-body[data-mode='browse'] .program,
-body[data-mode='browse'] .program-stats {
-  display: none !important;
-}
-
-body[data-mode='browse'] .stage {
-  grid-column: 1;
-  grid-row: stage;
-  display: block;
-  position: relative;
-  min-height: 0;
-  background: #ffffff;
-  padding: 0;
-}
-
-body[data-mode='browse'] .stage-frame {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  z-index: 0;
-}
-
-/* Slim topbar: brand + Stream tab + window controls */
-body[data-mode='browse'] .topbar .relay-chip,
-body[data-mode='browse'] .topbar #btn-settings,
-body[data-mode='browse'] .topbar .go-live {
-  display: none !important;
-}
-
-body[data-mode='browse'] .topbar .version {
-  display: none;
-}
-
-body[data-mode='browse'] #brand-tag {
-  display: inline !important;
 }
 
 body[data-mode='settings'] .app {
@@ -136,11 +77,6 @@ body[data-mode='settings'] .program,
 body[data-mode='settings'] .program-stats,
 body[data-mode='settings'] .stage,
 body[data-mode='settings'] .stage-frame {
-  display: none !important;
-}
-
-body[data-mode='settings'] #navrow,
-body[data-mode='settings'] #browsetabs {
   display: none !important;
 }
 
@@ -370,12 +306,24 @@ body[data-mode='settings'] #brand-tag {
 }
 
 .mark {
+  display: grid;
+  place-items: center;
   width: 1.45rem;
   height: 1.45rem;
   border-radius: 0.45rem;
   background: #ffc40c;
   box-shadow: 0 0 0 1px #e6dfd0;
   flex-shrink: 0;
+  color: #1a1408;
+  font-family: "League Spartan", sans-serif;
+  font-weight: 800;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.topbar-spacer {
+  flex: 1;
+  min-width: 0.5rem;
 }
 
 .tabs {
@@ -490,22 +438,6 @@ body[data-mode='settings'] #brand-tag {
   background: #f6f3ec;
   color: #1a1408;
   border: 1px solid #e6dfd0;
-}
-
-.navrow {
-  grid-area: nav;
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  padding: 0 0.75rem;
-  border-bottom: 1px solid #e6dfd0;
-  background: #ffffff;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.navrow[hidden] {
-  display: none !important;
 }
 
 .nav-controls {
@@ -1118,6 +1050,16 @@ body[data-mode='settings'] #brand-tag {
   color: #6b6256;
 }
 
+.platform-chip[data-key='valid'] {
+  color: #17803d;
+  font-weight: 700;
+}
+
+.platform-chip[data-key='valid'][data-state='error'] {
+  color: #9a3b3b;
+  font-weight: 600;
+}
+
 .addon-panels {
   display: flex;
   flex-direction: column;
@@ -1400,6 +1342,122 @@ dd {
   display: none !important;
 }
 
+.program-overlay-slot[data-live-feed='1'] {
+  pointer-events: auto;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 0;
+  overflow: hidden;
+  text-align: left;
+}
+
+.program-overlay-slot[data-live-feed='1'] .program-overlay-slot-label {
+  position: absolute;
+  top: 0.25rem;
+  left: 0.35rem;
+  z-index: 1;
+  background: rgba(250, 248, 244, 0.92);
+  padding: 0.05rem 0.25rem;
+}
+
+.program-chat-view {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  border: 0;
+  background: #fff;
+}
+
+.program-chat-view[hidden] {
+  display: none !important;
+}
+
+.program-chat-lines {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 1.15rem 0.4rem 0.35rem;
+  overflow-y: auto;
+  background: #fff;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  color: #1a1408;
+}
+
+.program-chat-lines[hidden] {
+  display: none !important;
+}
+
+.program-chat-line {
+  margin: 0 0 0.2rem;
+  word-break: break-word;
+}
+
+.program-chat-line-name {
+  font-weight: 700;
+}
+
+.program-chat-slot[data-live-feed='1'] .program-overlay-slot-hint {
+  padding: 1.15rem 0.4rem 0.35rem;
+}
+
+.program-notifications-slot[data-alert='0'] {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.program-notifications-slot[data-alert='1'] {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  align-items: stretch;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.program-alert-box {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: transparent;
+}
+
+.program-alert {
+  width: 100%;
+  text-align: left;
+  background: rgba(26, 20, 8, 0.92);
+  color: #faf8f4;
+  border-radius: 0.45rem;
+  padding: 0.45rem 0.55rem;
+}
+
+.program-alert-kicker {
+  margin: 0;
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: #ffc40c;
+}
+
+.program-alert-name,
+.program-alert-amount,
+.program-alert-message {
+  margin: 0.12rem 0 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.program-alert-message {
+  font-weight: 500;
+  color: #f6f3ec;
+}
+
 .program-overlay-slot-label {
   font-family: var(--font-headline);
   font-size: 0.62rem;
@@ -1616,6 +1674,83 @@ dd {
   cursor: pointer;
 }
 
+body[data-intro='1'] .win-controls {
+  position: fixed;
+  top: 0.45rem;
+  right: 0.45rem;
+  z-index: 80;
+}
+
+.app-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem 1.25rem 1.25rem;
+  background: #faf8f4;
+  color: #1a1408;
+}
+
+.app-intro[hidden] {
+  display: none !important;
+}
+
+.app-intro-hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  min-height: 0;
+}
+
+.app-intro-wordmark {
+  display: block;
+  width: min(760px, 78vw);
+  height: auto;
+  user-select: none;
+}
+
+.app-intro-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.app-intro-btn {
+  appearance: none;
+  min-width: 11rem;
+  padding: 0.85rem 1.4rem;
+  border-radius: 999px;
+  font-family: "League Spartan", sans-serif;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.app-intro-btn-stream {
+  border: none;
+  background: linear-gradient(100deg, #ffd633, #ffc40c);
+  color: #1a1408;
+}
+
+.app-intro-btn-github {
+  background: #ffffff;
+  border: 1px solid rgba(255, 196, 12, 0.35);
+  color: #1a1408;
+}
+
+.app-intro-footer {
+  text-align: center;
+  color: #6b6256;
+  font-size: 0.78rem;
+}
+
 .win-controls {
   display: flex;
   gap: 0.15rem;
@@ -1640,79 +1775,6 @@ dd {
 #btn-win-close:hover {
   background: #b91c1c;
   color: #fff;
-}
-
-.browsetabs {
-  grid-area: btabs;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0 0.55rem;
-  border-bottom: 1px solid #e6dfd0;
-  background: #ffffff;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.browsetabs[hidden] {
-  display: none !important;
-}
-
-.browse-tab-list {
-  display: flex;
-  gap: 0.25rem;
-  flex: 1;
-  overflow-x: auto;
-  min-width: 0;
-}
-
-.browse-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  max-width: 10rem;
-  border: 1px solid #e6dfd0;
-  background: #f6f3ec;
-  color: #6b6256;
-  border-radius: 0.65rem 0.65rem 0 0;
-  padding: 0.3rem 0.45rem;
-  font: inherit;
-  font-size: 0.72rem;
-  cursor: pointer;
-}
-
-.browse-tab.active {
-  color: var(--text);
-  border-color: #ffc40c;
-  background: rgba(201, 162, 39, 0.14);
-}
-
-.browse-tab .close {
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-  padding: 0 0.15rem;
-}
-
-.browse-tab-actions {
-  display: flex;
-  gap: 0.25rem;
-}
-
-.browse-tab-actions button {
-  appearance: none;
-  border: 1px solid #e6dfd0;
-  background: #ffffff;
-  color: #1a1408;
-  border-radius: 999px;
-  padding: 0.25rem 0.55rem;
-  font-family: var(--font-headline);
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  cursor: pointer;
 }
 
 #settings-dialog {
@@ -1854,11 +1916,6 @@ button:hover,
   order: 1;
   flex: 0 0 auto;
   margin-left: auto;
-}
-
-body:not([data-mode='browse']) #navrow,
-body:not([data-mode='browse']) #browsetabs {
-  display: none !important;
 }
 
 body:not([data-mode='settings']) .settings-view {
@@ -2120,42 +2177,220 @@ body:not([data-mode='settings']) .settings-view {
 }
 
 .go-live-wizard-dialog {
-  max-width: 26rem;
+  width: min(980px, calc(100vw - 2rem));
+  height: min(640px, calc(100vh - 2rem));
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  border: none;
+  border-radius: 22px;
+  background: #fff;
+  color: #1a1408;
+  overflow: hidden;
+  box-shadow: 0 24px 70px rgba(26, 20, 8, 0.22);
 }
-
+.go-live-wizard-dialog::backdrop { background: rgba(26, 20, 8, 0.45); }
+.go-live-wizard-card {
+  display: grid;
+  grid-template-columns: minmax(220px, 42%) 1px minmax(0, 1fr);
+  height: 100%;
+  background: #fff;
+}
+.go-live-wizard-mascot { min-height: 0; background: #fff; }
+.go-live-wizard-mascot img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
+.go-live-wizard-rule { background: #d9d3c7; }
+.go-live-wizard-pane {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.35rem 1.25rem;
+  background: #fff;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+.go-live-wizard-form {
+  width: min(100%, 26rem);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1.6rem 1.45rem 1.35rem;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 16px 46px rgba(26, 20, 8, 0.12);
+  overflow-y: auto;
+}
+.go-live-wizard-description {
+  resize: vertical;
+  min-height: 5.5rem;
+  line-height: 1.35;
+}
+.go-live-wizard-char-count {
+  margin: 0.15rem 0 0;
+  font-size: 0.72rem;
+  color: #6b6256;
+  text-align: right;
+}
+#go-live-wizard-description-field[hidden] { display: none !important; }
 .go-live-wizard-step {
   margin: 0;
   font-size: 0.72rem;
-  color: var(--muted);
+  color: #6b6256;
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
-
-.go-live-wizard-platforms {
+.go-live-wizard-form h2 {
+  margin: 0;
+  font-family: "League Spartan", sans-serif;
+  font-size: 1.35rem;
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.go-live-wizard-lead { margin: 0; font-size: 0.95rem; line-height: 1.4; color: #1a1408; }
+.go-live-wizard-lead:empty { display: none; }
+#go-live-wizard-panel-platform[hidden],
+#go-live-wizard-panel-key[hidden],
+#go-live-wizard-panel-details[hidden],
+#go-live-wizard-panel-chat[hidden],
+#go-live-wizard-panel-go[hidden],
+.go-live-wizard-fields[hidden],
+.go-live-wizard-actions-secondary [hidden] { display: none !important; }
+.go-live-chat-include {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  margin: 0.15rem 0 0.2rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1a1408;
+  text-align: left;
+}
+.go-live-chat-include input { width: 1.05rem; height: 1.05rem; margin-top: 0.15rem; accent-color: #1a1408; }
+.go-live-wizard-chat-note { margin: 0.35rem 0 0; font-size: 0.8rem; line-height: 1.35; color: #6b6256; }
+.go-live-wizard-dialog[data-step="go"] .go-live-wizard-form h2,
+.go-live-wizard-dialog[data-step="go"] .go-live-wizard-lead { display: none !important; }
+.go-live-wizard-dialog[data-step="go"] .go-live-wizard-status[data-state="error"] { display: block !important; }
+.go-live-platform-row { display: flex; justify-content: center; align-items: center; gap: 0.75rem; margin: 0.35rem 0 0.15rem; }
+.platform-pick {
+  appearance: none;
   border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-family: "League Spartan", sans-serif;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  font-size: 0.95rem;
+  min-width: 8.5rem;
+  padding: 0.85rem 1.05rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  cursor: pointer;
+}
+.platform-pick-twitch { background: #9146ff; }
+.platform-pick-youtube { background: #ff0033; }
+.platform-pick[aria-pressed="false"] { opacity: 0.45; }
+.platform-pick[aria-pressed="true"] { opacity: 1; box-shadow: 0 0 0 3px #fff, 0 0 0 5px #1a1408; }
+.go-live-wizard-fields { display: flex; flex-direction: column; gap: 0.35rem; }
+.go-live-wizard-form .field-label { display: block; margin: 0.45rem 0 0; font-size: 0.78rem; font-weight: 700; }
+.go-live-wizard-form .field-label:first-child { margin-top: 0; }
+.go-live-wizard-form .key-input,
+.go-live-wizard-form .select {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 0.92rem;
+  padding: 0.7rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid #e6dfd0;
+  background: #fff;
+  color: #1a1408;
+}
+.game-picker { position: relative; width: 100%; }
+.game-picker-trigger { display: flex; align-items: center; gap: 0.55rem; text-align: left; cursor: pointer; appearance: none; }
+.game-picker-trigger-img { width: 22px; height: 28px; object-fit: cover; border-radius: 3px; background: #1a1408; flex-shrink: 0; }
+.game-picker-trigger-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.game-picker-list,
+.game-picker-list:popover-open {
+  position: fixed;
+  inset: auto;
+  z-index: 2147483000;
+  box-sizing: border-box;
+  width: 16rem;
+  max-height: calc(5 * 2.75rem + 2px);
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
+  overflow: auto;
+  list-style: none;
+  border: 1px solid #e6dfd0;
+  border-radius: 12px;
+  background: #fff;
+  color: #1a1408;
+  box-shadow: 0 18px 46px rgba(26, 20, 8, 0.28);
 }
-
-.go-live-wizard-status {
+.game-picker-list[hidden] { display: none !important; }
+.game-picker-option { display: flex; align-items: center; gap: 0.55rem; height: 2.75rem; margin: 0; padding: 0 0.55rem; cursor: pointer; font-size: 0.92rem; }
+.game-picker-option img { width: 28px; height: 36px; object-fit: cover; border-radius: 4px; background: #1a1408; flex-shrink: 0; }
+.game-picker-option-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.game-picker-option:hover { background: #f6f1e4; }
+.game-picker-option[aria-selected='true'] { background: #fff4cc; }
+.go-live-wizard-key-hint { margin: 0.15rem 0 0; font-size: 0.78rem; color: #b91c1c; }
+.go-live-wizard-status { margin: 0; text-align: center; font-size: 0.95rem; line-height: 1.45; }
+.go-live-wizard-status[data-state="error"] { color: #b91c1c; }
+.go-live-wizard-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 0.55rem; margin-top: 0.35rem; }
+.go-live-wizard-actions-secondary { display: contents; }
+.go-live-wizard-dialog .btn {
+  min-width: 5.75rem;
+  border-radius: 10px;
+  padding: 0.65rem 1rem;
+  font-family: "League Spartan", sans-serif;
+  font-weight: 800;
+  cursor: pointer;
+}
+.go-live-wizard-dialog .btn-primary { background: #ffc40c; color: #1a1408; border: none; }
+.go-live-wizard-dialog .btn-ghost { background: transparent; color: #1a1408; border: 1px solid #e6dfd0; }
+.go-live-wizard-dialog .btn:disabled { opacity: 0.45; cursor: default; }
+.go-live-wizard-dialog[data-step="go"] .go-live-wizard-actions { flex-direction: column; align-items: center; flex-wrap: nowrap; }
+.go-live-wizard-dialog[data-step="go"] .go-live-wizard-actions-secondary { display: flex; justify-content: center; gap: 0.55rem; margin-top: 1.35rem; }
+.go-live-wizard-dialog[data-step="go"] #go-live-wizard-next { font-size: 1.35rem; min-width: 12rem; padding: 0.95rem 2.2rem; }
+.go-live-wizard-dialog[data-step="details"] { translate: -110px 0; }
+.go-live-game-card,
+.go-live-game-card:popover-open {
+  position: fixed;
+  inset: auto;
   margin: 0;
-  font-size: 0.82rem;
-  line-height: 1.4;
+  padding: 0.55rem 0.55rem 0.7rem;
+  width: 168px;
+  border: none;
+  border-radius: 18px;
+  background: #fff;
+  color: #1a1408;
+  box-shadow: 0 18px 48px rgba(26, 20, 8, 0.28);
+  animation: maka-game-card-float 3.4s ease-in-out infinite;
 }
-
-.go-live-wizard-status[data-state='error'] {
-  color: #b91c1c;
+.go-live-game-card img { display: block; width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 12px; background: #1a1408; }
+.go-live-game-card p { margin: 0.5rem 0.15rem 0.1rem; font-family: "League Spartan", sans-serif; font-size: 0.92rem; font-weight: 800; line-height: 1.15; text-align: center; }
+@keyframes maka-game-card-float {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -10px; }
 }
-
-.go-live-wizard-status[data-state='ok'] {
-  color: #166534;
+@media (max-width: 1100px) {
+  .go-live-wizard-dialog[data-step="details"] { translate: 0; }
+  .go-live-game-card { display: none !important; }
 }
-
-.go-live-wizard-actions {
-  flex-wrap: wrap;
+@media (max-width: 760px) {
+  .go-live-wizard-dialog { height: auto; max-height: calc(100vh - 1.5rem); }
+  .go-live-wizard-card { grid-template-columns: 1fr; grid-template-rows: 180px 1px auto; }
+  .go-live-wizard-rule { height: 1px; width: 100%; }
 }
 
 /* Stream Info */
@@ -2405,7 +2640,7 @@ body:not([data-mode='settings']) .settings-view {
   border: 1px solid #e6dfd0;
   border-radius: 0.5rem;
   padding: 0;
-  max-width: 22rem;
+  max-width: 26rem;
   background: #faf8f4;
   color: #1a1408;
 }
@@ -2633,6 +2868,12 @@ body:not([data-mode='settings']) .settings-view {
   letter-spacing: 0.01em;
 }
 
+.btn-go-live[data-live='1'] {
+  background: #f6f3ec;
+  color: #1a1408;
+  border: 1px solid #e6dfd0;
+}
+
 .btn-icon-live {
   font-size: 0.78rem;
   font-weight: 800;
@@ -2683,7 +2924,7 @@ body:not([data-mode='settings']) .settings-view {
 }
 
 .stream-thumb {
-  width: 84px;
+  width: 63px;
   height: 84px;
   border-radius: 0.375rem;
   overflow: hidden;
@@ -2691,14 +2932,17 @@ body:not([data-mode='settings']) .settings-view {
   flex-shrink: 0;
 }
 
-.stream-thumb-placeholder {
+.stream-thumb-img {
   width: 100%;
   height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.625rem;
-  color: #666;
+  display: block;
+  object-fit: cover;
+}
+
+.stream-thumb-img[hidden],
+.stream-title:empty,
+.stream-category:empty {
+  display: none !important;
 }
 
 .stream-meta {

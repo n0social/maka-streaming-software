@@ -20,6 +20,7 @@ import {
 import type { RelaySnapshot } from '../shared/relay-snapshot'
 import { MAX_LIVE_RETRY_ATTEMPTS, liveRetryBackoffMs } from '../shared/live-retry'
 import { recordDiagnostic } from './diagnostics'
+import { killProcessTree } from './process-tree'
 
 const execFileAsync = promisify(execFile)
 
@@ -332,13 +333,7 @@ async function terminateAllRelays(owned: ChildProcess | null): Promise<void> {
   await postRelayStop()
   await sleep(400)
 
-  if (owned && !owned.killed) {
-    try {
-      owned.kill()
-    } catch {
-      // ignore
-    }
-  }
+  if (owned?.pid) killProcessTree(owned.pid)
 
   await killOrphanRelayTrays()
   for (const image of RELAY_EXE_NAMES) await killProcessImage(image)
@@ -361,6 +356,7 @@ async function terminateAllRelays(owned: ChildProcess | null): Promise<void> {
 
 export class RelayManager {
   private child: ChildProcess | null = null
+  private releaseExitKill: (() => void) | null = null
   private timer: NodeJS.Timeout | null = null
   private restartTimer: NodeJS.Timeout | null = null
   private listeners = new Set<Listener>()
@@ -467,8 +463,10 @@ export class RelayManager {
         cwd: launch.cwd,
         windowsHide: true,
         stdio: 'ignore',
+        detached: true,
         env: launch.env,
       })
+      this.watchChildUntilAppExits(child)
     } catch (err) {
       recordDiagnostic('error', 'relay.spawn', 'Failed to spawn relay', err)
       this.emit({
@@ -651,7 +649,7 @@ export class RelayManager {
       recordDiagnostic('fatal', 'relay.restart-exhausted', msg)
       this.emit({
         lifecycle: 'error',
-        error: `${msg}. Click Start to try again.`,
+        error: `${msg}. Close Maka and open it again.`,
       })
       return
     }
@@ -672,6 +670,25 @@ export class RelayManager {
         recordDiagnostic('error', 'relay.restart-failed', 'Auto-restart failed', err)
       })
     }, delay)
+  }
+
+  /** The relay is its own process group so quitting Maka can stop it and its children. */
+  private watchChildUntilAppExits(child: ChildProcess): void {
+    this.releaseExitKill?.()
+    const pid = child.pid
+    if (!pid) {
+      this.releaseExitKill = null
+      return
+    }
+    const onAppExit = () => killProcessTree(pid)
+    process.on('exit', onAppExit)
+    const release = () => {
+      process.off('exit', onAppExit)
+      if (this.releaseExitKill === release) this.releaseExitKill = null
+    }
+    this.releaseExitKill = release
+    child.once('exit', release)
+    child.once('error', release)
   }
 
   private clearRestartTimer(): void {

@@ -2,6 +2,9 @@ import {
   RELAY_TRACK_STREAM_IDS,
   type RelayTrackStreamId,
 } from '../shared/tabcast'
+import { RELAY_CONTROL_RETRY_ATTEMPTS, liveRetryBackoffMs, relayControlStatusShouldRetry } from '../shared/live-retry'
+import { hardenWhipMediaSdp } from '../shared/whip-sdp'
+import { rewriteWhipOfferMsids } from '../shared/whip-msid'
 
 export const WHIP_VIDEO_WATCHDOG_POLL_MS = 2_000
 export const WHIP_VIDEO_WATCHDOG_STALL_MS = 8_000
@@ -15,12 +18,16 @@ export type WhipStreamMetrics = {
   roundTripMs: number | null
   outboundVideoFramesDropped: number | null
   outboundVideoFramesEncoded: number | null
+  outboundVideoFramesPerSecond: number | null
+  outboundVideoBytesSent: number | null
 }
 
 export function parseWhipStreamMetrics(stats: RTCStatsReport): WhipStreamMetrics {
   let roundTripMs: number | null = null
   let outboundVideoFramesDropped: number | null = null
   let outboundVideoFramesEncoded: number | null = null
+  let outboundVideoFramesPerSecond: number | null = null
+  let outboundVideoBytesSent: number | null = null
   for (const report of stats.values()) {
     if (report.type === 'candidate-pair') {
       const pair = report as RTCStats & {
@@ -48,6 +55,7 @@ export function parseWhipStreamMetrics(stats: RTCStatsReport): WhipStreamMetrics
       const outbound = report as RTCOutboundRtpStreamStats & {
         framesDropped?: number
         framesEncoded?: number
+        framesPerSecond?: number
       }
       if (typeof outbound.framesDropped === 'number' && outbound.framesDropped >= 0) {
         outboundVideoFramesDropped =
@@ -57,9 +65,21 @@ export function parseWhipStreamMetrics(stats: RTCStatsReport): WhipStreamMetrics
         outboundVideoFramesEncoded =
           (outboundVideoFramesEncoded ?? 0) + Math.floor(outbound.framesEncoded)
       }
+      if (typeof outbound.framesPerSecond === 'number' && outbound.framesPerSecond > 0) {
+        outboundVideoFramesPerSecond = Math.round(outbound.framesPerSecond)
+      }
+      if (typeof outbound.bytesSent === 'number' && outbound.bytesSent >= 0) {
+        outboundVideoBytesSent = (outboundVideoBytesSent ?? 0) + outbound.bytesSent
+      }
     }
   }
-  return { roundTripMs, outboundVideoFramesDropped, outboundVideoFramesEncoded }
+  return {
+    roundTripMs,
+    outboundVideoFramesDropped,
+    outboundVideoFramesEncoded,
+    outboundVideoFramesPerSecond,
+    outboundVideoBytesSent,
+  }
 }
 
 export const WHIP_STATS_POLL_MS = 2_000
@@ -200,6 +220,16 @@ export type WhipPublishSources = {
 
 export type WhipAudioSenders = Partial<Record<WhipAudioTrackRole, RTCRtpSender>>
 
+export type WhipSignalingResult = {
+  answerSdp: string
+  resourceUrl: string | null
+}
+
+export type WhipSignaling = {
+  postOffer: (localSdp: string, headers: Record<string, string>) => Promise<WhipSignalingResult>
+  deleteResource?: (resourceUrl: string, headers: Record<string, string>) => Promise<void>
+}
+
 function waitForIceGathering(pc: RTCPeerConnection, timeoutMs = 4000): Promise<void> {
   if (pc.iceGatheringState === 'complete') return Promise.resolve()
 
@@ -231,46 +261,30 @@ function attachWhipSources(
   pc: RTCPeerConnection,
   sources: WhipPublishSources,
   audioSenders: WhipAudioSenders,
-): void {
-  const gameplayTracks = sources.gameplay.getTracks().filter((t) => t.readyState === 'live')
-  if (gameplayTracks.length > 0) {
-    const gameplayStream = createNamedMediaStream(RELAY_TRACK_STREAM_IDS.gameplay, gameplayTracks)
-    for (const track of gameplayTracks) pc.addTrack(track, gameplayStream)
+): RelayTrackStreamId[] {
+  const streamIds: RelayTrackStreamId[] = []
+  const addTracks = (streamId: RelayTrackStreamId, tracks: MediaStreamTrack[], role?: WhipAudioTrackRole) => {
+    const live = tracks.filter((track) => track.readyState === 'live')
+    if (live.length === 0) return
+    const named = createNamedMediaStream(streamId, live)
+    for (const track of live) {
+      const sender = pc.addTrack(track, named)
+      streamIds.push(streamId)
+      if (role) audioSenders[role] = sender
+    }
   }
 
+  addTracks(RELAY_TRACK_STREAM_IDS.gameplay, sources.gameplay.getTracks())
   if (sources.browser) {
-    const browserTracks = sources.browser.getVideoTracks().filter((t) => t.readyState === 'live')
-    if (browserTracks.length > 0) {
-      const browserNamed = createNamedMediaStream(RELAY_TRACK_STREAM_IDS.browser, browserTracks)
-      for (const track of browserTracks) pc.addTrack(track, browserNamed)
-    }
+    addTracks(RELAY_TRACK_STREAM_IDS.browser, sources.browser.getVideoTracks())
   }
-
   if (sources.webcam) {
-    const webcamTracks = sources.webcam.getVideoTracks().filter((t) => t.readyState === 'live')
-    if (webcamTracks.length > 0) {
-      const webcamStream = createNamedMediaStream(RELAY_TRACK_STREAM_IDS.webcam, webcamTracks)
-      for (const track of webcamTracks) pc.addTrack(track, webcamStream)
-    }
+    addTracks(RELAY_TRACK_STREAM_IDS.webcam, sources.webcam.getVideoTracks())
   }
-
-  const attachAudioRole = (
-    role: WhipAudioTrackRole,
-    streamId: RelayTrackStreamId,
-    stream: MediaStream | null | undefined,
-  ) => {
-    if (!stream) return
-    const audioTracks = stream.getAudioTracks().filter((t) => t.readyState === 'live')
-    if (audioTracks.length === 0) return
-    const named = createNamedMediaStream(streamId, audioTracks)
-    for (const track of audioTracks) {
-      audioSenders[role] = pc.addTrack(track, named)
-    }
-  }
-
-  attachAudioRole('mic', RELAY_TRACK_STREAM_IDS.mic, sources.mic)
-  attachAudioRole('desktop', RELAY_TRACK_STREAM_IDS.desktopAudio, sources.desktopAudio)
-  attachAudioRole('game', RELAY_TRACK_STREAM_IDS.gameAudio, sources.gameAudio)
+  addTracks(RELAY_TRACK_STREAM_IDS.mic, sources.mic?.getAudioTracks() ?? [], 'mic')
+  addTracks(RELAY_TRACK_STREAM_IDS.desktopAudio, sources.desktopAudio?.getAudioTracks() ?? [], 'desktop')
+  addTracks(RELAY_TRACK_STREAM_IDS.gameAudio, sources.gameAudio?.getAudioTracks() ?? [], 'game')
+  return streamIds
 }
 
 /** Prefer H.264 for relay ffmpeg (`-f h264`). */
@@ -302,8 +316,16 @@ export async function publishWhip(
   sources: WhipPublishSources,
   headers: Record<string, string> = {},
   onConnectionStateChange?: (state: RTCPeerConnectionState) => void,
+  signaling?: WhipSignaling,
 ): Promise<WhipPublisher> {
-  const pc = new RTCPeerConnection({ iceServers: [] })
+  // Media stays on UDP. `all` keeps a TCP candidate for networks that block UDP.
+  // The offer/answer itself is HTTP, so a dropped session is re-signaled on TCP.
+  const pc = new RTCPeerConnection({
+    iceServers: [],
+    bundlePolicy: 'max-bundle',
+    rtcpMuxPolicy: 'require',
+    iceTransportPolicy: 'all',
+  })
 
   const notifyConnection = () => {
     onConnectionStateChange?.(pc.connectionState)
@@ -318,11 +340,14 @@ export async function publishWhip(
   }
 
   const audioSenders: WhipAudioSenders = {}
-  attachWhipSources(pc, sources, audioSenders)
+  const streamIds = attachWhipSources(pc, sources, audioSenders)
   preferH264VideoCodecs(pc)
 
   const offer = await pc.createOffer()
-  await pc.setLocalDescription(offer)
+  await pc.setLocalDescription({
+    type: 'offer',
+    sdp: rewriteWhipOfferMsids(hardenWhipMediaSdp(offer.sdp ?? ''), streamIds),
+  })
   await waitForIceGathering(pc)
 
   const localSdp = pc.localDescription?.sdp
@@ -331,28 +356,56 @@ export async function publishWhip(
     throw new Error('WHIP offer produced empty SDP')
   }
 
-  let response: Response
+  let answerSdp: string
+  let resourceUrl: string | null
+
+  const postOfferHttp = async (): Promise<WhipSignalingResult> => {
+    if (signaling?.postOffer) {
+      return signaling.postOffer(localSdp, headers)
+    }
+    let response: Response | null = null
+    let lastError: Error | null = null
+    for (let attempt = 0; attempt < RELAY_CONTROL_RETRY_ATTEMPTS; attempt += 1) {
+      try {
+        response = await fetch(whipUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/sdp', Accept: 'application/sdp', ...headers },
+          body: localSdp,
+          signal: AbortSignal.timeout(25_000),
+        })
+        if (response.ok || !relayControlStatusShouldRetry(response.status)) break
+        lastError = new Error(`WHIP publish failed (${response.status})`)
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error('Network error')
+        response = null
+      }
+      if (attempt + 1 < RELAY_CONTROL_RETRY_ATTEMPTS) {
+        await new Promise((resolve) => setTimeout(resolve, liveRetryBackoffMs(attempt)))
+      }
+    }
+    if (!response) {
+      throw lastError ?? new Error('Failed to fetch')
+    }
+    if (!response.ok) {
+      const detail = (await response.text().catch(() => '')).trim()
+      throw new Error(`WHIP publish failed (${response.status})${detail ? `: ${detail}` : ''}`)
+    }
+    const sdp = await response.text()
+    const location = response.headers.get('Location')
+    return { answerSdp: sdp, resourceUrl: location ? new URL(location, whipUrl).href : null }
+  }
+
   try {
-    response = await fetch(whipUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/sdp', ...headers },
-      body: localSdp,
-    })
+    ;({ answerSdp, resourceUrl } = await postOfferHttp())
   } catch (error) {
     pc.close()
     const message = error instanceof Error ? error.message : 'Network error'
-    throw new Error(`WHIP publish failed: ${message}`)
+    const hint =
+      message === 'Failed to fetch' || /fetch failed/i.test(message)
+        ? ` MAKArelay may not be listening at ${whipUrl}. Check the relay chip (Ready) and try Start relay if needed.`
+        : ''
+    throw new Error(`WHIP publish failed: ${message}${hint}`)
   }
-
-  if (!response.ok) {
-    pc.close()
-    const detail = (await response.text().catch(() => '')).trim()
-    throw new Error(`WHIP publish failed (${response.status})${detail ? `: ${detail}` : ''}`)
-  }
-
-  const answerSdp = await response.text()
-  const location = response.headers.get('Location')
-  const resourceUrl = location ? new URL(location, whipUrl).href : null
 
   await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp })
 
@@ -363,7 +416,11 @@ export async function publishWhip(
     async close() {
       if (resourceUrl) {
         try {
-          await fetch(resourceUrl, { method: 'DELETE', headers })
+          if (signaling?.deleteResource) {
+            await signaling.deleteResource(resourceUrl, headers)
+          } else {
+            await fetch(resourceUrl, { method: 'DELETE', headers, signal: AbortSignal.timeout(8_000) })
+          }
         } catch {
           // Relay may already be stopped.
         }

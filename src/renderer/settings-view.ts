@@ -1,4 +1,4 @@
-import type { AppSettings, TabcastBridge, WorkspaceMode } from '../preload/index'
+import type { AppSettings, TabcastBridge } from '../preload/index'
 
 const SETTINGS_TAB_IDS = [
   'general',
@@ -6,7 +6,6 @@ const SETTINGS_TAB_IDS = [
   'audio',
   'video',
   'recording',
-  'modes',
   'help',
 ] as const
 
@@ -19,10 +18,8 @@ import { ENCODE_PROFILE_ORDER, encodeProfileSpec } from '../shared/stream-encode
 
 export type SettingsViewHooks = {
   onLabModeChange: (labMode: boolean) => void
-  onStartupModeChange: (mode: WorkspaceMode) => void
   onEncodeProfileChange: (profile: AppSettings['bitrateProfile']) => void
   onRecordingFolderChange: (folder: string) => void
-  onPreferredMicChange: (deviceId: string) => void
   onRelayStudioSettingsChange: () => void
   onReplaySetup: () => void
   onReplayTour: () => void
@@ -53,45 +50,15 @@ function populateEncodeSelect(select: HTMLSelectElement): void {
   }
 }
 
-async function populateMicDevices(select: HTMLSelectElement): Promise<void> {
-  const current = select.value
-  select.innerHTML = '<option value="">System default</option>'
-  try {
-    const devices = await navigator.mediaDevices.enumerateDevices()
-    for (const device of devices) {
-      if (device.kind !== 'audioinput') continue
-      const opt = document.createElement('option')
-      opt.value = device.deviceId
-      opt.textContent = device.label || `Microphone ${select.options.length}`
-      select.appendChild(opt)
-    }
-  } catch {
-    // permissions may be missing
-  }
-  if (current) select.value = current
-}
-
-function updateStartupLabel(mode: WorkspaceMode): void {
-  const el = document.getElementById('settings-startup-label')
-  if (!el) return
-  el.textContent =
-    mode === 'browse' ? 'Startup: Browser Mode' : 'Startup: Studio Mode'
-}
-
 function applySettingsToForm(s: AppSettings): void {
   ;(document.getElementById('set-tray-live') as HTMLInputElement).checked =
     s.minimizeToTrayWhileLive
-  ;(document.getElementById('set-open-chat') as HTMLInputElement).checked = s.openChatOnBrowse
   ;(document.getElementById('set-lab-mode') as HTMLInputElement).checked = s.labMode
   ;(document.getElementById('set-auto-update') as HTMLInputElement).checked =
     s.autoCheckUpdatesOnStartup
   const encodeSelect = document.getElementById('set-encode-profile') as HTMLSelectElement
   populateEncodeSelect(encodeSelect)
   encodeSelect.value = s.bitrateProfile
-  ;(document.getElementById('set-last-platform') as HTMLSelectElement).value =
-    s.lastStreamPlatform
-  ;(document.getElementById('set-stream-title') as HTMLInputElement).value = s.streamTitle
-  ;(document.getElementById('set-stream-category') as HTMLInputElement).value = s.streamCategory
   ;(document.getElementById('set-mic-bitrate') as HTMLSelectElement).value = String(
     s.audioMicBitrateKbps,
   )
@@ -104,7 +71,6 @@ function applySettingsToForm(s: AppSettings): void {
   const folderInput = document.getElementById('set-recording-folder') as HTMLInputElement
   folderInput.value = s.recordingSaveFolder || ''
   folderInput.placeholder = s.recordingSaveFolder ? '' : 'Choose a folder…'
-  updateStartupLabel(s.startupMode)
   const tab = s.settingsActiveTab
   if (isSettingsTabId(tab)) {
     setActiveSettingsTab(document.getElementById('settings-view') as HTMLElement, tab)
@@ -147,7 +113,6 @@ export function initSettingsView(tabcast: TabcastBridge, hooks: SettingsViewHook
   refreshVersions: () => Promise<void>
 } {
   const root = document.getElementById('settings-view') as HTMLElement
-  const micSelect = document.getElementById('set-mic-device') as HTMLSelectElement
 
   for (const btn of root.querySelectorAll<HTMLButtonElement>('.settings-tab')) {
     btn.addEventListener('click', () => {
@@ -168,7 +133,6 @@ export function initSettingsView(tabcast: TabcastBridge, hooks: SettingsViewHook
   }
 
   persistCheckbox('set-tray-live', 'minimizeToTrayWhileLive')
-  persistCheckbox('set-open-chat', 'openChatOnBrowse')
   persistCheckbox('set-lab-mode', 'labMode')
   persistCheckbox('set-auto-update', 'autoCheckUpdatesOnStartup')
 
@@ -176,29 +140,6 @@ export function initSettingsView(tabcast: TabcastBridge, hooks: SettingsViewHook
     const value = (event.target as HTMLSelectElement).value as AppSettings['bitrateProfile']
     void tabcast.setSettings({ bitrateProfile: value }).then(() => {
       hooks.onEncodeProfileChange(value)
-    })
-  })
-
-  document.getElementById('set-last-platform')!.addEventListener('change', (event) => {
-    const value = (event.target as HTMLSelectElement).value as AppSettings['lastStreamPlatform']
-    void tabcast.setSettings({ lastStreamPlatform: value })
-  })
-
-  const persistStreamMetaField = (key: 'streamTitle' | 'streamCategory', raw: string) => {
-    const value = raw.trim().replace(/\s+/g, ' ').slice(0, key === 'streamTitle' ? 140 : 100)
-    void tabcast.setSettings({ [key]: value }).then(() => hooks.onRelayStudioSettingsChange())
-  }
-  document.getElementById('set-stream-title')!.addEventListener('change', (e) => {
-    persistStreamMetaField('streamTitle', (e.target as HTMLInputElement).value)
-  })
-  document.getElementById('set-stream-category')!.addEventListener('change', (e) => {
-    persistStreamMetaField('streamCategory', (e.target as HTMLInputElement).value)
-  })
-
-  micSelect.addEventListener('change', () => {
-    const deviceId = micSelect.value
-    void tabcast.setSettings({ preferredMicDeviceId: deviceId }).then(() => {
-      hooks.onPreferredMicChange(deviceId)
     })
   })
 
@@ -235,16 +176,6 @@ export function initSettingsView(tabcast: TabcastBridge, hooks: SettingsViewHook
     })
   })
 
-  for (const btn of root.querySelectorAll<HTMLButtonElement>('[data-set-startup]')) {
-    btn.addEventListener('click', () => {
-      const mode = btn.dataset.setStartup as WorkspaceMode
-      void tabcast.setSettings({ startupMode: mode }).then((s) => {
-        updateStartupLabel(s.startupMode)
-        hooks.onStartupModeChange(s.startupMode)
-      })
-    })
-  }
-
   document.getElementById('btn-replay-setup')!.addEventListener('click', () => {
     hooks.onReplaySetup()
   })
@@ -259,8 +190,6 @@ export function initSettingsView(tabcast: TabcastBridge, hooks: SettingsViewHook
     open: async () => {
       const s = await tabcast.getSettings()
       applySettingsToForm(s)
-      await populateMicDevices(micSelect)
-      micSelect.value = s.preferredMicDeviceId || ''
       await populateGpuSelect(tabcast, s.gpuPreference)
       await refreshVersionLabels(tabcast)
       root.hidden = false
