@@ -41,11 +41,17 @@ export type EncodeAdaptState = {
   badStreak: number
   lastSampleMs: number
   cooldownUntilMs: number
+  /** Under-target bitrate counts only after the session has once hit ~85% of target, or after a long low streak. */
+  bitrateWarm: boolean
+  underStreak: number
 }
 
 export function emptyEncodeAdaptState(): EncodeAdaptState {
-  return { badStreak: 0, lastSampleMs: 0, cooldownUntilMs: 0 }
+  return { badStreak: 0, lastSampleMs: 0, cooldownUntilMs: 0, bitrateWarm: false, underStreak: 0 }
 }
+
+/** Samples of sustained under-target bitrate before that signal is trusted (startup ramp). */
+export const ENCODE_ADAPT_BITRATE_WARM_SAMPLES = 8
 
 export type CongestionLevel = 'ok' | 'mild' | 'severe'
 
@@ -82,17 +88,30 @@ export function observeEncodeAdapt(
   enabled: boolean,
 ): { state: EncodeAdaptState; next: EncodeProfileId | null } {
   if (!enabled) {
-    return { state: { ...state, badStreak: 0 }, next: null }
+    return { state: { ...state, badStreak: 0, underStreak: 0 }, next: null }
   }
   if (nowMs - state.lastSampleMs < ENCODE_ADAPT_MIN_SAMPLE_MS) {
     return { state, next: null }
   }
-  const stamped: EncodeAdaptState = { ...state, lastSampleMs: nowMs }
+  const underNow =
+    sample.measuredMbps != null &&
+    sample.targetMbps > 0 &&
+    sample.measuredMbps < sample.targetMbps * ENCODE_ADAPT_UNDERBITRATE_RATIO
+  const healthyNow =
+    sample.measuredMbps != null &&
+    sample.targetMbps > 0 &&
+    sample.measuredMbps >= sample.targetMbps * 0.85
+  const bitrateWarm = state.bitrateWarm || healthyNow || state.underStreak + (underNow ? 1 : 0) >= ENCODE_ADAPT_BITRATE_WARM_SAMPLES
+  const underStreak = underNow ? state.underStreak + 1 : 0
+  const stamped: EncodeAdaptState = { ...state, lastSampleMs: nowMs, bitrateWarm, underStreak }
   if (nowMs < stamped.cooldownUntilMs) {
     return { state: stamped, next: null }
   }
 
-  const level = congestionLevel(sample)
+  const level = congestionLevel({
+    ...sample,
+    measuredMbps: bitrateWarm ? sample.measuredMbps : null,
+  })
   if (level === 'ok') {
     return { state: { ...stamped, badStreak: 0 }, next: null }
   }
@@ -108,7 +127,13 @@ export function observeEncodeAdapt(
     return { state: { ...stamped, badStreak: 0 }, next: null }
   }
   return {
-    state: { badStreak: 0, lastSampleMs: nowMs, cooldownUntilMs: nowMs + ENCODE_ADAPT_COOLDOWN_MS },
+    state: {
+      badStreak: 0,
+      lastSampleMs: nowMs,
+      cooldownUntilMs: nowMs + ENCODE_ADAPT_COOLDOWN_MS,
+      bitrateWarm,
+      underStreak: 0,
+    },
     next,
   }
 }

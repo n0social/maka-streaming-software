@@ -65,6 +65,19 @@ assert.equal(severeDown.next, '720p60')
 const held = observeEncodeAdapt(down.state, '1080p30', mild, now + ENCODE_ADAPT_MIN_SAMPLE_MS, false)
 assert.equal(held.next, null)
 
+const coldUnder = { dropPercent: 0, roundTripMs: 20, measuredMbps: 1, targetMbps: 6 }
+let cold = emptyEncodeAdaptState()
+let coldNow = 80_000
+let coldNext = null
+for (let i = 0; i < ENCODE_ADAPT_BAD_SAMPLES; i++) {
+  const step = observeEncodeAdapt(cold, '1080p60', coldUnder, coldNow, true)
+  cold = step.state
+  coldNext = step.next
+  coldNow += ENCODE_ADAPT_MIN_SAMPLE_MS
+}
+assert.equal(coldNext, null)
+assert.equal(cold.bitrateWarm, false)
+
 assert.equal(cloud.maxBitrateMbps, 2.5)
 assert.equal(cloud.keyframeIntervalSec, 2)
 assert.equal(encodeProfileSpec('1080p60').bFrames, 2)

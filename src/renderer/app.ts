@@ -266,6 +266,7 @@ let liveRecoveryReason: string | null = null
 let adaptiveEncodeEnabled = true
 let encodeAdaptUserHold = false
 let encodeAdaptState: EncodeAdaptState = emptyEncodeAdaptState()
+let encodeAdaptFrameMark: { dropped: number; encoded: number } | null = null
 let applyingAdaptiveEncode = false
 let liveRecoveryFatal = false
 let sessionLiveIntent = false
@@ -1808,6 +1809,18 @@ function onEncodeProfileChanged(id: EncodeProfileId, origin: 'user' | 'adapt' = 
 function resetEncodeAdaptSession(): void {
   encodeAdaptUserHold = false
   encodeAdaptState = emptyEncodeAdaptState()
+  encodeAdaptFrameMark = null
+}
+
+/** Drop percent since the previous live sample. Lifetime totals stay high after one bad burst and would walk the ladder forever. */
+function windowedDropPercent(dropped: number, encoded: number): number | null {
+  const prev = encodeAdaptFrameMark
+  encodeAdaptFrameMark = { dropped, encoded }
+  if (!prev) return null
+  const encodedDelta = encoded - prev.encoded
+  const droppedDelta = dropped - prev.dropped
+  if (encodedDelta <= 0 || droppedDelta < 0) return null
+  return (droppedDelta / encodedDelta) * 100
 }
 
 function maybeAdaptEncode(sample: {
@@ -4640,19 +4653,16 @@ function updateProgramStats(snapshot?: RelaySnapshot | null): void {
       ? `${spec.menuLabel} · transmitting at ${formatMbpsLabel(displayMbps)}`
       : `${spec.menuLabel} · ${formatMbpsLabel(targetMbps)} target`
   }
-  const encodedFrames = encoded
+  const whipEncoded = whipMetrics?.outboundVideoFramesEncoded ?? null
+  const whipDropped = whipMetrics?.outboundVideoFramesDropped ?? 0
   const dropPercent =
-    encodedFrames != null && encodedFrames > 0 ? (dropped / encodedFrames) * 100 : null
-  const measuredMbps =
-    sessionLive && measuredWhipMbps != null
-      ? measuredWhipMbps
-      : sessionLive && observedMbps != null
-        ? observedMbps
-        : null
+    sessionLive && whipEncoded != null && whipEncoded >= 0
+      ? windowedDropPercent(whipDropped, whipEncoded)
+      : null
   maybeAdaptEncode({
     dropPercent,
-    roundTripMs: sessionLive ? programLatencyMs(snapshot, whipMetrics) ?? null : null,
-    measuredMbps,
+    roundTripMs: sessionLive ? whipMetrics?.roundTripMs ?? null : null,
+    measuredMbps: sessionLive ? measuredWhipMbps : null,
     targetMbps,
   })
 }
