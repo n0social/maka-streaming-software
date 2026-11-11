@@ -4010,7 +4010,6 @@ async function chooseSceneImage(sceneId: string): Promise<void> {
 // Scene selection handler
 async function selectScene(sceneTemplate: string): Promise<void> {
   activeSceneTemplateId = sceneTemplate
-  activeOverlayPresetId = ''
   highlightSceneSelection(sceneTemplate)
   syncOverlaySourceRow()
 

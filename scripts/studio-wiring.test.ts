@@ -154,6 +154,10 @@ assert.equal(wizardHtml.includes('Browser Mode'), false)
 assert.match(appTs, /postRelayConfig\(\s*health,\s*relayConfigForIngest\('primary'\)\)/)
 assert.match(appTs, /verifyRelayConfig\(\s*health,\s*config\)/)
 assert.match(appTs, /ensureRelayReadyForLive/)
+assert.doesNotMatch(
+  appTs,
+  /async function selectScene[\s\S]{0,400}activeOverlayPresetId = ''/,
+)
 assert.match(appTs, /electronWhipSignaling/)
 const relayClient = readFileSync(new URL('../src/renderer/relay-client.ts', import.meta.url), 'utf8')
 assert.match(relayClient, /JSON\.stringify\(body\)/)
