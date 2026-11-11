@@ -1452,6 +1452,36 @@ dd {
   display: none !important;
 }
 
+.program-chat-lines {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 1.15rem 0.4rem 0.35rem;
+  overflow-y: auto;
+  background: #fff;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  color: #1a1408;
+}
+
+.program-chat-lines[hidden] {
+  display: none !important;
+}
+
+.program-chat-line {
+  margin: 0 0 0.2rem;
+  word-break: break-word;
+}
+
+.program-chat-line-name {
+  font-weight: 700;
+}
+
+.program-chat-slot[data-live-feed='1'] .program-overlay-slot-hint {
+  padding: 1.15rem 0.4rem 0.35rem;
+}
+
 .program-notifications-slot[data-alert='0'] {
   background: transparent;
   border-color: transparent;

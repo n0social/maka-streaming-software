@@ -14,6 +14,16 @@ export type StreamAlert = {
 const TWITCH_LOGIN = /^[a-zA-Z0-9_]{2,25}$/
 const YOUTUBE_VIDEO_ID = /^[A-Za-z0-9_-]{11}$/
 
+/** How long one in-stream alert card stays up before the next queued card. */
+export const ALERT_HOLD_MS = 3500
+
+export type TwitchChatLine = {
+  id: string
+  name: string
+  message: string
+  color: string
+}
+
 /** Streamlabs and StreamElements hand their on-stream alerts to OBS as an https alert-box page. */
 export function alertBoxPageUrl(raw: string): string | null {
   const value = raw.trim()
@@ -73,15 +83,53 @@ function trailingMessage(rest: string): string {
   return idx >= 0 ? rest.slice(idx + 2).trim() : ''
 }
 
-/** Twitch IRC bits, subscriptions, and raids. Ordinary chat lines are ignored. */
-export function parseTwitchIrcAlert(rawLine: string): StreamAlert | null {
+type IrcLine = {
+  tags: Record<string, string>
+  command: string
+  rest: string
+}
+
+function parseIrcLine(rawLine: string): IrcLine | null {
   const line = rawLine.trim()
   if (!line.startsWith('@')) return null
   const space = line.indexOf(' ')
   if (space < 0) return null
-  const tags = ircTags(line.slice(1, space))
-  const rest = line.slice(space + 1)
-  const command = rest.split(' ')[1] || ''
+  return {
+    tags: ircTags(line.slice(1, space)),
+    rest: line.slice(space + 1),
+    command: line.slice(space + 1).split(' ')[1] || '',
+  }
+}
+
+function visibleChatMessage(message: string): string {
+  const action = message.match(/^\u0001ACTION ([\s\S]*?)\u0001?$/)
+  return (action?.[1] ?? message).replace(/\u0001/g, '').trim()
+}
+
+function twitchNameColor(raw: string | undefined): string {
+  return raw && /^#[0-9a-fA-F]{6}$/.test(raw) ? raw : ''
+}
+
+/** Ordinary Twitch chat. Bits stay on the alert parser. */
+export function parseTwitchIrcChat(rawLine: string): TwitchChatLine | null {
+  const parsed = parseIrcLine(rawLine)
+  if (!parsed || parsed.command !== 'PRIVMSG' || parsed.tags.bits) return null
+  const message = visibleChatMessage(trailingMessage(parsed.rest))
+  if (!message) return null
+  const name = parsed.tags['display-name'] || 'Someone'
+  return {
+    id: parsed.tags.id || `${name}-${message}`,
+    name,
+    message,
+    color: twitchNameColor(parsed.tags.color),
+  }
+}
+
+/** Twitch IRC bits, subscriptions, and raids. Ordinary chat lines are ignored. */
+export function parseTwitchIrcAlert(rawLine: string): StreamAlert | null {
+  const parsed = parseIrcLine(rawLine)
+  if (!parsed) return null
+  const { tags, command, rest } = parsed
   const name = tags['display-name'] || 'Someone'
   const id = tags.id || `${command}-${name}-${tags.bits || tags['msg-id'] || ''}`
 
