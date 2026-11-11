@@ -1,6 +1,6 @@
 {
   "name": "tabcast-browser",
-  "version": "0.2.7",
+  "version": "0.2.6",
   "private": false,
   "description": "Maka — free Windows streaming software for game capture and RTMP live streaming (Electron studio + local WHIP relay). OBS-light alternative for Twitch and YouTube.",
   "keywords": [

@@ -32,8 +32,8 @@ The job always uploads a workflow **artifact** with the installer and manifest.
 Push a tag matching `v*` or `maka.streaming.*` on the commit you want to ship. That starts the **Release** workflow (`release.yml`):
 
 ```bash
-git tag -a maka.streaming.v0.2.7 -m "Maka 0.2.7"
-git push origin maka.streaming.v0.2.7
+git tag -a v0.2.6 -m "Maka 0.2.6"
+git push origin v0.2.6
 ```
 
 The job builds on `windows-latest`, attaches `Maka-Setup-<version>.exe`, `latest.yml`, and `site/browser-manifest.json` to the GitHub Release (unsigned when `CSC_LINK` is not set). `contains(tag, 'wip')` creates a **draft** release.
