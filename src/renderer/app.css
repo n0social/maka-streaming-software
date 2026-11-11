@@ -567,16 +567,28 @@ body[data-mode='settings'] #brand-tag {
 
 .studio-icon-btn {
   appearance: none;
-  width: 1.45rem;
-  height: 1.45rem;
-  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 1.55rem;
+  height: 1.55rem;
+  font-size: 0.95rem;
+  line-height: 1;
   border: 1px solid var(--line);
-  border-radius: 0.45rem;
+  border-radius: 50%;
   background: var(--panel);
   color: var(--muted);
-  line-height: 1;
   cursor: pointer;
   padding: 0;
+}
+
+#btn-refresh-sources {
+  font-size: 1rem;
+  line-height: 1;
+  padding-inline: 0;
+  transform: translateY(0.02em);
 }
 
 .studio-icon-btn:hover {
@@ -2259,7 +2271,6 @@ body:not([data-mode='settings']) .settings-view {
 #go-live-wizard-panel-platform[hidden],
 #go-live-wizard-panel-key[hidden],
 #go-live-wizard-panel-details[hidden],
-#go-live-wizard-panel-chat[hidden],
 #go-live-wizard-panel-go[hidden],
 .go-live-wizard-fields[hidden],
 .go-live-wizard-actions-secondary [hidden] { display: none !important; }
@@ -2304,16 +2315,24 @@ body:not([data-mode='settings']) .settings-view {
 .go-live-wizard-form .field-label { display: block; margin: 0.45rem 0 0; font-size: 0.78rem; font-weight: 700; }
 .go-live-wizard-form .field-label:first-child { margin-top: 0; }
 .go-live-wizard-form .key-input,
-.go-live-wizard-form .select {
+.go-live-wizard-form .select,
+.go-live-wizard-form .go-live-wizard-quality {
   width: 100%;
+  max-width: 100%;
   box-sizing: border-box;
   font: inherit;
   font-size: 0.92rem;
+  line-height: 1.25;
+  min-height: 2.75rem;
   padding: 0.7rem 0.75rem;
   border-radius: 10px;
   border: 1px solid #e6dfd0;
   background: #fff;
   color: #1a1408;
+  appearance: auto;
+}
+.go-live-wizard-form #go-live-wizard-quality {
+  margin-bottom: 0.15rem;
 }
 .game-picker { position: relative; width: 100%; }
 .game-picker-trigger { display: flex; align-items: center; gap: 0.55rem; text-align: left; cursor: pointer; appearance: none; }

@@ -88,7 +88,8 @@ const wizardHtml = readFileSync(new URL('../src/renderer/app.html', import.meta.
 assert.match(wizardHtml, /id="program-chat-lines"/)
 assert.match(wizardHtml, /id="wizard-platform-twitch"/)
 assert.match(wizardHtml, /id="go-live-wizard-panel-details"/)
-assert.match(wizardHtml, /id="go-live-wizard-panel-chat"/)
+assert.equal(wizardHtml.includes('go-live-wizard-panel-chat'), false)
+assert.match(wizardHtml, /go-live-wizard-quality/)
 assert.equal(wizardHtml.includes('go-live-wizard-panel-validate'), false)
 assert.equal(wizardHtml.includes('Category comes from Go Live'), false)
 assert.match(wizardHtml, /id="stream-thumb-img"/)
@@ -153,6 +154,10 @@ assert.equal(wizardHtml.includes('Browser Mode'), false)
 assert.match(appTs, /postRelayConfig\(\s*health,\s*relayConfigForIngest\('primary'\)\)/)
 assert.match(appTs, /verifyRelayConfig\(\s*health,\s*config\)/)
 assert.match(appTs, /ensureRelayReadyForLive/)
+assert.doesNotMatch(
+  appTs,
+  /async function selectScene[\s\S]{0,400}activeOverlayPresetId = ''/,
+)
 assert.match(appTs, /electronWhipSignaling/)
 const relayClient = readFileSync(new URL('../src/renderer/relay-client.ts', import.meta.url), 'utf8')
 assert.match(relayClient, /JSON\.stringify\(body\)/)

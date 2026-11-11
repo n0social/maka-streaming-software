@@ -662,7 +662,7 @@
         <div class="go-live-wizard-rule" aria-hidden="true"></div>
         <div class="go-live-wizard-pane">
           <div class="go-live-wizard-form">
-            <p class="go-live-wizard-step" id="go-live-wizard-step">Step 1 of 5</p>
+            <p class="go-live-wizard-step" id="go-live-wizard-step">Step 1 of 4</p>
             <h2 id="go-live-wizard-title">Choose a platform</h2>
             <p class="go-live-wizard-lead" id="go-live-wizard-body">Which platform would you like to stream to?</p>
             <div id="go-live-wizard-panel-platform">
@@ -703,24 +703,7 @@
                 <p class="go-live-wizard-char-count" id="go-live-wizard-description-count">0/200</p>
               </div>
               <label class="field-label" for="go-live-wizard-quality">Encode profile</label>
-              <select id="go-live-wizard-quality" class="select program-stats-select-encode" aria-label="Encode profile"></select>
-            </div>
-            <div id="go-live-wizard-panel-chat" hidden>
-              <label class="go-live-chat-include" for="wizard-chat-include">
-                <input type="checkbox" id="wizard-chat-include" />
-                <span>Do you want these included?</span>
-              </label>
-              <div id="wizard-chat-fields" class="go-live-wizard-fields" hidden>
-                <div data-wizard-chat="twitch">
-                  <label class="field-label" for="wizard-twitch-channel">Twitch channel login</label>
-                  <input id="wizard-twitch-channel" class="key-input" type="text" maxlength="80" autocomplete="off" spellcheck="false" placeholder="channel name" aria-label="Twitch channel login" />
-                </div>
-                <div data-wizard-chat="youtube" hidden>
-                  <label class="field-label" for="wizard-youtube-chat-url">YouTube channel or live video URL</label>
-                  <input id="wizard-youtube-chat-url" class="key-input" type="text" maxlength="512" autocomplete="off" spellcheck="false" placeholder="https://www.youtube.com/watch?v=…" aria-label="YouTube channel or live video URL" />
-                </div>
-                <p class="go-live-wizard-chat-note" id="wizard-chat-note" hidden></p>
-              </div>
+              <select id="go-live-wizard-quality" class="select go-live-wizard-quality" aria-label="Encode profile"></select>
             </div>
             <div id="go-live-wizard-panel-go" hidden>
               <p class="go-live-wizard-status" id="go-live-wizard-go-status" data-state="idle" hidden></p>
