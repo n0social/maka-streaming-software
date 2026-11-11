@@ -37,10 +37,10 @@ if (!certOk) {
   run('npm', ['run', 'typecheck'])
   run('npm', ['run', 'build'])
   run('node', ['scripts/verify.mjs', '--offline'])
-  const publishArgs =
-    process.env.GH_TOKEN || process.env.MAKA_PUBLISH === '1' || process.env.TABCAST_PUBLISH === '1'
-      ? ['--publish', 'always']
-      : []
+  const wantPublish =
+    process.env.MAKA_SKIP_PUBLISH !== '1' &&
+    (process.env.GH_TOKEN || process.env.MAKA_PUBLISH === '1' || process.env.TABCAST_PUBLISH === '1')
+  const publishArgs = wantPublish ? ['--publish', 'always'] : []
   run('npx', ['electron-builder', '--win', 'nsis', ...publishArgs])
   process.exit(0)
 }
