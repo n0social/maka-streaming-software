@@ -1,0 +1,88 @@
+{
+  "siteName": "Maka",
+  "siteUrl": "https://makalive.stream",
+  "githubRelease": "https://github.com/n0social/maka-streaming-software/releases/tag/v0.2.6.2",
+  "releaseTag": "v0.2.6.2",
+  "appVersion": "0.2.6",
+  "primaryImage": "https://makalive.stream/marketing/feature-graphic-1024x500.png",
+  "downloadImage": "https://makalive.stream/marketing/download-now.png",
+  "screenshotImage": "https://makalive.stream/marketing/screenshot-desktop-1280x800.png",
+  "keywords": [
+    "Maka streaming",
+    "Maka game streaming",
+    "lightweight video game streaming platform",
+    "lightweight streaming software",
+    "cloud streaming for streamers",
+    "cloud gaming stream",
+    "cloud PC streaming",
+    "stream from the cloud",
+    "NVIDIA GeForce NOW",
+    "GeForce NOW streaming",
+    "GeForce NOW stream to Twitch",
+    "GeForce NOW YouTube live",
+    "Xbox Cloud Gaming",
+    "Xbox cloud gaming stream",
+    "xCloud streaming",
+    "xCloud Twitch",
+    "Shadow PC",
+    "Shadow PC cloud gaming",
+    "Shadow PC streaming",
+    "Cloud Moon",
+    "Cloud Moon gaming",
+    "Cloud Moon streaming",
+    "PVP streaming",
+    "PVP live stream",
+    "competitive gaming stream",
+    "ranked PVP stream",
+    "FPS streaming software",
+    "esports live stream",
+    "low CPU streaming",
+    "low overhead game capture",
+    "OBS alternative",
+    "OBS lightweight alternative",
+    "free Windows streaming software",
+    "Twitch streaming software",
+    "YouTube gaming live stream",
+    "RTMP game streaming",
+    "WHIP streaming",
+    "MAKArelay",
+    "game capture Windows",
+    "streamer tools",
+    "first official working build",
+    "Maka v0.2.6.2"
+  ],
+  "globalDescription": "Maka v0.2.6.2 — first official lightweight game streaming platform for Windows. Go live from NVIDIA GeForce NOW, Xbox Cloud Gaming, Shadow PC, and Cloud Moon. Cloud streaming for streamers, PVP, and competitive gamers — local WHIP relay, less overhead than OBS.",
+  "globalTitle": "Maka — lightweight cloud game streaming for streamers",
+  "pages": {
+    "home": {
+      "path": "/",
+      "canonical": "https://makalive.stream/",
+      "title": "Maka — lightweight cloud game streaming for streamers | v0.2.6.2",
+      "description": "Official v0.2.6.2 build — lightweight video game streaming for cloud gamers. Stream PVP and competitive games from GeForce NOW, Xbox Cloud Gaming, Shadow PC & Cloud Moon to Twitch & YouTube."
+    },
+    "download": {
+      "path": "/download.html",
+      "canonical": "https://makalive.stream/download.html",
+      "title": "Download Maka — cloud gaming stream software (Windows v0.2.6.2)",
+      "description": "Download Maka for Windows — first official working build for cloud streaming streamers. Lightweight capture for GeForce NOW, Xbox Cloud Gaming, Shadow PC, Cloud Moon, and PVP live streams."
+    },
+    "stream": {
+      "path": "/stream/",
+      "canonical": "https://makalive.stream/stream/",
+      "title": "Try Maka browser capture — cloud streamer preview",
+      "description": "Browser try for Maka — preview capture before you stream cloud games from GeForce NOW, Xbox Cloud Gaming, Shadow PC, or Cloud Moon to Twitch and YouTube."
+    },
+    "preview": {
+      "path": "/preview/",
+      "canonical": "https://makalive.stream/preview/",
+      "title": "Maka studio preview — lightweight streaming UI for gamers",
+      "description": "Preview the Maka streaming studio — cream-and-gold layout for cloud gamers, PVP streamers, and lightweight RTMP/WHIP workflows."
+    },
+    "legacy": {
+      "path": "/legacy.html",
+      "canonical": "https://makalive.stream/legacy.html",
+      "title": "Maka legacy web studio — cloud streaming workflow",
+      "description": "Legacy browser studio workflow for Maka — earlier path for lightweight game streaming and cloud PC capture."
+    }
+  }
+}
