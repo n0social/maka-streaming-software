@@ -30,9 +30,9 @@ export type SettingsTabId = (typeof SETTINGS_TAB_IDS)[number]
 
 export type AppSettings = {
   bitrateProfile: EncodeProfileId
-  startupMode: 'studio' | 'browse'
+  /** Studio-only shell; legacy `browse` values in old files are ignored on load. */
+  startupMode: 'studio'
   minimizeToTrayWhileLive: boolean
-  openChatOnBrowse: boolean
   labMode: boolean
   autoCheckUpdatesOnStartup: boolean
   recordingSaveFolder: string
@@ -85,7 +85,6 @@ const DEFAULT_SETTINGS: AppSettings = {
   bitrateProfile: '720p30',
   startupMode: 'studio',
   minimizeToTrayWhileLive: true,
-  openChatOnBrowse: false,
   labMode: false,
   autoCheckUpdatesOnStartup: true,
   recordingSaveFolder: '',

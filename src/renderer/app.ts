@@ -129,11 +129,6 @@ declare global {
 }
 
 const body = document.body
-const navrow = document.getElementById('navrow')!
-const browsetabs = document.getElementById('browsetabs')!
-const browseTabList = document.getElementById('browse-tab-list')!
-const urlInput = document.getElementById('url-input') as HTMLInputElement
-const urlForm = document.getElementById('url-form') as HTMLFormElement
 const relayChip = document.getElementById('relay-chip')!
 const relayLabel = document.getElementById('relay-label')!
 const relayStatus = document.getElementById('relay-status')!
@@ -255,7 +250,6 @@ const programBrowser = document.getElementById('program-browser')!
 const programBrowserVideo = document.getElementById('program-browser-video') as HTMLVideoElement
 const programChatSlot = document.getElementById('program-chat-slot')!
 const programNotificationsSlot = document.getElementById('program-notifications-slot')!
-const brandTag = document.getElementById('brand-tag')
 
 const CUSTOM_RTM_ADDON_ID = 'com.tabcast.custom-rtmp'
 
@@ -294,7 +288,6 @@ let micMuted = false
 let labMode = false
 let recordingSaveFolder = ''
 let lastStreamPlatform: 'twitch' | 'youtube' | 'none' = 'none'
-let browseTabsCache: BrowseTabInfo[] = []
 let relayStudioSettings: RelayStudioSettings = { streamTitle: '', streamCategory: '', streamDescription: '', audioMicBitrateKbps: 160, audioDesktopBitrateKbps: 160, videoEncoderPreference: 'system', gpuPreference: 'default' }
 let pcCameraBeforePhone = ''
 let pcMicBeforePhone = ''
@@ -377,67 +370,12 @@ function setDestError(message: string | null): void {
 function applyMode(mode: AppMode): void {
   currentMode = mode
   body.dataset.mode = mode
-  const browseOpen = mode === 'browse'
   const settingsOpen = mode === 'settings'
-  navrow.hidden = !browseOpen
-  browsetabs.hidden = !browseOpen
   settingsViewRoot.hidden = !settingsOpen
-
-  if (brandTag) {
-    if (settingsOpen) {
-      brandTag.textContent = 'Settings'
-      brandTag.hidden = false
-    } else {
-      brandTag.textContent = browseOpen ? 'Browser Mode' : 'Streaming studio'
-      brandTag.hidden = !browseOpen
-    }
-  }
-  document.title = settingsOpen
-    ? 'Maka — Settings'
-    : browseOpen
-      ? 'Maka — Browser'
-      : 'Maka — Streaming'
+  document.title = settingsOpen ? 'Maka — Settings' : 'Maka — Streaming'
 
   if (btnSettings) {
     btnSettings.setAttribute('aria-pressed', settingsOpen ? 'true' : 'false')
-  }
-
-  for (const tab of document.querySelectorAll<HTMLButtonElement>('.tab')) {
-    const active = tab.dataset.tab === 'studio' && mode === 'studio'
-    tab.classList.toggle('active', active)
-    tab.setAttribute('aria-selected', active ? 'true' : 'false')
-  }
-
-  if (mode === 'browse') {
-    void window.tabcast.listTabs().then(renderBrowseTabs)
-  }
-}
-
-function renderBrowseTabs(tabs: BrowseTabInfo[]): void {
-  browseTabList.innerHTML = ''
-  for (const tab of tabs) {
-    const btn = document.createElement('button')
-    btn.type = 'button'
-    btn.className = 'browse-tab' + (tab.active ? ' active' : '')
-    btn.title = tab.url
-    const label = document.createElement('span')
-    label.textContent = tab.title || 'Tab'
-    btn.appendChild(label)
-    if (!tab.pinned) {
-      const close = document.createElement('button')
-      close.type = 'button'
-      close.className = 'close'
-      close.textContent = '×'
-      close.addEventListener('click', (e) => {
-        e.stopPropagation()
-        void window.tabcast.closeTab(tab.id).then(renderBrowseTabs)
-      })
-      btn.appendChild(close)
-    }
-    btn.addEventListener('click', () => {
-      void window.tabcast.activateTab(tab.id).then(renderBrowseTabs)
-    })
-    browseTabList.appendChild(btn)
   }
 }
 
@@ -3238,34 +3176,6 @@ async function onVerifyKeys(): Promise<void> {
   }
 }
 
-for (const tab of document.querySelectorAll<HTMLButtonElement>('.tab')) {
-  tab.addEventListener('click', () => {
-    const mode = tab.dataset.tab as 'studio'
-    if (mode !== 'studio') return
-    if (currentMode === 'settings') {
-      void window.tabcast.exitSettingsMode()
-    }
-    if (currentMode !== 'studio') {
-      void window.tabcast.setMode('studio')
-      void window.tabcast.setSettings({ startupMode: 'studio' })
-    }
-  })
-}
-
-urlForm.addEventListener('submit', (event) => {
-  event.preventDefault()
-  void window.tabcast.navigate(urlInput.value)
-})
-
-document.getElementById('btn-back')!.addEventListener('click', () => {
-  void window.tabcast.back()
-})
-document.getElementById('btn-forward')!.addEventListener('click', () => {
-  void window.tabcast.forward()
-})
-document.getElementById('btn-reload')!.addEventListener('click', () => {
-  void window.tabcast.reload()
-})
 document.getElementById('btn-refresh-sources')!.addEventListener('click', () => {
   void refreshSources()
 })
@@ -3280,26 +3190,6 @@ document.getElementById('btn-stop-relay')!.addEventListener('click', () => {
 })
 document.getElementById('btn-reveal-relay')!.addEventListener('click', () => {
   void window.tabcast.revealRelay()
-})
-document.getElementById('btn-new-tab')!.addEventListener('click', () => {
-  void window.tabcast.newTab().then((t) => {
-    if (t) void window.tabcast.listTabs().then(renderBrowseTabs)
-  })
-})
-document.getElementById('btn-pin-twitch')!.addEventListener('click', () => {
-  void window.tabcast.openPinned('pin-twitch').then(renderBrowseTabs)
-})
-document.getElementById('btn-pin-yt')!.addEventListener('click', () => {
-  void window.tabcast.openPinned('pin-yt-studio').then(renderBrowseTabs)
-})
-document.getElementById('btn-pin-yt-chat')!.addEventListener('click', () => {
-  void window.tabcast.openPinned('pin-yt-chat').then(renderBrowseTabs)
-})
-document.getElementById('btn-pin-chat')!.addEventListener('click', () => {
-  void window.tabcast.openPinned('pin-chat').then(renderBrowseTabs)
-})
-document.getElementById('btn-popout-chat')!.addEventListener('click', () => {
-  void window.tabcast.popoutChat()
 })
 document.getElementById('btn-win-min')!.addEventListener('click', () => {
   void window.tabcast.windowMinimize()
@@ -3634,9 +3524,7 @@ window.tabcast.onPrepareQuit(() => {
   })
 })
 
-window.tabcast.onTabs((tabs) => {
-  browseTabsCache = tabs
-  renderBrowseTabs(tabs)
+window.tabcast.onTabs(() => {
   void refreshSources()
 })
 
@@ -3808,13 +3696,6 @@ window.addEventListener('keydown', (event) => {
 })
 
 window.tabcast.onMode(applyMode)
-window.tabcast.onNavigated((state) => {
-  urlInput.value = state.url
-})
-window.tabcast.onTitle((title) => {
-  if (currentMode !== 'browse') return
-  document.title = title ? `${title} · Maka — Browser` : 'Maka — Browser'
-})
 
 // initMarketplace(window.tabcast, {
 //   dialog: document.getElementById('marketplace-dialog') as HTMLDialogElement,
@@ -3839,9 +3720,6 @@ updateStudioMixControls()
 void window.tabcast.getMode().then(applyMode)
 void settingsView.refreshVersions()
 window.tabcast.onRelayUpdate(handleRelayLiveRecovery)
-void window.tabcast.getBrowserState().then((state) => {
-  if (state) urlInput.value = state.url
-})
 void refreshSources()
 void refreshAvDevices().then(() => {
   showWebcamOfflineIdle()
