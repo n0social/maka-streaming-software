@@ -77,9 +77,9 @@ let relayWasReady = false
 
 let mainWindow: BrowserWindow | null = null
 let chatWindow: BrowserWindow | null = null
-type ShellMode = 'studio' | 'browse' | 'settings'
+type ShellMode = 'studio' | 'settings'
 let appMode: ShellMode = 'studio'
-let workspaceBeforeSettings: 'studio' | 'browse' = 'studio'
+let workspaceBeforeSettings: 'studio' = 'studio'
 let settings = loadSettings()
 let quitInProgress = false
 let quitReadyResolve: (() => void) | null = null
@@ -99,9 +99,6 @@ if (!singleInstance) {
 
 const TITLEBAR = 40
 const CHROME_STUDIO_TOP = TITLEBAR
-const BROWSE_TABSTRIP = 36
-const BROWSE_NAV = 44
-const CHROME_BROWSE_TOP = TITLEBAR + BROWSE_TABSTRIP + BROWSE_NAV
 const SIDEBAR_LEFT = 280
 const SIDEBAR_RIGHT = 300
 
@@ -182,39 +179,28 @@ function layoutBrowserPane(win: BrowserWindow): void {
     return
   }
 
-  const browseChrome =
-    appMode === 'browse' || browse.isCapturePinned()
-
-  if (!browseChrome) {
+  if (!browse.isCapturePinned()) {
     browse.setVisible(false)
     browse.setBounds({ x: 0, y: 0, width: 0, height: 0 })
     return
   }
 
   browse.ensureSeeded()
-  browse.setVisible(appMode === 'browse')
+  browse.setVisible(true)
   const [width, height] = win.getContentSize()
-  const fullWidthBrowse = appMode === 'browse'
-  const paneLeft = fullWidthBrowse ? 0 : SIDEBAR_LEFT
-  const paneWidth = fullWidthBrowse
-    ? width
-    : Math.max(320, width - SIDEBAR_LEFT - SIDEBAR_RIGHT)
+  const paneWidth = Math.max(320, width - SIDEBAR_LEFT - SIDEBAR_RIGHT)
   browse.setBounds({
-    x: paneLeft,
-    y: appMode === 'browse' ? CHROME_BROWSE_TOP : CHROME_STUDIO_TOP,
+    x: SIDEBAR_LEFT,
+    y: CHROME_STUDIO_TOP,
     width: paneWidth,
-    height: Math.max(240, height - (appMode === 'browse' ? CHROME_BROWSE_TOP : CHROME_STUDIO_TOP)),
+    height: Math.max(240, height - CHROME_STUDIO_TOP),
   })
 }
 
 function setAppMode(mode: ShellMode): void {
-  if (mode === 'browse') {
-    setAppMode('studio')
-    return
-  }
   if (mode === 'settings') {
-    if (appMode === 'studio' || appMode === 'browse') {
-      workspaceBeforeSettings = appMode
+    if (appMode === 'studio') {
+      workspaceBeforeSettings = 'studio'
     }
     appMode = 'settings'
     if (mainWindow && !mainWindow.isDestroyed()) {
@@ -353,8 +339,8 @@ function createMainWindow(): BrowserWindow {
   win.once('ready-to-show', () => {
     win.show()
     const captureMode = process.env.MAKA_CAPTURE_MODE
-    if (captureMode === 'browse' || captureMode === 'studio') {
-      appMode = captureMode
+    if (captureMode === 'studio' || captureMode === 'browse') {
+      appMode = 'studio'
     }
     setAppMode(appMode)
     const capturePath = process.env.MAKA_CAPTURE_PATH
@@ -559,11 +545,11 @@ function registerIpc(): void {
 
   ipcMain.handle('app:get-mode', () => appMode)
   ipcMain.handle('app:get-workspace-mode', () =>
-    appMode === 'settings' ? workspaceBeforeSettings : appMode === 'browse' ? 'browse' : 'studio',
+    appMode === 'settings' ? workspaceBeforeSettings : 'studio',
   )
   ipcMain.handle('app:set-mode', (event, mode: ShellMode) => {
     if (!studioOk(event)) return appMode
-    if (mode !== 'studio' && mode !== 'browse' && mode !== 'settings') return appMode
+    if (mode !== 'studio' && mode !== 'settings') return appMode
     setAppMode(mode)
     return appMode
   })
@@ -698,7 +684,6 @@ function registerIpc(): void {
   ipcMain.handle('browser:navigate', (event, raw: unknown) => {
     if (!studioOk(event) || !mainWindow) return null
     browse.attach(mainWindow)
-    setAppMode('browse')
     return browse.navigateActive(sanitizeNavigateInput(raw))
   })
   ipcMain.handle('browser:back', (event) => {
@@ -724,7 +709,6 @@ function registerIpc(): void {
   ipcMain.handle('browser:new-tab', (event, url?: unknown) => {
     if (!studioOk(event) || !mainWindow) return null
     browse.attach(mainWindow)
-    setAppMode('browse')
     const normalized = url ? normalizeBrowseUrl(sanitizeNavigateInput(url)) : null
     return browse.addTab(normalized || 'https://www.twitch.tv/directory')
   })
@@ -745,7 +729,6 @@ function registerIpc(): void {
     if (!isValidPresetId(presetId)) return browse.list()
     if (!mainWindow) return browse.list()
     browse.attach(mainWindow)
-    setAppMode('browse')
     browse.openPinned(presetId)
     return browse.list()
   })
@@ -1094,12 +1077,11 @@ function registerIpc(): void {
     if (!studioOk(event)) {
       return { mode: appMode, top: CHROME_STUDIO_TOP, left: SIDEBAR_LEFT, right: SIDEBAR_RIGHT }
     }
-    const fullWidthBrowse = appMode === 'browse'
     return {
       mode: appMode,
-      top: appMode === 'browse' ? CHROME_BROWSE_TOP : CHROME_STUDIO_TOP,
-      left: fullWidthBrowse ? 0 : SIDEBAR_LEFT,
-      right: fullWidthBrowse ? 0 : SIDEBAR_RIGHT,
+      top: CHROME_STUDIO_TOP,
+      left: SIDEBAR_LEFT,
+      right: SIDEBAR_RIGHT,
     }
   })
 

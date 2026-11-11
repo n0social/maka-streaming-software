@@ -38,9 +38,6 @@ export function coerceSettings(partial: unknown): Partial<AppSettings> {
   if (typeof p.minimizeToTrayWhileLive === 'boolean') {
     out.minimizeToTrayWhileLive = p.minimizeToTrayWhileLive
   }
-  if (typeof p.openChatOnBrowse === 'boolean') {
-    out.openChatOnBrowse = p.openChatOnBrowse
-  }
   if (typeof p.labMode === 'boolean') {
     out.labMode = p.labMode
   }

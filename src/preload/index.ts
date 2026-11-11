@@ -5,7 +5,7 @@ import type { PhonePairSnapshot, PhoneWebRtcSessionDescription } from '../shared
 import type { EncodeProfileId } from '../shared/stream-encode-profiles'
 import type { StreamDestinationSettings } from '../shared/stream-destination-settings'
 import type { VcamCapability } from '../shared/virtual-camera'
-export type WorkspaceMode = 'studio' | 'browse'
+export type WorkspaceMode = 'studio'
 export type AppMode = WorkspaceMode | 'settings'
 
 export type CaptureSource = {
@@ -38,7 +38,6 @@ export type AppSettings = {
   bitrateProfile: EncodeProfileId
   startupMode: WorkspaceMode
   minimizeToTrayWhileLive: boolean
-  openChatOnBrowse: boolean
   labMode: boolean
   autoCheckUpdatesOnStartup: boolean
   recordingSaveFolder: string
