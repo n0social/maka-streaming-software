@@ -329,27 +329,6 @@ function resolveLaunch(): DirectRelayLaunch {
   }
 }
 
-/** Dev launches have no MAKArelay.exe. Start the local relay that speaks the same API. */
-function devRelayLaunch(): DirectRelayLaunch | null {
-  if (app.isPackaged) return null
-  const root = app.getAppPath()
-  const script = join(root, 'scripts', 'web-relay-dev.mjs')
-  if (!existsSync(script)) return null
-  const fromNpm = process.env.npm_node_execpath
-  const command = fromNpm && existsSync(fromNpm) ? fromNpm : 'node'
-  return {
-    command,
-    args: [script],
-    cwd: root,
-    mode: 'direct',
-    env: {
-      ...process.env,
-      RELAY_HOST: '127.0.0.1',
-      RELAY_PORT: String(RELAY_DEFAULT_PORT),
-    },
-  }
-}
-
 async function terminateAllRelays(owned: ChildProcess | null): Promise<void> {
   await postRelayStop()
   await sleep(400)
@@ -437,38 +416,34 @@ export class RelayManager {
   }
 
   private async startExclusive(reason: string): Promise<void> {
-    if (await isRelayHealthy()) {
-      try {
-        await this.attachRunningRelay(reason)
-        return
-      } catch {
-        // The listener disappeared. Start one below.
-      }
-    }
-
     const exe = resolveRelayExe()
     const integrity = relayIntegrityError(exe)
-    const shaError = integrity ? null : await relaySha256Error(exe)
-    const blocked = integrity || shaError
-    let launch: DirectRelayLaunch
-    if (blocked) {
-      const devLaunch = devRelayLaunch()
-      if (!devLaunch) {
-        recordDiagnostic('error', 'relay.integrity', blocked)
-        this.emit({
-          lifecycle: 'error',
-          error: blocked,
-          health: null,
-          status: null,
-          pid: null,
-        })
-        return
-      }
-      launch = devLaunch
-      recordDiagnostic('info', 'relay.dev', 'Encoder binary missing. Starting the built-in dev relay.')
-    } else {
-      launch = resolveLaunch()
+    if (integrity) {
+      recordDiagnostic('error', 'relay.integrity', integrity)
+      this.emit({
+        lifecycle: 'error',
+        error: integrity,
+        health: null,
+        status: null,
+        pid: null,
+      })
+      return
     }
+
+    const shaError = await relaySha256Error(exe)
+    if (shaError) {
+      recordDiagnostic('error', 'relay.integrity', shaError)
+      this.emit({
+        lifecycle: 'error',
+        error: shaError,
+        health: null,
+        status: null,
+        pid: null,
+      })
+      return
+    }
+
+    const launch = resolveLaunch()
     recordDiagnostic('info', 'relay.start', `Starting relay (${reason}, ${launch.mode})`, undefined, {
       restarts: this.restartCount,
       command: launch.command,
@@ -578,19 +553,6 @@ export class RelayManager {
     recordDiagnostic('error', 'relay.health-timeout', timeoutMsg)
     this.emit({ lifecycle: 'error', error: timeoutMsg })
     this.scheduleRestart('health-timeout')
-  }
-
-  private async attachRunningRelay(reason: string): Promise<void> {
-    const health = localizeRelayHealth(await fetchJson<RelayHealth>(RELAY_HEALTH_PATH))
-    this.healthFailStreak = 0
-    recordDiagnostic('info', 'relay.attach', `Relay already listening (${reason}) v${health.version}`)
-    this.emit({
-      lifecycle: 'ready',
-      health,
-      error: null,
-      pid: this.child?.pid ?? null,
-    })
-    this.startPolling()
   }
 
   async stop(): Promise<void> {

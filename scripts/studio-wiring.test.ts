@@ -149,8 +149,7 @@ const relayTs = readFileSync(new URL('../src/main/relay.ts', import.meta.url), '
 const mainTs = readFileSync(new URL('../src/main/index.ts', import.meta.url), 'utf8')
 assert.match(relayTs, /detached: true/)
 assert.match(relayTs, /killProcessTree/)
-assert.match(relayTs, /web-relay-dev\.mjs/)
-assert.match(relayTs, /Encoder binary missing\. Starting the built-in dev relay\./)
+assert.equal(relayTs.includes('web-relay-dev.mjs'), false)
 assert.match(mainTs, /void relay\.start\(\)/)
 
 const sleeper = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
