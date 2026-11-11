@@ -548,27 +548,28 @@ function registerIpc(): void {
   ipcMain.handle('whip:publish', async (event, payload: unknown) => {
     if (!studioOk(event)) throw new Error('Unauthorized')
     const sdp = typeof (payload as { sdp?: unknown })?.sdp === 'string' ? (payload as { sdp: string }).sdp : ''
-    const token =
-      typeof (payload as { token?: unknown })?.token === 'string'
-        ? (payload as { token: string }).token.trim()
-        : ''
     if (!sdp.trim()) throw new Error('WHIP offer SDP required')
 
     await relay.refresh().catch(() => undefined)
-    const snap = relay.getSnapshot()
-    if (!snap.health) {
+    let authToken = ''
+    try {
+      authToken = (await relay.fetchHealthLive()).relayToken.trim()
+    } catch (err) {
+      const snap = relay.getSnapshot()
       throw new Error(
         snap.error ??
-          'MAKArelay is not responding on localhost. Wait for the relay chip to show Ready, or press Start relay.',
+          (err instanceof Error ? err.message : 'MAKArelay /health failed before WHIP publish'),
       )
+    }
+    if (!authToken) {
+      throw new Error('Relay token missing from /health — press Start relay or restart Maka.')
     }
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/sdp',
       Accept: 'application/sdp',
+      Authorization: `Bearer ${authToken}`,
     }
-    const authToken = token || snap.health.relayToken
-    if (authToken) headers.Authorization = `Bearer ${authToken}`
 
     const res = await relayControlFetch(
       RELAY_WHIP_URL,
@@ -591,14 +592,17 @@ function registerIpc(): void {
       typeof (payload as { resourceUrl?: unknown })?.resourceUrl === 'string'
         ? (payload as { resourceUrl: string }).resourceUrl.trim()
         : ''
-    const token =
-      typeof (payload as { token?: unknown })?.token === 'string'
-        ? (payload as { token: string }).token.trim()
-        : ''
-    if (!resourceUrl || !token) return
+    if (!resourceUrl) return
+    let authToken = ''
+    try {
+      authToken = (await relay.fetchHealthLive()).relayToken.trim()
+    } catch {
+      return
+    }
+    if (!authToken) return
     await fetch(resourceUrl, {
       method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${authToken}` },
       signal: AbortSignal.timeout(8_000),
     }).catch(() => undefined)
   })
