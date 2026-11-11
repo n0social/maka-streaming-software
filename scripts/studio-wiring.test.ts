@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
+import { spawn } from 'node:child_process'
 import { readFileSync } from 'node:fs'
+import { killProcessTree } from '../src/main/process-tree.ts'
 import { nextCustomSceneId, removeCustomScene } from '../src/shared/custom-scenes.ts'
 import { alertBoxPageUrl, alertCard, parseTwitchIrcAlert, streamChatUrl } from '../src/shared/stream-overlays.ts'
 import { isTwitchStreamKey, sanitizeYouTubeDescription, streamKeyValid, youtubeVideoId } from '../src/shared/stream-wizard.ts'
@@ -132,5 +134,38 @@ assert.match(appTs, /End Stream/)
 assert.equal(wizardHtml.includes('id="program-output-mode"'), false)
 assert.equal(wizardHtml.includes('Browser Mode'), false)
 assert.match(appTs, /postRelayConfig\(snapshot\.health, relayConfigForIngest\('primary'\)\)/)
+assert.match(appTs, /Save Twitch key/)
+assert.match(appTs, /Save YouTube key/)
+assert.match(appTs, /dataset\.key = streamKeyValid/)
+assert.equal(streamKeyValid('twitch', 'live_saved_key_1234567890'), true)
+assert.equal(streamKeyValid('twitch', 'not-a-key'), false)
+assert.equal(streamKeyValid('youtube', 'abcd-efgh-ijkl-mnop'), true)
+assert.equal(streamKeyValid('youtube', ''), false)
+
+const onboardingTs = readFileSync(new URL('../src/renderer/onboarding.ts', import.meta.url), 'utf8')
+assert.equal(onboardingTs.includes('start the relay on the left'), false)
+assert.match(onboardingTs, /turns on when Maka opens/)
+const relayTs = readFileSync(new URL('../src/main/relay.ts', import.meta.url), 'utf8')
+const mainTs = readFileSync(new URL('../src/main/index.ts', import.meta.url), 'utf8')
+assert.match(relayTs, /detached: true/)
+assert.match(relayTs, /killProcessTree/)
+assert.match(mainTs, /void relay\.start\(\)/)
+
+const sleeper = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
+  detached: true,
+  stdio: 'ignore',
+})
+const sleeperPid = sleeper.pid
+assert.ok(sleeperPid)
+await new Promise((resolve) => setTimeout(resolve, 150))
+killProcessTree(sleeperPid)
+await new Promise((resolve) => setTimeout(resolve, 200))
+let sleeperGone = false
+try {
+  process.kill(sleeperPid, 0)
+} catch {
+  sleeperGone = true
+}
+assert.equal(sleeperGone, true)
 
 console.log('studio-wiring tests passed')

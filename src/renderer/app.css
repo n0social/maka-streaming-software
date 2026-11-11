@@ -1130,6 +1130,16 @@ body[data-mode='settings'] #brand-tag {
   color: #6b6256;
 }
 
+.platform-chip[data-key='valid'] {
+  color: #17803d;
+  font-weight: 700;
+}
+
+.platform-chip[data-key='valid'][data-state='error'] {
+  color: #9a3b3b;
+  font-weight: 600;
+}
+
 .addon-panels {
   display: flex;
   flex-direction: column;

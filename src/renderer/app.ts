@@ -59,7 +59,7 @@ import {
 } from '../shared/ingest-failover'
 import { validateRelayStreamKeys, KICK_RTMP_URL } from '../shared/stream-keys'
 import { buildRelayConfigRequest, sanitizeStreamCategory, sanitizeStreamTitle, type RelayStudioSettings } from '../shared/relay-config'
-import { isTwitchLogin, normalizeTwitchChannel, youtubeVideoId } from '../shared/stream-wizard'
+import { isTwitchLogin, normalizeTwitchChannel, streamKeyValid, youtubeVideoId } from '../shared/stream-wizard'
 import type { StreamDestinationSettings } from '../shared/stream-destination-settings'
 import { GoLiveWizard, type GoLiveWizardPlatform } from './go-live-wizard'
 import {
@@ -193,6 +193,7 @@ const platformKeyForm = document.getElementById('platform-key-form') as HTMLForm
 const platformKeyPanelTwitch = document.getElementById('platform-key-panel-twitch')!
 const platformKeyPanelYoutube = document.getElementById('platform-key-panel-youtube')!
 const platformKeyDialogTitle = document.getElementById('platform-key-dialog-title')!
+const platformKeySave = document.getElementById('platform-key-save') as HTMLButtonElement
 const camScale = document.getElementById('cam-scale') as HTMLInputElement
 const micMeter = document.getElementById('mic-meter')!
 const desktopMeter = document.getElementById('desktop-meter')!
@@ -842,7 +843,7 @@ function updateStudioStatusFooter(snapshot: RelaySnapshot): void {
   }
   if (snapshot.lifecycle === 'stopped') {
     studioStatusDot.dataset.state = 'warn'
-    studioStatusText.textContent = 'Relay offline — start when ready'
+    studioStatusText.textContent = 'Relay is off'
     return
   }
   studioStatusDot.dataset.state = 'ok'
@@ -1333,12 +1334,14 @@ function renderPlatformStatus(snapshot: RelaySnapshot): void {
     live,
     platforms?.twitch,
   )
+  platTwitch.dataset.key = streamKeyValid('twitch', twitchKey.value) ? 'valid' : 'missing'
   platYoutube.dataset.state = platformChipState(
     destYoutube.checked,
     Boolean(youtubeKey.value.trim()),
     live,
     platforms?.youtube,
   )
+  platYoutube.dataset.key = streamKeyValid('youtube', youtubeKey.value) ? 'valid' : 'missing'
   platCustom.dataset.state = platformChipState(
     destCustom.checked,
     Boolean(customRtmpKey.value.trim()),
@@ -1889,15 +1892,17 @@ function openPlatformKeyDialog(platform: PlatformKeyTarget): void {
   platformKeyPanelTwitch.hidden = platform !== 'twitch'
   platformKeyPanelYoutube.hidden = platform !== 'youtube'
   platformKeyDialogTitle.textContent = platform === 'twitch' ? 'Twitch' : 'YouTube'
+  platformKeySave.textContent = platform === 'twitch' ? 'Save Twitch key' : 'Save YouTube key'
   twitchChatLinkInput.value = streamTwitchChatLink
   youtubeChatLinkInput.value = streamYoutubeChatLink
   platformKeyStatus.hidden = true
   platformKeyStatus.textContent = ''
   syncDestinationInputs()
-  platformKeyDialog.showModal()
   const input = platform === 'twitch' ? twitchKey : youtubeKey
+  input.disabled = false
+  platformKeyDialog.showModal()
   requestAnimationFrame(() => {
-    if (!input.disabled) input.focus()
+    input.focus()
   })
 }
 

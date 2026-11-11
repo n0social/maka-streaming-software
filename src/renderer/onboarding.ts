@@ -39,7 +39,7 @@ export const ONBOARDING_STEPS: TourStep[] = [
   {
     id: 'relay',
     title: 'Ready to send',
-    body: 'This light tells you if Maka can send the stream. If it says offline, start the relay on the left.',
+    body: 'This light turns on when Maka opens, and it turns off when you close the app.',
     target: '[data-tour="relay"]',
     placement: 'bottom',
   },
