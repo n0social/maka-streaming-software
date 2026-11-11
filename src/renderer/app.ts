@@ -81,11 +81,13 @@ import {
   WHIP_DISCONNECT_GRACE_MS,
   postRelayConfig,
   postSceneLayout,
+  postWhipOfferHttp,
   relayNeedsLiveBootstrap,
   stopRelayStream,
   verifyRelayConfig,
   waitForRelayReady,
   whipUrlFromHealth,
+  pingRelayHealth,
 } from './relay-client'
 import {
   publishWhip,
@@ -1657,10 +1659,20 @@ function relayBearerToken(headers: Record<string, string>): string {
 }
 
 const electronWhipSignaling: WhipSignaling = {
-  postOffer: (localSdp, headers) => {
+  postOffer: async (localSdp, headers) => {
     const token = relayBearerToken(headers)
-    if (!token) throw new Error('Relay token missing for WHIP')
-    return window.tabcast.publishWhipOffer(localSdp, token)
+    const whipUrl = whipUrlFromHealth({ ok: true, version: '', streamUrl: '', relayToken: token })
+    try {
+      return await window.tabcast.publishWhipOffer(localSdp, token)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      const ipcOrTransport =
+        /invoking remote method 'whip:publish'/i.test(message) ||
+        /fetch failed/i.test(message) ||
+        /ECONNREFUSED|ENOTFOUND|ETIMEDOUT/i.test(message)
+      if (!ipcOrTransport) throw err
+      return postWhipOfferHttp(whipUrl, localSdp, headers)
+    }
   },
   deleteResource: (resourceUrl, headers) => {
     const token = relayBearerToken(headers)
@@ -1683,6 +1695,22 @@ async function ensureRelayReadyForLive(): Promise<RelaySnapshot> {
     throw new Error(
       snapshot.error ??
         'MAKArelay did not respond. Open Settings or restart the app, then confirm the relay chip shows Ready.',
+    )
+  }
+  return snapshot
+}
+
+async function snapshotWithReachableRelay(): Promise<RelaySnapshot> {
+  let snapshot = await window.tabcast.refreshRelay()
+  if (!snapshot.health || snapshot.lifecycle === 'stopped' || snapshot.lifecycle === 'error') {
+    snapshot = await ensureRelayReadyForLive()
+  } else if (!(await pingRelayHealth())) {
+    snapshot = await ensureRelayReadyForLive()
+  }
+  if (!snapshot.health || !(await pingRelayHealth())) {
+    throw new Error(
+      snapshot.error ??
+        'MAKArelay is not reachable at 127.0.0.1:38473. Wait for Ready on the relay chip or press Start relay.',
     )
   }
   return snapshot
@@ -3105,10 +3133,7 @@ async function goLive(): Promise<void> {
       }),
     )
     await pushSceneLayout()
-    snapshot = await window.tabcast.refreshRelay()
-    if (!snapshot.health) {
-      snapshot = await ensureRelayReadyForLive()
-    }
+    snapshot = await snapshotWithReachableRelay()
 
     destHint.textContent = 'Publishing WHIP to local relay…'
     liveRecoveryAttempts = 0
