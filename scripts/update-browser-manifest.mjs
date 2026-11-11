@@ -91,6 +91,14 @@ async function main() {
     releasedAt: new Date().toISOString(),
   }
 
+  const releaseTag =
+    process.env.GITHUB_REF_NAME?.match(/^v[\d.]+/)?.[0] ??
+    (process.env.RELEASE_TAG?.trim() || null)
+  if (releaseTag) {
+    manifest.releaseTag = releaseTag
+    manifest.githubRelease = `https://github.com/n0social/maka-streaming-software/releases/tag/${releaseTag}`
+  }
+
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8')
   console.log(`Updated ${manifestPath}`)
   console.log(`  ${artifact} · ${size} bytes · signed=${signed}`)
