@@ -27,9 +27,18 @@ Outputs: `dist-installer/Maka-Setup-<version>.exe`, `dist-installer/latest.yml`,
 
 The job always uploads a workflow **artifact** with the installer and manifest.
 
-## Tagged release (publish)
+## Tagged release (publish) — recommended for “latest” on GitHub
 
-Push a tag matching `v*` or `maka.streaming.*`, or use **Release** workflow dispatch with the tag name. That path runs `dist:signed` with optional code signing and publishes to GitHub Releases when configured.
+Push a tag matching `v*` or `maka.streaming.*` on the commit you want to ship. That starts the **Release** workflow (`release.yml`):
+
+```bash
+git tag -a maka.streaming.v0.2.7 -m "Maka 0.2.7"
+git push origin maka.streaming.v0.2.7
+```
+
+The job builds on `windows-latest`, attaches `Maka-Setup-<version>.exe`, `latest.yml`, and `site/browser-manifest.json` to the GitHub Release (unsigned when `CSC_LINK` is not set). `contains(tag, 'wip')` creates a **draft** release.
+
+Alternatively: **Actions → Release → Run workflow** and pass an **existing** tag name.
 
 ## Version
 
