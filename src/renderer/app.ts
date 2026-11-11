@@ -2180,6 +2180,7 @@ async function refreshSourcePicker(kind: SourceKind): Promise<void> {
           layerEnabled.mic = false
           micSelect.value = ''
           lastMicSelectValue = ''
+          rememberPreferredMic('')
           await applyMic()
           syncLayerTracks()
           void refreshSourcePicker('mic')
@@ -2194,6 +2195,7 @@ async function refreshSourcePicker(kind: SourceKind): Promise<void> {
             layerEnabled.mic = true
             micSelect.value = opt.value
             lastMicSelectValue = opt.value
+            rememberPreferredMic(opt.value)
             await applyMic()
             syncLayerTracks()
             void refreshSourcePicker('mic')
@@ -2933,6 +2935,12 @@ async function applyCamera(): Promise<void> {
   }
 }
 
+function rememberPreferredMic(deviceId: string): void {
+  if (deviceId === PHONE_MIC_DEVICE_VALUE) return
+  micSelect.dataset.preferredMic = deviceId
+  void window.tabcast.setSettings({ preferredMicDeviceId: deviceId })
+}
+
 async function applyMic(): Promise<void> {
   releaseMicStream()
   stopMicMeter()
@@ -3323,12 +3331,6 @@ const settingsView = initSettingsView(window.tabcast, {
   onRecordingFolderChange: (folder) => {
     recordingSaveFolder = folder
     syncRecordingButtonHint()
-  },
-  onPreferredMicChange: (deviceId) => {
-    if ([...micSelect.options].some((o) => o.value === deviceId)) {
-      micSelect.value = deviceId
-      void applyMic()
-    }
   },
   onReplaySetup: () => {
     void window.tabcast.exitSettingsMode().then(() => {
@@ -3753,6 +3755,7 @@ cameraSelect.addEventListener('change', () => {
 micSelect.addEventListener('change', () => {
   const prev = lastMicSelectValue
   lastMicSelectValue = micSelect.value
+  rememberPreferredMic(micSelect.value)
   if (
     prev &&
     prev !== PHONE_MIC_DEVICE_VALUE &&

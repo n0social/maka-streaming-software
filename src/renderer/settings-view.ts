@@ -20,7 +20,6 @@ export type SettingsViewHooks = {
   onLabModeChange: (labMode: boolean) => void
   onEncodeProfileChange: (profile: AppSettings['bitrateProfile']) => void
   onRecordingFolderChange: (folder: string) => void
-  onPreferredMicChange: (deviceId: string) => void
   onRelayStudioSettingsChange: () => void
   onReplaySetup: () => void
   onReplayTour: () => void
@@ -51,24 +50,6 @@ function populateEncodeSelect(select: HTMLSelectElement): void {
   }
 }
 
-async function populateMicDevices(select: HTMLSelectElement): Promise<void> {
-  const current = select.value
-  select.innerHTML = '<option value="">System default</option>'
-  try {
-    const devices = await navigator.mediaDevices.enumerateDevices()
-    for (const device of devices) {
-      if (device.kind !== 'audioinput') continue
-      const opt = document.createElement('option')
-      opt.value = device.deviceId
-      opt.textContent = device.label || `Microphone ${select.options.length}`
-      select.appendChild(opt)
-    }
-  } catch {
-    // permissions may be missing
-  }
-  if (current) select.value = current
-}
-
 function applySettingsToForm(s: AppSettings): void {
   ;(document.getElementById('set-tray-live') as HTMLInputElement).checked =
     s.minimizeToTrayWhileLive
@@ -78,12 +59,6 @@ function applySettingsToForm(s: AppSettings): void {
   const encodeSelect = document.getElementById('set-encode-profile') as HTMLSelectElement
   populateEncodeSelect(encodeSelect)
   encodeSelect.value = s.bitrateProfile
-  ;(document.getElementById('set-last-platform') as HTMLSelectElement).value =
-    s.lastStreamPlatform
-  ;(document.getElementById('set-stream-title') as HTMLInputElement).value = s.streamTitle
-  ;(document.getElementById('set-stream-category') as HTMLInputElement).value = s.streamCategory
-  ;(document.getElementById('set-stream-channel') as HTMLInputElement).value = s.streamChannel ?? ''
-  ;(document.getElementById('set-alert-box-url') as HTMLInputElement).value = s.streamAlertBoxUrl ?? ''
   ;(document.getElementById('set-mic-bitrate') as HTMLSelectElement).value = String(
     s.audioMicBitrateKbps,
   )
@@ -138,7 +113,6 @@ export function initSettingsView(tabcast: TabcastBridge, hooks: SettingsViewHook
   refreshVersions: () => Promise<void>
 } {
   const root = document.getElementById('settings-view') as HTMLElement
-  const micSelect = document.getElementById('set-mic-device') as HTMLSelectElement
 
   for (const btn of root.querySelectorAll<HTMLButtonElement>('.settings-tab')) {
     btn.addEventListener('click', () => {
@@ -166,40 +140,6 @@ export function initSettingsView(tabcast: TabcastBridge, hooks: SettingsViewHook
     const value = (event.target as HTMLSelectElement).value as AppSettings['bitrateProfile']
     void tabcast.setSettings({ bitrateProfile: value }).then(() => {
       hooks.onEncodeProfileChange(value)
-    })
-  })
-
-  document.getElementById('set-last-platform')!.addEventListener('change', (event) => {
-    const value = (event.target as HTMLSelectElement).value as AppSettings['lastStreamPlatform']
-    void tabcast.setSettings({ lastStreamPlatform: value })
-  })
-
-  const persistStreamMetaField = (key: 'streamTitle' | 'streamCategory' | 'streamChannel', raw: string) => {
-    const value =
-      key === 'streamChannel'
-        ? raw.trim().replace(/^@/, '').replace(/\s+/g, '').slice(0, 64)
-        : raw.trim().replace(/\s+/g, ' ').slice(0, key === 'streamTitle' ? 140 : 100)
-    void tabcast.setSettings({ [key]: value }).then(() => hooks.onRelayStudioSettingsChange())
-  }
-  document.getElementById('set-stream-title')!.addEventListener('change', (e) => {
-    persistStreamMetaField('streamTitle', (e.target as HTMLInputElement).value)
-  })
-  document.getElementById('set-stream-category')!.addEventListener('change', (e) => {
-    persistStreamMetaField('streamCategory', (e.target as HTMLInputElement).value)
-  })
-  document.getElementById('set-stream-channel')!.addEventListener('change', (e) => {
-    persistStreamMetaField('streamChannel', (e.target as HTMLInputElement).value)
-  })
-  document.getElementById('set-alert-box-url')!.addEventListener('change', (e) => {
-    void tabcast.setSettings({ streamAlertBoxUrl: (e.target as HTMLInputElement).value.trim() }).then(() => {
-      hooks.onRelayStudioSettingsChange()
-    })
-  })
-
-  micSelect.addEventListener('change', () => {
-    const deviceId = micSelect.value
-    void tabcast.setSettings({ preferredMicDeviceId: deviceId }).then(() => {
-      hooks.onPreferredMicChange(deviceId)
     })
   })
 
@@ -250,8 +190,6 @@ export function initSettingsView(tabcast: TabcastBridge, hooks: SettingsViewHook
     open: async () => {
       const s = await tabcast.getSettings()
       applySettingsToForm(s)
-      await populateMicDevices(micSelect)
-      micSelect.value = s.preferredMicDeviceId || ''
       await populateGpuSelect(tabcast, s.gpuPreference)
       await refreshVersionLabels(tabcast)
       root.hidden = false
