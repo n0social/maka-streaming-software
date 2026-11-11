@@ -1,20 +1,17 @@
 import type { EncodeProfileId } from '../shared/stream-encode-profiles'
 import {
   extractStreamKey,
-  isTwitchLogin,
-  normalizeTwitchChannel,
   sanitizeStreamGame,
   sanitizeStreamWizardTitle,
   sanitizeYouTubeDescription,
   streamKeyValid,
-  youtubeVideoId,
   YOUTUBE_DESCRIPTION_LIMIT,
 } from '../shared/stream-wizard'
 
 export type GoLiveWizardPlatform = 'twitch' | 'youtube' | 'custom'
 
 type WizardPlatform = 'twitch' | 'youtube'
-type WizardStep = 'platform' | 'key' | 'details' | 'chat' | 'go'
+type WizardStep = 'platform' | 'key' | 'details' | 'go'
 
 export type GoLiveStreamInfo = {
   title: string
@@ -48,7 +45,7 @@ export type GoLiveWizardBindings = {
 
 type GameEntry = { id: string; name: string; image: string }
 
-const STEPS: WizardStep[] = ['platform', 'key', 'details', 'chat', 'go']
+const STEPS: WizardStep[] = ['platform', 'key', 'details', 'go']
 const GAME_LIST_ROWS = 5
 const GAME_LIST_ROW_PX = 44
 
@@ -68,7 +65,6 @@ export class GoLiveWizard {
   private readonly panelPlatform: HTMLElement
   private readonly panelKey: HTMLElement
   private readonly panelDetails: HTMLElement
-  private readonly panelChat: HTMLElement
   private readonly panelGo: HTMLElement
   private readonly twitchKey: HTMLInputElement
   private readonly youtubeKey: HTMLInputElement
@@ -80,11 +76,6 @@ export class GoLiveWizard {
   private readonly gameButton: HTMLButtonElement
   private readonly gameList: HTMLElement
   private readonly qualitySelect: HTMLSelectElement
-  private readonly chatInclude: HTMLInputElement
-  private readonly chatFields: HTMLElement
-  private readonly twitchChannel: HTMLInputElement
-  private readonly youtubeChat: HTMLInputElement
-  private readonly chatNote: HTMLElement
   private readonly goStatus: HTMLElement
   private readonly gameCard: HTMLElement
   private readonly gameCardImg: HTMLImageElement
@@ -108,7 +99,6 @@ export class GoLiveWizard {
     this.panelPlatform = q('go-live-wizard-panel-platform')
     this.panelKey = q('go-live-wizard-panel-key')
     this.panelDetails = q('go-live-wizard-panel-details')
-    this.panelChat = q('go-live-wizard-panel-chat')
     this.panelGo = q('go-live-wizard-panel-go')
     this.twitchKey = q('wizard-twitch-key')
     this.youtubeKey = q('wizard-youtube-key')
@@ -120,11 +110,6 @@ export class GoLiveWizard {
     this.gameButton = q('go-live-wizard-game-input')
     this.gameList = q('go-live-wizard-game-list')
     this.qualitySelect = q('go-live-wizard-quality')
-    this.chatInclude = q('wizard-chat-include')
-    this.chatFields = q('wizard-chat-fields')
-    this.twitchChannel = q('wizard-twitch-channel')
-    this.youtubeChat = q('wizard-youtube-chat-url')
-    this.chatNote = q('wizard-chat-note')
     this.goStatus = q('go-live-wizard-go-status')
     this.gameCard = document.getElementById('go-live-game-card') as HTMLElement
     this.gameCardImg = document.getElementById('go-live-game-card-img') as HTMLImageElement
@@ -142,10 +127,7 @@ export class GoLiveWizard {
         this.paintPlatforms()
         this.syncKeyPanel()
         this.refreshKeyGate()
-        this.syncChatVisibility()
         this.syncDescriptionField()
-        const link = this.platform === 'youtube' ? this.youtubeChat.value : this.twitchChannel.value
-        this.chatInclude.checked = Boolean(link.trim())
       })
     })
     this.twitchKey.addEventListener('input', () => {
@@ -159,9 +141,6 @@ export class GoLiveWizard {
     this.qualitySelect.addEventListener('change', () => {
       this.bindings.applyEncodeProfile(this.qualitySelect.value as EncodeProfileId)
     })
-    this.chatInclude.addEventListener('change', () => this.publishChat())
-    this.twitchChannel.addEventListener('input', () => this.publishChat())
-    this.youtubeChat.addEventListener('input', () => this.publishChat())
     this.titleInput.addEventListener('change', () => this.publishDetails())
     this.descriptionInput.addEventListener('input', () => {
       this.descriptionInput.value = sanitizeYouTubeDescription(this.descriptionInput.value)
@@ -224,9 +203,6 @@ export class GoLiveWizard {
     this.titleInput.value = info.title
     this.descriptionInput.value = sanitizeYouTubeDescription(info.description)
     this.paintDescriptionCount()
-    const savedLink = this.platform === 'youtube' ? info.youtubeChatLink : info.twitchChatLink
-    this.chatInclude.checked = Boolean(savedLink.trim())
-    this.hydrateChatFields(info)
     this.paintGameTrigger(info.game, this.imageForGame(info.game))
     this.step = 'platform'
     this.busy = false
@@ -243,15 +219,6 @@ export class GoLiveWizard {
     this.setGameListOpen(false)
     this.hideGameCard()
     if (this.dialog.open) this.dialog.close()
-  }
-
-  private hydrateChatFields(info: GoLiveStreamInfo): void {
-    this.twitchChannel.value = info.twitchChatLink
-    const youtubeId = youtubeVideoId(info.youtubeChatLink)
-    this.youtubeChat.value =
-      info.youtubeChatLink && youtubeId && !/^https?:/i.test(info.youtubeChatLink.trim())
-        ? `https://www.youtube.com/watch?v=${youtubeId}`
-        : info.youtubeChatLink
   }
 
   private async loadGames(): Promise<void> {
@@ -285,68 +252,76 @@ export class GoLiveWizard {
       item.dataset.gameName = entry.name
       item.setAttribute('aria-selected', sanitizeStreamGame(entry.name) === current ? 'true' : 'false')
       const img = document.createElement('img')
+      img.src = new URL(entry.image, window.location.href).toString()
       img.alt = ''
-      img.width = 28
-      img.height = 36
-      img.src = entry.image
       const name = document.createElement('span')
       name.className = 'game-picker-option-name'
       name.textContent = entry.name
       item.append(img, name)
-      item.addEventListener('click', (event) => {
-        event.preventDefault()
-        event.stopPropagation()
-        this.chooseGame(entry)
-      })
-      this.gameList.append(item)
+      item.addEventListener('click', () => this.pickGame(entry.name, entry.image))
+      this.gameList.appendChild(item)
     }
   }
 
-  private chooseGame(entry: GameEntry): void {
-    this.paintGameTrigger(entry.name, entry.image)
+  private pickGame(name: string, image: string): void {
+    this.paintGameTrigger(name, image)
     this.setGameListOpen(false)
-    this.publishDetails()
     this.syncGameCard()
+    this.publishDetails()
   }
 
   private gameName(): string {
-    return sanitizeStreamGame(this.gameButton.querySelector('.game-picker-trigger-label')?.textContent ?? '')
+    return sanitizeStreamGame(this.gameButton.dataset.gameName ?? '')
   }
 
   private imageForGame(name: string): string {
-    const target = sanitizeStreamGame(name).toLowerCase()
-    return this.games.find((entry) => sanitizeStreamGame(entry.name).toLowerCase() === target)?.image ?? ''
+    return this.games.find((g) => g.name === name)?.image ?? ''
   }
 
   private paintGameTrigger(name: string, image: string): void {
-    const shown = sanitizeStreamGame(name)
+    const safe = sanitizeStreamGame(name)
+    this.gameButton.dataset.gameName = safe
     const label = this.gameButton.querySelector('.game-picker-trigger-label')
-    if (label) label.textContent = shown
-    const img = this.gameButton.querySelector('img')
-    if (!img) return
+    if (label) label.textContent = safe || 'Pick a game'
+    const existingImg = this.gameButton.querySelector('.game-picker-trigger-img')
     if (image) {
-      img.src = image
-      img.hidden = false
-    } else {
-      img.hidden = true
-      img.removeAttribute('src')
+      if (existingImg instanceof HTMLImageElement) {
+        existingImg.src = new URL(image, window.location.href).toString()
+      } else {
+        const img = document.createElement('img')
+        img.className = 'game-picker-trigger-img'
+        img.src = new URL(image, window.location.href).toString()
+        img.alt = ''
+        this.gameButton.prepend(img)
+      }
+    } else if (existingImg) {
+      existingImg.remove()
     }
-    this.gameCardName.textContent = shown
-    this.gameCardImg.alt = `${shown} box art`
-    if (image) this.gameCardImg.src = image
+    if (this.gameCardName) this.gameCardName.textContent = safe || '—'
+    if (this.gameCardImg && image) {
+      this.gameCardImg.src = new URL(image, window.location.href).toString()
+      this.gameCardImg.alt = safe
+    }
+    for (const option of this.gameList.querySelectorAll('[role="option"]')) {
+      const row = option as HTMLElement
+      row.setAttribute(
+        'aria-selected',
+        sanitizeStreamGame(row.dataset.gameName ?? '') === safe ? 'true' : 'false',
+      )
+    }
   }
 
   private setGameListOpen(open: boolean): void {
     this.gameListOpen = open
     this.gameButton.setAttribute('aria-expanded', open ? 'true' : 'false')
-    const list = this.gameList as HTMLElement & { showPopover?: () => void; hidePopover?: () => void }
+    const list = this.gameList
     if (!open) {
+      list.hidden = true
       try {
         list.hidePopover?.()
       } catch {
-        /* fixed list still hides */
+        /* ignore */
       }
-      list.hidden = true
       return
     }
     list.hidden = false
@@ -453,29 +428,6 @@ export class GoLiveWizard {
         : 'That doesn’t match a Twitch stream key (live_…).'
   }
 
-  private channelValue(): string {
-    if (this.platform === 'youtube') return youtubeVideoId(this.youtubeChat.value)
-    const login = normalizeTwitchChannel(this.twitchChannel.value)
-    return isTwitchLogin(login) ? login : ''
-  }
-
-  private syncChatVisibility(): void {
-    const include = this.chatInclude.checked
-    this.chatFields.hidden = !include
-    const twitch = this.chatFields.querySelector<HTMLElement>('[data-wizard-chat="twitch"]')
-    const youtube = this.chatFields.querySelector<HTMLElement>('[data-wizard-chat="youtube"]')
-    if (twitch) twitch.hidden = this.platform !== 'twitch'
-    if (youtube) youtube.hidden = this.platform !== 'youtube'
-    const url = this.youtubeChat.value.trim()
-    if (include && this.platform === 'youtube' && url && !youtubeVideoId(url)) {
-      this.chatNote.hidden = false
-      this.chatNote.textContent = 'A live video link (watch?v= or /live) is needed for the chat embed.'
-    } else {
-      this.chatNote.hidden = true
-      this.chatNote.textContent = ''
-    }
-  }
-
   private descriptionValue(): string {
     return this.platform === 'youtube' ? sanitizeYouTubeDescription(this.descriptionInput.value) : ''
   }
@@ -503,26 +455,12 @@ export class GoLiveWizard {
     this.bindings.applyEncodeProfile(this.qualitySelect.value as EncodeProfileId)
   }
 
-  private publishChat(): void {
-    this.syncChatVisibility()
-    this.bindings.applyStreamInfo({
-      title: sanitizeStreamWizardTitle(this.titleInput.value),
-      game: this.gameName(),
-      description: this.descriptionValue(),
-      channel: this.channelValue(),
-      includeChat: this.chatInclude.checked && Boolean(this.channelValue()),
-      twitchChatLink: this.twitchChannel.value.trim().slice(0, 120),
-      youtubeChatLink: this.youtubeChat.value.trim().slice(0, 512),
-    })
-  }
-
   private render(): void {
     if (this.step !== 'details') this.setGameListOpen(false)
     this.dialog.dataset.step = this.step
     this.panelPlatform.hidden = this.step !== 'platform'
     this.panelKey.hidden = this.step !== 'key'
     this.panelDetails.hidden = this.step !== 'details'
-    this.panelChat.hidden = this.step !== 'chat'
     this.panelGo.hidden = this.step !== 'go'
     this.paintPlatforms()
     const index = STEPS.indexOf(this.step)
@@ -542,10 +480,6 @@ export class GoLiveWizard {
       this.titleEl.textContent = 'Stream info'
       this.bodyEl.textContent = ''
       this.syncDescriptionField()
-    } else if (this.step === 'chat') {
-      this.titleEl.textContent = 'Chat + Notifications'
-      this.bodyEl.textContent = 'Saved with the Twitch and YouTube buttons under the preview.'
-      this.syncChatVisibility()
     }
     this.syncGameCard()
   }
@@ -553,8 +487,7 @@ export class GoLiveWizard {
   private back(): void {
     if (this.step === 'key') this.step = 'platform'
     else if (this.step === 'details') this.step = 'key'
-    else if (this.step === 'chat') this.step = 'details'
-    else if (this.step === 'go') this.step = 'chat'
+    else if (this.step === 'go') this.step = 'details'
     this.render()
   }
 
@@ -596,18 +529,11 @@ export class GoLiveWizard {
     }
     if (this.step === 'details') {
       this.publishDetails()
-      this.step = 'chat'
-      this.render()
-      return
-    }
-    if (this.step === 'chat') {
-      this.publishChat()
       this.step = 'go'
       this.render()
       return
     }
     this.publishDetails()
-    this.publishChat()
     this.busy = true
     this.render()
     try {

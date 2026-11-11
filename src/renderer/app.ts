@@ -1105,13 +1105,8 @@ function syncOverlaySourceRow(): void {
       ? overlayPresetById(activeOverlayPresetId)
       : undefined
   const presetLabel = preset?.name ?? 'Scene layout'
-  if (browserStream && layerEnabled.browser) {
-    layerBrowser.dataset.active = '1'
-    layerBrowser.textContent = `Overlay — ${presetLabel} · Search tab on`
-  } else {
-    layerBrowser.dataset.active = preset ? '1' : '0'
-    layerBrowser.textContent = `Overlay — ${presetLabel}`
-  }
+  layerBrowser.dataset.active = preset && layerEnabled.overlay ? '1' : '0'
+  layerBrowser.textContent = `Overlay — ${presetLabel}`
 }
 
 async function selectOverlayPreset(id: string): Promise<void> {
@@ -2082,16 +2077,6 @@ const CHAT_PINNED_PRESETS: { id: string; label: string }[] = [
   { id: 'pin-yt-chat', label: 'YouTube Live Chat' },
 ]
 
-function isChatLikeTab(tab: BrowseTabInfo): boolean {
-  const hay = `${tab.title} ${tab.url}`.toLowerCase()
-  return (
-    hay.includes('chat') ||
-    hay.includes('popout') ||
-    tab.id === 'pin-chat' ||
-    tab.id === 'pin-yt-chat'
-  )
-}
-
 function syncChatSourceRow(): void {
   if (!layerEnabled.chat) {
     studioSourceChat.querySelector('.studio-list-text')!.textContent = 'Chat'
@@ -2235,42 +2220,6 @@ async function refreshSourcePicker(kind: SourceKind): Promise<void> {
           void refreshSourcePicker('chat')
         },
       })
-      appendPickerSectionHeader(picker, 'Chat presets (Search)')
-      for (const preset of CHAT_PINNED_PRESETS) {
-        appendPickerButton(picker, {
-          label: preset.label,
-          kindLabel: 'Pinned',
-          active: layerEnabled.chat && activeChatSourceId === preset.id,
-          onPick: async () => {
-            await window.tabcast.openPinned(preset.id)
-            layerEnabled.chat = true
-            activeChatSourceId = preset.id
-            syncChatSourceRow()
-            syncLayerTracks()
-            void refreshSourcePicker('chat')
-          },
-        })
-      }
-      const tabs = await window.tabcast.listTabs()
-      const chatTabs = tabs.filter(isChatLikeTab)
-      if (chatTabs.length) {
-        appendPickerSectionHeader(picker, 'Search tabs')
-        for (const tab of chatTabs) {
-          appendPickerButton(picker, {
-            label: tab.title || tab.url || 'Chat tab',
-            kindLabel: tab.pinned ? 'Pinned' : 'Tab',
-            active: layerEnabled.chat && activeChatSourceId === tab.id,
-            onPick: async () => {
-              await window.tabcast.activateTab(tab.id)
-              layerEnabled.chat = true
-              activeChatSourceId = tab.id
-              syncChatSourceRow()
-              syncLayerTracks()
-              void refreshSourcePicker('chat')
-            },
-          })
-        }
-      }
       return
     }
 
@@ -2320,45 +2269,6 @@ async function refreshSourcePicker(kind: SourceKind): Promise<void> {
         onPick: () => selectOverlayPreset(preset.id),
       })
     }
-
-    appendPickerSectionHeader(picker, 'Search tab overlay')
-    appendPickerButton(picker, {
-      label: 'Search tab off',
-      kindLabel: 'Capture',
-      active: !layerEnabled.browser,
-      onPick: async () => {
-        layerEnabled.browser = false
-        await stopBrowserCapture()
-        syncLayerTracks()
-        void refreshSourcePicker('browser')
-      },
-    })
-
-    const tabs = await window.tabcast.listTabs()
-    if (!tabs.length) {
-      const li = document.createElement('li')
-      const p = document.createElement('p')
-      p.className = 'studio-source-picker-status'
-      p.textContent = 'Open a page in Search, then pick a tab below.'
-      li.appendChild(p)
-      picker.appendChild(li)
-      return
-    }
-    for (const tab of tabs) {
-      appendPickerButton(picker, {
-        label: tab.title || tab.url || 'Untitled tab',
-        kindLabel: tab.pinned ? 'Pinned' : 'Tab',
-        active: activeBrowseTabId === tab.id && layerEnabled.browser,
-        onPick: async () => {
-          await window.tabcast.activateTab(tab.id)
-          activeBrowseTabId = tab.id
-          layerEnabled.browser = true
-          await startBrowserCapture()
-          syncLayerTracks()
-          void refreshSourcePicker('browser')
-        },
-      })
-    }
   } catch (err) {
     picker.innerHTML = ''
     setPickerStatus(
@@ -2375,28 +2285,21 @@ function toggleGameLayer(): void {
 }
 
 function overlaySourceShowingInProgram(): boolean {
-  return (
-    (Boolean(browserStream) && layerEnabled.browser) ||
-    (Boolean(activeOverlayPresetId) && layerEnabled.overlay)
-  )
+  return Boolean(activeOverlayPresetId) && layerEnabled.overlay
 }
 
 function toggleOverlaySourceLayer(): void {
   if (overlaySourceShowingInProgram()) {
     layerEnabled.overlay = false
-    if (layerEnabled.browser || browserStream) {
-      layerEnabled.browser = false
-      void stopBrowserCapture()
-      return
-    }
+    activeOverlayPresetId = ''
+    syncOverlaySourceRow()
     syncLayerTracks()
     void pushSceneLayout().catch(() => undefined)
     return
   }
   layerEnabled.overlay = true
-  if (!browserStream && !activeOverlayPresetId) {
-    layerEnabled.browser = true
-    void startBrowserCapture()
+  if (!activeOverlayPresetId && OVERLAY_LAYOUT_PRESETS[0]) {
+    void selectOverlayPreset(OVERLAY_LAYOUT_PRESETS[0].id)
     return
   }
   syncLayerTracks()
