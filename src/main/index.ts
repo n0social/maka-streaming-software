@@ -26,6 +26,7 @@ import {
 } from './diagnostics'
 import { isAllowedBrowseUrl } from '../shared/browse-url'
 import { BROWSE_CAPTURE_SOURCE_ID } from '../shared/capture'
+import { RELAY_WHIP_URL } from '../shared/tabcast'
 import { coerceSettings, isStudioMediaPermission, isValidPresetId, isValidTabId } from './security'
 import { addonHasPermission, isValidAddonId, isValidCatalogId } from '../shared/addon-api'
 import { PHONE_CAM_ADDON_ID } from '../shared/phone-pair'
@@ -541,6 +542,53 @@ function registerIpc(): void {
     const path = relay.getExePath()
     shell.showItemInFolder(path)
     return path
+  })
+
+  ipcMain.handle('whip:publish', async (event, payload: unknown) => {
+    if (!studioOk(event)) throw new Error('Unauthorized')
+    const sdp = typeof (payload as { sdp?: unknown })?.sdp === 'string' ? (payload as { sdp: string }).sdp : ''
+    const token =
+      typeof (payload as { token?: unknown })?.token === 'string'
+        ? (payload as { token: string }).token.trim()
+        : ''
+    if (!sdp.trim()) throw new Error('WHIP offer SDP required')
+    if (!token) throw new Error('Relay token required')
+    const res = await fetch(RELAY_WHIP_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/sdp',
+        Accept: 'application/sdp',
+        Authorization: `Bearer ${token}`,
+      },
+      body: sdp,
+      signal: AbortSignal.timeout(25_000),
+    })
+    if (!res.ok) {
+      const detail = (await res.text().catch(() => '')).trim()
+      throw new Error(`WHIP publish failed (${res.status})${detail ? `: ${detail}` : ''}`)
+    }
+    const answerSdp = await res.text()
+    const location = res.headers.get('Location')
+    const resourceUrl = location ? new URL(location, RELAY_WHIP_URL).href : null
+    return { answerSdp, resourceUrl }
+  })
+
+  ipcMain.handle('whip:close', async (event, payload: unknown) => {
+    if (!studioOk(event)) return
+    const resourceUrl =
+      typeof (payload as { resourceUrl?: unknown })?.resourceUrl === 'string'
+        ? (payload as { resourceUrl: string }).resourceUrl.trim()
+        : ''
+    const token =
+      typeof (payload as { token?: unknown })?.token === 'string'
+        ? (payload as { token: string }).token.trim()
+        : ''
+    if (!resourceUrl || !token) return
+    await fetch(resourceUrl, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(8_000),
+    }).catch(() => undefined)
   })
 
   ipcMain.handle('app:get-mode', () => appMode)

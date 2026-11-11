@@ -220,6 +220,16 @@ export type WhipPublishSources = {
 
 export type WhipAudioSenders = Partial<Record<WhipAudioTrackRole, RTCRtpSender>>
 
+export type WhipSignalingResult = {
+  answerSdp: string
+  resourceUrl: string | null
+}
+
+export type WhipSignaling = {
+  postOffer: (localSdp: string, headers: Record<string, string>) => Promise<WhipSignalingResult>
+  deleteResource?: (resourceUrl: string, headers: Record<string, string>) => Promise<void>
+}
+
 function waitForIceGathering(pc: RTCPeerConnection, timeoutMs = 4000): Promise<void> {
   if (pc.iceGatheringState === 'complete') return Promise.resolve()
 
@@ -306,6 +316,7 @@ export async function publishWhip(
   sources: WhipPublishSources,
   headers: Record<string, string> = {},
   onConnectionStateChange?: (state: RTCPeerConnectionState) => void,
+  signaling?: WhipSignaling,
 ): Promise<WhipPublisher> {
   // Media stays on UDP. `all` keeps a TCP candidate for networks that block UDP.
   // The offer/answer itself is HTTP, so a dropped session is re-signaled on TCP.
@@ -345,40 +356,56 @@ export async function publishWhip(
     throw new Error('WHIP offer produced empty SDP')
   }
 
-  let response: Response | null = null
-  let lastError: Error | null = null
-  for (let attempt = 0; attempt < RELAY_CONTROL_RETRY_ATTEMPTS; attempt += 1) {
-    try {
-      response = await fetch(whipUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/sdp', ...headers },
-        body: localSdp,
-        signal: AbortSignal.timeout(8_000),
-      })
-      if (response.ok || !relayControlStatusShouldRetry(response.status)) break
-      lastError = new Error(`WHIP publish failed (${response.status})`)
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error('Network error')
-      response = null
+  let answerSdp: string
+  let resourceUrl: string | null
+
+  const postOfferHttp = async (): Promise<WhipSignalingResult> => {
+    if (signaling?.postOffer) {
+      return signaling.postOffer(localSdp, headers)
     }
-    if (attempt + 1 < RELAY_CONTROL_RETRY_ATTEMPTS) {
-      await new Promise((resolve) => setTimeout(resolve, liveRetryBackoffMs(attempt)))
+    let response: Response | null = null
+    let lastError: Error | null = null
+    for (let attempt = 0; attempt < RELAY_CONTROL_RETRY_ATTEMPTS; attempt += 1) {
+      try {
+        response = await fetch(whipUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/sdp', Accept: 'application/sdp', ...headers },
+          body: localSdp,
+          signal: AbortSignal.timeout(25_000),
+        })
+        if (response.ok || !relayControlStatusShouldRetry(response.status)) break
+        lastError = new Error(`WHIP publish failed (${response.status})`)
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error('Network error')
+        response = null
+      }
+      if (attempt + 1 < RELAY_CONTROL_RETRY_ATTEMPTS) {
+        await new Promise((resolve) => setTimeout(resolve, liveRetryBackoffMs(attempt)))
+      }
     }
-  }
-  if (!response) {
-    pc.close()
-    throw new Error(`WHIP publish failed: ${lastError?.message ?? 'Network error'}`)
+    if (!response) {
+      throw lastError ?? new Error('Failed to fetch')
+    }
+    if (!response.ok) {
+      const detail = (await response.text().catch(() => '')).trim()
+      throw new Error(`WHIP publish failed (${response.status})${detail ? `: ${detail}` : ''}`)
+    }
+    const sdp = await response.text()
+    const location = response.headers.get('Location')
+    return { answerSdp: sdp, resourceUrl: location ? new URL(location, whipUrl).href : null }
   }
 
-  if (!response.ok) {
+  try {
+    ;({ answerSdp, resourceUrl } = await postOfferHttp())
+  } catch (error) {
     pc.close()
-    const detail = (await response.text().catch(() => '')).trim()
-    throw new Error(`WHIP publish failed (${response.status})${detail ? `: ${detail}` : ''}`)
+    const message = error instanceof Error ? error.message : 'Network error'
+    const hint =
+      message === 'Failed to fetch' || /fetch failed/i.test(message)
+        ? ` MAKArelay may not be listening at ${whipUrl}. Check the relay chip (Ready) and try Start relay if needed.`
+        : ''
+    throw new Error(`WHIP publish failed: ${message}${hint}`)
   }
-
-  const answerSdp = await response.text()
-  const location = response.headers.get('Location')
-  const resourceUrl = location ? new URL(location, whipUrl).href : null
 
   await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp })
 
@@ -389,7 +416,11 @@ export async function publishWhip(
     async close() {
       if (resourceUrl) {
         try {
-          await fetch(resourceUrl, { method: 'DELETE', headers })
+          if (signaling?.deleteResource) {
+            await signaling.deleteResource(resourceUrl, headers)
+          } else {
+            await fetch(resourceUrl, { method: 'DELETE', headers, signal: AbortSignal.timeout(8_000) })
+          }
         } catch {
           // Relay may already be stopped.
         }

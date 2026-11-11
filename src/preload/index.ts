@@ -175,6 +175,8 @@ export type TabcastBridge = {
   startRelay: () => Promise<RelaySnapshot>
   stopRelay: () => Promise<RelaySnapshot>
   refreshRelay: () => Promise<RelaySnapshot>
+  publishWhipOffer: (sdp: string, relayToken: string) => Promise<{ answerSdp: string; resourceUrl: string | null }>
+  closeWhipResource: (resourceUrl: string, relayToken: string) => Promise<void>
   onRelayUpdate: (cb: (snapshot: RelaySnapshot) => void) => () => void
   getMode: () => Promise<AppMode>
   getWorkspaceMode: () => Promise<WorkspaceMode>
@@ -284,6 +286,9 @@ const api: TabcastBridge = {
   startRelay: () => ipcRenderer.invoke('relay:start'),
   stopRelay: () => ipcRenderer.invoke('relay:stop'),
   refreshRelay: () => ipcRenderer.invoke('relay:refresh'),
+  publishWhipOffer: (sdp, relayToken) => ipcRenderer.invoke('whip:publish', { sdp, token: relayToken }),
+  closeWhipResource: (resourceUrl, relayToken) =>
+    ipcRenderer.invoke('whip:close', { resourceUrl, token: relayToken }).then(() => undefined),
   onRelayUpdate: (cb) => {
     const handler = (_event: Electron.IpcRendererEvent, snapshot: RelaySnapshot) => cb(snapshot)
     ipcRenderer.on('relay:update', handler)

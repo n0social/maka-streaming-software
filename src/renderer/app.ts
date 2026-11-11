@@ -92,6 +92,7 @@ import {
   startWhipStatsSampler,
   startWhipVideoWatchdog,
   type WhipPublisher,
+  type WhipSignaling,
   type WhipStatsSampler,
   type WhipStreamMetrics,
   type WhipVideoWatchdog,
@@ -1650,6 +1651,43 @@ function goLiveCaptureError(): string {
   return 'Select a display or window for gameplay first.'
 }
 
+function relayBearerToken(headers: Record<string, string>): string {
+  const match = /^Bearer\s+(.+)$/i.exec((headers.Authorization ?? '').trim())
+  return match?.[1]?.trim() ?? ''
+}
+
+const electronWhipSignaling: WhipSignaling = {
+  postOffer: (localSdp, headers) => {
+    const token = relayBearerToken(headers)
+    if (!token) throw new Error('Relay token missing for WHIP')
+    return window.tabcast.publishWhipOffer(localSdp, token)
+  },
+  deleteResource: (resourceUrl, headers) => {
+    const token = relayBearerToken(headers)
+    if (!token) return Promise.resolve()
+    return window.tabcast.closeWhipResource(resourceUrl, token)
+  },
+}
+
+async function ensureRelayReadyForLive(): Promise<RelaySnapshot> {
+  let snapshot = await window.tabcast.getRelay()
+  if (!snapshot.health || snapshot.lifecycle === 'stopped' || snapshot.lifecycle === 'error') {
+    snapshot = await window.tabcast.startRelay()
+  }
+  snapshot = await waitForRelayReady(
+    () => window.tabcast.getRelay(),
+    () => window.tabcast.refreshRelay().then(() => undefined),
+    { timeoutMs: 45_000 },
+  )
+  if (!snapshot.health) {
+    throw new Error(
+      snapshot.error ??
+        'MAKArelay did not respond. Open Settings or restart the app, then confirm the relay chip shows Ready.',
+    )
+  }
+  return snapshot
+}
+
 async function attachWhipPublisher(health: RelayHealth): Promise<WhipPublisher> {
   const gameplay = primaryVideoStreamForWhip()
   if (!gameplay) {
@@ -1667,6 +1705,7 @@ async function attachWhipPublisher(health: RelayHealth): Promise<WhipPublisher> 
     },
     authHeaders(health),
     onWhipConnectionState,
+    electronWhipSignaling,
   )
 }
 
@@ -3049,21 +3088,16 @@ async function goLive(): Promise<void> {
       await persistCustomRtmpSettings()
     }
 
-    let snapshot = await window.tabcast.getRelay()
-    if (snapshot.lifecycle === 'stopped' || snapshot.lifecycle === 'error') {
-      snapshot = await window.tabcast.startRelay()
-    }
-    if (!snapshot.health) {
-      throw new Error(snapshot.error ?? 'Relay is not ready. Start the relay first.')
-    }
+    let snapshot = await ensureRelayReadyForLive()
 
     await persistStreamMetaFromInputs()
     const profile = selectedProfile()
     sessionIngestTarget = 'primary'
-    await postRelayConfig(snapshot.health, relayConfigForIngest('primary'))
+    const health = snapshot.health!
+    await postRelayConfig(health, relayConfigForIngest('primary'))
 
     await postSceneLayout(
-      snapshot.health,
+      health,
       defaultSceneLayout({
         profile,
         hasWebcam: hasLiveWebcamVideo() && layerEnabled.cam,
@@ -3071,6 +3105,10 @@ async function goLive(): Promise<void> {
       }),
     )
     await pushSceneLayout()
+    snapshot = await window.tabcast.refreshRelay()
+    if (!snapshot.health) {
+      snapshot = await ensureRelayReadyForLive()
+    }
 
     destHint.textContent = 'Publishing WHIP to local relay…'
     liveRecoveryAttempts = 0
@@ -3078,7 +3116,7 @@ async function goLive(): Promise<void> {
     liveRecoveryReason = null
     sessionLiveIntent = true
 
-    whipPublisher = await attachWhipPublisher(snapshot.health)
+    whipPublisher = await attachWhipPublisher(snapshot.health!)
     syncWhipAvTracks()
     await window.tabcast.refreshRelay()
     await dispatchAddonLiveEvents('live.start')
@@ -3131,18 +3169,13 @@ async function verifyStreamKeys(): Promise<{ ok: boolean; message: string }> {
     })
     if (!keysOk.ok) throw new Error(keysOk.message)
 
-    let snapshot = await window.tabcast.getRelay()
-    if (!snapshot.health) {
-      snapshot = await window.tabcast.startRelay()
-    }
-    if (!snapshot.health) {
-      throw new Error(snapshot.error ?? 'Relay is not ready.')
-    }
+    const snapshot = await ensureRelayReadyForLive()
 
     const config = relayConfigForIngest('primary')
-    await postRelayConfig(snapshot.health, config)
+    const health = snapshot.health!
+    await postRelayConfig(health, config)
 
-    const result = await verifyRelayConfig(snapshot.health, config)
+    const result = await verifyRelayConfig(health, config)
     if (!result.ok) {
       const parts = [
         result.message,
