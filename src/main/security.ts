@@ -35,6 +35,9 @@ export function coerceSettings(partial: unknown): Partial<AppSettings> {
   if (p.startupMode === 'studio' || p.startupMode === 'browse') {
     out.startupMode = 'studio'
   }
+  if (typeof p.adaptiveEncode === 'boolean') {
+    out.adaptiveEncode = p.adaptiveEncode
+  }
   if (typeof p.minimizeToTrayWhileLive === 'boolean') {
     out.minimizeToTrayWhileLive = p.minimizeToTrayWhileLive
   }

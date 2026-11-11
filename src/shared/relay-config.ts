@@ -39,6 +39,11 @@ export function buildRelayConfigRequest(
   const body: RelayConfigRequest = {
     profile,
     bitrateMbps: spec.bitrateMbps,
+    maxBitrateMbps: spec.maxBitrateMbps,
+    rateControl: spec.rateControl,
+    keyframeIntervalSec: spec.keyframeIntervalSec,
+    bFrames: spec.bFrames,
+    encoderPreset: spec.encoderPreset,
   }
 
   const twitch = normalizeStreamKey(ingest.twitchKey ?? '')

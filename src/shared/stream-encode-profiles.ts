@@ -1,12 +1,15 @@
 /** Single source of truth for stream encode presets (UI labels + relay config). */
 
 export type EncodeProfileId =
+  | 'cloud720p30'
   | '720p30'
   | '720p60'
   | '1080p30'
   | '1080p60'
   | '2k60'
   | '4k60'
+
+export type EncodeRateControl = 'cbr' | 'vbr'
 
 export type EncodeProfileSpec = {
   id: EncodeProfileId
@@ -18,9 +21,18 @@ export type EncodeProfileSpec = {
   height: number
   fps: 30 | 60
   bitrateMbps: number
+  /** Peak cap sent with the profile (CBR uses the same value as the target). */
+  maxBitrateMbps: number
+  rateControl: EncodeRateControl
+  /** IDR interval. Short GOPs recover faster after a congestion drop. */
+  keyframeIntervalSec: number
+  bFrames: number
+  /** x264/x265-style speed hint for the relay encoder. */
+  encoderPreset: 'ultrafast' | 'veryfast' | 'fast' | 'medium'
 }
 
 export const ENCODE_PROFILE_ORDER: EncodeProfileId[] = [
+  'cloud720p30',
   '720p30',
   '720p60',
   '1080p30',
@@ -29,7 +41,28 @@ export const ENCODE_PROFILE_ORDER: EncodeProfileId[] = [
   '4k60',
 ]
 
+const STANDARD_GOP = {
+  rateControl: 'cbr' as const,
+  keyframeIntervalSec: 2,
+  bFrames: 2,
+  encoderPreset: 'veryfast' as const,
+}
+
 export const ENCODE_PROFILES: Record<EncodeProfileId, EncodeProfileSpec> = {
+  cloud720p30: {
+    id: 'cloud720p30',
+    menuLabel: 'Cloud gaming · 720p30',
+    sidebarLabel: 'Cloud · 2.5 Mbps',
+    width: 1280,
+    height: 720,
+    fps: 30,
+    bitrateMbps: 2.5,
+    maxBitrateMbps: 2.5,
+    rateControl: 'cbr',
+    keyframeIntervalSec: 2,
+    bFrames: 0,
+    encoderPreset: 'ultrafast',
+  },
   '720p30': {
     id: '720p30',
     menuLabel: '720p @ 30fps',
@@ -38,6 +71,8 @@ export const ENCODE_PROFILES: Record<EncodeProfileId, EncodeProfileSpec> = {
     height: 720,
     fps: 30,
     bitrateMbps: 3,
+    maxBitrateMbps: 3,
+    ...STANDARD_GOP,
   },
   '720p60': {
     id: '720p60',
@@ -47,6 +82,8 @@ export const ENCODE_PROFILES: Record<EncodeProfileId, EncodeProfileSpec> = {
     height: 720,
     fps: 60,
     bitrateMbps: 4.5,
+    maxBitrateMbps: 4.5,
+    ...STANDARD_GOP,
   },
   '1080p30': {
     id: '1080p30',
@@ -56,6 +93,8 @@ export const ENCODE_PROFILES: Record<EncodeProfileId, EncodeProfileSpec> = {
     height: 1080,
     fps: 30,
     bitrateMbps: 4.5,
+    maxBitrateMbps: 4.5,
+    ...STANDARD_GOP,
   },
   '1080p60': {
     id: '1080p60',
@@ -65,6 +104,8 @@ export const ENCODE_PROFILES: Record<EncodeProfileId, EncodeProfileSpec> = {
     height: 1080,
     fps: 60,
     bitrateMbps: 6,
+    maxBitrateMbps: 6,
+    ...STANDARD_GOP,
   },
   '2k60': {
     id: '2k60',
@@ -74,6 +115,8 @@ export const ENCODE_PROFILES: Record<EncodeProfileId, EncodeProfileSpec> = {
     height: 1440,
     fps: 60,
     bitrateMbps: 10,
+    maxBitrateMbps: 10,
+    ...STANDARD_GOP,
   },
   '4k60': {
     id: '4k60',
@@ -83,6 +126,8 @@ export const ENCODE_PROFILES: Record<EncodeProfileId, EncodeProfileSpec> = {
     height: 2160,
     fps: 60,
     bitrateMbps: 16,
+    maxBitrateMbps: 16,
+    ...STANDARD_GOP,
   },
 }
 
@@ -124,6 +169,7 @@ export function formatResolutionLabel(id: EncodeProfileId): string {
 
 /** Program stats bar quality dropdown (readme hero style). */
 export function formatAutoEncodeLabel(id: EncodeProfileId): string {
+  if (id === 'cloud720p30') return 'Cloud (1280×720)'
   const { width, height } = ENCODE_PROFILES[id]
   return `Auto (${width}×${height})`
 }

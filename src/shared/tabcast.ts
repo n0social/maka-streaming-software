@@ -44,6 +44,12 @@ export type RelayConfigRequest = {
   customRtmpKey?: string
   profile: StreamProfile
   bitrateMbps?: number
+  maxBitrateMbps?: number
+  /** `cbr` holds the cap; `vbr` allows the relay to float under maxBitrateMbps. */
+  rateControl?: 'cbr' | 'vbr'
+  keyframeIntervalSec?: number
+  bFrames?: number
+  encoderPreset?: 'ultrafast' | 'veryfast' | 'fast' | 'medium'
   streamTitle?: string
   streamCategory?: string
   /** YouTube broadcast description. Omitted for Twitch. */

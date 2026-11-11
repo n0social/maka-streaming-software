@@ -65,7 +65,7 @@ The Electron app rewrites `streamUrl` to local WHIP via `localizeRelayHealth()`.
 
 ### `POST /config` → `RelayConfigRequest`
 
-See `src/shared/relay-config.ts` / `buildRelayConfigRequest()`. Fields include `profile`, `bitrateMbps`, `twitchKey`, `youtubeKey`, `customRtmpUrl`, `customRtmpKey`, title/category, audio bitrates, encoder preferences.
+See `src/shared/relay-config.ts` / `buildRelayConfigRequest()`. Fields include `profile`, `bitrateMbps`, `maxBitrateMbps`, `rateControl` (`cbr`|`vbr`), `keyframeIntervalSec`, `bFrames`, `encoderPreset`, `twitchKey`, `youtubeKey`, `customRtmpUrl`, `customRtmpKey`, title/category, audio bitrates, encoder preferences. Profile `cloud720p30` is the low-CPU cap (2.5 Mbps, no B-frames, `ultrafast`). The studio may step the profile down while live when drops, RTT, or measured bitrate stay bad (`src/shared/encode-adapt.ts`). Older relays ignore unknown fields and keep using `profile`.
 
 ### `GET /status` → `RelayStatusResponse`
 
