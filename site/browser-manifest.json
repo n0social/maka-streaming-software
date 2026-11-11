@@ -5,12 +5,12 @@
   "version": "0.2.6",
   "includesRelay": true,
   "artifact": "Maka-Setup-0.2.6.exe",
-  "sha256": "7cf685e5e0b919557335d145f02b82a9c9b8458e22cc7ac5451ab103d748e076",
+  "sha256": "7765780fa7505a3fd2c5ac5423f391bb13c0fe3220ce30b4a73631b88e6fb35d",
   "signed": false,
   "signing": null,
-  "size": 200594374,
+  "size": 200594644,
   "productName": "Maka",
-  "releasedAt": "2026-11-11T21:01:15Z",
+  "releasedAt": "2026-11-11T22:06:29.624Z",
   "releaseTag": "v0.2.6.2",
   "githubRelease": "https://github.com/n0social/maka-streaming-software/releases/tag/v0.2.6.2"
 }
