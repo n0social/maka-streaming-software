@@ -117,5 +117,7 @@ export type AddonSettingsSnapshot = {
   turnUsername?: string
   turnCredentialConfigured?: boolean
   backupRtmpUrl?: string
+  /** Present for the studio process so failover can republish without retyping. */
+  backupRtmpKey?: string
   backupRtmpKeyConfigured?: boolean
 }

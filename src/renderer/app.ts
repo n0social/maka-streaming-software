@@ -2012,32 +2012,42 @@ function syncCustomRtmpBlock(show: boolean): void {
 }
 
 async function loadCustomRtmpSettings(): Promise<void> {
-  const settings = await window.tabcast.getAddonSettings(CUSTOM_RTM_ADDON_ID)
-  if (settings.customRtmpUrl) customRtmpUrl.value = settings.customRtmpUrl
-  if (settings.customRtmpKeyConfigured) {
+  const [studio, addon] = await Promise.all([
+    window.tabcast.getSettings(),
+    window.tabcast.getAddonSettings(CUSTOM_RTM_ADDON_ID),
+  ])
+  if (addon.customRtmpUrl) customRtmpUrl.value = addon.customRtmpUrl
+  if (addon.customRtmpKeyConfigured) {
     customRtmpKey.placeholder = 'Stream key saved'
   }
-  if (settings.backupRtmpUrl) backupRtmpUrl.value = settings.backupRtmpUrl
-  if (settings.backupRtmpKeyConfigured) {
-    backupRtmpKey.placeholder = 'Backup stream key saved'
-  }
+  const backupUrl = studio.backupRtmpUrl || addon.backupRtmpUrl || ''
+  const backupKey = studio.backupRtmpKey || addon.backupRtmpKey || ''
+  if (backupUrl) backupRtmpUrl.value = backupUrl
+  if (backupKey) backupRtmpKey.value = backupKey
+  else if (addon.backupRtmpKeyConfigured) backupRtmpKey.placeholder = 'Backup stream key saved'
+}
+
+async function persistBackupIngest(): Promise<void> {
+  const backupRtmpUrlValue = backupRtmpUrl.value.trim()
+  const backupRtmpKeyValue = backupRtmpKey.value.trim()
+  await window.tabcast.setSettings({
+    backupRtmpUrl: backupRtmpUrlValue,
+    backupRtmpKey: backupRtmpKeyValue,
+  })
+  await window.tabcast.setAddonSettings(CUSTOM_RTM_ADDON_ID, {
+    backupRtmpUrl: backupRtmpUrlValue,
+    backupRtmpKey: backupRtmpKeyValue,
+  })
 }
 
 async function persistCustomRtmpSettings(): Promise<void> {
-  const body: {
-    customRtmpUrl?: string
-    customRtmpKey?: string
-    backupRtmpUrl: string
-    backupRtmpKey: string
-  } = {
-    backupRtmpUrl: backupRtmpUrl.value.trim(),
-    backupRtmpKey: backupRtmpKey.value.trim(),
-  }
   if (!destCustomBlock.hidden) {
-    body.customRtmpUrl = customRtmpUrl.value.trim()
-    body.customRtmpKey = customRtmpKey.value.trim()
+    await window.tabcast.setAddonSettings(CUSTOM_RTM_ADDON_ID, {
+      customRtmpUrl: customRtmpUrl.value.trim(),
+      customRtmpKey: customRtmpKey.value.trim(),
+    })
   }
-  await window.tabcast.setAddonSettings(CUSTOM_RTM_ADDON_ID, body)
+  await persistBackupIngest()
 }
 
 let qosEvents: QosEvent[] = []
@@ -3536,7 +3546,7 @@ document.getElementById('btn-verify-keys')!.addEventListener('click', () => {
 
 for (const el of [backupRtmpUrl, backupRtmpKey]) {
   el.addEventListener('change', () => {
-    void persistCustomRtmpSettings()
+    void persistBackupIngest()
   })
 }
 

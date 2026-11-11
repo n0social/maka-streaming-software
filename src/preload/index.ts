@@ -70,6 +70,8 @@ export type AppSettings = {
   sceneImages: Partial<Record<string, string>>
   customScenes: Array<{ id: string; name: string }>
   streamDestinations: StreamDestinationSettings
+  backupRtmpUrl: string
+  backupRtmpKey: string
 }
 
 export type AppVersionInfo = {
@@ -155,6 +157,7 @@ export type AddonSettingsSnapshot = {
   turnUsername?: string
   turnCredentialConfigured?: boolean
   backupRtmpUrl?: string
+  backupRtmpKey?: string
   backupRtmpKeyConfigured?: boolean
 }
 
