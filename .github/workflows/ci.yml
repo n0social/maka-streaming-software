@@ -27,6 +27,17 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Cache relay binary
+        id: relay-cache
+        uses: actions/cache@v4
+        with:
+          path: vendor/relay
+          key: relay-v1-${{ hashFiles('vendor/relay/relay-manifest.json') }}
+
+      - name: Fetch relay binary
+        if: steps.relay-cache.outputs.cache-hit != 'true'
+        run: npm run fetch:relay
+
       - name: Verify (offline)
         run: npm run verify:offline
 
