@@ -27,6 +27,7 @@ import {
 import { isAllowedBrowseUrl } from '../shared/browse-url'
 import { BROWSE_CAPTURE_SOURCE_ID } from '../shared/capture'
 import { RELAY_WHIP_URL } from '../shared/tabcast'
+import { relayControlFetch } from '../shared/relay-control-fetch'
 import { coerceSettings, isStudioMediaPermission, isValidPresetId, isValidTabId } from './security'
 import { addonHasPermission, isValidAddonId, isValidCatalogId } from '../shared/addon-api'
 import { PHONE_CAM_ADDON_ID } from '../shared/phone-pair'
@@ -552,17 +553,28 @@ function registerIpc(): void {
         ? (payload as { token: string }).token.trim()
         : ''
     if (!sdp.trim()) throw new Error('WHIP offer SDP required')
-    if (!token) throw new Error('Relay token required')
-    const res = await fetch(RELAY_WHIP_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/sdp',
-        Accept: 'application/sdp',
-        Authorization: `Bearer ${token}`,
-      },
-      body: sdp,
-      signal: AbortSignal.timeout(25_000),
-    })
+
+    await relay.refresh().catch(() => undefined)
+    const snap = relay.getSnapshot()
+    if (!snap.health) {
+      throw new Error(
+        snap.error ??
+          'MAKArelay is not responding on localhost. Wait for the relay chip to show Ready, or press Start relay.',
+      )
+    }
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/sdp',
+      Accept: 'application/sdp',
+    }
+    const authToken = token || snap.health.relayToken
+    if (authToken) headers.Authorization = `Bearer ${authToken}`
+
+    const res = await relayControlFetch(
+      RELAY_WHIP_URL,
+      { method: 'POST', headers, body: sdp },
+      { timeoutMs: 25_000 },
+    )
     if (!res.ok) {
       const detail = (await res.text().catch(() => '')).trim()
       throw new Error(`WHIP publish failed (${res.status})${detail ? `: ${detail}` : ''}`)

@@ -1,8 +1,4 @@
-import {
-  RELAY_CONTROL_RETRY_ATTEMPTS,
-  liveRetryBackoffMs,
-  relayControlStatusShouldRetry,
-} from '../shared/live-retry'
+import { relayControlFetch } from '../shared/relay-control-fetch'
 import type { RelaySnapshot } from '../shared/relay-snapshot'
 import { encodeProfileSpec, normalizeEncodeProfileId } from '../shared/stream-encode-profiles'
 import {
@@ -30,27 +26,35 @@ function relayFetch(input: string, init?: RequestInit): Promise<Response> {
   })
 }
 
-function waitRetry(attemptIndex: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, liveRetryBackoffMs(attemptIndex)))
+/** TCP control request. A dropped packet or a 5xx gets another attempt; a 4xx does not. */
+async function relayFetchRetry(input: string, init: RequestInit | undefined, attempts?: number): Promise<Response> {
+  return relayControlFetch(input, init, { attempts, timeoutMs: RELAY_FETCH_MS })
 }
 
-/** TCP control request. A dropped packet or a 5xx gets another attempt; a 4xx does not. */
-async function relayFetchRetry(input: string, init: RequestInit | undefined, attempts = RELAY_CONTROL_RETRY_ATTEMPTS): Promise<Response> {
-  let lastResponse: Response | null = null
-  let lastError: Error | null = null
-  for (let attempt = 0; attempt < attempts; attempt += 1) {
-    try {
-      const res = await relayFetch(input, { ...init, signal: AbortSignal.timeout(RELAY_FETCH_MS) })
-      if (res.ok || !relayControlStatusShouldRetry(res.status) || attempt + 1 >= attempts) return res
-      lastResponse = res
-    } catch (err) {
-      lastError = err instanceof Error ? err : new Error(String(err))
-      if (attempt + 1 >= attempts) throw lastError
-    }
-    await waitRetry(attempt)
+export type WhipSignalingHttpResult = { answerSdp: string; resourceUrl: string | null }
+
+/** POST WHIP offer SDP (renderer fetch — used when main-process IPC cannot reach loopback). */
+export async function postWhipOfferHttp(
+  whipUrl: string,
+  localSdp: string,
+  headers: Record<string, string> = {},
+): Promise<WhipSignalingHttpResult> {
+  const res = await relayControlFetch(
+    whipUrl,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/sdp', Accept: 'application/sdp', ...headers },
+      body: localSdp,
+    },
+    { timeoutMs: 25_000 },
+  )
+  if (!res.ok) {
+    const detail = (await res.text().catch(() => '')).trim()
+    throw new Error(`WHIP publish failed (${res.status})${detail ? `: ${detail}` : ''}`)
   }
-  if (lastResponse) return lastResponse
-  throw lastError ?? new Error('Relay request failed')
+  const answerSdp = await res.text()
+  const location = res.headers.get('Location')
+  return { answerSdp, resourceUrl: location ? new URL(location, whipUrl).href : null }
 }
 
 export function authHeaders(health: RelayHealth | null): Record<string, string> {

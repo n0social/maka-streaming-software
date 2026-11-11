@@ -627,6 +627,8 @@ export class RelayManager {
         this.emit({
           lifecycle: 'starting',
           error: message,
+          health: null,
+          status: null,
         })
         return
       }
