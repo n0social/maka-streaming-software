@@ -77,13 +77,18 @@ export async function postRelayConfig(
   }
 }
 
-export async function verifyRelayConfig(health: RelayHealth): Promise<RelayVerifyResponse> {
-  const res = await relayFetch(`${RELAY_BASE_URL}${RELAY_VERIFY_PATH}`, {
+export async function verifyRelayConfig(
+  health: RelayHealth,
+  body: RelayConfigRequest,
+): Promise<RelayVerifyResponse> {
+  const res = await relayFetchRetry(`${RELAY_BASE_URL}${RELAY_VERIFY_PATH}`, {
     method: 'POST',
     headers: {
+      'Content-Type': 'application/json',
       Accept: 'application/json',
       ...authHeaders(health),
     },
+    body: JSON.stringify(body),
   })
   if (!res.ok) {
     const detail = (await res.text().catch(() => '')).trim()

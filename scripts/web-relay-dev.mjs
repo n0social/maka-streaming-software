@@ -286,6 +286,14 @@ async function handleRequest(req, res) {
 
   if (req.method === 'POST' && path === '/config/verify') {
     if (!requireAuth(req, res)) return
+    const body = parseJson(await readBody(req))
+    if (body && typeof body === 'object') {
+      relayConfig = { ...relayConfig, ...body }
+    }
+    if (!relayConfig.profile) {
+      sendJson(res, 400, { ok: false, error: 'INVALID_CONFIG', message: 'profile is required' })
+      return
+    }
     const twitchOk = relayConfig.twitchKey ? relayConfig.twitchKey.length >= 10 : undefined
     const youtubeOk = relayConfig.youtubeKey ? relayConfig.youtubeKey.length >= 10 : undefined
     const customOk =

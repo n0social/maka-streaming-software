@@ -3139,9 +3139,10 @@ async function verifyStreamKeys(): Promise<{ ok: boolean; message: string }> {
       throw new Error(snapshot.error ?? 'Relay is not ready.')
     }
 
-    await postRelayConfig(snapshot.health, relayConfigForIngest('primary'))
+    const config = relayConfigForIngest('primary')
+    await postRelayConfig(snapshot.health, config)
 
-    const result = await verifyRelayConfig(snapshot.health)
+    const result = await verifyRelayConfig(snapshot.health, config)
     if (!result.ok) {
       const parts = [
         result.message,

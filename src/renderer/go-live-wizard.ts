@@ -575,6 +575,7 @@ export class GoLiveWizard {
       if (this.platform === 'twitch') this.bindings.applyKeys({ twitchKey: key })
       else this.bindings.applyKeys({ youtubeKey: key })
       this.bindings.applyPlatform(this.platform)
+      this.bindings.applyEncodeProfile(this.qualitySelect.value as EncodeProfileId)
       this.busy = true
       this.keyError = ''
       this.btnNext.disabled = true

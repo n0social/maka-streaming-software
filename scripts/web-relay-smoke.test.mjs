@@ -81,7 +81,16 @@ try {
   }
   console.log('OK twitch retry cleared description', twitchAgainStatus.broadcast)
 
-  const verifyRes = await fetch(`${base}/config/verify`, { method: 'POST', headers: auth })
+  const verifyRes = await fetch(`${base}/config/verify`, {
+    method: 'POST',
+    headers: { ...auth, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      profile: '720p30',
+      twitchKey: 'live_test_key_1234567890',
+      streamTitle: 'Sunday raid',
+      streamCategory: 'Just Chatting',
+    }),
+  })
   const verify = await verifyRes.json()
   if (!verifyRes.ok || verify.ok !== true) throw new Error(`verify: ${JSON.stringify(verify)}`)
   console.log('OK verify')
