@@ -108,7 +108,8 @@ import {
 } from './system-audio-capture'
 import { OnboardingTour } from './onboarding'
 import { SetupWizard } from './onboarding-wizard'
-import { initMarketplace } from './marketplace'
+// Marketplace UI is commented out until each addon is ready.
+// import { initMarketplace } from './marketplace'
 import { initSettingsView } from './settings-view'
 import {
   getPhoneTracksSnapshot,
@@ -3812,22 +3813,22 @@ window.tabcast.onTitle((title) => {
   document.title = title ? `${title} · Maka — Browser` : 'Maka — Browser'
 })
 
-initMarketplace(window.tabcast, {
-  dialog: document.getElementById('marketplace-dialog') as HTMLDialogElement,
-  list: document.getElementById('marketplace-list')!,
-  preview: document.getElementById('marketplace-sidebar-list'),
-  openControl: document.getElementById('btn-open-marketplace'),
-  onRefreshPanels: () => {
-    void renderAddonPanels()
-  },
-  onToast: (message, isError) => {
-    if (isError) setDestError(message)
-    else {
-      setDestError(null)
-      destHint.textContent = message
-    }
-  },
-})
+// initMarketplace(window.tabcast, {
+//   dialog: document.getElementById('marketplace-dialog') as HTMLDialogElement,
+//   list: document.getElementById('marketplace-list')!,
+//   preview: document.getElementById('marketplace-sidebar-list'),
+//   openControl: document.getElementById('btn-open-marketplace'),
+//   onRefreshPanels: () => {
+//     void renderAddonPanels()
+//   },
+//   onToast: (message, isError) => {
+//     if (isError) setDestError(message)
+//     else {
+//       setDestError(null)
+//       destHint.textContent = message
+//     }
+//   },
+// })
 
 syncDestinationInputs()
 syncProgramVideoSurface()
