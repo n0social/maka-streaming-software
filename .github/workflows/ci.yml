@@ -27,6 +27,9 @@ jobs:
       - name: Verify site SEO
         run: npm run verify:site-seo
 
+      - name: Encode adapt tests
+        run: npm run test:encode-adapt
+
       - name: Build
         run: npm run build
 

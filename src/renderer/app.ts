@@ -59,6 +59,7 @@ import {
 } from '../shared/ingest-failover'
 import { validateRelayStreamKeys, KICK_RTMP_URL } from '../shared/stream-keys'
 import { buildRelayConfigRequest, sanitizeStreamCategory, sanitizeStreamTitle, type RelayStudioSettings } from '../shared/relay-config'
+import { emptyEncodeAdaptState, observeEncodeAdapt, type EncodeAdaptState } from '../shared/encode-adapt'
 import { isTwitchLogin, normalizeTwitchChannel, streamKeyValid, youtubeVideoId } from '../shared/stream-wizard'
 import type { StreamDestinationSettings } from '../shared/stream-destination-settings'
 import { GoLiveWizard, type GoLiveWizardPlatform } from './go-live-wizard'
@@ -262,6 +263,11 @@ let liveRecoveryAttempts = 0
 let liveReconnecting = false
 let liveRecoveryExhausted = false
 let liveRecoveryReason: string | null = null
+let adaptiveEncodeEnabled = true
+let encodeAdaptUserHold = false
+let encodeAdaptState: EncodeAdaptState = emptyEncodeAdaptState()
+let encodeAdaptFrameMark: { dropped: number; encoded: number } | null = null
+let applyingAdaptiveEncode = false
 let liveRecoveryFatal = false
 let sessionLiveIntent = false
 let liveReconnectTimer: ReturnType<typeof setTimeout> | null = null
@@ -1790,12 +1796,57 @@ function syncEncodeProfileSelects(id: EncodeProfileId): void {
   if (wizardQuality && wizardQuality.value !== id) wizardQuality.value = id
 }
 
-function onEncodeProfileChanged(id: EncodeProfileId): void {
+function onEncodeProfileChanged(id: EncodeProfileId, origin: 'user' | 'adapt' = 'user'): void {
+  if (origin === 'user' && isSessionLive()) encodeAdaptUserHold = true
   syncEncodeProfileSelects(id)
   updateProgramStats()
   syncStreamInfoMeta()
   void window.tabcast.setSettings({ bitrateProfile: id })
   void pushSceneLayout().catch(() => undefined)
+  void repostRelayConfigIfLive()
+}
+
+function resetEncodeAdaptSession(): void {
+  encodeAdaptUserHold = false
+  encodeAdaptState = emptyEncodeAdaptState()
+  encodeAdaptFrameMark = null
+}
+
+/** Drop percent since the previous live sample. Lifetime totals stay high after one bad burst and would walk the ladder forever. */
+function windowedDropPercent(dropped: number, encoded: number): number | null {
+  const prev = encodeAdaptFrameMark
+  encodeAdaptFrameMark = { dropped, encoded }
+  if (!prev) return null
+  const encodedDelta = encoded - prev.encoded
+  const droppedDelta = dropped - prev.dropped
+  if (encodedDelta <= 0 || droppedDelta < 0) return null
+  return (droppedDelta / encodedDelta) * 100
+}
+
+function maybeAdaptEncode(sample: {
+  dropPercent: number | null
+  roundTripMs: number | null
+  measuredMbps: number | null
+  targetMbps: number
+}): void {
+  if (applyingAdaptiveEncode || !isSessionLive()) return
+  const result = observeEncodeAdapt(
+    encodeAdaptState,
+    selectedProfile(),
+    sample,
+    Date.now(),
+    adaptiveEncodeEnabled && !encodeAdaptUserHold,
+  )
+  encodeAdaptState = result.state
+  if (!result.next) return
+  applyingAdaptiveEncode = true
+  try {
+    const label = encodeProfileSpec(result.next).menuLabel
+    onEncodeProfileChanged(result.next, 'adapt')
+    destHint.textContent = `Encode stepped down to ${label} — connection congested.`
+  } finally {
+    applyingAdaptiveEncode = false
+  }
 }
 
 function initEncodeProfileControls(): void {
@@ -2974,6 +3025,7 @@ async function endLive(): Promise<void> {
   liveRecoveryFatal = false
   liveRecoveryReason = null
   sessionIngestTarget = 'primary'
+  resetEncodeAdaptSession()
 
   try {
     if (whipPublisher) {
@@ -3049,6 +3101,7 @@ async function goLive(): Promise<void> {
     liveRecoveryAttempts = 0
     liveRecoveryExhausted = false
     liveRecoveryReason = null
+    resetEncodeAdaptSession()
     sessionLiveIntent = true
 
     whipPublisher = await attachWhipPublisher(await refreshRelayHealthForWhip())
@@ -3177,12 +3230,11 @@ const settingsView = initSettingsView(window.tabcast, {
       ? 'Demo mode on — key format checks skipped (for testing and walkthroughs).'
       : 'Keys stay in relay RAM only. Go Live publishes WHIP to localhost.'
   },
-  onEncodeProfileChange: (id) => {
-    syncEncodeProfileSelects(id)
-    updateProgramStats()
-    syncStreamInfoMeta()
-    void pushSceneLayout().catch(() => undefined)
-    void repostRelayConfigIfLive()
+  onEncodeProfileChange: (id) => onEncodeProfileChanged(id, 'user'),
+  onAdaptiveEncodeChange: (enabled) => {
+    adaptiveEncodeEnabled = enabled
+    if (enabled) encodeAdaptUserHold = false
+    encodeAdaptState = emptyEncodeAdaptState()
   },
   onRelayStudioSettingsChange: () => {
     void window.tabcast.getSettings().then((s) => { applyRelayStudioSettingsFromAppSettings(s); void repostRelayConfigIfLive() })
@@ -3499,6 +3551,7 @@ window.tabcast.onTabs(() => {
 
 void window.tabcast.getSettings().then((s) => {
   labMode = s.labMode
+  adaptiveEncodeEnabled = s.adaptiveEncode !== false
   recordingSaveFolder = s.recordingSaveFolder ?? ''
   lastStreamPlatform = s.lastStreamPlatform ?? 'none'
   applyRelayStudioSettingsFromAppSettings(s)
@@ -4600,6 +4653,18 @@ function updateProgramStats(snapshot?: RelaySnapshot | null): void {
       ? `${spec.menuLabel} · transmitting at ${formatMbpsLabel(displayMbps)}`
       : `${spec.menuLabel} · ${formatMbpsLabel(targetMbps)} target`
   }
+  const whipEncoded = whipMetrics?.outboundVideoFramesEncoded ?? null
+  const whipDropped = whipMetrics?.outboundVideoFramesDropped ?? 0
+  const dropPercent =
+    sessionLive && whipEncoded != null && whipEncoded >= 0
+      ? windowedDropPercent(whipDropped, whipEncoded)
+      : null
+  maybeAdaptEncode({
+    dropPercent,
+    roundTripMs: sessionLive ? whipMetrics?.roundTripMs ?? null : null,
+    measuredMbps: sessionLive ? measuredWhipMbps : null,
+    targetMbps,
+  })
 }
 
 initEncodeProfileControls()

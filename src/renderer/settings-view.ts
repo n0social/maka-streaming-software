@@ -19,6 +19,7 @@ import { ENCODE_PROFILE_ORDER, encodeProfileSpec } from '../shared/stream-encode
 export type SettingsViewHooks = {
   onLabModeChange: (labMode: boolean) => void
   onEncodeProfileChange: (profile: AppSettings['bitrateProfile']) => void
+  onAdaptiveEncodeChange: (enabled: boolean) => void
   onRecordingFolderChange: (folder: string) => void
   onRelayStudioSettingsChange: () => void
   onReplaySetup: () => void
@@ -59,6 +60,8 @@ function applySettingsToForm(s: AppSettings): void {
   const encodeSelect = document.getElementById('set-encode-profile') as HTMLSelectElement
   populateEncodeSelect(encodeSelect)
   encodeSelect.value = s.bitrateProfile
+  const adaptive = document.getElementById('set-adaptive-encode') as HTMLInputElement | null
+  if (adaptive) adaptive.checked = s.adaptiveEncode !== false
   ;(document.getElementById('set-mic-bitrate') as HTMLSelectElement).value = String(
     s.audioMicBitrateKbps,
   )
@@ -135,6 +138,10 @@ export function initSettingsView(tabcast: TabcastBridge, hooks: SettingsViewHook
   persistCheckbox('set-tray-live', 'minimizeToTrayWhileLive')
   persistCheckbox('set-lab-mode', 'labMode')
   persistCheckbox('set-auto-update', 'autoCheckUpdatesOnStartup')
+  persistCheckbox('set-adaptive-encode', 'adaptiveEncode')
+  document.getElementById('set-adaptive-encode')!.addEventListener('change', (event) => {
+    hooks.onAdaptiveEncodeChange((event.target as HTMLInputElement).checked)
+  })
 
   document.getElementById('set-encode-profile')!.addEventListener('change', (event) => {
     const value = (event.target as HTMLSelectElement).value as AppSettings['bitrateProfile']

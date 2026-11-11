@@ -36,6 +36,7 @@ export type GpuPreference = 'default' | 'discrete' | 'integrated'
 
 export type AppSettings = {
   bitrateProfile: EncodeProfileId
+  adaptiveEncode: boolean
   startupMode: WorkspaceMode
   minimizeToTrayWhileLive: boolean
   labMode: boolean

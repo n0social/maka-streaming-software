@@ -67,6 +67,7 @@
     "dev:web-studio:site": "node scripts/web-studio-dev.mjs",
     "test:web-relay": "node scripts/web-relay-smoke.test.mjs --spawn",
     "test:studio-wiring": "node --experimental-strip-types scripts/studio-wiring.test.ts",
+    "test:encode-adapt": "node --experimental-strip-types scripts/encode-adapt.test.mjs",
     "verify:site-seo": "node scripts/verify-site-seo.mjs",
     "test:studio-ui": "node scripts/studio-wiring-ui.mjs",
     "dev:studio": "electron-vite dev"

@@ -30,6 +30,8 @@ export type SettingsTabId = (typeof SETTINGS_TAB_IDS)[number]
 
 export type AppSettings = {
   bitrateProfile: EncodeProfileId
+  /** While live, step the encode ladder down when drops, RTT, or under-bitrate persist. */
+  adaptiveEncode: boolean
   /** Studio-only shell; legacy `browse` values in old files are ignored on load. */
   startupMode: 'studio'
   minimizeToTrayWhileLive: boolean
@@ -83,6 +85,7 @@ export type SessionState = {
 
 const DEFAULT_SETTINGS: AppSettings = {
   bitrateProfile: '720p30',
+  adaptiveEncode: true,
   startupMode: 'studio',
   minimizeToTrayWhileLive: true,
   labMode: false,

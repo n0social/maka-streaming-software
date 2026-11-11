@@ -523,7 +523,15 @@
                 <h2>Streaming</h2>
                 <label class="field-label" for="set-encode-profile">Default encode quality</label>
                 <select id="set-encode-profile" class="select"></select>
-                <p class="hint tight">Default quality. Go Live can change it before you start. Title, category, and chat links stay on Go Live and the platform buttons.</p>
+                <label class="check">
+                  <input type="checkbox" id="set-adaptive-encode" checked />
+                  Step encode down when the live connection congests
+                </label>
+                <p class="hint tight">
+                  Default quality. Cloud gaming is 720p30, 2.5 Mbps, no B-frames, ultrafast — for GeForce NOW, Xbox Cloud, Shadow, and Cloud Moon hosts.
+                  While live, congestion (dropped frames, high RTT, or bitrate well under target) walks one rung down the ladder (two rungs if severe): 4K60 → … → 720p30 → Cloud.
+                  Changing the quality menu while live holds that choice for the rest of the session. Keyframe interval and B-frame hints go with the profile on POST /config.
+                </p>
               </div>
               <div class="settings-panel" id="settings-panel-audio" data-settings-panel="audio" hidden>
                 <h2>Audio</h2>

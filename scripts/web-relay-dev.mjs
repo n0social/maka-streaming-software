@@ -262,6 +262,7 @@ async function handleRequest(req, res) {
     if (!relayConfig.youtubeKey) relayConfig.streamDescription = ''
     if (body.profile && !body.bitrateMbps) {
       const bitrates = {
+        cloud720p30: 2.5,
         '720p30': 3,
         '720p60': 4.5,
         '1080p30': 6,
@@ -272,13 +273,14 @@ async function handleRequest(req, res) {
       relayConfig.bitrateMbps = bitrates[body.profile] ?? relayConfig.bitrateMbps
     }
     console.log(
-      '[config] profile=%s title=%s game=%s description=%s twitch=%s youtube=%s',
+      '[config] profile=%s rate=%s bitrate=%s gop=%ss bframes=%s preset=%s title=%s',
       relayConfig.profile,
+      relayConfig.rateControl || 'cbr',
+      relayConfig.bitrateMbps,
+      relayConfig.keyframeIntervalSec ?? '',
+      relayConfig.bFrames ?? '',
+      relayConfig.encoderPreset || '',
       relayConfig.streamTitle || '',
-      relayConfig.streamCategory || '',
-      relayConfig.youtubeKey ? relayConfig.streamDescription || '' : '',
-      Boolean(relayConfig.twitchKey),
-      Boolean(relayConfig.youtubeKey),
     )
     sendJson(res, 200, { ok: true })
     return
