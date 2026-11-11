@@ -147,7 +147,7 @@ Stream keys **never** exposed to addons — relay config write goes through main
 
 | Addon | Description | Hooks |
 |-------|-------------|-------|
-| **Streamlabs-style alerts** | Browser overlay for follows/subs via Twitch EventSub | `scene.overlay`, `events.twitch` |
+| **Streamlabs / StreamElements alerts** | Deferred. Not built into the studio. Ship later as a marketplace addon that embeds the creator’s alert-box page (follows, subs, donations, bits). | `scene.overlay`, `network.fetch` |
 | **Hype train / prediction ticker** | Read-only overlay from public APIs | `scene.overlay` |
 | **Sound pad** | Hotkey-triggered stingers mixed into mic bus | `hotkey`, `audio.inject` (future) |
 | **Goal bar** | Sub/follow goal progress | `scene.overlay`, `settings` |
@@ -286,7 +286,7 @@ Beyond user addons, **built-in integrations** ship with the app and may share co
 0.3.6  ✅ Sandboxed addon iframe + tabcast.addons bridge + Hello Maka sample
 0.4.0  Public creator SDK · community platform addons (Kick/custom RTMP)
 0.4.5  Instant replay buffer · audio routing improvements
-0.5.0  Addon marketplace (curated) · YouTube chat · Discord webhook integration
+0.5.0  Addon marketplace (curated) · YouTube chat · Discord webhook integration · Streamlabs / StreamElements alert-box addon
 1.0.0  Signed installer · auto-update · CI — GA
 1.1.0  Creator SDK · `maka-addon` CLI · community catalog on makalive.stream
 1.2.0  Collaborative lab mode · multi-profile · restream fan-out
@@ -294,6 +294,17 @@ Beyond user addons, **built-in integrations** ship with the app and may share co
 ```
 
 ---
+
+## Deferred: Streamlabs and StreamElements
+
+Do not build a first-party Streamlabs or StreamElements integration. The studio keeps its own Twitch alert cards (cheers, subs, gift subs, raids) and the chat popout.
+
+When the curated marketplace is ready, ship this as an addon:
+
+- The creator pastes their Streamlabs or StreamElements alert-box URL.
+- The addon shows that page in the notification slot on the program preview.
+- It replaces the built-in Twitch cards while the addon is enabled.
+- It does not need Streamlabs OAuth. The alert-box page is the same browser source OBS uses.
 
 ## Sample addon: “Now Live Discord” (reference)
 
