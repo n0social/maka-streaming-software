@@ -3,7 +3,7 @@ import { spawn } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { killProcessTree } from '../src/main/process-tree.ts'
 import { nextCustomSceneId, removeCustomScene } from '../src/shared/custom-scenes.ts'
-import { alertBoxPageUrl, alertCard, parseTwitchIrcAlert, streamChatUrl } from '../src/shared/stream-overlays.ts'
+import { ALERT_HOLD_MS, alertBoxPageUrl, alertCard, parseTwitchIrcAlert, parseTwitchIrcChat, streamChatUrl } from '../src/shared/stream-overlays.ts'
 import { isTwitchStreamKey, sanitizeYouTubeDescription, streamKeyValid, youtubeVideoId } from '../src/shared/stream-wizard.ts'
 import { relayControlStatusShouldRetry, WHIP_DISCONNECT_GRACE_MS } from '../src/shared/live-retry.ts'
 import { hardenWhipMediaSdp } from '../src/shared/whip-sdp.ts'
@@ -61,6 +61,22 @@ const cheer = parseTwitchIrcAlert(
 )
 assert.equal(cheer?.kind, 'cheer')
 assert.equal(alertCard(cheer!).headline, 'Ada cheered 500 bits')
+assert.equal(parseTwitchIrcChat('@display-name=Ada;bits=500;id=abc :ada!ada@ada.tmi.twitch.tv PRIVMSG #maka :cheer500 hello'), null)
+const chatLine = parseTwitchIrcChat(
+  '@display-name=Ada;id=m1;color=#1D4ED8 :ada!ada@ada.tmi.twitch.tv PRIVMSG #maka :hello there',
+)
+assert.equal(chatLine?.name, 'Ada')
+assert.equal(chatLine?.message, 'hello there')
+assert.equal(chatLine?.color, '#1D4ED8')
+assert.equal(
+  parseTwitchIrcChat('@display-name=Ada;id=m2 :ada!ada@ada.tmi.twitch.tv PRIVMSG #maka :\u0001ACTION waves\u0001')?.message,
+  'waves',
+)
+assert.equal(ALERT_HOLD_MS, 3500)
+assert.match(appTs, /ALERT_HOLD_MS/)
+assert.match(appTs, /startTwitchChatFeed/)
+assert.equal(appTs.includes('startTwitchAlertFeed'), false)
+assert.equal(appTs.includes(', 6500)'), false)
 assert.equal(streamChatUrl('twitch', 'MakaLive'), 'https://www.twitch.tv/popout/makalive/chat?popout=')
 assert.equal(streamChatUrl('youtube', 'dQw4w9WgXcQ'), 'https://www.youtube.com/live_chat?is_popout=1&v=dQw4w9WgXcQ')
 assert.equal(alertBoxPageUrl('http://streamlabs.example/box'), null)
@@ -69,6 +85,7 @@ assert.equal(isTwitchStreamKey('live_abc123def456789'), true)
 assert.equal(streamKeyValid('youtube', 'abcd-efgh-ijkl-mnop'), true)
 assert.equal(youtubeVideoId('https://www.youtube.com/watch?v=dQw4w9WgXcQ'), 'dQw4w9WgXcQ')
 const wizardHtml = readFileSync(new URL('../src/renderer/app.html', import.meta.url), 'utf8')
+assert.match(wizardHtml, /id="program-chat-lines"/)
 assert.match(wizardHtml, /id="wizard-platform-twitch"/)
 assert.match(wizardHtml, /id="go-live-wizard-panel-details"/)
 assert.match(wizardHtml, /id="go-live-wizard-panel-chat"/)

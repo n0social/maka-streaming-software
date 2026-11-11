@@ -36,8 +36,8 @@ import {
   measuredFps,
   viewerStatusLabel,
 } from '../shared/studio-controls'
-import { alertBoxPageUrl, alertCard, streamChatUrl, type StreamAlert, type StreamChatPlatform } from '../shared/stream-overlays'
-import { startTwitchAlertFeed, type TwitchAlertFeed } from './twitch-alert-feed'
+import { ALERT_HOLD_MS, alertBoxPageUrl, alertCard, streamChatUrl, type StreamAlert, type StreamChatPlatform, type TwitchChatLine } from '../shared/stream-overlays'
+import { startTwitchChatFeed, type TwitchChatFeed, type TwitchChatFeedStatus } from './twitch-alert-feed'
 import { isSceneStubId, SCENE_TEMPLATES, sceneStubPreset } from '../shared/scene-templates'
 import {
   sceneImageMaskMode,
@@ -166,6 +166,7 @@ const sceneMenuImagePickRow = document.getElementById('scene-menu-image-pick')!
 const sceneMenuImageClearRow = document.getElementById('scene-menu-image-clear')!
 const sceneMenuDeleteRow = document.getElementById('scene-menu-delete')!
 const programChatHint = document.getElementById('program-chat-hint')!
+const programChatLines = document.getElementById('program-chat-lines')!
 const programChatView = document.getElementById('program-chat-view') as HTMLElement & { src: string }
 const programAlertBox = document.getElementById('program-alert-box') as HTMLElement & { src: string }
 const programAlert = document.getElementById('program-alert')!
@@ -329,7 +330,10 @@ let streamYoutubeChatLink = ''
 let streamAlertBoxUrl = ''
 let streamIncludeChat = false
 const gameArtByName = new Map<string, string>()
-let twitchAlertFeed: TwitchAlertFeed | null = null
+let twitchAlertFeed: TwitchChatFeed | null = null
+let twitchFeedLogin = ''
+let twitchChatStatus: TwitchChatFeedStatus | 'idle' = 'idle'
+const TWITCH_CHAT_LIMIT = 80
 const streamAlertQueue: StreamAlert[] = []
 let streamAlertTimer: ReturnType<typeof setTimeout> | null = null
 let shownAlertIds = new Set<string>()
@@ -4222,7 +4226,7 @@ function playNextStreamAlert(): void {
   streamAlertTimer = setTimeout(() => {
     streamAlertQueue.shift()
     playNextStreamAlert()
-  }, 6500)
+  }, ALERT_HOLD_MS)
 }
 
 function syncAlertBox(): void {
@@ -4244,14 +4248,68 @@ function syncAlertBox(): void {
   refreshProgramPreviewLayout()
 }
 
-function syncPlatformAlerts(): void {
+function twitchLoginForFeed(): string {
+  if (overlayPlatform() !== 'twitch') return ''
+  const login = streamChannel.trim().replace(/^@/, '').toLowerCase()
+  return /^[a-z0-9_]{2,25}$/.test(login) ? login : ''
+}
+
+function clearTwitchChatLines(): void {
+  programChatLines.replaceChildren()
+}
+
+function appendTwitchChatLine(line: TwitchChatLine): void {
+  const item = document.createElement('p')
+  item.className = 'program-chat-line'
+  const name = document.createElement('span')
+  name.className = 'program-chat-line-name'
+  name.textContent = line.name
+  if (line.color) name.style.color = line.color
+  const body = document.createElement('span')
+  body.className = 'program-chat-line-text'
+  body.textContent = line.message
+  item.append(name, document.createTextNode(': '), body)
+  programChatLines.append(item)
+  while (programChatLines.childElementCount > TWITCH_CHAT_LIMIT) {
+    programChatLines.firstElementChild?.remove()
+  }
+  programChatLines.hidden = false
+  programChatHint.hidden = true
+  programChatLines.scrollTop = programChatLines.scrollHeight
+}
+
+function syncTwitchFeed(): void {
+  const login = streamIncludeChat ? twitchLoginForFeed() : ''
+  if (!login) {
+    twitchAlertFeed?.stop()
+    twitchAlertFeed = null
+    twitchFeedLogin = ''
+    twitchChatStatus = 'idle'
+    clearTwitchChatLines()
+    return
+  }
+  if (twitchFeedLogin === login && twitchAlertFeed) return
   twitchAlertFeed?.stop()
-  twitchAlertFeed = null
+  clearTwitchChatLines()
+  twitchFeedLogin = login
+  twitchChatStatus = 'connecting'
+  twitchAlertFeed = startTwitchChatFeed(login, {
+    onAlert: (alert) => {
+      if (alertBoxPageUrl(streamAlertBoxUrl)) return
+      presentStreamAlert(alert)
+    },
+    onChat: appendTwitchChatLine,
+    onStatus: (status) => {
+      if (twitchFeedLogin !== login) return
+      twitchChatStatus = status
+      paintChatFeed()
+    },
+  })
+}
+
+function syncPlatformAlerts(): void {
   syncAlertBox()
-  if (!streamIncludeChat || alertBoxPageUrl(streamAlertBoxUrl)) return
-  const platform = overlayPlatform()
-  if (platform !== 'twitch' || !streamChannel.trim()) return
-  twitchAlertFeed = startTwitchAlertFeed(streamChannel, presentStreamAlert)
+  syncTwitchFeed()
 }
 
 function paintIntermissionCard(): void {
@@ -4302,8 +4360,23 @@ function platformChatUrl(): string | null {
   return streamChatUrl(overlayPlatform(), streamChannel)
 }
 
-function syncChatFeed(): void {
-  const url = streamIncludeChat ? platformChatUrl() : null
+function paintChatFeed(): void {
+  const login = twitchLoginForFeed()
+  const twitch = streamIncludeChat && Boolean(login)
+  if (twitch) {
+    programChatView.removeAttribute('src')
+    programChatView.hidden = true
+    const hasLines = programChatLines.childElementCount > 0
+    programChatLines.hidden = !hasLines
+    programChatHint.hidden = hasLines
+    programChatHint.textContent =
+      twitchChatStatus === 'open' ? 'Waiting for the first message' : 'Connecting to Twitch chat'
+    programChatSlot.dataset.liveFeed = '1'
+    programChatSlot.hidden = false
+    return
+  }
+  programChatLines.hidden = true
+  const url = streamIncludeChat && overlayPlatform() === 'youtube' ? platformChatUrl() : null
   if (!url) {
     programChatView.removeAttribute('src')
     programChatView.hidden = true
@@ -4320,6 +4393,11 @@ function syncChatFeed(): void {
   programChatHint.hidden = true
   programChatSlot.dataset.liveFeed = '1'
   programChatSlot.hidden = false
+}
+
+function syncChatFeed(): void {
+  syncTwitchFeed()
+  paintChatFeed()
 }
 
 // Wire scene buttons
