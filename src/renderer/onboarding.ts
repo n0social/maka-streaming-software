@@ -50,13 +50,14 @@ export const ONBOARDING_STEPS: TourStep[] = [
     target: '[data-tour="destinations"]',
     placement: 'left',
   },
-  {
-    id: 'addons',
-    title: 'Extras',
-    body: 'Want something extra? Browse addons for new tools and layouts.',
-    target: '[data-tour="addons"]',
-    placement: 'left',
-  },
+  // Marketplace tour returns when the addon catalog is part of the build.
+  // {
+  //   id: 'addons',
+  //   title: 'Extras',
+  //   body: 'Want something extra? Browse addons for new tools and layouts.',
+  //   target: '[data-tour="addons"]',
+  //   placement: 'left',
+  // },
   {
     id: 'go-live',
     title: 'Go Live',
