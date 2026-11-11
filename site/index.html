@@ -6,27 +6,54 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Maka — cream-and-gold streaming studio for Windows. Download the desktop app, try browser capture, or preview the studio UI."
+      content="Official v0.2.6.2 build — lightweight video game streaming for cloud gamers. Stream PVP and competitive games from GeForce NOW, Xbox Cloud Gaming, Shadow PC &amp; Cloud Moon to Twitch &amp; YouTube."
     />
+    <meta
+      name="keywords"
+      content="Maka streaming, lightweight video game streaming platform, cloud streaming for streamers, cloud gaming stream, NVIDIA GeForce NOW streaming, GeForce NOW Twitch, Xbox Cloud Gaming stream, xCloud streaming, Shadow PC cloud gaming, Cloud Moon gaming, Cloud Moon streaming, PVP streaming, PVP live stream, competitive gaming stream, OBS alternative lightweight, free Windows streaming software, WHIP streaming, MAKArelay, Maka v0.2.6.2, first official working build"
+    />
+    <meta name="author" content="n0social" />
+    <meta name="robots" content="index, follow" />
     <meta name="theme-color" content="#faf8f4" />
     <link rel="canonical" href="https://makalive.stream/" />
     <meta property="og:type" content="website" />
+    <meta property="og:locale" content="en_US" />
     <meta property="og:site_name" content="Maka" />
-    <meta property="og:title" content="Maka — stream lighter" />
+    <meta property="og:title" content="Maka — lightweight cloud game streaming for streamers | v0.2.6.2" />
     <meta
       property="og:description"
-      content="Download Maka for Windows — local relay, browser try, or studio preview."
+      content="First official working build — lightweight streaming for GeForce NOW, Xbox Cloud Gaming, Shadow PC, Cloud Moon, PVP, and competitive gamers on Windows."
     />
     <meta property="og:url" content="https://makalive.stream/" />
     <meta property="og:image" content="https://makalive.stream/marketing/feature-graphic-1024x500.png" />
+    <meta property="og:image:alt" content="Maka — lightweight cloud game streaming platform for streamers" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Maka — stream lighter" />
+    <meta name="twitter:title" content="Maka — lightweight cloud game streaming for streamers" />
     <meta
       name="twitter:description"
-      content="Download Maka for Windows. Try browser capture or preview the redesigned studio."
+      content="Cloud streaming for streamers: Go live from GeForce NOW, Xbox Cloud Gaming, Shadow PC &amp; Cloud Moon. PVP-ready, lightweight — v0.2.6.2."
     />
     <meta name="twitter:image" content="https://makalive.stream/marketing/feature-graphic-1024x500.png" />
-    <title>Maka — stream lighter</title>
+    <title>Maka — lightweight cloud game streaming for streamers | v0.2.6.2</title>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Maka",
+        "applicationCategory": "MultimediaApplication",
+        "applicationSubCategory": "Game streaming software",
+        "operatingSystem": "Windows 10, Windows 11",
+        "softwareVersion": "0.2.6.2",
+        "description": "Lightweight video game streaming platform for cloud gamers and PVP streamers — stream from NVIDIA GeForce NOW, Xbox Cloud Gaming, Shadow PC, and Cloud Moon to Twitch and YouTube.",
+        "downloadUrl": "https://github.com/n0social/maka-streaming-software/releases/download/v0.2.6.2/Maka-Setup-0.2.6.exe",
+        "screenshot": "https://makalive.stream/marketing/screenshot-desktop-1280x800.png",
+        "image": "https://makalive.stream/marketing/feature-graphic-1024x500.png",
+        "url": "https://makalive.stream/",
+        "author": { "@type": "Organization", "name": "n0social" },
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "keywords": "cloud streaming for streamers, GeForce NOW, Xbox Cloud Gaming, Shadow PC, Cloud Moon, PVP streaming, lightweight game streaming"
+      }
+    </script>
     <link rel="icon" type="image/png" href="/marketing/favicon-32.png?v=maka-m" sizes="32x32" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -82,6 +109,21 @@
         align-items: center;
         gap: 2rem;
         width: 100%;
+      }
+      .hero-mvp__seo-lead {
+        margin: 0;
+        max-width: 38rem;
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: var(--text);
+        line-height: 1.45;
+      }
+      .hero-mvp__seo-detail {
+        margin: -1rem 0 0;
+        max-width: 42rem;
+        font-size: 0.92rem;
+        color: var(--muted);
+        line-height: 1.55;
       }
       /* Wordmark — must stay readable if maka.css fails (origin serves inline first) */
       .hero-mvp__brand-stage {
@@ -229,6 +271,15 @@
             </h1>
           </div>
 
+          <p class="hero-mvp__seo-lead">
+            Official v0.2.6.2 — lightweight video game streaming for cloud streamers and PVP gamers.
+          </p>
+          <p class="hero-mvp__seo-detail">
+            Go live from <strong>NVIDIA GeForce NOW</strong>, <strong>Xbox Cloud Gaming</strong>,
+            <strong>Shadow PC</strong>, and <strong>Cloud Moon</strong> to Twitch &amp; YouTube. Local WHIP
+            relay, less overhead than a full OBS stack — built for competitive and ranked streams.
+          </p>
+
           <nav class="hero-mvp__actions" aria-label="Primary actions">
             <a class="btn btn-outline hero-mvp__btn" href="/stream/"><span>Stream</span></a>
             <a class="btn btn-outline hero-mvp__btn" href="/preview/"><span>App preview</span></a>
@@ -241,7 +292,10 @@
         </div>
       </main>
 
-      <footer class="site-footer site-footer--center">MAKA · MIT</footer>
+      <footer class="site-footer site-footer--center">
+        MAKA · MIT · Cloud streaming for streamers · GeForce NOW · Xbox Cloud · Shadow PC · Cloud Moon ·
+        PVP streaming
+      </footer>
     </div>
   </body>
 </html>

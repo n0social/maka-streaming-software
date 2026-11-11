@@ -2,22 +2,37 @@
   "name": "tabcast-browser",
   "version": "0.2.6",
   "private": false,
-  "description": "Maka — free Windows streaming software for game capture and RTMP live streaming (Electron studio + local WHIP relay). OBS-light alternative for Twitch and YouTube.",
+  "description": "Maka v0.2.6.2 — lightweight video game streaming platform for Windows. Cloud streaming for streamers on GeForce NOW, Xbox Cloud Gaming, Shadow PC, and Cloud Moon; PVP and competitive live streams to Twitch & YouTube (WHIP + MAKArelay).",
   "keywords": [
-    "streaming",
-    "live-streaming",
-    "game-capture",
+    "maka",
+    "game-streaming",
+    "cloud-streaming",
+    "cloud-gaming-stream",
+    "cloud-streaming-for-streamers",
+    "lightweight-streaming",
+    "lightweight-video-game-streaming-platform",
+    "pvp-streaming",
+    "competitive-gaming-stream",
+    "geforce-now-streaming",
+    "nvidia-geforce-now",
+    "xbox-cloud-gaming",
+    "xcloud-streaming",
+    "shadow-pc",
+    "shadow-cloud-gaming",
+    "cloud-moon",
+    "cloud-moon-gaming",
     "obs-alternative",
     "twitch",
     "youtube",
     "rtmp",
     "whip",
-    "electron",
-    "maka"
+    "maka-relay",
+    "windows-streaming-software",
+    "electron"
   ],
   "author": "n0social",
   "license": "MIT",
-  "homepage": "https://tabcast.live.skydav.work",
+  "homepage": "https://makalive.stream",
   "repository": {
     "type": "git",
     "url": "https://github.com/n0social/maka-streaming-software.git"
@@ -52,6 +67,7 @@
     "dev:web-studio:site": "node scripts/web-studio-dev.mjs",
     "test:web-relay": "node scripts/web-relay-smoke.test.mjs --spawn",
     "test:studio-wiring": "node --experimental-strip-types scripts/studio-wiring.test.ts",
+    "verify:site-seo": "node scripts/verify-site-seo.mjs",
     "test:studio-ui": "node scripts/studio-wiring-ui.mjs",
     "dev:studio": "electron-vite dev"
   },
@@ -75,6 +91,9 @@
   "build": {
     "appId": "work.skydav.tabcast.browser",
     "productName": "Maka",
+    "extraMetadata": {
+      "description": "Lightweight cloud game streaming for Windows — GeForce NOW, Xbox Cloud Gaming, Shadow PC, Cloud Moon, PVP streamers."
+    },
     "electronDist": "node_modules/electron/dist",
     "directories": {
       "output": "dist-installer"

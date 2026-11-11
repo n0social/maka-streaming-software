@@ -24,6 +24,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Verify site SEO
+        run: npm run verify:site-seo
+
       - name: Build
         run: npm run build
 

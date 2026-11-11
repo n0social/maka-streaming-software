@@ -1,6 +1,8 @@
-# Maka gaming streaming service
+# Maka — lightweight video game streaming platform
 
-**Free Windows streaming software for gamers and creators who want a resource-light OBS alternative.**
+**Official v0.2.6.2 — cloud streaming for streamers on Windows.** Maka is free streaming software built for **cloud gamers** and **PVP / competitive live streams**: capture play from **NVIDIA GeForce NOW**, **Xbox Cloud Gaming**, **Shadow PC**, and **Cloud Moon**, then go live to **Twitch**, **YouTube**, or custom RTMP with a local **MAKA.relay** — less overhead than wiring up a full OBS stack first.
+
+**Site:** [makalive.stream](https://makalive.stream) · **Download:** [v0.2.6.2 release](https://github.com/n0social/maka-streaming-software/releases/tag/v0.2.6.2)
 
 Studio branding uses an **original fan-inspired anime streamer mascot** (blonde pigtails, gamer gear) in `site/assets/mascot/` — not official *Soul Eater* or third-party franchise art.
 
@@ -12,11 +14,11 @@ Maka is **free streaming software** for Windows: a desktop **Electron studio** f
 
 ---
 
-## Get Maka (v0.2.6 installer)
+## Get Maka (v0.2.6.2 — first official working build)
 
-The current **unsigned** Windows installer on GitHub is **v0.2.6**. Installed copies of **v0.2.4** and **v0.2.5** check this release for an update. The build includes the **phone camera/mic add-on** (QR pairing, independent camera and mic, 60-second rejoin, STUN and optional TURN) and **live stream recovery** (a bad stream key stops the stream immediately, network blips retry longer, WHIP stall watchdog, backup RTMP ingest).
+The current **unsigned** Windows installer on GitHub is **[v0.2.6.2](https://github.com/n0social/maka-streaming-software/releases/tag/v0.2.6.2)** (installer filename `Maka-Setup-0.2.6.exe`, app version **0.2.6**). Includes **Go Live / WHIP Bearer fix**, wizard & overlay UX, **phone camera/mic add-on**, and **live stream recovery** (ingest errors, WHIP stall watchdog, backup RTMP).
 
-`git checkout v0.2.6` matches the published installer.
+`git checkout v0.2.6.2` matches the recommended published build.
 
 ### Recent updates
 
@@ -31,7 +33,7 @@ The current **unsigned** Windows installer on GitHub is **v0.2.6**. Installed co
 
 ### Option A — Download (Windows)
 
-1. Download **[Maka-Setup-0.2.6.exe](https://github.com/n0social/maka-streaming-software/releases/download/v0.2.6/Maka-Setup-0.2.6.exe)** from the [v0.2.6 release](https://github.com/n0social/maka-streaming-software/releases/tag/v0.2.6).
+1. Download **[Maka-Setup-0.2.6.exe](https://github.com/n0social/maka-streaming-software/releases/download/v0.2.6.2/Maka-Setup-0.2.6.exe)** from the [v0.2.6.2 release](https://github.com/n0social/maka-streaming-software/releases/tag/v0.2.6.2).
 2. Run the installer on **Windows 10 or 11** (x64).
 3. **Windows SmartScreen** may warn because the build is **unsigned** — that is expected until code signing is in place.
 
