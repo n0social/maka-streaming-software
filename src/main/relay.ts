@@ -19,6 +19,7 @@ import {
 } from '../shared/tabcast'
 import type { RelaySnapshot } from '../shared/relay-snapshot'
 import { MAX_LIVE_RETRY_ATTEMPTS, liveRetryBackoffMs } from '../shared/live-retry'
+import { patchInstalledRelayDist } from './patch-installed-relay'
 import { recordDiagnostic } from './diagnostics'
 import { killProcessTree } from './process-tree'
 
@@ -287,6 +288,20 @@ type DirectRelayLaunch = {
   mode: 'direct' | 'launcher'
 }
 
+function patchInstalledRelayRoots(): { patched: string[]; skipped: string[] } {
+  const localApp = process.env.LOCALAPPDATA
+  const patched: string[] = []
+  const skipped: string[] = []
+  if (!localApp) return { patched, skipped }
+  for (const rootName of RELAY_INSTALL_DIRS) {
+    const dist = join(localApp, rootName, 'v0.1.0', 'relay', 'dist')
+    const result = patchInstalledRelayDist(dist)
+    patched.push(...result.patched)
+    skipped.push(...result.skipped)
+  }
+  return { patched, skipped }
+}
+
 /** Prefer the unpacked Node relay under %LOCALAPPDATA%\MAKArelay, then the older TabcastRelay folder. */
 function resolveLaunch(): DirectRelayLaunch {
   const localApp = process.env.LOCALAPPDATA
@@ -416,6 +431,12 @@ export class RelayManager {
   }
 
   private async startExclusive(reason: string): Promise<void> {
+    const encodePatch = patchInstalledRelayRoots()
+    if (encodePatch.patched.length) {
+      recordDiagnostic('info', 'relay.encode-patch', 'Installed relay now honors studio encode settings', undefined, {
+        files: encodePatch.patched,
+      })
+    }
     const exe = resolveRelayExe()
     const integrity = relayIntegrityError(exe)
     if (integrity) {
