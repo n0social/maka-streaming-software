@@ -10,16 +10,14 @@ Each addon needs a validated `tabcast-addon.json` manifest. See [docs/ADDON-API.
 
 Studio → **Addon marketplace** — install curated extensions without manual file copy.
 
-## Built-in
-
-- **Scene templates** — always enabled (`tabcast.scene-templates`)
-
 ## Catalog examples (install from marketplace)
 
 - **Discord Now Live** — webhook pattern (declarative actions)
 - **Custom RTMP / Kick** — third-party platform example
-- **Lower thirds** — scene layout shortcuts
+- **Phone camera** — QR pairing on the same Wi-Fi
+
+Scene layouts (gameplay, desk, intermission, ending) live in the studio Scenes list. They are not marketplace addons.
 
 ## Samples
 
-- `_samples/hello-tabcast/` — sandboxed runtime demo (`index.html` + `tabcast.addons` API). Also in marketplace as **Hello Maka**.
+- `_samples/hello-tabcast/` — sandboxed runtime demo (`index.html` + `tabcast.addons` API). Kept for addon validation. It is not listed in the marketplace.

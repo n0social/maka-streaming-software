@@ -4,6 +4,7 @@ import { app } from 'electron'
 import { validateManifest } from '../shared/addon-api'
 import type { CatalogEntry } from '../shared/addon-types'
 import { MARKETPLACE_CATALOG } from '../shared/marketplace-catalog'
+import { omitRetiredAddons } from '../shared/retired-addons'
 import { recordDiagnostic } from './diagnostics'
 
 const FEED_URLS = [
@@ -80,10 +81,10 @@ function parseRemoteEntries(raw: unknown): CatalogEntry[] {
 
 function mergeCatalog(bundled: CatalogEntry[], remote: CatalogEntry[]): CatalogEntry[] {
   const byId = new Map<string, CatalogEntry>()
-  for (const entry of bundled) {
+  for (const entry of omitRetiredAddons(bundled)) {
     byId.set(entry.catalogId, entry)
   }
-  for (const entry of remote) {
+  for (const entry of omitRetiredAddons(remote)) {
     byId.set(entry.catalogId, entry)
   }
   return [...byId.values()]

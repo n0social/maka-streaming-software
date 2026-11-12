@@ -45,6 +45,9 @@ jobs:
       - name: QoS score tests
         run: npm run test:qos-score
 
+      - name: Retired addon catalog tests
+        run: npm run test:retired-addons
+
       - name: QoS log and live retry tests
         run: npm run test:qos-log && npm run test:live-retry && npm run test:capture-health && npm run test:capture-fallback
 
