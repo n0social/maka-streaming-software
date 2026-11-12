@@ -120,11 +120,12 @@ import {
   parseCapturePlatform,
   startDesktopLoopbackAudio,
   startDisplayShareAudio,
-  startGameLinkedAudio,
   stopMediaStream,
   systemAudioCaptureSupported,
   type SystemAudioCapturePlatform,
 } from './system-audio-capture'
+import { gameAudioKind } from '../shared/game-audio-source'
+import { createPcmPlayback, type PcmPlayback } from './pcm-playback'
 import { OnboardingTour } from './onboarding'
 import { SetupWizard } from './onboarding-wizard'
 // Marketplace UI is commented out until each addon is ready.
@@ -303,6 +304,10 @@ let cameraStream: MediaStream | null = null
 let micStream: MediaStream | null = null
 let desktopAudioStream: MediaStream | null = null
 let gameAudioStream: MediaStream | null = null
+let gamePcm: PcmPlayback | null = null
+let gameAudioSession = 0
+let gameAudioStatus = ''
+let stopGamePcmListener: (() => void) | null = null
 let desktopMeterHandle: AudioLevelMeter | null = null
 let gameMeterHandle: AudioLevelMeter | null = null
 let desktopAudioMuted = false
@@ -467,12 +472,19 @@ function syncSystemAudioChannelUi(): void {
   }
 
   if (!gameLive) {
+    const kind = gameAudioKind(
+      captureKind === 'desktop' ? selectedSourceId : null,
+    )
     audioGameChannel.title =
-      'No game audio yet. Click the name or gear to link the gameplay source, or share a window with audio.'
+      gameAudioStatus ||
+      (kind === 'screen'
+        ? 'This gameplay source is the whole screen. Game audio follows a window. Desktop audio already has this mix.'
+        : 'Pick a gameplay window. Game audio follows that app, and desktop audio stays the full output.')
   } else if (gameAudioMuted) {
     audioGameChannel.title = 'Game audio muted for stream (click name to unmute)'
   } else {
-    audioGameChannel.title = 'Game audio live — click name to mute for stream'
+    audioGameChannel.title =
+      'Game audio is this window’s app. Other windows of the same app are included. Click the name to mute.'
   }
 }
 
@@ -509,8 +521,19 @@ function stopDesktopAudioCapture(): void {
 
 function stopGameAudioCapture(): void {
   stopGameAudioMeter()
+  gamePcm?.close()
+  gamePcm = null
   stopMediaStream(gameAudioStream)
   gameAudioStream = null
+  gameAudioSession = 0
+}
+
+function ensureGamePcmListener(): void {
+  if (stopGamePcmListener) return
+  stopGamePcmListener = window.maka.onWindowAudioPcm((session, pcm) => {
+    if (session !== gameAudioSession || !gamePcm) return
+    gamePcm.push(pcm)
+  })
 }
 
 async function openDesktopAudioStream(fromGesture: boolean): Promise<MediaStream | null> {
@@ -548,31 +571,38 @@ async function refreshDesktopAudioCapture(fromGesture = false): Promise<void> {
   }
 }
 
-async function refreshGameAudioCapture(fromGesture = false): Promise<void> {
-  if (!systemAudioCaptureSupported(capturePlatform)) {
-    stopGameAudioCapture()
-    syncSystemAudioChannelUi()
-    return
-  }
+async function refreshGameAudioCapture(): Promise<void> {
   stopGameAudioCapture()
-  const sourceId =
-    captureKind === 'desktop' && selectedSourceId && selectedSourceId !== BROWSE_CAPTURE_SOURCE_ID
-      ? selectedSourceId
-      : null
-  let stream: MediaStream | null = null
-  if (sourceId) stream = await startGameLinkedAudio(sourceId)
-  if (!stream && fromGesture) stream = await startDisplayShareAudio()
-  if (!stream) {
-    if (fromGesture) {
-      setDestError('Could not open game audio. Pick a gameplay source or share a window with audio.')
-    }
+  gameAudioStatus = ''
+  if (capturePlatform !== 'win32') {
+    gameAudioStatus = 'Game audio follows a window on Windows.'
     syncSystemAudioChannelUi()
     syncWhipAvTracks()
     return
   }
-  gameAudioStream = stream
+  const sourceId =
+    captureKind === 'desktop' && selectedSourceId && selectedSourceId !== BROWSE_CAPTURE_SOURCE_ID
+      ? selectedSourceId
+      : null
+  if (gameAudioKind(sourceId) !== 'window' || !sourceId) {
+    await window.maka.stopWindowAudio()
+    syncSystemAudioChannelUi()
+    syncWhipAvTracks()
+    return
+  }
+  const started = await window.maka.startWindowAudio(sourceId)
+  if (!started.ok) {
+    gameAudioStatus = started.message
+    syncSystemAudioChannelUi()
+    syncWhipAvTracks()
+    return
+  }
+  gameAudioSession = started.session
+  gamePcm = createPcmPlayback()
+  gameAudioStream = gamePcm.stream
+  ensureGamePcmListener()
   applyDesktopGameAudioTrackEnabled()
-  gameMeterHandle = startAudioLevelMeter(stream, setGameMeterLevel)
+  gameMeterHandle = startAudioLevelMeter(gameAudioStream, setGameMeterLevel)
   syncWhipAvTracks()
   syncSystemAudioChannelUi()
 }
@@ -5283,9 +5313,9 @@ audioDesktopLabel.addEventListener('click', () => {
 })
 
 audioGameLabel.addEventListener('click', () => {
-  if (!systemAudioCaptureSupported(capturePlatform)) return
+  if (capturePlatform !== 'win32') return
   if (!gameAudioStream) {
-    void refreshGameAudioCapture(true)
+    void refreshGameAudioCapture()
     return
   }
   gameAudioMuted = !gameAudioMuted
@@ -5315,12 +5345,8 @@ desktopAudioOutputSelect.addEventListener('change', () => {
 })
 
 btnGameAudioSettings.addEventListener('click', () => {
-  if (!systemAudioCaptureSupported(capturePlatform)) return
-  if (!gameAudioStream) {
-    void refreshGameAudioCapture(true)
-    return
-  }
-  void refreshGameAudioCapture(false)
+  if (capturePlatform !== 'win32') return
+  void refreshGameAudioCapture()
   studioSourceGame.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
 })
 

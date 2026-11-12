@@ -27,6 +27,11 @@ import {
 } from './diagnostics'
 import { isAllowedBrowseUrl } from '../shared/browse-url'
 import { BROWSE_CAPTURE_SOURCE_ID } from '../shared/capture'
+import {
+  attachWindowAudioTarget,
+  startWindowProcessAudio,
+  stopWindowProcessAudio,
+} from './window-process-audio'
 import { RELAY_WHIP_URL } from '../shared/maka'
 import { relayControlFetch } from '../shared/relay-control-fetch'
 import { coerceSettings, isStudioMediaPermission, isValidPresetId, isValidTabId } from './security'
@@ -141,7 +146,7 @@ function allowCapturePermissions(): void {
     return isStudioMediaPermission(String(permission))
   })
 
-  session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
+  session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
     void desktopCapturer
       .getSources({ types: ['screen', 'window'] })
       .then((sources) => {
@@ -154,7 +159,7 @@ function allowCapturePermissions(): void {
           callback({})
           return
         }
-        callback({ video: pick, audio: 'loopback' })
+        callback(request.audioRequested ? { video: pick, audio: 'loopback' } : { video: pick })
       })
       .catch(() => callback({}))
   })
@@ -390,6 +395,8 @@ function createMainWindow(): BrowserWindow {
   win.on('resize', () => layoutBrowserPane(win))
   win.on('closed', () => {
     browse.detach()
+    stopWindowProcessAudio()
+    attachWindowAudioTarget(null)
     mainWindow = null
   })
 
@@ -834,6 +841,16 @@ function registerIpc(): void {
   ipcMain.handle('browser:popout-chat', (event, url?: unknown) => {
     if (!studioOk(event)) return
     openChatPopout(sanitizeChatUrlInput(url))
+  })
+
+  ipcMain.handle('window-audio:start', async (event, sourceId: unknown) => {
+    if (!studioOk(event)) return { ok: false, message: 'Studio window required' }
+    if (typeof sourceId !== 'string') return { ok: false, message: 'Pick a gameplay window for game audio.' }
+    return startWindowProcessAudio(sourceId)
+  })
+  ipcMain.handle('window-audio:stop', (event) => {
+    if (!studioOk(event)) return
+    stopWindowProcessAudio()
   })
 
   ipcMain.handle('capture:set-preferred', (event, sourceId: unknown) => {
@@ -1337,6 +1354,7 @@ app.whenReady().then(() => {
   })
 
   mainWindow = createMainWindow()
+  attachWindowAudioTarget(mainWindow)
 
   void relay.start().catch((err) => {
     recordDiagnostic('error', 'relay.start', 'Initial relay start failed', err)
@@ -1345,6 +1363,7 @@ app.whenReady().then(() => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       mainWindow = createMainWindow()
+      attachWindowAudioTarget(mainWindow)
     }
   })
 })
