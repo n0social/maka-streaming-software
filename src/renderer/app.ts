@@ -61,6 +61,7 @@ import { validateRelayStreamKeys, KICK_RTMP_URL } from '../shared/stream-keys'
 import { buildRelayConfigRequest, sanitizeStreamCategory, sanitizeStreamTitle, type RelayStudioSettings } from '../shared/relay-config'
 import { emptyEncodeAdaptState, observeEncodeAdapt, type EncodeAdaptState } from '../shared/encode-adapt'
 import { formatQosLog, pushQosEvent, type QosEvent, type QosEventKind } from '../shared/qos-log'
+import { emptyCaptureStallState, observeCaptureFrames, type CaptureStallState } from '../shared/capture-health'
 import { isTwitchLogin, normalizeTwitchChannel, streamKeyValid, youtubeVideoId } from '../shared/stream-wizard'
 import type { StreamDestinationSettings } from '../shared/stream-destination-settings'
 import { GoLiveWizard, type GoLiveWizardPlatform } from './go-live-wizard'
@@ -260,6 +261,11 @@ const CUSTOM_RTM_ADDON_ID = 'com.tabcast.custom-rtmp'
 
 let selectedSourceId: string | null = null
 let captureKind: 'desktop' | 'browse' | null = null
+let lastCaptureSource: CaptureSource | null = null
+let captureStallState: CaptureStallState = emptyCaptureStallState()
+let captureRetryUsed = false
+let captureRetryInFlight = false
+let captureStallNotified = false
 let liveRecoveryAttempts = 0
 let liveReconnecting = false
 let liveRecoveryExhausted = false
@@ -2482,7 +2488,11 @@ function renderSources(sources: CaptureSource[]): void {
 
 async function selectDesktopSource(source: CaptureSource): Promise<void> {
   selectedSourceId = source.id
+  lastCaptureSource = source
   captureKind = 'desktop'
+  captureStallState = emptyCaptureStallState()
+  captureRetryUsed = false
+  captureStallNotified = false
   layerEnabled.game = true
 
   for (const el of sourceList.querySelectorAll('.source-card')) {
@@ -2520,34 +2530,81 @@ async function selectDesktopSource(source: CaptureSource): Promise<void> {
   }
 }
 
-async function captureDesktopMedia(source: CaptureSource): Promise<MediaStream> {
-  if (source.type === 'screen') {
+async function captureDesktopMedia(source: CaptureSource, reduced = false): Promise<MediaStream> {
+  await window.tabcast.setPreferredCaptureSource(source.id)
+  const displayVideo = reduced
+    ? { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } }
+    : { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 } }
+  const mandatory = {
+    chromeMediaSource: 'desktop',
+    chromeMediaSourceId: source.id,
+    maxWidth: reduced ? 1280 : 1920,
+    maxHeight: reduced ? 720 : 1080,
+    maxFrameRate: reduced ? 30 : 60,
+  }
+  const display = () =>
+    navigator.mediaDevices.getDisplayMedia({ video: displayVideo, audio: false })
+  const desktop = () =>
+    navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: { mandatory } as MediaTrackConstraints,
+    })
+  if (reduced) {
     try {
-      return await navigator.mediaDevices.getDisplayMedia({
-        video: {
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-          frameRate: { ideal: 60 },
-        },
-        audio: false,
-      })
+      return await desktop()
     } catch {
-      // Fall through to desktopCapturer source id path.
+      return await display()
     }
   }
+  try {
+    return await display()
+  } catch {
+    return await desktop()
+  }
+}
 
-  return navigator.mediaDevices.getUserMedia({
-    audio: false,
-    video: {
-      mandatory: {
-        chromeMediaSource: 'desktop',
-        chromeMediaSourceId: source.id,
-        maxWidth: 1920,
-        maxHeight: 1080,
-        maxFrameRate: 60,
-      },
-    } as MediaTrackConstraints,
-  })
+async function replaceGameplayWhipTrack(previous: MediaStream | null, next: MediaStream): Promise<void> {
+  if (!whipPublisher) return
+  const previousIds = new Set(previous?.getVideoTracks().map((track) => track.id) ?? [])
+  const nextTrack = next.getVideoTracks().find((track) => track.readyState === 'live') ?? null
+  await Promise.all(
+    whipPublisher.pc.getSenders().map(async (sender) => {
+      if (sender.track && previousIds.has(sender.track.id)) {
+        await sender.replaceTrack(nextTrack).catch(() => undefined)
+      }
+    }),
+  )
+}
+
+async function retryFrozenCapture(): Promise<void> {
+  const source = lastCaptureSource
+  if (!source || captureRetryInFlight) return
+  captureRetryInFlight = true
+  captureStallState = emptyCaptureStallState()
+  recordQos('capture', 'capture:stalled', { label: 'Capture stalled', detail: 'Retrying at 720p30' })
+  destHint.textContent = 'Capture froze — retrying at 720p30.'
+  const previous = programStream
+  try {
+    const stream = await captureDesktopMedia(source, true)
+    programStream = stream
+    bindGameplayStream(stream)
+    programVideo.srcObject = stream
+    syncProgramVideoSurface()
+    await replaceGameplayWhipTrack(previous, stream)
+    stopStream(previous)
+    syncWhipAvTracks()
+    destHint.textContent = 'Capture retried at 720p30. If the preview is still black, pick the game window instead of the whole screen.'
+  } catch (err) {
+    programEmpty.hidden = false
+    programEmpty.textContent =
+      err instanceof Error ? err.message : 'Capture froze and the 720p30 retry failed. Pick the window again.'
+    recordQos('capture', 'capture:retry-failed', {
+      label: 'Capture retry failed',
+      detail: err instanceof Error ? err.message : 'retry failed',
+    })
+  } finally {
+    captureRetryInFlight = false
+  }
 }
 
 function bindGameplayStream(stream: MediaStream): void {
@@ -5152,6 +5209,29 @@ function sampleCaptureClock(): void {
   }
   captureClockFrames = frames
   captureClockStartedAt = now
+
+  const programFrames = programVideo.getVideoPlaybackQuality?.().totalVideoFrames ?? 0
+  const gameplayLive = Boolean(programStream?.getVideoTracks().some((track) => track.readyState === 'live'))
+  const previousFrames = captureStallState.lastFrames
+  const stall = observeCaptureFrames(captureStallState, programFrames, gameplayLive)
+  captureStallState = stall.state
+  if (previousFrames != null && programFrames > previousFrames) captureStallNotified = false
+  if (!stall.stalled) return
+  if (!captureRetryUsed && lastCaptureSource) {
+    captureRetryUsed = true
+    void retryFrozenCapture()
+    return
+  }
+  if (!captureStallNotified) {
+    captureStallNotified = true
+    programEmpty.hidden = false
+    programEmpty.textContent =
+      'Capture is still frozen. Pick the game window instead of the whole screen. Cloud gaming often captures black on the desktop.'
+    recordQos('capture', 'capture:still-frozen', {
+      label: 'Capture still frozen',
+      detail: '720p30 retry did not restore frames',
+    })
+  }
 }
 
 setInterval(() => {

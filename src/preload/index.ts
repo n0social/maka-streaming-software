@@ -203,6 +203,7 @@ export type TabcastBridge = {
   onNavigated: (cb: (state: BrowserState) => void) => () => void
   onTitle: (cb: (title: string) => void) => () => void
   listCaptureSources: () => Promise<CaptureSource[]>
+  setPreferredCaptureSource: (sourceId: string) => Promise<void>
   getBrowseCaptureTarget: () => Promise<{ mediaSourceId: string; title: string; url: string } | null>
   setBrowseCaptureActive: (active: boolean) => Promise<boolean>
   listAddonPanels: () => Promise<AddonPanel[]>
@@ -343,6 +344,7 @@ const api: TabcastBridge = {
     return () => ipcRenderer.removeListener('browser:title', handler)
   },
   listCaptureSources: () => ipcRenderer.invoke('capture:list-sources'),
+  setPreferredCaptureSource: (sourceId) => ipcRenderer.invoke('capture:set-preferred', sourceId),
   getBrowseCaptureTarget: () => ipcRenderer.invoke('capture:get-browse-target'),
   setBrowseCaptureActive: (active) => ipcRenderer.invoke('capture:set-browse-capture-active', active),
   listAddonPanels: () => ipcRenderer.invoke('addons:list-panels'),
