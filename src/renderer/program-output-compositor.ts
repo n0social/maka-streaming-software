@@ -1,4 +1,5 @@
 import type { EncodeProfileSpec } from '../shared/stream-encode-profiles'
+import { nextCompositorSkip } from '../shared/encode-backpressure'
 
 /** Live, unmuted tracks from mixer sources (mirrors stream mute / layer enabled flags on tracks). */
 export function liveEnabledAudioTracks(streams: (MediaStream | null)[]): MediaStreamTrack[] {
@@ -25,6 +26,8 @@ export type ProgramOutputCompositor = {
   isActive: () => boolean
   getStream: () => MediaStream | null
   getCanvas: () => HTMLCanvasElement | null
+  /** Frames skipped after a slow draw. 0 means every animation frame is painted. */
+  getSkip: () => number
   start: () => MediaStream
   stop: () => void
 }
@@ -36,6 +39,8 @@ export function createProgramOutputCompositor(
   let outputStream: MediaStream | null = null
   let rafId = 0
   let active = false
+  let skipFrames = 0
+  let framesToSkip = 0
 
   function primaryVideoEl(): HTMLVideoElement | null {
     if (deps.hasGameplayVideo()) {
@@ -57,8 +62,15 @@ export function createProgramOutputCompositor(
     canvas.width = spec.width
     canvas.height = spec.height
 
+    const budgetMs = spec.fps > 0 ? 1000 / spec.fps : 33
     const tick = () => {
       if (!active) return
+      if (framesToSkip > 0) {
+        framesToSkip -= 1
+        rafId = requestAnimationFrame(tick)
+        return
+      }
+      const started = performance.now()
       const video = primaryVideoEl()
       ctx.fillStyle = '#0a0a0a'
       ctx.fillRect(0, 0, canvas!.width, canvas!.height)
@@ -79,6 +91,8 @@ export function createProgramOutputCompositor(
         ctx.textAlign = 'center'
         ctx.fillText('No program video', canvas!.width / 2, canvas!.height / 2)
       }
+      skipFrames = nextCompositorSkip(skipFrames, performance.now() - started, budgetMs)
+      framesToSkip = skipFrames
       rafId = requestAnimationFrame(tick)
     }
     rafId = requestAnimationFrame(tick)
@@ -111,6 +125,7 @@ export function createProgramOutputCompositor(
     isActive: () => active,
     getStream: () => outputStream,
     getCanvas: () => canvas,
+    getSkip: () => skipFrames,
     start() {
       if (active && outputStream) return outputStream
       active = true
@@ -119,6 +134,8 @@ export function createProgramOutputCompositor(
     stop() {
       if (!active) return
       active = false
+      skipFrames = 0
+      framesToSkip = 0
       stopCanvasPump()
       if (outputStream) {
         for (const track of outputStream.getTracks()) track.stop()

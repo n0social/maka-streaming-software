@@ -60,6 +60,12 @@ import {
 import { validateRelayStreamKeys, KICK_RTMP_URL } from '../shared/stream-keys'
 import { buildRelayConfigRequest, sanitizeStreamCategory, sanitizeStreamTitle, type RelayStudioSettings } from '../shared/relay-config'
 import { emptyEncodeAdaptState, observeEncodeAdapt, type EncodeAdaptState } from '../shared/encode-adapt'
+import {
+  emptyWhipLoadState,
+  observeWhipLoad,
+  whipLoadSample,
+  type WhipLoadState,
+} from '../shared/encode-backpressure'
 import { formatQosLog, pushQosEvent, type QosEvent, type QosEventKind } from '../shared/qos-log'
 import { emptyCaptureStallState, observeCaptureFrames, type CaptureStallState } from '../shared/capture-health'
 import { isTwitchLogin, normalizeTwitchChannel, streamKeyValid, youtubeVideoId } from '../shared/stream-wizard'
@@ -273,6 +279,7 @@ let liveRecoveryReason: string | null = null
 let adaptiveEncodeEnabled = true
 let encodeAdaptUserHold = false
 let encodeAdaptState: EncodeAdaptState = emptyEncodeAdaptState()
+let whipLoadState: WhipLoadState = emptyWhipLoadState()
 let encodeAdaptFrameMark: { dropped: number; encoded: number } | null = null
 let applyingAdaptiveEncode = false
 let liveRecoveryFatal = false
@@ -1828,6 +1835,7 @@ function resetEncodeAdaptSession(): void {
   encodeAdaptUserHold = false
   encodeAdaptState = emptyEncodeAdaptState()
   encodeAdaptFrameMark = null
+  whipLoadState = emptyWhipLoadState()
 }
 
 /** Drop percent since the previous live sample. Lifetime totals stay high after one bad burst and would walk the ladder forever. */
@@ -2796,10 +2804,21 @@ function syncWhipAvTracks(): void {
     }
   }
 
+  const allowWebcam = whipLoadState.applied !== 'shed-webcam'
+  const allowBrowser = whipLoadState.applied === 'normal'
   const nextWebcam =
-    layerEnabled.cam && cameraStream
+    allowWebcam && layerEnabled.cam && cameraStream
       ? cameraStream.getVideoTracks().find((t) => t.readyState === 'live') ?? null
       : null
+  const nextBrowser =
+    allowBrowser && layerEnabled.browser && browserStream
+      ? browserStream.getVideoTracks().find((t) => t.readyState === 'live') ?? null
+      : null
+  const webcamOut = whipPublisher.videoSenders.webcam ?? webcamSender
+  if (webcamOut) void webcamOut.replaceTrack(nextWebcam).catch(() => undefined)
+  if (whipPublisher.videoSenders.browser) {
+    void whipPublisher.videoSenders.browser.replaceTrack(nextBrowser).catch(() => undefined)
+  }
   const nextMic = whipLiveAudioTrack(micStream, layerEnabled.mic && !micMuted)
   const nextDesktop = whipLiveAudioTrack(
     desktopAudioStream,
@@ -2807,7 +2826,6 @@ function syncWhipAvTracks(): void {
   )
   const nextGame = whipLiveAudioTrack(gameAudioStream, layerEnabled.gameAudio && !gameAudioMuted)
 
-  if (webcamSender) void webcamSender.replaceTrack(nextWebcam).catch(() => undefined)
   const { audioSenders } = whipPublisher
   if (audioSenders.mic) void audioSenders.mic.replaceTrack(nextMic).catch(() => undefined)
   if (audioSenders.desktop) {
@@ -5185,6 +5203,31 @@ btnGameAudioSettings.addEventListener('click', () => {
   studioSourceGame.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
 })
 
+function noteWhipLoad(dropPercent: number | null): void {
+  if (!isSessionLive() || !whipPublisher) return
+  const sample = whipLoadSample({
+    dropPercent,
+    captureFps: measuredCaptureFps,
+    targetFps: encodeProfileSpec(selectedProfile()).fps,
+    compositorSkip: programOutputCompositor.getSkip(),
+  })
+  const previous = whipLoadState.applied
+  whipLoadState = observeWhipLoad(whipLoadState, sample)
+  if (whipLoadState.applied === previous) return
+  syncWhipAvTracks()
+  const detail =
+    whipLoadState.applied === 'shed-webcam'
+      ? 'Webcam and overlay tracks paused'
+      : whipLoadState.applied === 'shed-browser'
+        ? 'Overlay track paused'
+        : 'Extra tracks restored'
+  if (whipLoadState.applied !== 'normal') destHint.textContent = `CPU is behind — ${detail}. Gameplay stays.`
+  recordQos('encode', `backpressure:${whipLoadState.applied}`, {
+    label: 'Encode backpressure',
+    detail,
+  })
+}
+
 function sampleCaptureClock(): void {
   const videos = [programVideo, programCamVideo, programBrowserVideo]
   let frames = 0
@@ -5195,8 +5238,12 @@ function sampleCaptureClock(): void {
     frames += quality.totalVideoFrames
     dropped += quality.droppedVideoFrames
   }
+  const frameDelta = frames - captureClockFrames
+  const dropDelta = dropped - playbackDroppedFrames
+  const dropPercent = frameDelta > 0 ? (Math.max(0, dropDelta) / frameDelta) * 100 : null
   playbackTotalFrames = frames
   playbackDroppedFrames = dropped
+  noteWhipLoad(dropPercent)
   const now = performance.now()
   if (captureClockStartedAt > 0 && frames > captureClockFrames) {
     measuredCaptureFps = measuredFps(frames - captureClockFrames, now - captureClockStartedAt)
