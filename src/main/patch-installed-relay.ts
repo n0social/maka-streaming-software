@@ -17,12 +17,15 @@ const PROFILE_SETTINGS_NEW = `function profileSettings(profile) {
 const ENCODER_RUNNING_OLD = `if (encoder.running) {
         if (encoderMode === nextMode) {`
 
-const ENCODER_RUNNING_NEW = `if (encoder.running) {
-        if (globalThis.__MAKA_ENCODE_DIRTY) {
-            globalThis.__MAKA_ENCODE_DIRTY = false;
-            resetEncoderState();
-        }
-        else if (encoderMode === nextMode) {`
+const ENCODER_RUNNING_NEW = `if (encoder.running && globalThis.__MAKA_ENCODE_DIRTY) {
+        globalThis.__MAKA_ENCODE_DIRTY = false;
+        resetEncoderState();
+    }
+    else {
+        globalThis.__MAKA_ENCODE_DIRTY = false;
+    }
+    if (encoder.running) {
+        if (encoderMode === nextMode /* maka-encode */) {`
 
 const VIDEO_CODEC_OLD = `args.push('-c:v', 'libx264', '-preset', settings.preset, '-profile:v', 'main', '-pix_fmt', 'yuv420p', '-tune', 'zerolatency', '-b:v'`
 
@@ -91,7 +94,7 @@ function patchFile(path: string, replacements: Array<[string, string]>, result: 
     result.skipped.push(path)
     return
   }
-  let source = readFileSync(path, 'utf8')
+  let source = readFileSync(path, 'utf8').replace(/\r\n/g, '\n')
   if (source.includes(RELAY_ENCODE_PATCH_MARKER) && replacements.every(([from]) => !source.includes(from))) {
     result.skipped.push(path)
     return
