@@ -71,6 +71,7 @@
     "test:encode-backpressure": "node --experimental-strip-types scripts/encode-backpressure.test.mjs",
     "test:qos-log": "node --experimental-strip-types scripts/qos-log.test.mjs",
     "test:capture-health": "node --experimental-strip-types scripts/capture-health.test.mjs",
+    "test:capture-fallback": "node --experimental-strip-types scripts/capture-fallback.test.mjs",
     "test:live-retry": "node scripts/live-retry.test.mjs",
     "verify:site-seo": "node scripts/verify-site-seo.mjs",
     "test:studio-ui": "node scripts/studio-wiring-ui.mjs",

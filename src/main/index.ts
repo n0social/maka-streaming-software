@@ -38,6 +38,13 @@ import { addonProfileBucket, normalizeEncodeProfileId } from '../shared/stream-e
 // The overlay control is its own switch. CalculateNativeWinOcclusion is a feature.
 app.commandLine.appendSwitch('disable-direct-composition-video-overlays')
 app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion')
+if (process.platform === 'win32') {
+  // Window and screen capture use Windows Graphics Capture when the OS provides it.
+  app.commandLine.appendSwitch(
+    'enable-features',
+    'AllowWgcWindowCapturer,AllowWgcScreenCapturer',
+  )
+}
 
 function profileBucketForAddon(profileRaw: string | undefined): '720p' | '1080p' {
   if (profileRaw === '1080p') return '1080p'
