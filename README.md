@@ -4,7 +4,6 @@
 
 **Site:** [makalive.stream](https://makalive.stream) · **Download:** [v2.8.1 release](https://github.com/n0social/maka-streaming-software/releases/tag/v2.8.1)
 
-Studio branding uses an **original fan-inspired anime streamer mascot** (blonde pigtails, gamer gear) in `site/assets/mascot/` — not official *Soul Eater* or third-party franchise art.
 
 ![Maka studio with a live game stream in the program monitor](docs/readme-hero.png)
 
