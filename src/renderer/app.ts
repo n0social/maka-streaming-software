@@ -3,10 +3,10 @@ import type {
   BrowseTabInfo,
   CaptureSource,
   DiagEvent,
-  TabcastBridge,
+  MakaBridge,
 } from '../preload/index'
 import type { RelaySnapshot } from '../shared/relay-snapshot'
-import type { RelayPlatformStatus, StreamProfile, SceneLayout, RelayHealth } from '../shared/tabcast'
+import type { RelayPlatformStatus, StreamProfile, SceneLayout, RelayHealth } from '../shared/maka'
 import {
   ENCODE_PROFILE_ORDER,
   canvasForEncodeProfile,
@@ -143,7 +143,7 @@ import './onboarding.css'
 
 declare global {
   interface Window {
-    tabcast: TabcastBridge
+    maka: MakaBridge
   }
 }
 
@@ -270,7 +270,7 @@ const programBrowserVideo = document.getElementById('program-browser-video') as 
 const programChatSlot = document.getElementById('program-chat-slot')!
 const programNotificationsSlot = document.getElementById('program-notifications-slot')!
 
-const CUSTOM_RTM_ADDON_ID = 'com.tabcast.custom-rtmp'
+const CUSTOM_RTM_ADDON_ID = 'com.maka.custom-rtmp'
 
 let selectedSourceId: string | null = null
 let captureKind: 'desktop' | 'browse' | null = null
@@ -602,7 +602,7 @@ async function refreshDesktopAudioOutputDevices(): Promise<void> {
 }
 
 async function initSystemAudioCapture(): Promise<void> {
-  const info = await window.tabcast.getVersionInfo()
+  const info = await window.maka.getVersionInfo()
   capturePlatform = parseCapturePlatform(info.platform)
   syncSystemAudioChannelUi()
   if (!systemAudioCaptureSupported(capturePlatform)) {
@@ -611,7 +611,7 @@ async function initSystemAudioCapture(): Promise<void> {
     return
   }
   try {
-    const s = await window.tabcast.getSettings()
+    const s = await window.maka.getSettings()
     preferredDesktopOutputDeviceId = s.preferredDesktopAudioOutputDeviceId ?? ''
   } catch {
     // Non-fatal — default output device is fine.
@@ -665,7 +665,7 @@ function hideProgramSceneBg(): void {
 async function resolveSceneImageDataUrl(filePath: string): Promise<string | null> {
   const cached = sceneImageDataUrlCache.get(filePath)
   if (cached) return cached
-  const dataUrl = await window.tabcast.readSceneImageDataUrl(filePath)
+  const dataUrl = await window.maka.readSceneImageDataUrl(filePath)
   if (dataUrl) sceneImageDataUrlCache.set(filePath, dataUrl)
   return dataUrl
 }
@@ -1170,7 +1170,7 @@ async function selectOverlayPreset(id: string): Promise<void> {
 async function pushSceneLayout(): Promise<void> {
   const layout = buildOutgoingSceneLayout()
   applyProgramPreviewLayout(layout)
-  const snapshot = await window.tabcast.getRelay()
+  const snapshot = await window.maka.getRelay()
   if (!snapshot.health) return
   await postSceneLayout(snapshot.health, layout)
 }
@@ -1428,7 +1428,7 @@ function onWhipConnectionState(state: RTCPeerConnectionState): void {
     liveRecoveryReason = null
     setDestError(null)
     startWhipVideoWatchdogForPublisher()
-    void window.tabcast.getRelay().then(renderRelay)
+    void window.maka.getRelay().then(renderRelay)
     return
   }
   if (state === 'disconnected') {
@@ -1503,7 +1503,7 @@ async function runLiveRecovery(reason: string): Promise<void> {
   liveRecoveryReason = reason
   setDestError(null)
   destHint.textContent = liveReconnectStatusLine()
-  void window.tabcast.getRelay().then(renderRelay)
+  void window.maka.getRelay().then(renderRelay)
 
   const previousIngest = sessionIngestTarget
   sessionIngestTarget = nextIngestTargetAfterFailedRecovery(
@@ -1530,15 +1530,15 @@ async function runLiveRecovery(reason: string): Promise<void> {
       whipPublisher = null
     }
 
-    let snapshot = await window.tabcast.getRelay()
+    let snapshot = await window.maka.getRelay()
     if (!snapshot.health || snapshot.lifecycle === 'stopped' || snapshot.lifecycle === 'error') {
-      snapshot = await window.tabcast.startRelay()
+      snapshot = await window.maka.startRelay()
     }
 
     snapshot = await waitForRelayReady(
-      () => window.tabcast.getRelay(),
+      () => window.maka.getRelay(),
       async () => {
-        await window.tabcast.refreshRelay()
+        await window.maka.refreshRelay()
       },
     )
 
@@ -1552,8 +1552,8 @@ async function runLiveRecovery(reason: string): Promise<void> {
     }
 
     snapshot = await repostStreamInfo(snapshot)
-    await window.tabcast.refreshRelay()
-    snapshot = await window.tabcast.getRelay()
+    await window.maka.refreshRelay()
+    snapshot = await window.maka.getRelay()
 
     if (!snapshot.health) {
       throw new Error('Relay health missing after reconnect wait.')
@@ -1561,7 +1561,7 @@ async function runLiveRecovery(reason: string): Promise<void> {
 
     whipPublisher = await attachWhipPublisher(await refreshRelayHealthForWhip())
     syncWhipAvTracks()
-    await window.tabcast.refreshRelay()
+    await window.maka.refreshRelay()
 
     if (runId !== liveReconnectRunId) return
 
@@ -1590,7 +1590,7 @@ async function runLiveRecovery(reason: string): Promise<void> {
   } finally {
     if (runId === liveReconnectRunId) {
       liveReconnecting = false
-      void window.tabcast.getRelay().then(renderRelay)
+      void window.maka.getRelay().then(renderRelay)
     }
   }
 }
@@ -1608,7 +1608,7 @@ function markLiveRecoveryExhausted(reason: string, detail?: string): void {
     `Live stream dropped (${label}).${extra} Use Retry connection or End Stream.`,
   )
   mountRetryConnectionHint(false)
-  void window.tabcast.getRelay().then(renderRelay)
+  void window.maka.getRelay().then(renderRelay)
 }
 
 function markLiveRecoveryFatal(reason: string, detail?: string): void {
@@ -1626,7 +1626,7 @@ function markLiveRecoveryFatal(reason: string, detail?: string): void {
     : ' Use Retry connection or End Stream.'
   setDestError(`Live stream stopped (${label}).${extra ? ` ${extra}` : ''}${keyHint}`)
   mountRetryConnectionHint(true)
-  void window.tabcast.getRelay().then(renderRelay)
+  void window.maka.getRelay().then(renderRelay)
 }
 
 function recoveryReasonFromSnapshot(snapshot: RelaySnapshot): string {
@@ -1697,7 +1697,7 @@ function relayBearerToken(headers: Record<string, string>): string {
 }
 
 async function refreshRelayHealthForWhip(): Promise<RelayHealth> {
-  const snapshot = await window.tabcast.refreshRelay()
+  const snapshot = await window.maka.refreshRelay()
   const health = snapshot.health
   if (!health?.relayToken?.trim()) {
     throw new Error(
@@ -1711,7 +1711,7 @@ const electronWhipSignaling: WhipSignaling = {
   postOffer: async (localSdp, headers) => {
     const token = relayBearerToken(headers)
     try {
-      return await window.tabcast.publishWhipOffer(localSdp, token)
+      return await window.maka.publishWhipOffer(localSdp, token)
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       const ipcOrTransport =
@@ -1723,17 +1723,17 @@ const electronWhipSignaling: WhipSignaling = {
       return postWhipOfferHttp(whipUrlFromHealth(health), localSdp, authHeaders(health))
     }
   },
-  deleteResource: (resourceUrl) => window.tabcast.closeWhipResource(resourceUrl, ''),
+  deleteResource: (resourceUrl) => window.maka.closeWhipResource(resourceUrl, ''),
 }
 
 async function ensureRelayReadyForLive(): Promise<RelaySnapshot> {
-  let snapshot = await window.tabcast.getRelay()
+  let snapshot = await window.maka.getRelay()
   if (!snapshot.health || snapshot.lifecycle === 'stopped' || snapshot.lifecycle === 'error') {
-    snapshot = await window.tabcast.startRelay()
+    snapshot = await window.maka.startRelay()
   }
   snapshot = await waitForRelayReady(
-    () => window.tabcast.getRelay(),
-    () => window.tabcast.refreshRelay().then(() => undefined),
+    () => window.maka.getRelay(),
+    () => window.maka.refreshRelay().then(() => undefined),
     { timeoutMs: 45_000 },
   )
   if (!snapshot.health) {
@@ -1746,7 +1746,7 @@ async function ensureRelayReadyForLive(): Promise<RelaySnapshot> {
 }
 
 async function snapshotWithReachableRelay(): Promise<RelaySnapshot> {
-  let snapshot = await window.tabcast.refreshRelay()
+  let snapshot = await window.maka.refreshRelay()
   if (!snapshot.health || snapshot.lifecycle === 'stopped' || snapshot.lifecycle === 'error') {
     snapshot = await ensureRelayReadyForLive()
   } else if (!(await pingRelayHealth())) {
@@ -1838,7 +1838,7 @@ function onEncodeProfileChanged(id: EncodeProfileId, origin: 'user' | 'adapt' = 
   syncEncodeProfileSelects(id)
   updateProgramStats()
   syncStreamInfoMeta()
-  void window.tabcast.setSettings({ bitrateProfile: id })
+  void window.maka.setSettings({ bitrateProfile: id })
   void pushSceneLayout().catch(() => undefined)
   void repostRelayConfigIfLive()
 }
@@ -1910,10 +1910,10 @@ function relayConfigForIngest(ingestTarget: IngestTarget) {
 }
 async function repostRelayConfigIfLive(): Promise<void> {
   if (!sessionLiveIntent && !isSessionLive()) return
-  const snapshot = await window.tabcast.getRelay()
+  const snapshot = await window.maka.getRelay()
   if (!snapshot.health) return
   await postRelayConfig(snapshot.health, relayConfigForIngest(sessionIngestTarget))
-  await window.tabcast.refreshRelay()
+  await window.maka.refreshRelay()
 }
 
 function liveDestHintAfterRecovery(): string {
@@ -1940,11 +1940,11 @@ function applyStreamDestinations(saved: StreamDestinationSettings): void {
   twitchKey.value = saved.twitchKey
   youtubeKey.value = saved.youtubeKey
   syncDestinationInputs()
-  void window.tabcast.getRelay().then(renderPlatformStatus)
+  void window.maka.getRelay().then(renderPlatformStatus)
 }
 
 async function persistStreamDestinationsFromUi(): Promise<void> {
-  await window.tabcast.setSettings({ streamDestinations: streamDestinationsFromUi() })
+  await window.maka.setSettings({ streamDestinations: streamDestinationsFromUi() })
 }
 
 function syncDestinationInputs(): void {
@@ -1963,7 +1963,7 @@ function applyWizardPlatform(platform: GoLiveWizardPlatform): void {
   syncDestinationInputs()
   if (platform === 'twitch' || platform === 'youtube') {
     lastStreamPlatform = platform
-    void window.tabcast.setSettings({ lastStreamPlatform: platform })
+    void window.maka.setSettings({ lastStreamPlatform: platform })
   }
 }
 
@@ -2022,7 +2022,7 @@ async function savePlatformCredentials(platform: PlatformKeyTarget): Promise<voi
   }
   applySavedChatLinks(platform, include, channel)
   await persistStreamDestinationsFromUi()
-  await window.tabcast.setSettings({
+  await window.maka.setSettings({
     lastStreamPlatform: platform,
     streamTwitchChatLink,
     streamYoutubeChatLink,
@@ -2040,8 +2040,8 @@ function syncCustomRtmpBlock(show: boolean): void {
 
 async function loadCustomRtmpSettings(): Promise<void> {
   const [studio, addon] = await Promise.all([
-    window.tabcast.getSettings(),
-    window.tabcast.getAddonSettings(CUSTOM_RTM_ADDON_ID),
+    window.maka.getSettings(),
+    window.maka.getAddonSettings(CUSTOM_RTM_ADDON_ID),
   ])
   if (addon.customRtmpUrl) customRtmpUrl.value = addon.customRtmpUrl
   if (addon.customRtmpKeyConfigured) {
@@ -2057,11 +2057,11 @@ async function loadCustomRtmpSettings(): Promise<void> {
 async function persistBackupIngest(): Promise<void> {
   const backupRtmpUrlValue = backupRtmpUrl.value.trim()
   const backupRtmpKeyValue = backupRtmpKey.value.trim()
-  await window.tabcast.setSettings({
+  await window.maka.setSettings({
     backupRtmpUrl: backupRtmpUrlValue,
     backupRtmpKey: backupRtmpKeyValue,
   })
-  await window.tabcast.setAddonSettings(CUSTOM_RTM_ADDON_ID, {
+  await window.maka.setAddonSettings(CUSTOM_RTM_ADDON_ID, {
     backupRtmpUrl: backupRtmpUrlValue,
     backupRtmpKey: backupRtmpKeyValue,
   })
@@ -2069,7 +2069,7 @@ async function persistBackupIngest(): Promise<void> {
 
 async function persistCustomRtmpSettings(): Promise<void> {
   if (!destCustomBlock.hidden) {
-    await window.tabcast.setAddonSettings(CUSTOM_RTM_ADDON_ID, {
+    await window.maka.setAddonSettings(CUSTOM_RTM_ADDON_ID, {
       customRtmpUrl: customRtmpUrl.value.trim(),
       customRtmpKey: customRtmpKey.value.trim(),
     })
@@ -2100,7 +2100,7 @@ function recordQos(
   }
   qosEvents = pushQosEvent(qosEvents, event)
   paintQosLog()
-  void window.tabcast.recordDiagnostic({
+  void window.maka.recordDiagnostic({
     level: kind === 'fatal' ? 'error' : 'warn',
     source: 'qos',
     message: `${event.kind}: ${event.label}`,
@@ -2252,7 +2252,7 @@ async function refreshSourcePicker(kind: SourceKind): Promise<void> {
 
   try {
     if (kind === 'game') {
-      const sources = await window.tabcast.listCaptureSources()
+      const sources = await window.maka.listCaptureSources()
       const desktop = sources.filter((s) => s.type !== 'browser')
       picker.innerHTML = ''
       if (!desktop.length) {
@@ -2535,7 +2535,7 @@ async function selectDesktopSource(source: CaptureSource): Promise<void> {
     layerGame.textContent = `Gameplay — ${source.name}`
     syncLayerTracks()
     if (currentMode !== 'studio') {
-      await window.tabcast.setMode('studio')
+      await window.maka.setMode('studio')
     }
     if (expandedSourceKinds.has('game')) {
       void refreshSourcePicker('game')
@@ -2554,7 +2554,7 @@ async function selectDesktopSource(source: CaptureSource): Promise<void> {
 }
 
 async function captureDesktopMedia(source: CaptureSource, reduced = false): Promise<MediaStream> {
-  await window.tabcast.setPreferredCaptureSource(source.id)
+  await window.maka.setPreferredCaptureSource(source.id)
   const displayVideo = reduced
     ? { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } }
     : { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 } }
@@ -2654,7 +2654,7 @@ async function fallbackBlackScreenToWindow(): Promise<void> {
   captureRetryInFlight = true
   captureStallState = emptyCaptureStallState()
   try {
-    const sources = await window.tabcast.listCaptureSources()
+    const sources = await window.maka.listCaptureSources()
     const next = pickGameplayWindowFallback(sources, current.id)
     if (!next) {
       destHint.textContent =
@@ -2729,7 +2729,7 @@ async function stopBrowserCapture(): Promise<void> {
   browserStream = null
   layerEnabled.browser = false
   programBrowserVideo.srcObject = null
-  await window.tabcast.setBrowseCaptureActive(false)
+  await window.maka.setBrowseCaptureActive(false)
   updateProgramBrowserOverlay()
   syncOverlaySourceRow()
   syncLayerTracks()
@@ -2740,7 +2740,7 @@ async function startBrowserCapture(): Promise<void> {
   stopStream(browserStream)
   browserStream = null
 
-  const target = await window.tabcast.getBrowseCaptureTarget()
+  const target = await window.maka.getBrowseCaptureTarget()
   if (!target) {
     syncOverlaySourceRow()
     setDestError('Open a page in the Search tab, then enable the Search tab layer.')
@@ -2793,13 +2793,13 @@ async function selectBrowseTabSource(): Promise<void> {
   await startBrowserCapture()
 
   if (browserStream && currentMode !== 'studio') {
-    await window.tabcast.setMode('studio')
+    await window.maka.setMode('studio')
   }
 }
 
 async function refreshSources(): Promise<void> {
   try {
-    const sources = await window.tabcast.listCaptureSources()
+    const sources = await window.maka.listCaptureSources()
     renderSources(sources)
     for (const kind of expandedSourceKinds) {
       await refreshSourcePicker(kind)
@@ -3126,7 +3126,7 @@ async function applyCamera(): Promise<void> {
 function rememberPreferredMic(deviceId: string): void {
   if (deviceId === PHONE_MIC_DEVICE_VALUE) return
   micSelect.dataset.preferredMic = deviceId
-  void window.tabcast.setSettings({ preferredMicDeviceId: deviceId })
+  void window.maka.setSettings({ preferredMicDeviceId: deviceId })
 }
 
 async function applyMic(): Promise<void> {
@@ -3189,7 +3189,7 @@ async function dispatchAddonLiveEvents(
   event: 'live.start' | 'live.end',
 ): Promise<void> {
   try {
-    const results = await window.tabcast.dispatchAddonLiveEvent(event, {
+    const results = await window.maka.dispatchAddonLiveEvent(event, {
       profile: selectedProfile(),
       platforms: {
         twitch: destTwitch.checked,
@@ -3255,9 +3255,9 @@ async function endLive(): Promise<void> {
       await whipPublisher.close()
       whipPublisher = null
     }
-    const snapshot = await window.tabcast.getRelay()
+    const snapshot = await window.maka.getRelay()
     await stopRelayStream(snapshot.health)
-    await window.tabcast.refreshRelay()
+    await window.maka.refreshRelay()
     await dispatchAddonLiveEvents('live.end')
   } catch (err) {
     setDestError(err instanceof Error ? err.message : String(err))
@@ -3329,7 +3329,7 @@ async function goLive(): Promise<void> {
 
     whipPublisher = await attachWhipPublisher(await refreshRelayHealthForWhip())
     syncWhipAvTracks()
-    await window.tabcast.refreshRelay()
+    await window.maka.refreshRelay()
     await dispatchAddonLiveEvents('live.start')
     destHint.textContent = 'Live — keys stay in relay RAM. End Stream to tear down WHIP.'
     startPlatformViewerPoll()
@@ -3430,25 +3430,25 @@ document.getElementById('btn-capture-browse')!.addEventListener('click', () => {
   void selectBrowseTabSource()
 })
 document.getElementById('btn-start-relay')!.addEventListener('click', () => {
-  void window.tabcast.startRelay()
+  void window.maka.startRelay()
 })
 document.getElementById('btn-stop-relay')!.addEventListener('click', () => {
-  void window.tabcast.stopRelay()
+  void window.maka.stopRelay()
 })
 document.getElementById('btn-reveal-relay')!.addEventListener('click', () => {
-  void window.tabcast.revealRelay()
+  void window.maka.revealRelay()
 })
 document.getElementById('btn-win-min')!.addEventListener('click', () => {
-  void window.tabcast.windowMinimize()
+  void window.maka.windowMinimize()
 })
 document.getElementById('btn-win-max')!.addEventListener('click', () => {
-  void window.tabcast.windowMaximize()
+  void window.maka.windowMaximize()
 })
 document.getElementById('btn-win-close')!.addEventListener('click', () => {
-  void window.tabcast.windowClose()
+  void window.maka.windowClose()
 })
 
-const settingsView = initSettingsView(window.tabcast, {
+const settingsView = initSettingsView(window.maka, {
   onLabModeChange: (nextLab) => {
     labMode = nextLab
     destHint.textContent = labMode
@@ -3462,34 +3462,34 @@ const settingsView = initSettingsView(window.tabcast, {
     encodeAdaptState = emptyEncodeAdaptState()
   },
   onRelayStudioSettingsChange: () => {
-    void window.tabcast.getSettings().then((s) => { applyRelayStudioSettingsFromAppSettings(s); void repostRelayConfigIfLive() })
+    void window.maka.getSettings().then((s) => { applyRelayStudioSettingsFromAppSettings(s); void repostRelayConfigIfLive() })
   },
   onRecordingFolderChange: (folder) => {
     recordingSaveFolder = folder
     syncRecordingButtonHint()
   },
   onReplaySetup: () => {
-    void window.tabcast.exitSettingsMode().then(() => {
+    void window.maka.exitSettingsMode().then(() => {
       window.setTimeout(() => setupWizard.start(), 200)
     })
   },
   onReplayTour: () => {
-    void window.tabcast.exitSettingsMode().then(() => {
+    void window.maka.exitSettingsMode().then(() => {
       window.setTimeout(() => onboardingTour.start(), 200)
     })
   },
   onCheckUpdates: () => {
-    void window.tabcast.checkForUpdates().then(renderUpdateBanner)
+    void window.maka.checkForUpdates().then(renderUpdateBanner)
   },
 })
 
 btnSettings.addEventListener('click', () => {
   if (currentMode === 'settings') {
-    void window.tabcast.exitSettingsMode()
+    void window.maka.exitSettingsMode()
     return
   }
   void settingsView.open().then(() => {
-    void window.tabcast.setMode('settings')
+    void window.maka.setMode('settings')
   })
 })
 camScale.addEventListener('input', () => {
@@ -3569,8 +3569,8 @@ micMixerSettingsBtn?.addEventListener('click', () => {
 })
 
 async function renderAddonPanels(): Promise<void> {
-  const panels = await window.tabcast.listAddonPanels()
-  const preloadPath = await window.tabcast.getAddonPreloadPath()
+  const panels = await window.maka.listAddonPanels()
+  const preloadPath = await window.maka.getAddonPreloadPath()
   const hasCustomRtmp = panels.some((p) => p.addonId === CUSTOM_RTM_ADDON_ID)
   syncCustomRtmpBlock(hasCustomRtmp)
   if (hasCustomRtmp) {
@@ -3634,13 +3634,13 @@ async function renderAddonPanels(): Promise<void> {
 }
 
 async function runAddonAction(addonId: string, actionId: string): Promise<void> {
-  if (addonId === 'com.tabcast.discord-now-live' && actionId === 'configure-webhook') {
+  if (addonId === 'com.maka.discord-now-live' && actionId === 'configure-webhook') {
     const url = window.prompt(
       'Discord channel webhook URL (https://discord.com/api/webhooks/…)',
       '',
     )
     if (!url?.trim()) return
-    const res = await window.tabcast.setAddonSettings(addonId, { discordWebhookUrl: url.trim() })
+    const res = await window.maka.setAddonSettings(addonId, { discordWebhookUrl: url.trim() })
     destHint.textContent = res.message ?? (res.ok ? 'Webhook saved.' : 'Save failed.')
     if (!res.ok) setDestError(res.message ?? 'Could not save webhook')
     return
@@ -3650,7 +3650,7 @@ async function runAddonAction(addonId: string, actionId: string): Promise<void> 
     customRtmpUrl.value = KICK_RTMP_URL
     destCustom.checked = true
     syncDestinationInputs()
-    const res = await window.tabcast.setAddonSettings(addonId, { customRtmpUrl: KICK_RTMP_URL })
+    const res = await window.maka.setAddonSettings(addonId, { customRtmpUrl: KICK_RTMP_URL })
     destHint.textContent = res.ok
       ? 'Kick ingest URL set — paste your stream key in Destinations → Custom RTMP.'
       : (res.message ?? 'Could not save preset')
@@ -3666,7 +3666,7 @@ async function runAddonAction(addonId: string, actionId: string): Promise<void> 
     customRtmpKey.value = key.trim()
     destCustom.checked = true
     syncDestinationInputs()
-    const res = await window.tabcast.setAddonSettings(addonId, {
+    const res = await window.maka.setAddonSettings(addonId, {
       customRtmpUrl: url.trim(),
       customRtmpKey: key.trim(),
     })
@@ -3675,8 +3675,8 @@ async function runAddonAction(addonId: string, actionId: string): Promise<void> 
     return
   }
 
-  const snapshot = await window.tabcast.getRelay()
-  const result = await window.tabcast.runAddonAction(addonId, actionId, {
+  const snapshot = await window.maka.getRelay()
+  const result = await window.maka.runAddonAction(addonId, actionId, {
     profile: selectedProfile(),
     hasWebcam: hasLiveWebcamVideo() && layerEnabled.cam,
   })
@@ -3726,7 +3726,7 @@ platformKeyForm.addEventListener('submit', (event) => {
   const submitter = (event as SubmitEvent).submitter as HTMLButtonElement | null
   if (submitter?.value !== 'save') return
   const platform: PlatformKeyTarget = platformKeyPanelYoutube.hidden ? 'twitch' : 'youtube'
-  void savePlatformCredentials(platform).then(() => window.tabcast.getRelay().then(renderPlatformStatus))
+  void savePlatformCredentials(platform).then(() => window.maka.getRelay().then(renderPlatformStatus))
 })
 
 async function teardownLiveSession(): Promise<void> {
@@ -3737,7 +3737,7 @@ async function teardownLiveSession(): Promise<void> {
       await whipPublisher.close().catch(() => undefined)
       whipPublisher = null
     }
-    const snapshot = await window.tabcast.getRelay()
+    const snapshot = await window.maka.getRelay()
     if (snapshot.health && snapshot.lifecycle === 'live') {
       await stopRelayStream(snapshot.health).catch(() => undefined)
     }
@@ -3749,7 +3749,7 @@ async function teardownLiveSession(): Promise<void> {
     stopStream(programStream)
     programStream = null
     captureKind = null
-    await window.tabcast.setBrowseCaptureActive(false)
+    await window.maka.setBrowseCaptureActive(false)
     stopStream(cameraStream)
     cameraStream = null
     stopStream(micStream)
@@ -3760,7 +3760,7 @@ async function teardownLiveSession(): Promise<void> {
   }
 }
 
-window.tabcast.onPrepareQuit(() => {
+window.maka.onPrepareQuit(() => {
   if (programVirtualCamera.isActive()) {
     programVirtualCamera.stop()
     setVcamUi(false)
@@ -3773,15 +3773,15 @@ window.tabcast.onPrepareQuit(() => {
     programOutputCompositor.stop()
   }
   void teardownLiveSession().finally(() => {
-    window.tabcast.ackPrepareQuit()
+    window.maka.ackPrepareQuit()
   })
 })
 
-window.tabcast.onTabs(() => {
+window.maka.onTabs(() => {
   void refreshSources()
 })
 
-void window.tabcast.getSettings().then((s) => {
+void window.maka.getSettings().then((s) => {
   labMode = s.labMode
   adaptiveEncodeEnabled = s.adaptiveEncode !== false
   recordingSaveFolder = s.recordingSaveFolder ?? ''
@@ -3826,7 +3826,7 @@ function formatDiag(events: DiagEvent[]): string {
 }
 
 async function refreshDiagnostics(): Promise<void> {
-  const events = await window.tabcast.listDiagnostics()
+  const events = await window.maka.listDiagnostics()
   diagDrawer.textContent = formatDiag(events)
   diagDrawer.dataset.fail = events.some((e) => e.level === 'error' || e.level === 'fatal')
     ? '1'
@@ -3836,7 +3836,7 @@ async function refreshDiagnostics(): Promise<void> {
 async function runVerification(): Promise<void> {
   diagDrawer.hidden = false
   diagDrawer.textContent = 'Running verification…'
-  const report = await window.tabcast.verifySystem()
+  const report = await window.maka.verifySystem()
   const lines = report.checks.map((c) => `${c.ok ? 'OK ' : 'FAIL'}  ${c.name} — ${c.detail}`)
   lines.unshift(report.ok ? 'Verification PASSED' : 'Verification FAILED')
   lines.push('', 'Recent diagnostics:', formatDiag(report.diagnostics))
@@ -3847,7 +3847,7 @@ async function runVerification(): Promise<void> {
   }
 }
 
-window.tabcast.onDiagnostic((event) => {
+window.maka.onDiagnostic((event) => {
   if (event.level === 'error' || event.level === 'fatal') {
     diagDrawer.hidden = false
   }
@@ -3910,24 +3910,24 @@ micSelect.addEventListener('change', () => {
 })
 destTwitch.addEventListener('change', () => {
   syncDestinationInputs()
-  void window.tabcast.getRelay().then(renderPlatformStatus)
+  void window.maka.getRelay().then(renderPlatformStatus)
 })
 destYoutube.addEventListener('change', () => {
   syncDestinationInputs()
-  void window.tabcast.getRelay().then(renderPlatformStatus)
+  void window.maka.getRelay().then(renderPlatformStatus)
 })
 destCustom.addEventListener('change', () => {
   syncDestinationInputs()
-  void window.tabcast.getRelay().then(renderPlatformStatus)
+  void window.maka.getRelay().then(renderPlatformStatus)
 })
 twitchKey.addEventListener('input', () => {
-  void window.tabcast.getRelay().then(renderPlatformStatus)
+  void window.maka.getRelay().then(renderPlatformStatus)
 })
 youtubeKey.addEventListener('input', () => {
-  void window.tabcast.getRelay().then(renderPlatformStatus)
+  void window.maka.getRelay().then(renderPlatformStatus)
 })
 customRtmpKey.addEventListener('input', () => {
-  void window.tabcast.getRelay().then(renderPlatformStatus)
+  void window.maka.getRelay().then(renderPlatformStatus)
 })
 
 btnGoLive.addEventListener('click', () => {
@@ -3950,9 +3950,9 @@ window.addEventListener('keydown', (event) => {
   }
 })
 
-window.tabcast.onMode(applyMode)
+window.maka.onMode(applyMode)
 
-// initMarketplace(window.tabcast, {
+// initMarketplace(window.maka, {
 //   dialog: document.getElementById('marketplace-dialog') as HTMLDialogElement,
 //   list: document.getElementById('marketplace-list')!,
 //   preview: document.getElementById('marketplace-sidebar-list'),
@@ -3972,16 +3972,16 @@ window.tabcast.onMode(applyMode)
 syncDestinationInputs()
 syncProgramVideoSurface()
 updateStudioMixControls()
-void window.tabcast.getMode().then(applyMode)
+void window.maka.getMode().then(applyMode)
 void settingsView.refreshVersions()
-window.tabcast.onRelayUpdate(handleRelayLiveRecovery)
+window.maka.onRelayUpdate(handleRelayLiveRecovery)
 void refreshSources()
 void refreshAvDevices().then(() => {
   showWebcamOfflineIdle()
 })
 void renderAddonPanels()
 
-initPhoneTracks(window.tabcast)
+initPhoneTracks(window.maka)
 subscribePhoneTracks((snap) => {
   const hasVideo = phoneHasVideoTrack(snap)
   const hasAudio = phoneHasAudioTrack(snap)
@@ -3998,7 +3998,7 @@ subscribePhoneTracks((snap) => {
   phoneAudioWasLive = hasAudio
 })
 
-window.tabcast.onAddonStudioToast((message) => {
+window.maka.onAddonStudioToast((message) => {
   setDestError(null)
   destHint.textContent = message
 })
@@ -4015,10 +4015,10 @@ const onboardingTour = new OnboardingTour(
   document.getElementById('onboarding-skip') as HTMLButtonElement,
   {
     onComplete: () => {
-      void window.tabcast.setSettings({ onboardingComplete: true })
+      void window.maka.setSettings({ onboardingComplete: true })
     },
     onSkip: () => {
-      void window.tabcast.setSettings({ onboardingComplete: true })
+      void window.maka.setSettings({ onboardingComplete: true })
     },
   },
 )
@@ -4042,14 +4042,14 @@ const setupWizard = new SetupWizard(
       if (setupTwitch.value.trim()) twitchKey.value = setupTwitch.value.trim()
       if (setupYoutube.value.trim()) youtubeKey.value = setupYoutube.value.trim()
       syncDestinationInputs()
-      void window.tabcast.setSettings({ setupWizardComplete: true }).then((s) => {
+      void window.maka.setSettings({ setupWizardComplete: true }).then((s) => {
         if (!s.onboardingComplete) {
           window.setTimeout(() => onboardingTour.start(), 400)
         }
       })
     },
     onSkip: () => {
-      void window.tabcast.setSettings({ setupWizardComplete: true })
+      void window.maka.setSettings({ setupWizardComplete: true })
     },
   },
 )
@@ -4103,13 +4103,13 @@ function renderUpdateBanner(status: import('../preload/index').UpdateStatus): vo
 }
 
 updateBannerAction.addEventListener('click', () => {
-  void window.tabcast.getUpdateStatus().then(async (status) => {
+  void window.maka.getUpdateStatus().then(async (status) => {
     if (status.state === 'downloaded') {
-      await window.tabcast.installUpdate()
+      await window.maka.installUpdate()
       return
     }
     if (status.state === 'available') {
-      await window.tabcast.downloadUpdate()
+      await window.maka.downloadUpdate()
     }
   })
 })
@@ -4119,7 +4119,7 @@ updateBannerDismiss.addEventListener('click', () => {
   updateBanner.classList.add('hidden')
 })
 
-window.tabcast.onUpdateStatus(renderUpdateBanner)
+window.maka.onUpdateStatus(renderUpdateBanner)
 
 
 const appIntro = document.getElementById('app-intro') as HTMLElement
@@ -4128,7 +4128,7 @@ document.body.dataset.intro = '1'
 function enterStudioFromIntro(): void {
   appIntro.hidden = true
   delete document.body.dataset.intro
-  void window.tabcast.getSettings().then((s) => {
+  void window.maka.getSettings().then((s) => {
     if (s.onboardingComplete) return
     window.setTimeout(() => onboardingTour.start(), 200)
   })
@@ -4138,7 +4138,7 @@ document.getElementById('app-intro-stream')!.addEventListener('click', () => {
   enterStudioFromIntro()
 })
 document.getElementById('app-intro-github')!.addEventListener('click', () => {
-  void window.tabcast.openExternal('https://github.com/n0social/maka-streaming-software/releases')
+  void window.maka.openExternal('https://github.com/n0social/maka-streaming-software/releases')
 })
 // Scene buttons
 const sceneGameplay = document.getElementById('scene-gameplay') as HTMLButtonElement
@@ -4239,7 +4239,7 @@ function renderCustomSceneRows(): void {
 
 async function persistCustomScenes(next: CustomScene[]): Promise<void> {
   customScenes = coerceCustomScenes(next)
-  await window.tabcast.setSettings({ customScenes })
+  await window.maka.setSettings({ customScenes })
   renderCustomSceneRows()
   syncAddSceneButtons()
   syncSceneImagePanel()
@@ -4278,7 +4278,7 @@ async function persistSceneImage(sceneId: string, filePath: string | null): Prom
     delete sceneImagePaths[sceneId]
     if (previous) sceneImageDataUrlCache.delete(previous)
   }
-  await window.tabcast.setSettings({
+  await window.maka.setSettings({
     sceneImages: { [sceneId]: filePath ?? '' },
   })
   if (sceneId === activeSceneTemplateId) {
@@ -4294,7 +4294,7 @@ async function persistSceneImage(sceneId: string, filePath: string | null): Prom
 
 async function chooseSceneImage(sceneId: string): Promise<void> {
   if (!sceneSupportsImageUpload(sceneId)) return
-  const picked = await window.tabcast.pickSceneImageFile()
+  const picked = await window.maka.pickSceneImageFile()
   if (picked.canceled) return
   sceneImageDataUrlCache.set(picked.path, picked.dataUrl)
   await persistSceneImage(sceneId, picked.path)
@@ -4710,7 +4710,7 @@ const goLiveWizard = new GoLiveWizard(goLiveWizardDialog, {
         syncChatFeed()
         syncPlatformAlerts()
       }
-      void window.tabcast.setSettings({
+      void window.maka.setSettings({
         streamTitle: relayStudioSettings.streamTitle,
         streamCategory: relayStudioSettings.streamCategory,
         streamDescription: relayStudioSettings.streamDescription,
@@ -4728,7 +4728,7 @@ populateEncodeProfileSelect(
 )
 
 openGoLiveFlow = () => {
-  void window.tabcast.getSettings().then((s) => {
+  void window.maka.getSettings().then((s) => {
     lastStreamPlatform = s.lastStreamPlatform ?? 'none'
     goLiveWizard.open()
   })
@@ -4937,7 +4937,7 @@ const programRecording = createProgramRecording({
 const programVirtualCamera = createProgramVirtualCamera({
   ...programOutputDeps,
   compositor: programOutputCompositor,
-  publishFrame: (jpeg) => window.tabcast.pushVcamFrame(jpeg),
+  publishFrame: (jpeg) => window.maka.pushVcamFrame(jpeg),
 })
 
 let vcamCapability: VcamCapability | null = null
@@ -4985,7 +4985,7 @@ function hydrateVcamInfoDialog(cap: VcamCapability): void {
 
 async function ensureVcamCapability(): Promise<VcamCapability> {
   if (vcamCapability) return vcamCapability
-  const cap = await window.tabcast.getVcamCapability()
+  const cap = await window.maka.getVcamCapability()
   vcamCapability = cap
   hydrateVcamInfoDialog(cap)
   setVcamUi(programVirtualCamera.isActive())
@@ -5035,7 +5035,7 @@ if (btnStartRecording) {
         const defaultName = buildRecordingFileName(selectedProfile(), ext)
         const data = await blob.arrayBuffer()
         const forceDialog = ev.shiftKey
-        const saved = await window.tabcast.saveRecording({
+        const saved = await window.maka.saveRecording({
           data,
           defaultName,
           ext,
@@ -5070,7 +5070,7 @@ if (btnStartVcam) {
       await ensureVcamCapability()
       if (programVirtualCamera.isActive()) {
         programVirtualCamera.stop()
-        await window.tabcast.closeVcamOutput()
+        await window.maka.closeVcamOutput()
         stopProgramOutputCompositorIfIdle()
         setVcamUi(false)
         destHint.textContent = 'Virtual camera stopped.'
@@ -5078,7 +5078,7 @@ if (btnStartVcam) {
       }
       try {
         setDestError(null)
-        const output = await window.tabcast.openVcamOutput()
+        const output = await window.maka.openVcamOutput()
         programVirtualCamera.start()
         setVcamUi(true)
         if (!vcamInfoSeen && vcamCapability && !vcamCapability.canOutputToDevice) {
@@ -5099,7 +5099,7 @@ if (vcamOpenFallbackUrl) {
   vcamOpenFallbackUrl.addEventListener('click', () => {
     void ensureVcamCapability().then((cap) => {
       const url = cap.recommendedFallback?.url
-      if (url) void window.tabcast.openExternal(url)
+      if (url) void window.maka.openExternal(url)
     })
   })
 }
@@ -5187,7 +5187,7 @@ function applyRelayStudioSettingsFromAppSettings(s: { streamTitle?: string; stre
   syncPlatformAlerts()
 }
 async function persistStreamMetaFromInputs(): Promise<void> {
-  await window.tabcast.setSettings({
+  await window.maka.setSettings({
     streamTitle: relayStudioSettings.streamTitle,
     streamCategory: relayStudioSettings.streamCategory,
     streamDescription: relayStudioSettings.streamDescription,
@@ -5212,7 +5212,7 @@ async function refreshPlatformViewers(): Promise<void> {
   const twitchLogin = destTwitch.checked ? normalizeTwitchChannel(streamChannel) : ''
   const youtubeId = destYoutube.checked ? youtubeVideoId(streamYoutubeChatLink || streamChannel) : ''
   try {
-    platformViewers = await window.tabcast.getPlatformViewers({
+    platformViewers = await window.maka.getPlatformViewers({
       twitchLogin,
       youtubeVideoId: youtubeId,
     })
@@ -5308,7 +5308,7 @@ btnDesktopAudioSettings.addEventListener('click', () => {
 
 desktopAudioOutputSelect.addEventListener('change', () => {
   preferredDesktopOutputDeviceId = desktopAudioOutputSelect.value
-  void window.tabcast.setSettings({
+  void window.maka.setSettings({
     preferredDesktopAudioOutputDeviceId: preferredDesktopOutputDeviceId,
   })
   void refreshDesktopAudioCapture()
@@ -5442,7 +5442,7 @@ function sampleCaptureClock(): void {
 document.getElementById('btn-export-qos')?.addEventListener('click', () => {
   const whip = whipStreamMetrics
   const status = lastRelaySnapshot?.status
-  void window.tabcast
+  void window.maka
     .exportQosBundle({
       whip: {
         roundTripMs: whip?.roundTripMs ?? null,
@@ -5484,4 +5484,4 @@ refreshProgramPreviewLayout()
 updateGoLiveLabel(false)
 updateStreamInfo(false)
 
-void window.tabcast.getRelay().then(renderRelay)
+void window.maka.getRelay().then(renderRelay)

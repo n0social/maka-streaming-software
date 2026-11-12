@@ -1,4 +1,4 @@
-import type { AppSettings, TabcastBridge } from '../preload/index'
+import type { AppSettings, MakaBridge } from '../preload/index'
 
 const SETTINGS_TAB_IDS = [
   'general',
@@ -80,8 +80,8 @@ function applySettingsToForm(s: AppSettings): void {
   }
 }
 
-async function refreshVersionLabels(tabcast: TabcastBridge): Promise<void> {
-  const info = await tabcast.getVersionInfo()
+async function refreshVersionLabels(maka: MakaBridge): Promise<void> {
+  const info = await maka.getVersionInfo()
   const appLine = `App v${info.appVersion}`
   const relayLine = info.relayVersion ? `Relay v${info.relayVersion}` : 'Relay —'
   const appVersionTop = document.getElementById('app-version-label')
@@ -94,9 +94,9 @@ async function refreshVersionLabels(tabcast: TabcastBridge): Promise<void> {
   if (footer) footer.textContent = `Maka ${appLine} · ${relayLine}`
 }
 
-async function populateGpuSelect(tabcast: TabcastBridge, selected: string): Promise<void> {
+async function populateGpuSelect(maka: MakaBridge, selected: string): Promise<void> {
   const select = document.getElementById('set-gpu-pref') as HTMLSelectElement
-  const options = await tabcast.listGpuOptions()
+  const options = await maka.listGpuOptions()
   select.innerHTML = ''
   for (const opt of options) {
     const el = document.createElement('option')
@@ -111,7 +111,7 @@ async function populateGpuSelect(tabcast: TabcastBridge, selected: string): Prom
   }
 }
 
-export function initSettingsView(tabcast: TabcastBridge, hooks: SettingsViewHooks): {
+export function initSettingsView(maka: MakaBridge, hooks: SettingsViewHooks): {
   open: () => Promise<void>
   refreshVersions: () => Promise<void>
 } {
@@ -122,14 +122,14 @@ export function initSettingsView(tabcast: TabcastBridge, hooks: SettingsViewHook
       const tab = btn.dataset.settingsTab
       if (!tab || !isSettingsTabId(tab)) return
       setActiveSettingsTab(root, tab)
-      void tabcast.setSettings({ settingsActiveTab: tab })
+      void maka.setSettings({ settingsActiveTab: tab })
     })
   }
 
   const persistCheckbox = (id: string, key: keyof AppSettings) => {
     const el = document.getElementById(id) as HTMLInputElement
     el.addEventListener('change', () => {
-      void tabcast.setSettings({ [key]: el.checked } as Partial<AppSettings>).then((s) => {
+      void maka.setSettings({ [key]: el.checked } as Partial<AppSettings>).then((s) => {
         if (key === 'labMode') hooks.onLabModeChange(s.labMode)
       })
     })
@@ -145,7 +145,7 @@ export function initSettingsView(tabcast: TabcastBridge, hooks: SettingsViewHook
 
   document.getElementById('set-encode-profile')!.addEventListener('change', (event) => {
     const value = (event.target as HTMLSelectElement).value as AppSettings['bitrateProfile']
-    void tabcast.setSettings({ bitrateProfile: value }).then(() => {
+    void maka.setSettings({ bitrateProfile: value }).then(() => {
       hooks.onEncodeProfileChange(value)
     })
   })
@@ -157,25 +157,25 @@ export function initSettingsView(tabcast: TabcastBridge, hooks: SettingsViewHook
         id === 'set-mic-bitrate'
           ? { audioMicBitrateKbps: kbps }
           : { audioDesktopBitrateKbps: kbps }
-      void tabcast.setSettings(patch).then(() => hooks.onRelayStudioSettingsChange())
+      void maka.setSettings(patch).then(() => hooks.onRelayStudioSettingsChange())
     })
   }
 
   document.getElementById('set-video-encoder')!.addEventListener('change', (event) => {
     const value = (event.target as HTMLSelectElement)
       .value as AppSettings['videoEncoderPreference']
-    void tabcast.setSettings({ videoEncoderPreference: value }).then(() => hooks.onRelayStudioSettingsChange())
+    void maka.setSettings({ videoEncoderPreference: value }).then(() => hooks.onRelayStudioSettingsChange())
   })
 
   document.getElementById('set-gpu-pref')!.addEventListener('change', (event) => {
     const value = (event.target as HTMLSelectElement).value as AppSettings['gpuPreference']
-    void tabcast.setSettings({ gpuPreference: value }).then(() => hooks.onRelayStudioSettingsChange())
+    void maka.setSettings({ gpuPreference: value }).then(() => hooks.onRelayStudioSettingsChange())
   })
 
   document.getElementById('btn-pick-recording-folder')!.addEventListener('click', () => {
-    void tabcast.pickRecordingFolder().then((result) => {
+    void maka.pickRecordingFolder().then((result) => {
       if (result.canceled) return
-      void tabcast.setSettings({ recordingSaveFolder: result.path }).then((s) => {
+      void maka.setSettings({ recordingSaveFolder: result.path }).then((s) => {
         const folderInput = document.getElementById('set-recording-folder') as HTMLInputElement
         folderInput.value = s.recordingSaveFolder
         hooks.onRecordingFolderChange(s.recordingSaveFolder)
@@ -195,14 +195,14 @@ export function initSettingsView(tabcast: TabcastBridge, hooks: SettingsViewHook
 
   return {
     open: async () => {
-      const s = await tabcast.getSettings()
+      const s = await maka.getSettings()
       applySettingsToForm(s)
-      await populateGpuSelect(tabcast, s.gpuPreference)
-      await refreshVersionLabels(tabcast)
+      await populateGpuSelect(maka, s.gpuPreference)
+      await refreshVersionLabels(maka)
       root.hidden = false
       const tabFromDom = root.dataset.settingsTab || 'general'
       setActiveSettingsTab(root, isSettingsTabId(tabFromDom) ? tabFromDom : 'general')
     },
-    refreshVersions: () => refreshVersionLabels(tabcast),
+    refreshVersions: () => refreshVersionLabels(maka),
   }
 }

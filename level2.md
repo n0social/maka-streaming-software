@@ -98,8 +98,8 @@ Run full verify with relay running: `npm run verify` (no `--offline`).
 
 | Item | Change |
 |------|--------|
-| Sandboxed webview runtime | `tabcast-addon://` protocol + per-addon webview in sidebar |
-| `tabcast.addons` bridge | Preload API: toast, fetch, settings, openExternal, onLiveEvent |
+| Sandboxed webview runtime | `maka-addon://` protocol + per-addon webview in sidebar |
+| `maka.addons` bridge | Preload API: toast, fetch, settings, openExternal, onLiveEvent |
 | Live event broadcast | `app.ready`, `live.start`, `live.end` pushed to runtime webviews |
 | Hello Maka sample | Marketplace installable demo with UI panel |
 
@@ -121,7 +121,7 @@ Run full verify with relay running: `npm run verify` (no `--offline`).
 | Control | Status | Notes |
 |---------|--------|-------|
 | Browse URL scheme filter | ✅ | HTTP/HTTPS only; blocks `file:`, `javascript:`, etc. |
-| Blocked host suffixes | ✅ | `skydav.work` / `skydav.com` in `src/shared/tabcast.ts` |
+| Blocked host suffixes | ✅ | `skydav.work` / `skydav.com` in `src/shared/maka.ts` |
 | Redirect blocking | ✅ | `will-redirect` on browse + chat windows |
 | IPC payload validation | ✅ | Settings, tab IDs, preset IDs |
 | Persisted session scrub | ✅ | Bad URLs/IDs stripped on load |
@@ -293,7 +293,7 @@ Status as of the 3.0 line (stable installer remains **v0.2.6.2** until the next 
 | Area | Paths |
 |------|-------|
 | Main / IPC | `src/main/index.ts`, `relay.ts`, `browse-tabs.ts`, `security.ts` |
-| URL policy | `src/shared/browse-url.ts`, `src/shared/tabcast.ts` |
+| URL policy | `src/shared/browse-url.ts`, `src/shared/maka.ts` |
 | Studio UI | `src/renderer/app.ts`, `app.html`, `whip.ts`, `relay-client.ts` |
 | Build / verify | `package.json`, `scripts/verify.mjs`, `scripts/fetch-relay.mjs` |
 | Site | `site/index.html`, `site/browser-manifest.json`, `site/deploy-site.sh` |

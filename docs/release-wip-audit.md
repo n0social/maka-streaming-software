@@ -76,8 +76,8 @@ Existing: `settings:set` / `settings:get` now include `streamDestinations` (`des
 | Check | Result |
 | --- | --- |
 | `npm run typecheck` | Pass |
-| `npm run verify:offline` | Pass except `relay-binary` (no Windows `TabcastRelay.exe` on Linux CI VM) |
-| `npm run verify:addons` | **Release gate** — marketplace manifests + hello/phone bundles + `addons/_samples/hello-tabcast`; see `docs/addon-validation-report.md` |
+| `npm run verify:offline` | Pass except `relay-binary` (no Windows `MAKArelay.exe` on Linux CI VM) |
+| `npm run verify:addons` | **Release gate** — marketplace manifests + hello/phone bundles + `addons/_samples/hello-maka`; see `docs/addon-validation-report.md` |
 | `npm run build` | Run before tag (Electron bundle) |
 
 Manual smoke on Linux VM: build only; full Electron preview/WHIP not exercised without relay binary and display capture.

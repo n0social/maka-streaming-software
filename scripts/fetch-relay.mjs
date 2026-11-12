@@ -5,11 +5,7 @@ import { createHash } from 'node:crypto'
 import { Readable } from 'node:stream'
 import { fileURLToPath } from 'node:url'
 
-const MANIFEST_URLS = [
-  'https://makalive.stream/downloads/relay-manifest.json',
-  'https://tabcast.live.skydav.work/downloads/relay-manifest.json',
-]
-const RELAY_FILES = ['MAKArelay.exe', 'TabcastRelay.exe']
+const MANIFEST_URLS = ['https://makalive.stream/downloads/relay-manifest.json']
 const OUT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'vendor', 'relay')
 const OUT_FILE = join(OUT_DIR, 'MAKArelay.exe')
 
@@ -46,15 +42,16 @@ async function main() {
   if (!manifest) {
     throw new Error(`Relay manifest unavailable (${lastError})`)
   }
-  const artifactName = RELAY_FILES.includes(manifest.artifact)
-    ? manifest.artifact
-    : 'MAKArelay.exe'
+  const artifactName =
+    typeof manifest.artifact === 'string' && manifest.artifact.endsWith('.exe')
+      ? manifest.artifact
+      : 'MAKArelay.exe'
   const artifactUrl = `${manifestOrigin}/downloads/${artifactName}`
   const expectedSha = String(manifest.sha256 || '').toLowerCase()
   const expectedSize = Number(manifest.size || 0)
   const force = process.argv.includes('--force')
 
-  const present = [OUT_FILE, join(OUT_DIR, 'TabcastRelay.exe')].find((path) => existsSync(path))
+  const present = existsSync(OUT_FILE) ? OUT_FILE : undefined
   if (present && present !== OUT_FILE && !force) {
     console.log(`Using existing relay at ${present}`)
   }

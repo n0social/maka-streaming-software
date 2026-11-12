@@ -25,7 +25,7 @@ export type AddonLiveEventPayload = {
   platforms?: { twitch?: boolean; youtube?: boolean; custom?: boolean }
 }
 
-export const ADDON_PROTOCOL = 'tabcast-addon'
+export const ADDON_PROTOCOL = 'maka-addon'
 
 export function addonEntryUrl(addonId: string, entry: string): string {
   const file = entry.replace(/^\/+/, '')

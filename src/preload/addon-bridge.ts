@@ -28,7 +28,7 @@ ipcRenderer.on('addon-runtime:phone-pair-update', (_event, snapshot: PhonePairSn
   }
 })
 
-contextBridge.exposeInMainWorld('tabcast', {
+const addonApi = {
   addons: {
     getInfo: (): Promise<AddonRuntimeInfo> => ipcRenderer.invoke('addon-runtime:get-info'),
 
@@ -66,4 +66,7 @@ contextBridge.exposeInMainWorld('tabcast', {
       return () => phonePairHandlers.delete(handler)
     },
   },
-})
+}
+
+contextBridge.exposeInMainWorld('maka', addonApi)
+contextBridge.exposeInMainWorld('tabcast', addonApi)

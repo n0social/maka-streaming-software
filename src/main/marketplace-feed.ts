@@ -7,11 +7,7 @@ import { MARKETPLACE_CATALOG } from '../shared/marketplace-catalog'
 import { omitRetiredAddons } from '../shared/retired-addons'
 import { recordDiagnostic } from './diagnostics'
 
-const FEED_URLS = [
-  'https://makalive.stream/marketplace.json',
-  'https://tabcast.live.skydav.work/marketplace.json',
-  'https://tabcast.live/marketplace.json',
-]
+const FEED_URLS = ['https://makalive.stream/marketplace.json']
 const CACHE_TTL_MS = 60 * 60 * 1000
 
 type CacheFile = {

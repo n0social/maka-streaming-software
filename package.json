@@ -1,8 +1,8 @@
 {
-  "name": "tabcast-browser",
-  "version": "0.2.6",
+  "name": "maka",
+  "version": "0.2.8",
   "private": false,
-  "description": "Maka v0.2.6.2 — lightweight video game streaming platform for Windows. Cloud streaming for streamers on GeForce NOW, Xbox Cloud Gaming, Shadow PC, and Cloud Moon; PVP and competitive live streams to Twitch & YouTube (WHIP + MAKArelay).",
+  "description": "Maka v0.2.8 — lightweight video game streaming platform for Windows. Cloud streaming for streamers on GeForce NOW, Xbox Cloud Gaming, Shadow PC, and Cloud Moon; PVP and competitive live streams to Twitch & YouTube (WHIP + MAKArelay).",
   "keywords": [
     "maka",
     "game-streaming",
@@ -119,7 +119,6 @@
         "to": "relay",
         "filter": [
           "MAKArelay.exe",
-          "TabcastRelay.exe",
           "relay-manifest.json"
         ]
       },

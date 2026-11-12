@@ -145,7 +145,7 @@ export class BrowseTabsManager {
         contextIsolation: true,
         nodeIntegration: false,
         sandbox: true,
-        partition: 'persist:tabcast-browse',
+        partition: 'persist:maka-browse',
       },
     })
   }

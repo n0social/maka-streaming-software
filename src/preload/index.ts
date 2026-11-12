@@ -174,7 +174,7 @@ export type VerifyReport = {
   diagnostics: DiagEvent[]
 }
 
-export type TabcastBridge = {
+export type MakaBridge = {
   getPlatformViewers: (query: { twitchLogin?: string; youtubeVideoId?: string }) => Promise<{
     twitch: number | null
     youtube: number | null
@@ -313,7 +313,7 @@ export type TabcastBridge = {
   getPhoneWebRtcIceServers: () => Promise<PhoneIceServer[]>
 }
 
-const api: TabcastBridge = {
+const api: MakaBridge = {
   getPlatformViewers: (query) => ipcRenderer.invoke('platform:viewers', query),
   getRelay: () => ipcRenderer.invoke('relay:get'),
   startRelay: () => ipcRenderer.invoke('relay:start'),
@@ -459,4 +459,5 @@ const api: TabcastBridge = {
   getPhoneWebRtcIceServers: () => ipcRenderer.invoke('phone-pair:ice-servers'),
 }
 
+contextBridge.exposeInMainWorld('maka', api)
 contextBridge.exposeInMainWorld('tabcast', api)

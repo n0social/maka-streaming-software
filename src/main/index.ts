@@ -27,7 +27,7 @@ import {
 } from './diagnostics'
 import { isAllowedBrowseUrl } from '../shared/browse-url'
 import { BROWSE_CAPTURE_SOURCE_ID } from '../shared/capture'
-import { RELAY_WHIP_URL } from '../shared/tabcast'
+import { RELAY_WHIP_URL } from '../shared/maka'
 import { relayControlFetch } from '../shared/relay-control-fetch'
 import { coerceSettings, isStudioMediaPermission, isValidPresetId, isValidTabId } from './security'
 import { addonHasPermission, isValidAddonId, isValidCatalogId } from '../shared/addon-api'
@@ -305,7 +305,7 @@ function openChatPopout(url?: string): void {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
-      partition: 'persist:tabcast-browse',
+      partition: 'persist:maka-browse',
     },
   })
 

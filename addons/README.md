@@ -4,7 +4,7 @@ Copy an addon folder to:
 
 `%APPDATA%/Maka/addons/<your-addon-id>/`
 
-Each addon needs a validated `tabcast-addon.json` manifest. See [docs/ADDON-API.md](../docs/ADDON-API.md).
+Each addon needs a validated `maka-addon.json` manifest. See [docs/ADDON-API.md](../docs/ADDON-API.md).
 
 ## Marketplace (in app)
 
@@ -20,4 +20,4 @@ Scene layouts (gameplay, desk, intermission, ending) live in the studio Scenes l
 
 ## Samples
 
-- `_samples/hello-tabcast/` — sandboxed runtime demo (`index.html` + `tabcast.addons` API). Kept for addon validation. It is not listed in the marketplace.
+- `_samples/hello-maka/` — sandboxed runtime demo (`index.html` + `maka.addons` API). Kept for addon validation. It is not listed in the marketplace.

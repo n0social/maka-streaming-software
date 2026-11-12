@@ -1,7 +1,7 @@
 import {
   RELAY_TRACK_STREAM_IDS,
   type RelayTrackStreamId,
-} from '../shared/tabcast'
+} from '../shared/maka'
 import { RELAY_CONTROL_RETRY_ATTEMPTS, liveRetryBackoffMs, relayControlStatusShouldRetry } from '../shared/live-retry'
 import { hardenWhipMediaSdp } from '../shared/whip-sdp'
 import { rewriteWhipOfferMsids } from '../shared/whip-msid'

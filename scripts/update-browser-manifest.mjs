@@ -83,9 +83,7 @@ async function main() {
       ? {
           algorithm: 'sha256',
           timestampServer:
-            process.env.MAKA_TIMESTAMP_URL ||
-            process.env.TABCAST_TIMESTAMP_URL ||
-            'http://timestamp.digicert.com',
+            process.env.MAKA_TIMESTAMP_URL || 'http://timestamp.digicert.com',
         }
       : prev.signing ?? null,
     releasedAt: new Date().toISOString(),
