@@ -5327,6 +5327,10 @@ btnGameAudioSettings.addEventListener('click', () => {
 function paintQosScore(): void {
   const el = document.getElementById('qos-score')
   if (!el) return
+  if (!isSessionLive()) {
+    el.textContent = 'QoS — go live to score this session'
+    return
+  }
   const whip = whipStreamMetrics
   const status = lastRelaySnapshot?.status
   const scored = scoreQos({

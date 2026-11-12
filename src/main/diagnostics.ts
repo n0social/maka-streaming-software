@@ -1,4 +1,5 @@
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs'
+import { redactSupportText } from '../shared/qos-score'
 import { join } from 'node:path'
 import { app } from 'electron'
 
@@ -107,7 +108,11 @@ export function exportQosBundle(snapshot: unknown): string {
     appVersion: app.getVersion(),
     platform: process.platform,
     snapshot,
-    diagnostics: getDiagnostics().slice(-40),
+    diagnostics: getDiagnostics().slice(-40).map((event) => ({
+      ...event,
+      message: redactSupportText(event.message),
+      stack: undefined,
+    })),
   }
   writeFileSync(out, `${JSON.stringify(payload, null, 2)}\n`, 'utf8')
   return out

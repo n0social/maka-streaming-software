@@ -44,6 +44,13 @@ export function scoreQos(input: {
   return { score, grade, reasons }
 }
 
+export function redactSupportText(text: string): string {
+  return text
+    .replace(/rtmps?:\/\/\S+/gi, 'rtmp://redacted')
+    .replace(/\blive_[A-Za-z0-9_]{8,}\b/g, 'live_redacted')
+    .replace(/\b[a-z0-9]{4}(?:-[a-z0-9]{4}){3,5}\b/gi, 'youtube-key-redacted')
+}
+
 export function dropPercentFromCounts(dropped: number | null, encoded: number | null): number | null {
   if (dropped == null || encoded == null || encoded <= 0) return null
   return (Math.max(0, dropped) / encoded) * 100

@@ -34,7 +34,7 @@ import { addonHasPermission, isValidAddonId, isValidCatalogId } from '../shared/
 import { PHONE_CAM_ADDON_ID } from '../shared/phone-pair'
 import { addonProfileBucket, normalizeEncodeProfileId } from '../shared/stream-encode-profiles'
 import { fetchPlatformViewers } from './platform-viewers'
-import { dropPercentFromCounts, scoreQos } from '../shared/qos-score'
+import { dropPercentFromCounts, redactSupportText, scoreQos } from '../shared/qos-score'
 
 // Windows hides Chromium's hardware video overlay when this window is not focused,
 // which blanks the program monitor while the capture track keeps streaming.
@@ -1134,7 +1134,8 @@ function registerIpc(): void {
     const relay = body.relay && typeof body.relay === 'object' ? (body.relay as Record<string, unknown>) : {}
     const rtt = num(whip.roundTripMs) ?? num(relay.latencyMs)
     const drop = dropPercentFromCounts(num(whip.framesDropped), num(whip.framesEncoded))
-    const relayError = typeof relay.error === 'string' ? relay.error.slice(0, 300) : null
+    const relayError =
+      typeof relay.error === 'string' ? redactSupportText(relay.error).slice(0, 300) : null
     const scored = scoreQos({ rttMs: rtt, dropPercent: drop, relayError })
     const snapshot = {
       score: scored,
