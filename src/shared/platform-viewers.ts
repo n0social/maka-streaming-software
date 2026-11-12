@@ -14,10 +14,11 @@ export function parseCount(body: string): number | null {
 
 export function parseTwitchGqlViewers(body: string): number | null {
   try {
-    const parsed = JSON.parse(body) as {
-      data?: { user?: { stream?: { viewersCount?: number } | null } | null }
-    }
-    const count = parsed.data?.user?.stream?.viewersCount
+    const parsed = JSON.parse(body) as
+      | { data?: { user?: { stream?: { viewersCount?: number } | null } | null } }
+      | Array<{ data?: { user?: { stream?: { viewersCount?: number } | null } | null } }>
+    const root = Array.isArray(parsed) ? parsed[0] : parsed
+    const count = root?.data?.user?.stream?.viewersCount
     if (typeof count !== 'number' || !Number.isFinite(count) || count < 0) return null
     return Math.floor(count)
   } catch {

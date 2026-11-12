@@ -13,6 +13,10 @@ assert.equal(
   42,
 )
 assert.equal(parseTwitchGqlViewers('{"data":{"user":{"stream":null}}}'), null)
+assert.equal(
+  parseTwitchGqlViewers('[{"data":{"user":{"stream":{"viewersCount":7}}}}]'),
+  7,
+)
 assert.equal(sumPlatformViewers({ twitch: 10, youtube: 5 }), 15)
 assert.equal(sumPlatformViewers({ twitch: null, youtube: null }), null)
 assert.match(formatPlatformViewerTitle({ twitch: 10, youtube: null }), /Twitch/)
