@@ -175,6 +175,10 @@ export type VerifyReport = {
 }
 
 export type TabcastBridge = {
+  getPlatformViewers: (query: { twitchLogin?: string; youtubeVideoId?: string }) => Promise<{
+    twitch: number | null
+    youtube: number | null
+  }>
   getRelay: () => Promise<RelaySnapshot>
   startRelay: () => Promise<RelaySnapshot>
   stopRelay: () => Promise<RelaySnapshot>
@@ -293,6 +297,7 @@ export type TabcastBridge = {
 }
 
 const api: TabcastBridge = {
+  getPlatformViewers: (query) => ipcRenderer.invoke('platform:viewers', query),
   getRelay: () => ipcRenderer.invoke('relay:get'),
   startRelay: () => ipcRenderer.invoke('relay:start'),
   stopRelay: () => ipcRenderer.invoke('relay:stop'),
