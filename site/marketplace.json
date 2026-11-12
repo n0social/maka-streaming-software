@@ -101,47 +101,5 @@
         ]
       }
     }
-  },
-  {
-    "catalogId": "com.tabcast.lower-thirds",
-    "manifest": {
-      "id": "com.tabcast.lower-thirds",
-      "name": "Lower thirds",
-      "version": "0.1.0",
-      "apiVersion": 1,
-      "author": "Maka",
-      "category": "production",
-      "description": "Quick lower-third style layouts for name/title overlays via scene API.",
-      "permissions": [
-        "scene.layout"
-      ],
-      "hooks": [
-        "scene.layout",
-        "studio.sidebar.panel"
-      ],
-      "contributes": {
-        "sidebarPanels": [
-          {
-            "id": "main",
-            "title": "Lower thirds",
-            "actions": [
-              {
-                "id": "desk",
-                "label": "Desk layout",
-                "type": "scene-template",
-                "templateId": "desk-only",
-                "description": "Full-frame webcam / talking head"
-              },
-              {
-                "id": "gaming",
-                "label": "Gaming + cam",
-                "type": "scene-template",
-                "templateId": "gaming-cam"
-              }
-            ]
-          }
-        ]
-      }
-    }
   }
 ]

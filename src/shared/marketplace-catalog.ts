@@ -1,25 +1,10 @@
 import type { CatalogEntry } from './addon-types'
-import { HELLO_TABCAST_FILES } from './hello-tabcast-files'
 import { PHONE_CAM_FILES } from './phone-cam-files'
+
+export { RETIRED_ADDON_IDS, isRetiredAddonId, omitRetiredAddons } from './retired-addons'
 
 /** Curated marketplace catalog (bundled with the app). Remote feed can replace this in 0.4+. */
 export const MARKETPLACE_CATALOG: CatalogEntry[] = [
-  {
-    catalogId: 'tabcast.scene-templates',
-    featured: true,
-    manifest: {
-      id: 'tabcast.scene-templates',
-      name: 'Scene templates',
-      version: '1.0.0',
-      apiVersion: 1,
-      author: 'Maka',
-      category: 'builtin',
-      description: 'One-click encoder layouts: gaming + cam, desk, browse showcase.',
-      permissions: ['scene.layout'],
-      hooks: ['studio.sidebar.panel'],
-      builtin: true,
-    },
-  },
   {
     catalogId: 'com.tabcast.custom-rtmp',
     featured: true,
@@ -66,43 +51,6 @@ export const MARKETPLACE_CATALOG: CatalogEntry[] = [
     },
   },
   {
-    catalogId: 'com.tabcast.lower-thirds',
-    manifest: {
-      id: 'com.tabcast.lower-thirds',
-      name: 'Lower thirds',
-      version: '0.1.0',
-      apiVersion: 1,
-      author: 'Maka',
-      category: 'production',
-      description: 'Quick lower-third style layouts for name/title overlays via scene API.',
-      permissions: ['scene.layout'],
-      hooks: ['scene.layout', 'studio.sidebar.panel'],
-      contributes: {
-        sidebarPanels: [
-          {
-            id: 'main',
-            title: 'Lower thirds',
-            actions: [
-              {
-                id: 'desk',
-                label: 'Desk layout',
-                type: 'scene-template',
-                templateId: 'desk-only',
-                description: 'Full-frame webcam / talking head',
-              },
-              {
-                id: 'gaming',
-                label: 'Gaming + cam',
-                type: 'scene-template',
-                templateId: 'gaming-cam',
-              },
-            ],
-          },
-        ],
-      },
-    },
-  },
-  {
     catalogId: 'com.tabcast.phone-cam',
     featured: true,
     manifest: {
@@ -119,23 +67,6 @@ export const MARKETPLACE_CATALOG: CatalogEntry[] = [
       hooks: [],
     },
     files: PHONE_CAM_FILES,
-  },
-  {
-    catalogId: 'com.example.hello-tabcast',
-    featured: true,
-    manifest: {
-      id: 'com.example.hello-tabcast',
-      name: 'Hello Maka',
-      version: '0.1.0',
-      apiVersion: 1,
-      author: 'Maka',
-      category: 'utility',
-      description: 'Sandboxed addon runtime demo — webview panel with tabcast.addons API.',
-      entry: 'index.html',
-      permissions: ['ui.toast', 'live.events'],
-      hooks: ['app.ready', 'live.start', 'live.end', 'studio.sidebar.panel'],
-    },
-    files: HELLO_TABCAST_FILES,
   },
 ]
 

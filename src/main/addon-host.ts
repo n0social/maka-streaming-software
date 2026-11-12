@@ -21,6 +21,7 @@ import type {
   LiveEventName,
   MarketplaceItem,
 } from '../shared/addon-types'
+import { isRetiredAddonId } from '../shared/retired-addons'
 import { SCENE_TEMPLATES } from '../shared/scene-templates'
 import type { StreamProfile } from '../shared/tabcast'
 import { loadAddonSettings, saveAddonSettings } from './addon-settings'
@@ -66,18 +67,6 @@ export class AddonHost {
   reload(): void {
     this.manifests.clear()
     this.state = loadAddonState()
-    this.registerBuiltin({
-      id: 'tabcast.scene-templates',
-      name: 'Scene templates',
-      version: '1.0.0',
-      apiVersion: 1,
-      author: 'Maka',
-      category: 'builtin',
-      description: 'One-click layouts for the relay encoder.',
-      permissions: ['scene.layout'],
-      hooks: ['studio.sidebar.panel'],
-      builtin: true,
-    })
     this.loadUserAddons()
   }
 
@@ -214,8 +203,8 @@ export class AddonHost {
   }
 
   runAction(addonId: string, actionId: string, ctx: ActionContext): AddonActionResult {
-    if (addonId === 'tabcast.scene-templates') {
-      return this.runSceneTemplate(actionId, ctx)
+    if (isRetiredAddonId(addonId)) {
+      return { ok: false, message: 'This addon has been removed' }
     }
 
     const manifest = this.manifests.get(addonId)
@@ -244,6 +233,9 @@ export class AddonHost {
     }
     if (entry.manifest.builtin) {
       return { ok: false, message: 'Built-in addons are already included' }
+    }
+    if (isRetiredAddonId(catalogId) || isRetiredAddonId(entry.manifest.id)) {
+      return { ok: false, message: 'This addon has been removed' }
     }
 
     const validated = validateManifest(entry.manifest)
@@ -471,10 +463,6 @@ export class AddonHost {
     }
   }
 
-  private registerBuiltin(manifest: AddonManifest): void {
-    this.manifests.set(manifest.id, manifest)
-  }
-
   private loadUserAddons(): void {
     const dir = addonsInstallDir()
     let entries: string[] = []
@@ -497,6 +485,17 @@ export class AddonHost {
           continue
         }
         if (validated.manifest.builtin) continue
+        if (isRetiredAddonId(validated.manifest.id)) {
+          removeAddonDir(folder)
+          if (validated.manifest.id in this.state.enabled) {
+            const enabled = { ...this.state.enabled }
+            delete enabled[validated.manifest.id]
+            this.state = { enabled }
+            saveAddonState(this.state)
+          }
+          recordDiagnostic('info', 'addons.retired', `Removed retired addon ${validated.manifest.id}`)
+          continue
+        }
         this.manifests.set(validated.manifest.id, validated.manifest)
       } catch (err) {
         recordDiagnostic('warn', 'addons.load', `Invalid manifest: ${folder}`, err)
