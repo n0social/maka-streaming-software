@@ -8,6 +8,10 @@ const stats = liveStatsFromReports([
   { type: 'inbound-rtp', kind: 'audio', packetsLost: 9 },
 ])
 assert.equal(stats.latencyMs, 20)
+const alreadyMs = liveStatsFromReports([
+  { type: 'candidate-pair', state: 'succeeded', currentRoundTripTime: 48 },
+])
+assert.equal(alreadyMs.latencyMs, 48)
 assert.equal(stats.droppedFrames, 3)
 
 const empty = liveStatsFromReports([])
