@@ -30,6 +30,9 @@ jobs:
       - name: Encode adapt tests
         run: npm run test:encode-adapt
 
+      - name: Encode backpressure tests
+        run: npm run test:encode-backpressure
+
       - name: QoS log and live retry tests
         run: npm run test:qos-log && npm run test:live-retry && npm run test:capture-health
 

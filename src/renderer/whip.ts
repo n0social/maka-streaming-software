@@ -198,10 +198,16 @@ export function startWhipVideoWatchdog(options: WhipVideoWatchdogOptions): WhipV
   }
 }
 
+export type WhipVideoSenders = {
+  browser?: RTCRtpSender
+  webcam?: RTCRtpSender
+}
+
 export type WhipPublisher = {
   pc: RTCPeerConnection
   resourceUrl: string | null
   audioSenders: WhipAudioSenders
+  videoSenders: WhipVideoSenders
   close: () => Promise<void>
 }
 
@@ -261,9 +267,15 @@ function attachWhipSources(
   pc: RTCPeerConnection,
   sources: WhipPublishSources,
   audioSenders: WhipAudioSenders,
+  videoSenders: WhipVideoSenders,
 ): RelayTrackStreamId[] {
   const streamIds: RelayTrackStreamId[] = []
-  const addTracks = (streamId: RelayTrackStreamId, tracks: MediaStreamTrack[], role?: WhipAudioTrackRole) => {
+  const addTracks = (
+    streamId: RelayTrackStreamId,
+    tracks: MediaStreamTrack[],
+    role?: WhipAudioTrackRole,
+    videoRole?: keyof WhipVideoSenders,
+  ) => {
     const live = tracks.filter((track) => track.readyState === 'live')
     if (live.length === 0) return
     const named = createNamedMediaStream(streamId, live)
@@ -271,15 +283,16 @@ function attachWhipSources(
       const sender = pc.addTrack(track, named)
       streamIds.push(streamId)
       if (role) audioSenders[role] = sender
+      if (videoRole) videoSenders[videoRole] = sender
     }
   }
 
   addTracks(RELAY_TRACK_STREAM_IDS.gameplay, sources.gameplay.getTracks())
   if (sources.browser) {
-    addTracks(RELAY_TRACK_STREAM_IDS.browser, sources.browser.getVideoTracks())
+    addTracks(RELAY_TRACK_STREAM_IDS.browser, sources.browser.getVideoTracks(), undefined, 'browser')
   }
   if (sources.webcam) {
-    addTracks(RELAY_TRACK_STREAM_IDS.webcam, sources.webcam.getVideoTracks())
+    addTracks(RELAY_TRACK_STREAM_IDS.webcam, sources.webcam.getVideoTracks(), undefined, 'webcam')
   }
   addTracks(RELAY_TRACK_STREAM_IDS.mic, sources.mic?.getAudioTracks() ?? [], 'mic')
   addTracks(RELAY_TRACK_STREAM_IDS.desktopAudio, sources.desktopAudio?.getAudioTracks() ?? [], 'desktop')
@@ -340,7 +353,8 @@ export async function publishWhip(
   }
 
   const audioSenders: WhipAudioSenders = {}
-  const streamIds = attachWhipSources(pc, sources, audioSenders)
+  const videoSenders: WhipVideoSenders = {}
+  const streamIds = attachWhipSources(pc, sources, audioSenders, videoSenders)
   preferH264VideoCodecs(pc)
 
   const offer = await pc.createOffer()
@@ -413,6 +427,7 @@ export async function publishWhip(
     pc,
     resourceUrl,
     audioSenders,
+    videoSenders,
     async close() {
       if (resourceUrl) {
         try {

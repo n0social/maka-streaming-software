@@ -71,6 +71,10 @@ See `src/shared/relay-config.ts` / `buildRelayConfigRequest()`. Fields include `
 
 `status`: `idle` | `starting` | `live` | `error` · optional `platforms`, `whipSessionActive`, `bitrateMbps`, `droppedFrames`, `latencyMs`, `ffmpegLog`, `error`.
 
+### CPU backpressure
+
+The program compositor skips paints when a draw takes longer than the encode frame budget (`src/shared/encode-backpressure.ts`). While live, three slow or lossy samples pause the browser overlay track, and heavier loss also pauses the webcam track. The gameplay track stays. Restoring the extra tracks waits for three healthy samples.
+
 ### WHIP client contract (`src/renderer/whip.ts`)
 
 1. Build `RTCPeerConnection`, add tracks on **named** `MediaStream`s (`gameplay`, `webcam`, `browser`, `mic`, `desktop-audio`, `game-audio`).
