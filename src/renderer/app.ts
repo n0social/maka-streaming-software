@@ -62,6 +62,7 @@ import { buildRelayConfigRequest, sanitizeStreamCategory, sanitizeStreamTitle, t
 import { emptyEncodeAdaptState, observeEncodeAdapt, type EncodeAdaptState } from '../shared/encode-adapt'
 import { formatQosLog, pushQosEvent, type QosEvent, type QosEventKind } from '../shared/qos-log'
 import { emptyCaptureStallState, observeCaptureFrames, type CaptureStallState } from '../shared/capture-health'
+import { frameLooksEmpty, observeBlackFrames, pickGameplayWindowFallback } from '../shared/capture-fallback'
 import { isTwitchLogin, normalizeTwitchChannel, streamKeyValid, youtubeVideoId } from '../shared/stream-wizard'
 import type { StreamDestinationSettings } from '../shared/stream-destination-settings'
 import { GoLiveWizard, type GoLiveWizardPlatform } from './go-live-wizard'
@@ -266,6 +267,8 @@ let captureStallState: CaptureStallState = emptyCaptureStallState()
 let captureRetryUsed = false
 let captureRetryInFlight = false
 let captureStallNotified = false
+let captureBlackSamples = 0
+let captureBlackFallbackUsed = false
 let liveRecoveryAttempts = 0
 let liveReconnecting = false
 let liveRecoveryExhausted = false
@@ -2493,6 +2496,8 @@ async function selectDesktopSource(source: CaptureSource): Promise<void> {
   captureStallState = emptyCaptureStallState()
   captureRetryUsed = false
   captureStallNotified = false
+  captureBlackSamples = 0
+  captureBlackFallbackUsed = false
   layerEnabled.game = true
 
   for (const el of sourceList.querySelectorAll('.source-card')) {
@@ -2601,6 +2606,74 @@ async function retryFrozenCapture(): Promise<void> {
     recordQos('capture', 'capture:retry-failed', {
       label: 'Capture retry failed',
       detail: err instanceof Error ? err.message : 'retry failed',
+    })
+  } finally {
+    captureRetryInFlight = false
+  }
+}
+
+const blackFrameCanvas = document.createElement('canvas')
+blackFrameCanvas.width = 48
+blackFrameCanvas.height = 27
+
+function noteBlackProgramFrame(): void {
+  const source = lastCaptureSource
+  if (!source || source.type !== 'screen' || captureBlackFallbackUsed || captureRetryInFlight) return
+  if (!programVideo.videoWidth) return
+  const ctx = blackFrameCanvas.getContext('2d', { willReadFrequently: true })
+  if (!ctx) return
+  ctx.drawImage(programVideo, 0, 0, blackFrameCanvas.width, blackFrameCanvas.height)
+  const empty = frameLooksEmpty(ctx.getImageData(0, 0, blackFrameCanvas.width, blackFrameCanvas.height).data)
+  const observed = observeBlackFrames(captureBlackSamples, empty)
+  captureBlackSamples = observed.stillBlack
+  if (observed.fallback) void fallbackBlackScreenToWindow()
+}
+
+async function fallbackBlackScreenToWindow(): Promise<void> {
+  const current = lastCaptureSource
+  if (!current || current.type !== 'screen' || captureRetryInFlight || captureBlackFallbackUsed) return
+  captureBlackFallbackUsed = true
+  captureRetryInFlight = true
+  captureStallState = emptyCaptureStallState()
+  try {
+    const sources = await window.tabcast.listCaptureSources()
+    const next = pickGameplayWindowFallback(sources, current.id)
+    if (!next) {
+      destHint.textContent =
+        'Screen capture is black. Pick the game window. Cloud desktops often hide the game from the full screen.'
+      recordQos('capture', 'capture:black-screen', {
+        label: 'Black screen capture',
+        detail: 'No other window to fall back to',
+      })
+      return
+    }
+    recordQos('capture', 'capture:wgc-window', {
+      label: 'Switched to window capture',
+      detail: next.name,
+    })
+    destHint.textContent = `Screen was black — capturing “${next.name}” instead.`
+    const previous = programStream
+    const stream = await captureDesktopMedia(
+      { id: next.id, name: next.name, type: 'window', thumbnailDataUrl: '' },
+      true,
+    )
+    lastCaptureSource = { id: next.id, name: next.name, type: 'window', thumbnailDataUrl: '' }
+    selectedSourceId = next.id
+    programStream = stream
+    bindGameplayStream(stream)
+    programVideo.srcObject = stream
+    syncProgramVideoSurface()
+    layerGame.dataset.active = '1'
+    layerGame.textContent = `Gameplay — ${next.name}`
+    await replaceGameplayWhipTrack(previous, stream)
+    stopStream(previous)
+    syncWhipAvTracks()
+    captureBlackSamples = 0
+  } catch (err) {
+    destHint.textContent = 'Screen capture is black and the window fallback failed. Pick the game window.'
+    recordQos('capture', 'capture:wgc-window-failed', {
+      label: 'Window capture fallback failed',
+      detail: err instanceof Error ? err.message : 'fallback failed',
     })
   } finally {
     captureRetryInFlight = false
@@ -5219,7 +5292,10 @@ function sampleCaptureClock(): void {
   const previousFrames = captureStallState.lastFrames
   const stall = observeCaptureFrames(captureStallState, programFrames, gameplayLive)
   captureStallState = stall.state
-  if (previousFrames != null && programFrames > previousFrames) captureStallNotified = false
+  if (previousFrames != null && programFrames > previousFrames) {
+    captureStallNotified = false
+    noteBlackProgramFrame()
+  }
   if (!stall.stalled) return
   if (!captureRetryUsed && lastCaptureSource) {
     captureRetryUsed = true
