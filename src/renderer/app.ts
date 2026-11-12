@@ -5210,6 +5210,10 @@ function sampleCaptureClock(): void {
   captureClockFrames = frames
   captureClockStartedAt = now
 
+  if (currentMode !== 'studio') {
+    captureStallState = emptyCaptureStallState()
+    return
+  }
   const programFrames = programVideo.getVideoPlaybackQuality?.().totalVideoFrames ?? 0
   const gameplayLive = Boolean(programStream?.getVideoTracks().some((track) => track.readyState === 'live'))
   const previousFrames = captureStallState.lastFrames

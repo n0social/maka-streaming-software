@@ -21,4 +21,15 @@ step = observeCaptureFrames(step.state, 11, true)
 assert.equal(step.stalled, false)
 assert.equal(step.state.stillSamples, 0)
 
+let cold = emptyCaptureStallState()
+cold = observeCaptureFrames(cold, 0, true).state
+let coldStalled = false
+for (let i = 0; i < CAPTURE_STALL_SAMPLES; i++) {
+  const next = observeCaptureFrames(cold, 0, true)
+  cold = next.state
+  coldStalled = next.stalled
+}
+assert.equal(coldStalled, false)
+assert.equal(cold.sawFrame, false)
+
 console.log('capture-health.test.mjs: ok')
