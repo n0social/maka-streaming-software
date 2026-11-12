@@ -72,6 +72,7 @@ import {
   sumPlatformViewers,
   type PlatformViewerCounts,
 } from '../shared/platform-viewers'
+import { dropPercentFromCounts, scoreQos } from '../shared/qos-score'
 import { emptyCaptureStallState, observeCaptureFrames, type CaptureStallState } from '../shared/capture-health'
 import { frameLooksEmpty, observeBlackFrames, pickGameplayWindowFallback } from '../shared/capture-fallback'
 import { isTwitchLogin, normalizeTwitchChannel, streamKeyValid, youtubeVideoId } from '../shared/stream-wizard'
@@ -5323,6 +5324,26 @@ btnGameAudioSettings.addEventListener('click', () => {
   studioSourceGame.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
 })
 
+function paintQosScore(): void {
+  const el = document.getElementById('qos-score')
+  if (!el) return
+  if (!isSessionLive()) {
+    el.textContent = 'QoS — go live to score this session'
+    return
+  }
+  const whip = whipStreamMetrics
+  const status = lastRelaySnapshot?.status
+  const scored = scoreQos({
+    rttMs: whip?.roundTripMs ?? status?.latencyMs ?? null,
+    dropPercent: dropPercentFromCounts(
+      whip?.outboundVideoFramesDropped ?? null,
+      whip?.outboundVideoFramesEncoded ?? null,
+    ),
+    relayError: status?.error ?? lastRelaySnapshot?.error ?? null,
+  })
+  el.textContent = `QoS ${scored.score} (${scored.grade}) — ${scored.reasons[0]}`
+}
+
 function noteWhipLoad(): void {
   if (!isSessionLive() || !whipPublisher) return
   const metrics = whipStreamMetrics
@@ -5373,6 +5394,7 @@ function sampleCaptureClock(): void {
   playbackTotalFrames = frames
   playbackDroppedFrames = dropped
   noteWhipLoad()
+  paintQosScore()
   const now = performance.now()
   if (captureClockStartedAt > 0 && frames > captureClockFrames) {
     measuredCaptureFps = measuredFps(frames - captureClockFrames, now - captureClockStartedAt)
@@ -5416,6 +5438,35 @@ function sampleCaptureClock(): void {
     })
   }
 }
+
+document.getElementById('btn-export-qos')?.addEventListener('click', () => {
+  const whip = whipStreamMetrics
+  const status = lastRelaySnapshot?.status
+  void window.tabcast
+    .exportQosBundle({
+      whip: {
+        roundTripMs: whip?.roundTripMs ?? null,
+        framesDropped: whip?.outboundVideoFramesDropped ?? null,
+        framesEncoded: whip?.outboundVideoFramesEncoded ?? null,
+        framesPerSecond: whip?.outboundVideoFramesPerSecond ?? null,
+        mbps: measuredWhipMbps,
+      },
+      relay: {
+        status: status?.status ?? null,
+        lifecycle: lastRelaySnapshot?.lifecycle ?? null,
+        latencyMs: status?.latencyMs ?? null,
+        droppedFrames: status?.droppedFrames ?? null,
+        bitrateMbps: status?.bitrateMbps ?? null,
+        error: status?.error ?? lastRelaySnapshot?.error ?? null,
+      },
+    })
+    .then((result) => {
+      const el = document.getElementById('qos-score')
+      if (!el || !result.ok) return
+      el.textContent = `QoS ${result.score} (${result.grade}) — saved ${result.path}`
+    })
+    .catch(() => undefined)
+})
 
 setInterval(() => {
   sampleCaptureClock()

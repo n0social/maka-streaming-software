@@ -255,6 +255,23 @@ export type TabcastBridge = {
   }) => Promise<void>
   clearDiagnostics: () => Promise<DiagEvent[]>
   exportDiagnostics: () => Promise<string>
+  exportQosBundle: (snapshot: {
+    whip: {
+      roundTripMs: number | null
+      framesDropped: number | null
+      framesEncoded: number | null
+      framesPerSecond: number | null
+      mbps: number | null
+    }
+    relay: {
+      status: string | null
+      lifecycle: string | null
+      latencyMs: number | null
+      droppedFrames: number | null
+      bitrateMbps: number | null
+      error: string | null
+    }
+  }) => Promise<{ ok: boolean; path: string; score: number; grade: string; reasons: string[] }>
   verifySystem: () => Promise<VerifyReport>
   onDiagnostic: (cb: (event: DiagEvent) => void) => () => void
   listTabs: () => Promise<BrowseTabInfo[]>
@@ -376,6 +393,7 @@ const api: TabcastBridge = {
   recordDiagnostic: (event) => ipcRenderer.invoke('diagnostics:record', event),
   clearDiagnostics: () => ipcRenderer.invoke('diagnostics:clear'),
   exportDiagnostics: () => ipcRenderer.invoke('diagnostics:export'),
+  exportQosBundle: (snapshot) => ipcRenderer.invoke('qos:export', snapshot),
   verifySystem: () => ipcRenderer.invoke('diagnostics:verify'),
   onDiagnostic: (cb) => {
     const handler = (_event: Electron.IpcRendererEvent, event: DiagEvent) => cb(event)

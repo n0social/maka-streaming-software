@@ -19,6 +19,7 @@ import { loadSettings, saveSettings } from './settings-store'
 import {
   clearDiagnostics,
   exportDiagnosticsBundle,
+  exportQosBundle,
   getDiagnostics,
   installProcessGuards,
   onDiagnostic,
@@ -33,6 +34,7 @@ import { addonHasPermission, isValidAddonId, isValidCatalogId } from '../shared/
 import { PHONE_CAM_ADDON_ID } from '../shared/phone-pair'
 import { addonProfileBucket, normalizeEncodeProfileId } from '../shared/stream-encode-profiles'
 import { fetchPlatformViewers } from './platform-viewers'
+import { dropPercentFromCounts, redactSupportText, scoreQos } from '../shared/qos-score'
 
 // Windows hides Chromium's hardware video overlay when this window is not focused,
 // which blanks the program monitor while the capture track keeps streaming.
@@ -1123,6 +1125,39 @@ function registerIpc(): void {
   ipcMain.handle('diagnostics:export', (event) => {
     if (!studioOk(event)) return ''
     return exportDiagnosticsBundle()
+  })
+  ipcMain.handle('qos:export', (event, payload: unknown) => {
+    if (!studioOk(event)) return { ok: false, path: '', score: 0, grade: 'poor' as const, reasons: ['Unauthorized'] }
+    const body = payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : {}
+    const num = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? value : null)
+    const whip = body.whip && typeof body.whip === 'object' ? (body.whip as Record<string, unknown>) : {}
+    const relay = body.relay && typeof body.relay === 'object' ? (body.relay as Record<string, unknown>) : {}
+    const rtt = num(whip.roundTripMs) ?? num(relay.latencyMs)
+    const drop = dropPercentFromCounts(num(whip.framesDropped), num(whip.framesEncoded))
+    const relayError =
+      typeof relay.error === 'string' ? redactSupportText(relay.error).slice(0, 300) : null
+    const scored = scoreQos({ rttMs: rtt, dropPercent: drop, relayError })
+    const snapshot = {
+      score: scored,
+      whip: {
+        roundTripMs: num(whip.roundTripMs),
+        framesDropped: num(whip.framesDropped),
+        framesEncoded: num(whip.framesEncoded),
+        framesPerSecond: num(whip.framesPerSecond),
+        mbps: num(whip.mbps),
+      },
+      relay: {
+        status: typeof relay.status === 'string' ? relay.status.slice(0, 32) : null,
+        lifecycle: typeof relay.lifecycle === 'string' ? relay.lifecycle.slice(0, 32) : null,
+        latencyMs: num(relay.latencyMs),
+        droppedFrames: num(relay.droppedFrames),
+        bitrateMbps: num(relay.bitrateMbps),
+        error: relayError,
+      },
+    }
+    const path = exportQosBundle(snapshot)
+    recordDiagnostic('info', 'qos.export', `QoS ${scored.score} (${scored.grade})`, undefined, { path })
+    return { ok: true, path, score: scored.score, grade: scored.grade, reasons: scored.reasons }
   })
   ipcMain.handle('diagnostics:verify', async (event) => {
     if (!studioOk(event)) {
