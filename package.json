@@ -1,8 +1,8 @@
 {
   "name": "maka",
-  "version": "0.2.8",
+  "version": "2.8.1",
   "private": false,
-  "description": "Maka v0.2.8 — lightweight video game streaming platform for Windows. Cloud streaming for streamers on GeForce NOW, Xbox Cloud Gaming, Shadow PC, and Cloud Moon; PVP and competitive live streams to Twitch & YouTube (WHIP + MAKArelay).",
+  "description": "Maka v2.8.1 — lightweight video game streaming platform for Windows. Cloud streaming for streamers on GeForce NOW, Xbox Cloud Gaming, Shadow PC, and Cloud Moon; PVP and competitive live streams to Twitch & YouTube (WHIP + MAKArelay).",
   "keywords": [
     "maka",
     "game-streaming",
