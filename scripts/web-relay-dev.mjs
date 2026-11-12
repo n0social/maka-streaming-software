@@ -8,6 +8,7 @@
 import { createServer } from 'node:http'
 import { randomBytes, randomUUID } from 'node:crypto'
 import { RTCPeerConnection } from 'werift'
+import { liveStatsFromReports, reportsFromPeer } from './relay-live-stats.mjs'
 
 const HOST = process.env.RELAY_HOST ?? '127.0.0.1'
 const PORT = Number(process.env.RELAY_PORT ?? 38_473)
@@ -129,10 +130,20 @@ function statusPayload() {
     error: relayError ?? undefined,
     ffmpegLog: ffmpegLog.length ? [...ffmpegLog] : undefined,
     bitrateMbps: relayConfig.bitrateMbps,
-    droppedFrames: mockRtmpLive ? 0 : undefined,
-    latencyMs: mockRtmpLive ? 35 : undefined,
     viewerCount: mockRtmpLive ? 0 : undefined,
   }
+}
+
+async function measuredLiveStats() {
+  const reports = []
+  for (const session of whipSessions.values()) {
+    try {
+      reports.push(...(await reportsFromPeer(session.pc)))
+    } catch {
+      /* stats are optional */
+    }
+  }
+  return liveStatsFromReports(reports)
 }
 
 async function waitForIceGathering(pc, timeoutMs = 6000) {
@@ -247,7 +258,8 @@ async function handleRequest(req, res) {
 
   if (req.method === 'GET' && path === '/status') {
     if (!requireAuth(req, res)) return
-    sendJson(res, 200, statusPayload())
+    const measured = whipSessions.size ? await measuredLiveStats() : {}
+    sendJson(res, 200, { ...statusPayload(), ...measured })
     return
   }
 

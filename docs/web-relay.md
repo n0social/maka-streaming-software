@@ -71,6 +71,8 @@ See `src/shared/relay-config.ts` / `buildRelayConfigRequest()`. Fields include `
 
 `status`: `idle` | `starting` | `live` | `error` · optional `platforms`, `whipSessionActive`, `bitrateMbps`, `droppedFrames`, `latencyMs`, `ffmpegLog`, `error`.
 
+The dev relay sets `latencyMs` from the selected WHIP candidate-pair round-trip and `droppedFrames` from inbound video `packetsLost`. It omits both until the peer reports them. The studio uses that relay latency when present, and otherwise the browser's own WHIP round-trip.
+
 ### CPU backpressure
 
 The program compositor skips paints when a draw takes longer than the encode frame budget (`src/shared/encode-backpressure.ts`). While live, three slow or lossy samples pause the browser overlay track, and heavier loss also pauses the webcam track. The gameplay track stays. Restoring the extra tracks waits for three healthy samples.
