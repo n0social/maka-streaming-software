@@ -280,6 +280,7 @@ let adaptiveEncodeEnabled = true
 let encodeAdaptUserHold = false
 let encodeAdaptState: EncodeAdaptState = emptyEncodeAdaptState()
 let whipLoadState: WhipLoadState = emptyWhipLoadState()
+let whipLoadFrameMark: { dropped: number; encoded: number } | null = null
 let encodeAdaptFrameMark: { dropped: number; encoded: number } | null = null
 let applyingAdaptiveEncode = false
 let liveRecoveryFatal = false
@@ -1836,6 +1837,7 @@ function resetEncodeAdaptSession(): void {
   encodeAdaptState = emptyEncodeAdaptState()
   encodeAdaptFrameMark = null
   whipLoadState = emptyWhipLoadState()
+  whipLoadFrameMark = null
 }
 
 /** Drop percent since the previous live sample. Lifetime totals stay high after one bad burst and would walk the ladder forever. */
@@ -5203,13 +5205,25 @@ btnGameAudioSettings.addEventListener('click', () => {
   studioSourceGame.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
 })
 
-function noteWhipLoad(dropPercent: number | null): void {
+function noteWhipLoad(): void {
   if (!isSessionLive() || !whipPublisher) return
+  const metrics = whipStreamMetrics
+  const encoded = metrics?.outboundVideoFramesEncoded ?? null
+  const dropped = metrics?.outboundVideoFramesDropped ?? 0
+  let dropPercent: number | null = null
+  if (encoded != null && whipLoadFrameMark && encoded > whipLoadFrameMark.encoded) {
+    dropPercent =
+      (Math.max(0, dropped - whipLoadFrameMark.dropped) / (encoded - whipLoadFrameMark.encoded)) * 100
+  }
+  if (encoded != null) whipLoadFrameMark = { dropped, encoded }
+  const targetFps = encodeProfileSpec(selectedProfile()).fps
+  const outboundFps = metrics?.outboundVideoFramesPerSecond ?? null
+  const fpsReady = encoded != null && encoded > targetFps * 2
   const sample = whipLoadSample({
     dropPercent,
-    captureFps: measuredCaptureFps,
-    targetFps: encodeProfileSpec(selectedProfile()).fps,
-    compositorSkip: programOutputCompositor.getSkip(),
+    captureFps: fpsReady ? outboundFps : null,
+    targetFps,
+    compositorSkip: programOutputCompositor.isActive() ? programOutputCompositor.getSkip() : 0,
   })
   const previous = whipLoadState.applied
   whipLoadState = observeWhipLoad(whipLoadState, sample)
@@ -5238,12 +5252,9 @@ function sampleCaptureClock(): void {
     frames += quality.totalVideoFrames
     dropped += quality.droppedVideoFrames
   }
-  const frameDelta = frames - captureClockFrames
-  const dropDelta = dropped - playbackDroppedFrames
-  const dropPercent = frameDelta > 0 ? (Math.max(0, dropDelta) / frameDelta) * 100 : null
   playbackTotalFrames = frames
   playbackDroppedFrames = dropped
-  noteWhipLoad(dropPercent)
+  noteWhipLoad()
   const now = performance.now()
   if (captureClockStartedAt > 0 && frames > captureClockFrames) {
     measuredCaptureFps = measuredFps(frames - captureClockFrames, now - captureClockStartedAt)

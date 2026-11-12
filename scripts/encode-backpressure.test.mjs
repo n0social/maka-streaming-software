@@ -20,6 +20,10 @@ assert.equal(
   'shed-browser',
 )
 assert.equal(
+  whipLoadSample({ dropPercent: 0, captureFps: 30, targetFps: 60, compositorSkip: 0 }),
+  'normal',
+)
+assert.equal(
   whipLoadSample({ dropPercent: 9, captureFps: 20, targetFps: 60, compositorSkip: 0 }),
   'shed-webcam',
 )

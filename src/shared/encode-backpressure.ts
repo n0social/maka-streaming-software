@@ -34,7 +34,7 @@ export function whipLoadSample(input: {
   if (heavyDrops || input.compositorSkip >= MAX_COMPOSITOR_SKIP || (slowCapture && mildDrops)) {
     return 'shed-webcam'
   }
-  if (mildDrops || slowCapture || input.compositorSkip >= 2) return 'shed-browser'
+  if (mildDrops || input.compositorSkip >= 2) return 'shed-browser'
   return 'normal'
 }
 
