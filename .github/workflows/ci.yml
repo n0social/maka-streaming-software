@@ -36,6 +36,9 @@ jobs:
       - name: Relay encode patch tests
         run: npm run test:relay-encode-patch
 
+      - name: Platform viewer tests
+        run: npm run test:platform-viewers
+
       - name: QoS log and live retry tests
         run: npm run test:qos-log && npm run test:live-retry && npm run test:capture-health && npm run test:capture-fallback
 

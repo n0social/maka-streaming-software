@@ -67,6 +67,11 @@ import {
   type WhipLoadState,
 } from '../shared/encode-backpressure'
 import { formatQosLog, pushQosEvent, type QosEvent, type QosEventKind } from '../shared/qos-log'
+import {
+  formatPlatformViewerTitle,
+  sumPlatformViewers,
+  type PlatformViewerCounts,
+} from '../shared/platform-viewers'
 import { emptyCaptureStallState, observeCaptureFrames, type CaptureStallState } from '../shared/capture-health'
 import { frameLooksEmpty, observeBlackFrames, pickGameplayWindowFallback } from '../shared/capture-fallback'
 import { isTwitchLogin, normalizeTwitchChannel, streamKeyValid, youtubeVideoId } from '../shared/stream-wizard'
@@ -346,6 +351,8 @@ let customScenes: CustomScene[] = []
 let intermissionEndsAtMs: number | null = null
 let intermissionTimer: ReturnType<typeof setInterval> | null = null
 let streamChannel = ''
+let platformViewers: PlatformViewerCounts = { twitch: null, youtube: null }
+let platformViewerTimer: ReturnType<typeof setInterval> | null = null
 let streamTwitchChatLink = ''
 let streamYoutubeChatLink = ''
 let streamAlertBoxUrl = ''
@@ -3231,6 +3238,7 @@ async function endLive(): Promise<void> {
   setGoLiveButtonLabel('Ending…')
   setDestError(null)
   sessionLiveIntent = false
+  stopPlatformViewerPoll()
   stopWhipVideoWatchdog()
   clearWhipStreamMetrics()
   cancelLiveRecovery()
@@ -3323,10 +3331,12 @@ async function goLive(): Promise<void> {
     await window.tabcast.refreshRelay()
     await dispatchAddonLiveEvents('live.start')
     destHint.textContent = 'Live — keys stay in relay RAM. End Stream to tear down WHIP.'
+    startPlatformViewerPoll()
     btnGoLive.dataset.live = '1'
     setGoLiveButtonLabel('End Stream')
   } catch (err) {
     sessionLiveIntent = false
+    stopPlatformViewerPoll()
     const message = err instanceof Error ? err.message : String(err)
     setDestError(message)
     stopWhipVideoWatchdog()
@@ -3731,6 +3741,7 @@ async function teardownLiveSession(): Promise<void> {
       await stopRelayStream(snapshot.health).catch(() => undefined)
     }
     sessionLiveIntent = false
+    stopPlatformViewerPoll()
     cancelLiveRecovery()
     liveRecoveryAttempts = 0
     liveRecoveryExhausted = false
@@ -5187,6 +5198,37 @@ async function persistStreamMetaFromInputs(): Promise<void> {
 }
 function syncStreamInfoMeta(): void { syncStreamInfoFields() }
 
+function stopPlatformViewerPoll(): void {
+  if (platformViewerTimer) {
+    clearInterval(platformViewerTimer)
+    platformViewerTimer = null
+  }
+  platformViewers = { twitch: null, youtube: null }
+}
+
+async function refreshPlatformViewers(): Promise<void> {
+  if (!isSessionLive()) return
+  const twitchLogin = destTwitch.checked ? normalizeTwitchChannel(streamChannel) : ''
+  const youtubeId = destYoutube.checked ? youtubeVideoId(streamYoutubeChatLink || streamChannel) : ''
+  try {
+    platformViewers = await window.tabcast.getPlatformViewers({
+      twitchLogin,
+      youtubeVideoId: youtubeId,
+    })
+  } catch {
+    platformViewers = { twitch: null, youtube: null }
+  }
+  if (isSessionLive()) updateStreamInfo(true, lastRelaySnapshot)
+}
+
+function startPlatformViewerPoll(): void {
+  stopPlatformViewerPoll()
+  void refreshPlatformViewers()
+  platformViewerTimer = setInterval(() => {
+    void refreshPlatformViewers()
+  }, 20_000)
+}
+
 function setLiveDurationClock(active: boolean): void {
   if (streamDurationTimer) {
     clearInterval(streamDurationTimer)
@@ -5214,10 +5256,13 @@ function updateStreamInfo(isLive: boolean, snapshot?: RelaySnapshot | null): voi
     streamLivePill.textContent = isLive ? 'Live' : 'Offline'
   }
   if (streamViewers) {
-    const viewers = isLive ? viewerCountFromRelay(snapshot ?? lastRelaySnapshot) : null
+    const relayViewers = isLive ? viewerCountFromRelay(snapshot ?? lastRelaySnapshot) : null
+    const platformTotal = isLive ? sumPlatformViewers(platformViewers) : null
+    const viewers = relayViewers ?? platformTotal
     const label = viewerStatusLabel(isLive, viewers)
     streamViewers.textContent = viewers != null && isLive ? `Viewers: ${formatViewerCount(viewers)}` : label.text
-    streamViewers.title = label.title
+    streamViewers.title =
+      relayViewers != null ? 'Live viewer count from the relay' : formatPlatformViewerTitle(platformViewers)
   }
   setLiveDurationClock(isLive)
 }

@@ -32,6 +32,7 @@ import { coerceSettings, isStudioMediaPermission, isValidPresetId, isValidTabId 
 import { addonHasPermission, isValidAddonId, isValidCatalogId } from '../shared/addon-api'
 import { PHONE_CAM_ADDON_ID } from '../shared/phone-pair'
 import { addonProfileBucket, normalizeEncodeProfileId } from '../shared/stream-encode-profiles'
+import { fetchPlatformViewers } from './platform-viewers'
 
 // Windows hides Chromium's hardware video overlay when this window is not focused,
 // which blanks the program monitor while the capture track keeps streaming.
@@ -551,6 +552,14 @@ function registerIpc(): void {
       return relay.getSnapshot()
     }, relay.getSnapshot())
   })
+  ipcMain.handle('platform:viewers', async (event, payload: unknown) => {
+    if (!studioOk(event)) return { twitch: null, youtube: null }
+    const body = payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : {}
+    const twitchLogin = typeof body.twitchLogin === 'string' ? body.twitchLogin.slice(0, 25) : ''
+    const youtubeVideoId = typeof body.youtubeVideoId === 'string' ? body.youtubeVideoId.slice(0, 11) : ''
+    return fetchPlatformViewers({ twitchLogin, youtubeVideoId })
+  })
+
   ipcMain.handle('relay:refresh', async (event) => {
     if (!studioOk(event)) return relay.getSnapshot()
     return ipcTry('ipc.relay.refresh', async () => {
