@@ -35,10 +35,9 @@ import { addonProfileBucket, normalizeEncodeProfileId } from '../shared/stream-e
 
 // Windows hides Chromium's hardware video overlay when this window is not focused,
 // which blanks the program monitor while the capture track keeps streaming.
-app.commandLine.appendSwitch(
-  'disable-features',
-  'CalculateNativeWinOcclusion,DirectCompositionVideoOverlays',
-)
+// The overlay control is its own switch. CalculateNativeWinOcclusion is a feature.
+app.commandLine.appendSwitch('disable-direct-composition-video-overlays')
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion')
 
 function profileBucketForAddon(profileRaw: string | undefined): '720p' | '1080p' {
   if (profileRaw === '1080p') return '1080p'
