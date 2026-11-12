@@ -204,7 +204,7 @@ Status as of the 3.0 line (stable installer remains **v0.2.6.2** until the next 
 - **Done:** `fetch-relay.mjs` writes the manifest; `verify.mjs` checks size/hash offline.
 - **Done:** `before-quit` awaits relay shutdown.
 - **Done:** Backup RTMP ingest fields live in **Settings → Streaming** (not only the hidden legacy host). A session **connection log** records recovery, failover, encode step-down, and fatal stops (`src/shared/qos-log.ts`, diagnostics source `qos`).
-- **Still open:** Windows Graphics Capture fallback when desktop capture is black; relay honoring mid-live encode hints.
+- **Partial:** Frozen gameplay capture retries once at 720p30 and uses the source you picked for `getDisplayMedia` (`src/shared/capture-health.ts`). A true Windows Graphics Capture native path is still open. Relay mid-live encode hints are still open.
 
 ### Settings & UX completeness
 

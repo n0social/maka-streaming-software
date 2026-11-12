@@ -129,8 +129,11 @@ function allowCapturePermissions(): void {
     void desktopCapturer
       .getSources({ types: ['screen', 'window'] })
       .then((sources) => {
-        const screen = sources.find((s) => s.id.startsWith('screen:'))
-        const pick = screen ?? sources[0]
+        const preferred = preferredCaptureSourceId
+          ? sources.find((source) => source.id === preferredCaptureSourceId)
+          : undefined
+        const screen = sources.find((source) => source.id.startsWith('screen:'))
+        const pick = preferred ?? screen ?? sources[0]
         if (!pick) {
           callback({})
           return
@@ -140,6 +143,8 @@ function allowCapturePermissions(): void {
       .catch(() => callback({}))
   })
 }
+
+let preferredCaptureSourceId = ''
 
 function neutralizeInstalledRelayConfig(): void {
   const localApp = process.env.LOCALAPPDATA
@@ -803,6 +808,11 @@ function registerIpc(): void {
   ipcMain.handle('browser:popout-chat', (event, url?: unknown) => {
     if (!studioOk(event)) return
     openChatPopout(sanitizeChatUrlInput(url))
+  })
+
+  ipcMain.handle('capture:set-preferred', (event, sourceId: unknown) => {
+    if (!studioOk(event)) return
+    preferredCaptureSourceId = typeof sourceId === 'string' ? sourceId : ''
   })
 
   ipcMain.handle('capture:list-sources', async (event) => {

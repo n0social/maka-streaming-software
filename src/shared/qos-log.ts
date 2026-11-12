@@ -1,6 +1,6 @@
 /** Structured live-session events for the Settings log and diagnostics export. */
 
-export type QosEventKind = 'recovery' | 'failover' | 'encode' | 'fatal'
+export type QosEventKind = 'recovery' | 'failover' | 'encode' | 'fatal' | 'capture'
 
 export type QosEvent = {
   at: string

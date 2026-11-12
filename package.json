@@ -69,6 +69,7 @@
     "test:studio-wiring": "node --experimental-strip-types scripts/studio-wiring.test.ts",
     "test:encode-adapt": "node --experimental-strip-types scripts/encode-adapt.test.mjs",
     "test:qos-log": "node --experimental-strip-types scripts/qos-log.test.mjs",
+    "test:capture-health": "node --experimental-strip-types scripts/capture-health.test.mjs",
     "test:live-retry": "node scripts/live-retry.test.mjs",
     "verify:site-seo": "node scripts/verify-site-seo.mjs",
     "test:studio-ui": "node scripts/studio-wiring-ui.mjs",
