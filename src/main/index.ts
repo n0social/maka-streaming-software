@@ -33,6 +33,12 @@ import { addonHasPermission, isValidAddonId, isValidCatalogId } from '../shared/
 import { PHONE_CAM_ADDON_ID } from '../shared/phone-pair'
 import { addonProfileBucket, normalizeEncodeProfileId } from '../shared/stream-encode-profiles'
 
+// Windows hides Chromium's hardware video overlay when this window is not focused,
+// which blanks the program monitor while the capture track keeps streaming.
+// The overlay control is its own switch. CalculateNativeWinOcclusion is a feature.
+app.commandLine.appendSwitch('disable-direct-composition-video-overlays')
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion')
+
 function profileBucketForAddon(profileRaw: string | undefined): '720p' | '1080p' {
   if (profileRaw === '1080p') return '1080p'
   if (profileRaw === '720p') return '720p'
@@ -337,8 +343,10 @@ function createMainWindow(): BrowserWindow {
       nodeIntegration: false,
       sandbox: false,
       webviewTag: true,
+      backgroundThrottling: false,
     },
   })
+  win.webContents.setBackgroundThrottling(false)
 
   browse.attach(win)
   loadAppUi(win)

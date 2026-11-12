@@ -5210,7 +5210,7 @@ function sampleCaptureClock(): void {
   captureClockFrames = frames
   captureClockStartedAt = now
 
-  if (currentMode !== 'studio') {
+  if (currentMode !== 'studio' || !document.hasFocus()) {
     captureStallState = emptyCaptureStallState()
     return
   }
