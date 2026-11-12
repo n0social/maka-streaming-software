@@ -49,7 +49,7 @@ Living checklist of renderer ↔ relay ↔ capture wiring for the studio redesig
 | --- | --- | --- |
 | `#program-output-mode` | **OK** | Studio ↔ Browser; `startupMode`; hidden in browse/settings CSS. |
 | Metrics (right) | **OK** | Dropped / FPS / latency / Mbps in `updateProgramStats`. Dropped: relay `droppedFrames` when set, else WHIP `outbound-rtp` `framesDropped` while live. Latency: relay `latencyMs` when set, else WHIP RTT (`parseWhipStreamMetrics` via `startWhipStatsSampler`). Mbps: relay `bitrateMbps` when live, else encode target. |
-| Stream info viewers | **Partial** | `#stream-viewers`: `Offline` when not live; live shows relay `viewerCount` / `viewers` or per-platform `platforms.*.viewers` when TabcastRelay reports them; otherwise `Viewers: —` (no fabricated counts). |
+| Stream info viewers | **Partial** | `#stream-viewers`: `Offline` when not live; live shows relay `viewerCount` / `viewers` or per-platform `platforms.*.viewers` when MAKArelay reports them; otherwise `Viewers: —` (no fabricated counts). |
 | Twitch / YouTube chips | **OK** | Open `#platform-key-dialog`; persist `streamDestinations`. |
 | `#program-quality-select` | **OK** | Only encode dropdown in layout; default option in HTML; no stray `#profile-select`. |
 | Encode persistence | **OK** | Stats bar, wizard, Settings → Streaming share `bitrateProfile`. |
@@ -98,7 +98,7 @@ Living checklist of renderer ↔ relay ↔ capture wiring for the studio redesig
 | Gear: desktop output | **OK** | `#btn-desktop-audio-settings` toggles `#desktop-audio-output`; persists `preferredDesktopAudioOutputDeviceId` and restarts loopback. |
 | Gear: game link | **OK** | `#btn-game-audio-settings` refreshes linked capture audio and scrolls to gameplay source when missing. |
 | Gear: microphone | **OK** | Mixer ⚙ opens mic source picker (`#audio-mic` → `toggleSourcePicker('mic')`). |
-| WHIP split tracks | **OK** | `whip.ts` `attachAudioRole` uses `RELAY_TRACK_STREAM_IDS`: `mic`, `desktop-audio`, `game-audio` (`shared/tabcast.ts`). |
+| WHIP split tracks | **OK** | `whip.ts` `attachAudioRole` uses `RELAY_TRACK_STREAM_IDS`: `mic`, `desktop-audio`, `game-audio` (`shared/maka.ts`). |
 | WHIP mute after publish | **OK** | `syncWhipAvTracks()` runs immediately after `attachWhipPublisher` (go-live + reconnect) so pre-live mixer mute is honored. |
 | Local recording mix | **OK** | `program-recording.ts` muxes live enabled mic + desktop + game tracks with canvas video (`liveEnabledAudioTracks`). |
 | Settings race (desktop device) | **OK** | `initSystemAudioCapture()` loads `preferredDesktopAudioOutputDeviceId` before first loopback; settings hydrate re-runs refresh when needed. |

@@ -1,6 +1,6 @@
 # Web relay testing (browser copy of desktop pipeline)
 
-Test **capture → WHIP → local relay → (RTMP)** in the browser without downloading **MAKArelay.exe**. The desktop Electron studio uses the same HTTP contract documented here (`src/shared/tabcast.ts`, `src/renderer/relay-client.ts`, `src/renderer/whip.ts`).
+Test **capture → WHIP → local relay → (RTMP)** in the browser without downloading **MAKArelay.exe**. The desktop Electron studio uses the same HTTP contract documented here (`src/shared/maka.ts`, `src/renderer/relay-client.ts`, `src/renderer/whip.ts`).
 
 Production site: [makalive.stream/stream/](https://makalive.stream/stream/) · alias [makalive.stream/studio-web/](https://makalive.stream/studio-web/).
 
@@ -35,7 +35,7 @@ npm run test:web-relay
 
 ## Relay HTTP API inventory
 
-Base URL: `http://127.0.0.1:38473` (`RELAY_DEFAULT_PORT` in `src/shared/tabcast.ts`).
+Base URL: `http://127.0.0.1:38473` (`RELAY_DEFAULT_PORT` in `src/shared/maka.ts`).
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |

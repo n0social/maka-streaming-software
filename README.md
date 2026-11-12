@@ -1,8 +1,8 @@
 # Maka — lightweight video game streaming platform
 
-**Official v0.2.6.2 — cloud streaming for streamers on Windows.** Maka is free streaming software built for **cloud gamers** and **PVP / competitive live streams**: capture play from **NVIDIA GeForce NOW**, **Xbox Cloud Gaming**, **Shadow PC**, and **Cloud Moon**, then go live to **Twitch**, **YouTube**, or custom RTMP with a local **MAKA.relay** — less overhead than wiring up a full OBS stack first.
+**Official v0.2.8 — cloud streaming for streamers on Windows.** Maka is free streaming software built for **cloud gamers** and **PVP / competitive live streams**: capture play from **NVIDIA GeForce NOW**, **Xbox Cloud Gaming**, **Shadow PC**, and **Cloud Moon**, then go live to **Twitch**, **YouTube**, or custom RTMP with a local **MAKA.relay** — less overhead than wiring up a full OBS stack first.
 
-**Site:** [makalive.stream](https://makalive.stream) · **Download:** [v0.2.6.2 release](https://github.com/n0social/maka-streaming-software/releases/tag/v0.2.6.2)
+**Site:** [makalive.stream](https://makalive.stream) · **Download:** [v0.2.8 release](https://github.com/n0social/maka-streaming-software/releases/tag/v0.2.8)
 
 Studio branding uses an **original fan-inspired anime streamer mascot** (blonde pigtails, gamer gear) in `site/assets/mascot/` — not official *Soul Eater* or third-party franchise art.
 
@@ -14,17 +14,17 @@ Maka is **free streaming software** for Windows: a desktop **Electron studio** f
 
 ---
 
-## Get Maka (v0.2.6.2 — first official working build)
+## Get Maka (v0.2.8)
 
-The current **unsigned** Windows installer on GitHub is **[v0.2.6.2](https://github.com/n0social/maka-streaming-software/releases/tag/v0.2.6.2)** (installer filename `Maka-Setup-0.2.6.exe`, app version **0.2.6**). Includes **Go Live / WHIP Bearer fix**, wizard & overlay UX, **phone camera/mic add-on**, and **live stream recovery** (ingest errors, WHIP stall watchdog, backup RTMP).
+The current Windows installer is **[v0.2.8](https://github.com/n0social/maka-streaming-software/releases/tag/v0.2.8)** (`Maka-Setup-0.2.8.exe`, app version **0.2.8**). It includes the live QoS work since v0.2.6.2: adaptive encode, backup ingest, capture recovery, relay encode settings, viewer counts, and a QoS score. The addon marketplace stays out of this build.
 
-`git checkout v0.2.6.2` matches the recommended published build.
+`git checkout v0.2.8` matches the published build.
 
 ### Recent updates
 
-**0.2.6**
+**0.2.8**
 
-- Addon protocol rename: preload exposes **`window.maka`**, manifests are **`maka-addon.json`**, sandbox pages load from **`maka-addon://`**, browse session uses **`persist:maka-browse`**, and catalog ids use **`com.maka.*`** (with migration from **`com.tabcast.*`**, including **`com.tabcast.phone-cam`** → **`com.maka.phone-cam`**). Relay paths and **`TabcastRelay.exe`** / **`TABCAST_*`** encoder env vars are unchanged; the app may also set **`MAKA_*`**.
+- Studio preload is **`window.maka`**. Addon pages load from **`maka-addon://`**, manifests are **`maka-addon.json`**, and catalog ids are **`com.maka.*`**. The encoder binary we ship is **`MAKArelay.exe`**. The app still starts an encoder that was unpacked under the previous folder name, and it still sets the process environment that v0.1.0 reads.
 
 **0.2.5**
 
@@ -33,7 +33,7 @@ The current **unsigned** Windows installer on GitHub is **[v0.2.6.2](https://git
 
 ### Option A — Download (Windows)
 
-1. Download **[Maka-Setup-0.2.6.exe](https://github.com/n0social/maka-streaming-software/releases/download/v0.2.6.2/Maka-Setup-0.2.6.exe)** from the [v0.2.6.2 release](https://github.com/n0social/maka-streaming-software/releases/tag/v0.2.6.2).
+1. Download **[Maka-Setup-0.2.8.exe](https://github.com/n0social/maka-streaming-software/releases/download/v0.2.8/Maka-Setup-0.2.8.exe)** from the [v0.2.8 release](https://github.com/n0social/maka-streaming-software/releases/tag/v0.2.8).
 2. Run the installer on **Windows 10 or 11** (x64).
 3. **Windows SmartScreen** may warn because the build is **unsigned** — that is expected until code signing is in place.
 
@@ -48,7 +48,7 @@ npm run fetch:relay
 npm run dev
 ```
 
-On Windows, `npm run dist` produces the NSIS installer. Use tag **`v0.2.6`** if you need a tree that exactly matches the published installer above.
+On Windows, `npm run dist` produces the NSIS installer. Use tag **`v0.2.8`** if you need a tree that exactly matches the published installer above.
 
 ### Browser pipeline test (no MAKArelay.exe download)
 
@@ -129,7 +129,7 @@ Automatic reconnect with a **fatal-vs-blip** retry policy (ingest/key errors sto
 
 ## SmartScreen & trust
 
-The v0.2.6 installer is **unsigned**. SmartScreen may block or warn on first run. Only download from the official GitHub release linked above.
+The v0.2.8 installer is **unsigned**. SmartScreen may block or warn on first run. Only download from the official GitHub release linked above.
 
 ---
 

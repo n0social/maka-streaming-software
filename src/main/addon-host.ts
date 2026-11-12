@@ -23,7 +23,7 @@ import type {
 } from '../shared/addon-types'
 import { isRetiredAddonId } from '../shared/retired-addons'
 import { SCENE_TEMPLATES } from '../shared/scene-templates'
-import type { StreamProfile } from '../shared/tabcast'
+import type { StreamProfile } from '../shared/maka'
 import { loadAddonSettings, saveAddonSettings } from './addon-settings'
 import {
   getBundledCatalog,
@@ -247,7 +247,7 @@ export class AddonHost {
     const dir = join(addonsInstallDir(), folder)
     mkdirSync(dir, { recursive: true })
     writeFileSync(
-      join(dir, 'tabcast-addon.json'),
+      join(dir, 'maka-addon.json'),
       `${JSON.stringify(validated.manifest, null, 2)}\n`,
       'utf8',
     )
@@ -475,8 +475,10 @@ export class AddonHost {
     }
 
     for (const folder of entries) {
-      const manifestPath = join(dir, folder, 'tabcast-addon.json')
-      if (!existsSync(manifestPath)) continue
+      const manifestPath = ['maka-addon.json', 'tabcast-addon.json']
+        .map((name) => join(dir, folder, name))
+        .find((path) => existsSync(path))
+      if (!manifestPath) continue
       try {
         const raw = JSON.parse(readFileSync(manifestPath, 'utf8'))
         const validated = validateManifest(raw)

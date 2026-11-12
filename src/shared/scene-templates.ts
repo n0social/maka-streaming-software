@@ -1,4 +1,4 @@
-import type { SceneLayout, StreamProfile } from './tabcast'
+import type { SceneLayout, StreamProfile } from './maka'
 import { canvasForEncodeProfile } from './stream-encode-profiles'
 
 export type SceneTemplate = {

@@ -27,9 +27,7 @@ import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const timestampUrl =
-  process.env.MAKA_TIMESTAMP_URL ||
-  process.env.TABCAST_TIMESTAMP_URL ||
-  'http://timestamp.digicert.com'
+  process.env.MAKA_TIMESTAMP_URL || 'http://timestamp.digicert.com'
 
 function findSigntool() {
   if (process.platform !== 'win32') return null
@@ -95,7 +93,7 @@ export function hasSigningCert() {
 export function collectDistArtifacts() {
   const out = []
   const distDir = join(root, 'dist-installer')
-  for (const name of ['MAKArelay.exe', 'TabcastRelay.exe']) {
+  for (const name of ['MAKArelay.exe']) {
     const relayVendor = join(root, 'vendor', 'relay', name)
     if (existsSync(relayVendor)) out.push(relayVendor)
   }
@@ -103,7 +101,7 @@ export function collectDistArtifacts() {
   const unpacked = join(distDir, 'win-unpacked', 'Maka.exe')
   if (existsSync(unpacked)) out.push(unpacked)
 
-  for (const name of ['MAKArelay.exe', 'TabcastRelay.exe']) {
+  for (const name of ['MAKArelay.exe']) {
     const relayBundled = join(distDir, 'win-unpacked', 'resources', 'relay', name)
     if (existsSync(relayBundled)) out.push(relayBundled)
   }

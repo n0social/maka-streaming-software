@@ -51,7 +51,7 @@ assert.equal(viewerStatusLabel(true, 12).text, 'Viewers: 12')
 
 const appTs = readFileSync(new URL('../src/renderer/app.ts', import.meta.url), 'utf8')
 assert.equal(appTs.includes("console.log('Checking panel:'"), false)
-assert.equal(appTs.includes("panel.addonId === 'com.tabcast.discord-now-live'"), false)
+assert.equal(appTs.includes("panel.addonId === 'com.maka.discord-now-live'"), false)
 assert.match(appTs, /openGoLiveFlow\(\)/)
 assert.equal(appTs.includes('Twitch (add key)'), false)
 assert.equal(appTs.includes('pushStudioNotice'), false)

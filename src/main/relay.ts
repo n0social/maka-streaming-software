@@ -16,7 +16,7 @@ import {
   type RelayHealth,
   type RelayLifecycle,
   type RelayStatusResponse,
-} from '../shared/tabcast'
+} from '../shared/maka'
 import type { RelaySnapshot } from '../shared/relay-snapshot'
 import { MAX_LIVE_RETRY_ATTEMPTS, liveRetryBackoffMs } from '../shared/live-retry'
 import { patchInstalledRelayDist } from './patch-installed-relay'
@@ -26,9 +26,8 @@ import { killProcessTree } from './process-tree'
 const execFileAsync = promisify(execFile)
 
 const RELAY_MIN_BYTES = 200_000_000
-/** Public download name first, then the name shipped inside older installers. */
-const RELAY_EXE_NAMES = ['MAKArelay.exe', 'TabcastRelay.exe'] as const
-/** New installs use MAKArelay. The current encoder still extracts into TabcastRelay. */
+const RELAY_EXE_NAMES = ['MAKArelay.exe'] as const
+/** v0.1.0 unpacks under MAKArelay. The previous folder name is still checked so an existing install launches. */
 export const RELAY_INSTALL_DIRS = ['MAKArelay', 'TabcastRelay'] as const
 const POLL_MS = 1500
 const MAX_AUTO_RESTARTS = MAX_LIVE_RETRY_ATTEMPTS
@@ -175,7 +174,7 @@ async function killOrphanRelayTrays(): Promise<void> {
         '-Command',
         [
           "Get-CimInstance Win32_Process -Filter \"Name='powershell.exe' OR Name='pwsh.exe'\" -ErrorAction SilentlyContinue |",
-          "Where-Object { $_.CommandLine -match '(TabcastRelay|MAKArelay).*tray\\.ps1' } |",
+          "Where-Object { $_.CommandLine -match '(MAKArelay|TabcastRelay).*tray\\.ps1' } |",
           'ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }',
         ].join(' '),
       ],
@@ -302,7 +301,7 @@ function patchInstalledRelayRoots(): { patched: string[]; skipped: string[] } {
   return { patched, skipped }
 }
 
-/** Prefer the unpacked Node relay under %LOCALAPPDATA%\MAKArelay, then the older TabcastRelay folder. */
+/** Prefer the unpacked Node relay under %LOCALAPPDATA%\MAKArelay, then the older MAKArelay folder. */
 function resolveLaunch(): DirectRelayLaunch {
   const localApp = process.env.LOCALAPPDATA
   if (localApp) {
@@ -320,6 +319,9 @@ function resolveLaunch(): DirectRelayLaunch {
           mode: 'direct',
           env: {
             ...process.env,
+            MAKA_NO_OPEN: '1',
+            MAKA_STREAM_URL: RELAY_WHIP_URL,
+            MAKA_RELAY_ROOT: relayRoot,
             TABCAST_NO_OPEN: '1',
             TABCAST_STREAM_URL: RELAY_WHIP_URL,
             TABCAST_RELAY_ROOT: relayRoot,
@@ -338,6 +340,8 @@ function resolveLaunch(): DirectRelayLaunch {
     mode: 'launcher',
     env: {
       ...process.env,
+      MAKA_NO_OPEN: '1',
+      MAKA_STREAM_URL: RELAY_WHIP_URL,
       TABCAST_NO_OPEN: '1',
       TABCAST_STREAM_URL: RELAY_WHIP_URL,
     },
@@ -351,7 +355,7 @@ async function terminateAllRelays(owned: ChildProcess | null): Promise<void> {
   if (owned?.pid) killProcessTree(owned.pid)
 
   await killOrphanRelayTrays()
-  for (const image of RELAY_EXE_NAMES) await killProcessImage(image)
+  for (const image of [...RELAY_EXE_NAMES, 'TabcastRelay.exe']) await killProcessImage(image)
   await killListenersOnPort(RELAY_DEFAULT_PORT)
   await killOrphanRelayTrays()
 
@@ -363,7 +367,7 @@ async function terminateAllRelays(owned: ChildProcess | null): Promise<void> {
     }
     await postRelayStop()
     await killOrphanRelayTrays()
-    for (const image of RELAY_EXE_NAMES) await killProcessImage(image)
+    for (const image of [...RELAY_EXE_NAMES, 'TabcastRelay.exe']) await killProcessImage(image)
     await killListenersOnPort(RELAY_DEFAULT_PORT)
     await sleep(350)
   }

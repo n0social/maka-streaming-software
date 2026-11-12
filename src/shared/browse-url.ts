@@ -1,4 +1,4 @@
-import { isBlockedHost } from './tabcast'
+import { isBlockedHost } from './maka'
 
 export function isAllowedBrowseUrl(raw: string): boolean {
   try {

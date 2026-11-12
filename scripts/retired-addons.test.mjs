@@ -15,11 +15,11 @@ for (const retired of RETIRED_ADDON_IDS) {
   assert.equal(feedIds.includes(retired), false, `${retired} is still in site/marketplace.json`)
   assert.equal(isRetiredAddonId(retired), true)
 }
-assert.equal(isRetiredAddonId('com.tabcast.phone-cam'), false)
-assert.ok(catalogSrc.includes("'com.tabcast.phone-cam'"))
-assert.ok(catalogSrc.includes("'com.tabcast.custom-rtmp'"))
-assert.ok(feedIds.includes('com.tabcast.custom-rtmp'))
-assert.ok(feedIds.includes('com.tabcast.discord-now-live'))
+assert.equal(isRetiredAddonId('com.maka.phone-cam'), false)
+assert.ok(catalogSrc.includes("'com.maka.phone-cam'"))
+assert.ok(catalogSrc.includes("'com.maka.custom-rtmp'"))
+assert.ok(feedIds.includes('com.maka.custom-rtmp'))
+assert.ok(feedIds.includes('com.maka.discord-now-live'))
 
 const merged = omitRetiredAddons([
   {
@@ -27,8 +27,8 @@ const merged = omitRetiredAddons([
     manifest: { id: 'com.tabcast.lower-thirds' },
   },
   {
-    catalogId: 'com.tabcast.phone-cam',
-    manifest: { id: 'com.tabcast.phone-cam' },
+    catalogId: 'com.maka.phone-cam',
+    manifest: { id: 'com.maka.phone-cam' },
   },
   {
     catalogId: 'com.example.hello-tabcast',
@@ -41,7 +41,7 @@ const merged = omitRetiredAddons([
 ])
 assert.deepEqual(
   merged.map((entry) => entry.catalogId),
-  ['com.tabcast.phone-cam'],
+  ['com.maka.phone-cam'],
 )
 
 console.log('retired-addons.test.mjs: ok')

@@ -6,10 +6,10 @@ export { RETIRED_ADDON_IDS, isRetiredAddonId, omitRetiredAddons } from './retire
 /** Curated marketplace catalog (bundled with the app). Remote feed can replace this in 0.4+. */
 export const MARKETPLACE_CATALOG: CatalogEntry[] = [
   {
-    catalogId: 'com.tabcast.custom-rtmp',
+    catalogId: 'com.maka.custom-rtmp',
     featured: true,
     manifest: {
-      id: 'com.tabcast.custom-rtmp',
+      id: 'com.maka.custom-rtmp',
       name: 'Custom RTMP / Kick',
       version: '0.1.0',
       apiVersion: 1,
@@ -51,10 +51,10 @@ export const MARKETPLACE_CATALOG: CatalogEntry[] = [
     },
   },
   {
-    catalogId: 'com.tabcast.phone-cam',
+    catalogId: 'com.maka.phone-cam',
     featured: true,
     manifest: {
-      id: 'com.tabcast.phone-cam',
+      id: 'com.maka.phone-cam',
       name: 'Phone camera',
       version: '0.1.0',
       apiVersion: 1,
