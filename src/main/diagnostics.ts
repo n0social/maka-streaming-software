@@ -99,6 +99,20 @@ export function recordDiagnostic(
   return event
 }
 
+export function exportQosBundle(snapshot: unknown): string {
+  ensureLogDir()
+  const out = join(app.getPath('userData'), 'logs', `maka-qos-${Date.now()}.json`)
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    appVersion: app.getVersion(),
+    platform: process.platform,
+    snapshot,
+    diagnostics: getDiagnostics().slice(-40),
+  }
+  writeFileSync(out, `${JSON.stringify(payload, null, 2)}\n`, 'utf8')
+  return out
+}
+
 export function exportDiagnosticsBundle(): string {
   ensureLogDir()
   const out = join(

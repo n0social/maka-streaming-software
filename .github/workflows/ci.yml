@@ -42,6 +42,9 @@ jobs:
       - name: Relay live stats tests
         run: npm run test:relay-live-stats
 
+      - name: QoS score tests
+        run: npm run test:qos-score
+
       - name: QoS log and live retry tests
         run: npm run test:qos-log && npm run test:live-retry && npm run test:capture-health && npm run test:capture-fallback
 

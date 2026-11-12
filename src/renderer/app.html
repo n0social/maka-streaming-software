@@ -541,6 +541,8 @@
                   If the primary Twitch, YouTube, or custom ingest fails, the next reconnect publishes here. Leave blank to stay on the primary ingest.
                 </p>
                 <h3>Connection log</h3>
+                <p id="qos-score" class="hint tight">QoS —</p>
+                <button type="button" class="btn btn-ghost" id="btn-export-qos">Export QoS bundle</button>
                 <pre id="qos-event-log" class="hint tight qos-event-log">No connection events this session.</pre>
                 <p class="hint tight">Same events are written to the diagnostics log (source <code>qos</code>) for export.</p>
               </div>

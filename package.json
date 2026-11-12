@@ -72,6 +72,7 @@
     "test:relay-encode-patch": "node --experimental-strip-types scripts/relay-encode-patch.test.mjs",
     "test:platform-viewers": "node --experimental-strip-types scripts/platform-viewers.test.mjs",
     "test:relay-live-stats": "node scripts/relay-live-stats.test.mjs",
+    "test:qos-score": "node --experimental-strip-types scripts/qos-score.test.mjs",
     "test:qos-log": "node --experimental-strip-types scripts/qos-log.test.mjs",
     "test:capture-health": "node --experimental-strip-types scripts/capture-health.test.mjs",
     "test:capture-fallback": "node --experimental-strip-types scripts/capture-fallback.test.mjs",
