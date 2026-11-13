@@ -49,9 +49,11 @@ export function createProgramVirtualCamera(
       }
     },
     async copyProgramFrameToClipboard(): Promise<void> {
-      if (!sessionActive) {
+      // A clipboard copy is not a virtual-camera session. Leaving sessionActive
+      // set kept the shared program canvas running after live and recording stopped.
+      const startedHere = !compositor.isActive()
+      if (startedHere) {
         compositor.start()
-        sessionActive = true
         await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
       }
       const canvas = compositor.getCanvas()

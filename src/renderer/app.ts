@@ -4996,9 +4996,8 @@ let vcamCapability: VcamCapability | null = null
 let vcamInfoSeen = false
 
 function stopProgramOutputCompositorIfIdle(): void {
-  if (!programRecording.isRecording() && !programVirtualCamera.isActive()) {
-    programOutputCompositor.stop()
-  }
+  if (programRecording.isRecording() || programVirtualCamera.isActive() || isSessionLive()) return
+  programOutputCompositor.stop()
 }
 
 function setVcamUi(active: boolean): void {
@@ -5166,6 +5165,8 @@ if (vcamCopyFrame) {
         setVcamInfoStatus('Program frame copied to clipboard as PNG.', 'ok')
       } catch (err) {
         setVcamInfoStatus(err instanceof Error ? err.message : String(err), 'error')
+      } finally {
+        stopProgramOutputCompositorIfIdle()
       }
     })()
   })

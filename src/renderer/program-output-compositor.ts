@@ -49,9 +49,13 @@ export function createProgramOutputCompositor(
     return el.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && el.videoWidth > 0 && el.videoHeight > 0
   }
 
-  /** Live camera or capture frames. A hidden element is not on the program preview. */
+  /**
+   * Live capture frames for a scene source. Preview CSS hides gameplay behind a
+   * scene card or PNG, but the element still holds the capture the program picture
+   * has to draw. Layer-off tracks are disabled and omitted from the layout.
+   */
   function liveLayerVideo(el: HTMLVideoElement): boolean {
-    if (el.hidden || !videoHasFrames(el)) return false
+    if (!videoHasFrames(el)) return false
     const src = el.srcObject
     if (!(src instanceof MediaStream)) return false
     return src.getVideoTracks().some((track) => track.readyState === 'live' && track.enabled)
@@ -201,7 +205,9 @@ export function createProgramOutputCompositor(
       framesToSkip = 0
       stopCanvasPump()
       if (outputStream) {
-        for (const track of outputStream.getTracks()) track.stop()
+        // Mic, desktop, and game audio tracks are borrowed from the mixer.
+        // Stopping them here ends the devices the WHIP senders and the meters still use.
+        for (const track of outputStream.getVideoTracks()) track.stop()
         outputStream = null
       }
       canvas = null

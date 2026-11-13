@@ -46,6 +46,7 @@ export function createProgramRecording(deps: ProgramRecordingDeps): ProgramRecor
   let recordStream: MediaStream | null = null
   const chunks: Blob[] = []
   let active = false
+  let stopping: Promise<Blob | null> | null = null
 
   return {
     isRecording: () => active,
@@ -69,29 +70,34 @@ export function createProgramRecording(deps: ProgramRecordingDeps): ProgramRecor
       active = true
       recorder.start(1000)
     },
-    async stop(): Promise<Blob | null> {
-      if (!active || !recorder) return null
-      active = false
+    stop(): Promise<Blob | null> {
+      if (stopping) return stopping
+      if (!active || !recorder) return Promise.resolve(null)
       const rec = recorder
       recorder = null
-
-      await new Promise<void>((resolve) => {
-        rec.onstop = () => resolve()
-        try {
-          rec.stop()
-        } catch {
-          resolve()
+      stopping = (async () => {
+        // Stay active until the recorder flushes. End Stream checks isRecording
+        // and must not stop the shared canvas while this blob is still open.
+        await new Promise<void>((resolve) => {
+          rec.onstop = () => resolve()
+          try {
+            rec.stop()
+          } catch {
+            resolve()
+          }
+        })
+        active = false
+        if (ownsCompositor && compositor.isActive()) {
+          compositor.stop()
         }
+        recordStream = null
+        if (!chunks.length) return null
+        const type = rec.mimeType || 'video/webm'
+        return new Blob(chunks, { type })
+      })()
+      return stopping.finally(() => {
+        stopping = null
       })
-
-      if (ownsCompositor && compositor.isActive()) {
-        compositor.stop()
-      }
-      recordStream = null
-
-      if (!chunks.length) return null
-      const type = rec.mimeType || 'video/webm'
-      return new Blob(chunks, { type })
     },
   }
 }
