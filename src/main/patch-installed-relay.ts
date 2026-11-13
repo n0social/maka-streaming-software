@@ -35,6 +35,68 @@ const VIDEO_CODEC_NEW = `const makaCodec = settings.videoCodec === 'h264_nvenc' 
 const BFRAMES_OLD = `'-sc_threshold', '0', '-r', String(fps)`
 const BFRAMES_NEW = `'-sc_threshold', '0', '-bf', String(settings.bFrames ?? 2), '-r', String(fps)`
 
+/**
+ * v0.1.0 always builds `[0:v]scale,fps,format=yuv420p` and then libx264, even
+ * for one full-frame H.264 gameplay pipe (`-f h264`). That filter cannot be
+ * copied. When the WHIP layout is a single H.264 gameplay input, map `0:v` and
+ * `-c:v copy` instead. A webcam pipe still uses the filter and the libx264/nvenc
+ * args. Audio stays the existing AAC encode (`-c:a aac` … `-f flv`).
+ */
+const VIDEO_PASSTHROUGH_OLD = [
+  '    const filterComplex = audioMixFilter ? `${filter};${audioMixFilter}` : filter;',
+  "    args.push('-filter_complex', filterComplex, '-map', '[outv]');",
+  '    if (audioMixFilter) {',
+  "        args.push('-map', '[outa]');",
+  '    }',
+  '    else if (displayAudioInputIndex !== undefined) {',
+  '        args.push(\'-map\', `${displayAudioInputIndex}:a`);',
+  '    }',
+  '    else if (micAudioInputIndex !== undefined) {',
+  '        args.push(\'-map\', `${micAudioInputIndex}:a`);',
+  '    }',
+  '    else if (silentAudioInputIndex !== undefined) {',
+  '        args.push(\'-map\', `${silentAudioInputIndex}:a`);',
+  '    }',
+  '    appendTwitchVideoEncodeArgs(args, settings, fps);',
+].join('\n')
+
+const VIDEO_PASSTHROUGH_NEW = [
+  "    const makaPassthrough = usingWhip && options.whipLayout?.gameplay?.format === 'h264' && !includeWebcam;",
+  '    if (makaPassthrough) {',
+  "        args.push('-map', '0:v');",
+  '        if (audioMixFilter) {',
+  "            args.push('-filter_complex', audioMixFilter, '-map', '[outa]');",
+  '        }',
+  '        else if (displayAudioInputIndex !== undefined) {',
+  '            args.push(\'-map\', `${displayAudioInputIndex}:a`);',
+  '        }',
+  '        else if (micAudioInputIndex !== undefined) {',
+  '            args.push(\'-map\', `${micAudioInputIndex}:a`);',
+  '        }',
+  '        else if (silentAudioInputIndex !== undefined) {',
+  '            args.push(\'-map\', `${silentAudioInputIndex}:a`);',
+  '        }',
+  "        args.push('-c:v', 'copy', '-c:a', 'aac', '-profile:a', 'aac_low', '-b:a', `${settings.audioBitrateKbps}k`, '-ar', String(settings.audioSampleRate), '-ac', '2', '-f', 'flv', '-flvflags', 'no_duration_filesize');",
+  '    }',
+  '    else {',
+  '        const filterComplex = audioMixFilter ? `${filter};${audioMixFilter}` : filter;',
+  "        args.push('-filter_complex', filterComplex, '-map', '[outv]');",
+  '        if (audioMixFilter) {',
+  "            args.push('-map', '[outa]');",
+  '        }',
+  '        else if (displayAudioInputIndex !== undefined) {',
+  '            args.push(\'-map\', `${displayAudioInputIndex}:a`);',
+  '        }',
+  '        else if (micAudioInputIndex !== undefined) {',
+  '            args.push(\'-map\', `${micAudioInputIndex}:a`);',
+  '        }',
+  '        else if (silentAudioInputIndex !== undefined) {',
+  '            args.push(\'-map\', `${silentAudioInputIndex}:a`);',
+  '        }',
+  '        appendTwitchVideoEncodeArgs(args, settings, fps);',
+  '    }',
+].join('\n')
+
 const APPLY_CONFIG_OLD = `this.runtime = {
             profile: body.profile ?? DEFAULT_STREAM_PROFILE,`
 
@@ -124,6 +186,7 @@ export function patchInstalledRelayDist(relayDistDir: string): RelayPatchResult 
     [ENCODER_RUNNING_OLD, ENCODER_RUNNING_NEW],
     [VIDEO_CODEC_OLD, VIDEO_CODEC_NEW],
     [BFRAMES_OLD, BFRAMES_NEW],
+    [VIDEO_PASSTHROUGH_OLD, VIDEO_PASSTHROUGH_NEW],
   ], result)
   patchFile(join(relayDistDir, 'state.js'), [[APPLY_CONFIG_OLD, APPLY_CONFIG_NEW]], result)
   patchFile(join(relayDistDir, 'server.js'), [
