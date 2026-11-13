@@ -1,28 +1,23 @@
 #!/usr/bin/env node
 /**
- * Sanity-check public site HTML against site/seo.json keyword targets.
+ * Sanity-check public site HTML.
+ *
+ * Home and download are the restored cream-and-gold pages, so they are checked
+ * for the product words those pages share. Cloud-vendor terms stay required on
+ * the stream and preview pages, which still carry that copy. seo.json must parse.
  */
 import { readFileSync, existsSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const seo = JSON.parse(readFileSync(join(root, 'site', 'seo.json'), 'utf8'))
+JSON.parse(readFileSync(join(root, 'site', 'seo.json'), 'utf8'))
 
 const pages = [
-  { file: 'site/index.html', mustInclude: ['GeForce NOW', 'Cloud Moon', 'v0.2.6.2', 'PVP'] },
-  { file: 'site/download.html', mustInclude: ['Shadow PC', 'Xbox Cloud Gaming', 'lightweight'] },
+  { file: 'site/index.html', mustInclude: ['MAKA', 'Download', 'Windows'] },
+  { file: 'site/download.html', mustInclude: ['Download', 'Windows', 'relay'] },
   { file: 'site/stream/index.html', mustInclude: ['cloud', 'GeForce NOW'] },
   { file: 'site/preview/index.html', mustInclude: ['cloud', 'PVP'] },
-]
-
-const requiredKeywords = [
-  'GeForce NOW',
-  'Xbox Cloud Gaming',
-  'Shadow PC',
-  'Cloud Moon',
-  'PVP',
-  'cloud streaming',
 ]
 
 let failed = 0
@@ -43,14 +38,6 @@ for (const { file, mustInclude } of pages) {
   }
   if (!html.includes('name="description"') || !html.includes('canonical')) {
     console.error(`${file}: missing core meta (description and/or canonical)`)
-    failed++
-  }
-}
-
-const home = readFileSync(join(root, 'site/index.html'), 'utf8').toLowerCase()
-for (const kw of requiredKeywords) {
-  if (!home.includes(kw.toLowerCase())) {
-    console.error(`site/index.html: missing global keyword "${kw}"`)
     failed++
   }
 }
