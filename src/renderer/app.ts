@@ -4949,8 +4949,8 @@ const vcamInfoStatus = document.getElementById('vcam-info-status')
 const programOutputDeps = {
   getProgramVideo: () => programVideo,
   getWebcamVideo: () => programCamVideo,
-  hasGameplayVideo: () =>
-    Boolean(programStream?.getVideoTracks().some((track) => track.readyState === 'live')),
+  getBrowserVideo: () => programBrowserVideo,
+  getLayout: () => buildOutgoingSceneLayout(),
   getMicStream: () => micStream,
   getDesktopAudioStream: () => desktopAudioStream,
   getGameAudioStream: () => gameAudioStream,
@@ -5082,7 +5082,7 @@ if (btnStartRecording) {
         await programRecording.start()
         setRecordingUi(true)
         destHint.textContent =
-          'Recording program video (canvas compositor). PiP, browser overlay, and scene PNG masks are not in the file yet.'
+          'Recording program video (canvas compositor). Webcam and browser overlay follow the scene. Chat, notifications, and scene PNG masks are not in the file.'
       } catch (err) {
         setDestError(err instanceof Error ? err.message : String(err))
       }

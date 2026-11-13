@@ -33,9 +33,10 @@ function pickRecorderMime(): string {
 }
 
 /**
- * Records program output via a canvas compositor (primary video + mixer audio).
- * Limitations: browser overlay, scene PNG masks, and PiP layout are not composited —
- * only the main program video element (or webcam fallback) is drawn each frame.
+ * Records program output via a canvas compositor (scene video + mixer audio).
+ * Each frame is the encode-profile picture: gameplay contained in its scene box,
+ * then browser overlay and webcam covered in theirs when those layers are on and live.
+ * Chat text, notification DOM, and scene PNG masks are not rasterized.
  */
 export function createProgramRecording(deps: ProgramRecordingDeps): ProgramRecordingController {
   const compositor = deps.compositor ?? createProgramOutputCompositor(deps)
