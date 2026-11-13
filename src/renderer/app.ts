@@ -1161,6 +1161,31 @@ function refreshProgramPreviewLayout(): void {
   }
 }
 
+/** Relay sees one full-frame gameplay source. Webcam and browser pixels are already in that frame. */
+function fullFrameProgramScene(): SceneLayout {
+  const canvas = canvasForEncodeProfile(selectedProfile())
+  return {
+    canvas,
+    sources: [
+      {
+        id: 'gameplay',
+        type: 'video',
+        label: 'Gameplay',
+        x: 0,
+        y: 0,
+        width: canvas.width,
+        height: canvas.height,
+        zIndex: 0,
+      },
+    ],
+  }
+}
+
+function sceneLayoutForRelay(preview: SceneLayout): SceneLayout {
+  if (sessionLiveIntent || goingLive) return fullFrameProgramScene()
+  return preview
+}
+
 function syncOverlaySourceRow(): void {
   const preset =
     activeOverlayPresetId && layerEnabled.overlay
@@ -1202,7 +1227,7 @@ async function pushSceneLayout(): Promise<void> {
   applyProgramPreviewLayout(layout)
   const snapshot = await window.maka.getRelay()
   if (!snapshot.health) return
-  await postSceneLayout(snapshot.health, layout)
+  await postSceneLayout(snapshot.health, sceneLayoutForRelay(layout))
 }
 
 function isSessionLive(): boolean {
@@ -1792,24 +1817,36 @@ async function snapshotWithReachableRelay(): Promise<RelaySnapshot> {
 }
 
 async function attachWhipPublisher(health: RelayHealth): Promise<WhipPublisher> {
-  const gameplay = primaryVideoStreamForWhip()
-  if (!gameplay) {
+  if (!primaryVideoStreamForWhip()) {
     throw new Error(goLiveCaptureError())
   }
-  return publishWhip(
-    whipUrlFromHealth(health),
-    {
-      gameplay,
-      browser: layerEnabled.browser && browserStream ? browserStream : null,
-      webcam: layerEnabled.cam ? cameraStream : null,
-      mic: layerEnabled.mic ? micStream : null,
-      desktopAudio: layerEnabled.desktopAudio ? desktopAudioStream : null,
-      gameAudio: layerEnabled.gameAudio ? gameAudioStream : null,
-    },
-    authHeaders(health),
-    onWhipConnectionState,
-    electronWhipSignaling,
-  )
+  const composited = programOutputCompositor.start()
+  const video = composited.getVideoTracks().find((track) => track.readyState === 'live') ?? null
+  if (!video) {
+    stopProgramOutputCompositorIfIdle()
+    throw new Error(goLiveCaptureError())
+  }
+  // Video only. The compositor also mixes mic and desktop audio; sending that would double those tracks.
+  const gameplay = new MediaStream([video])
+  try {
+    return await publishWhip(
+      whipUrlFromHealth(health),
+      {
+        gameplay,
+        browser: null,
+        webcam: null,
+        mic: layerEnabled.mic ? micStream : null,
+        desktopAudio: layerEnabled.desktopAudio ? desktopAudioStream : null,
+        gameAudio: layerEnabled.gameAudio ? gameAudioStream : null,
+      },
+      authHeaders(health),
+      onWhipConnectionState,
+      electronWhipSignaling,
+    )
+  } catch (err) {
+    stopProgramOutputCompositorIfIdle()
+    throw err
+  }
 }
 
 function escapeHtml(value: string): string {
@@ -2904,19 +2941,7 @@ async function refreshAvDevices(): Promise<void> {
 
 function syncWhipAvTracks(): void {
   if (!whipPublisher) return
-  const pc = whipPublisher.pc
-  const gameplayIds = new Set(programStream?.getVideoTracks().map((t) => t.id) ?? [])
-  const browserIds = new Set(browserStream?.getVideoTracks().map((t) => t.id) ?? [])
-
-  let webcamSender: RTCRtpSender | null = null
-  for (const sender of pc.getSenders()) {
-    const track = sender.track
-    if (!track) continue
-    if (track.kind === 'video' && !gameplayIds.has(track.id) && !browserIds.has(track.id)) {
-      webcamSender = sender
-    }
-  }
-
+  // The program picture is one canvas track. Do not replace it with the webcam or browser capture.
   const allowWebcam = whipLoadState.applied !== 'shed-webcam'
   const allowBrowser = whipLoadState.applied === 'normal'
   const nextWebcam =
@@ -2927,8 +2952,9 @@ function syncWhipAvTracks(): void {
     allowBrowser && layerEnabled.browser && browserStream
       ? browserStream.getVideoTracks().find((t) => t.readyState === 'live') ?? null
       : null
-  const webcamOut = whipPublisher.videoSenders.webcam ?? webcamSender
-  if (webcamOut) void webcamOut.replaceTrack(nextWebcam).catch(() => undefined)
+  if (whipPublisher.videoSenders.webcam) {
+    void whipPublisher.videoSenders.webcam.replaceTrack(nextWebcam).catch(() => undefined)
+  }
   if (whipPublisher.videoSenders.browser) {
     void whipPublisher.videoSenders.browser.replaceTrack(nextBrowser).catch(() => undefined)
   }
@@ -3285,6 +3311,7 @@ async function endLive(): Promise<void> {
       await whipPublisher.close()
       whipPublisher = null
     }
+    stopProgramOutputCompositorIfIdle()
     const snapshot = await window.maka.getRelay()
     await stopRelayStream(snapshot.health)
     await window.maka.refreshRelay()
@@ -3334,19 +3361,11 @@ async function goLive(): Promise<void> {
     let snapshot = await ensureRelayReadyForLive()
 
     await persistStreamMetaFromInputs()
-    const profile = selectedProfile()
     sessionIngestTarget = 'primary'
     const health = snapshot.health!
     await postRelayConfig(health, relayConfigForIngest('primary'))
 
-    await postSceneLayout(
-      health,
-      defaultSceneLayout({
-        profile,
-        hasWebcam: hasLiveWebcamVideo() && layerEnabled.cam,
-        hasBrowser: Boolean(browserStream) && layerEnabled.browser,
-      }),
-    )
+    await postSceneLayout(health, fullFrameProgramScene())
     await pushSceneLayout()
     snapshot = await snapshotWithReachableRelay()
 
@@ -3376,6 +3395,7 @@ async function goLive(): Promise<void> {
       await whipPublisher.close().catch(() => undefined)
       whipPublisher = null
     }
+    stopProgramOutputCompositorIfIdle()
     btnGoLive.dataset.live = '0'
     setGoLiveButtonLabel('Go Live')
     throw err instanceof Error ? err : new Error(message)
@@ -3715,7 +3735,8 @@ async function runAddonAction(addonId: string, actionId: string): Promise<void> 
     return
   }
   if (result.sceneLayout && snapshot.health) {
-    await postSceneLayout(snapshot.health, result.sceneLayout as SceneLayout)
+    const layout = sceneLayoutForRelay(result.sceneLayout as SceneLayout)
+    await postSceneLayout(snapshot.health, layout)
     destHint.textContent = result.message ?? 'Scene updated.'
     setDestError(null)
   } else if (result.message) {
@@ -3772,6 +3793,7 @@ async function teardownLiveSession(): Promise<void> {
       await stopRelayStream(snapshot.health).catch(() => undefined)
     }
     sessionLiveIntent = false
+    stopProgramOutputCompositorIfIdle()
     stopPlatformViewerPoll()
     cancelLiveRecovery()
     liveRecoveryAttempts = 0
@@ -5395,12 +5417,10 @@ function noteWhipLoad(): void {
   if (whipLoadState.applied === previous) return
   syncWhipAvTracks()
   const detail =
-    whipLoadState.applied === 'shed-webcam'
-      ? 'Webcam and overlay tracks paused'
-      : whipLoadState.applied === 'shed-browser'
-        ? 'Overlay track paused'
-        : 'Extra tracks restored'
-  if (whipLoadState.applied !== 'normal') destHint.textContent = `CPU is behind — ${detail}. Gameplay stays.`
+    whipLoadState.applied === 'normal'
+      ? 'Program picture unchanged'
+      : 'Webcam and overlay stay in the one program picture'
+  if (whipLoadState.applied !== 'normal') destHint.textContent = `CPU is behind — ${detail}.`
   recordQos('encode', `backpressure:${whipLoadState.applied}`, {
     label: 'Encode backpressure',
     detail,
