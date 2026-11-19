@@ -10,7 +10,7 @@ const fetchImpl = async (url, init) => {
   calls.push({ url, method: init?.method ?? 'GET', body: init?.body })
   if (url.includes('/helix/users')) return jsonResponse(200, { data: [{ id: '99' }] })
   if (url.includes('/helix/games')) return jsonResponse(200, { data: [{ id: 'game-1' }] })
-  if (url.includes('/helix/channels')) return jsonResponse(204, {})
+  if (url.includes('/helix/channels')) return jsonResponse(200, {})
   if (url.includes('broadcastStatus=active')) {
     return jsonResponse(200, { items: [{ id: 'bc1', snippet: { title: 'old' } }] })
   }

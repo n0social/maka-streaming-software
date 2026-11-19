@@ -187,6 +187,7 @@ export type MakaBridge = {
     twitch: { ok: boolean; message: string }
     youtube: { ok: boolean; message: string }
   }>
+  getRelay: () => Promise<RelaySnapshot>
   startRelay: () => Promise<RelaySnapshot>
   stopRelay: () => Promise<RelaySnapshot>
   refreshRelay: () => Promise<RelaySnapshot>

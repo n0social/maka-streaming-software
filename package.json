@@ -1,8 +1,8 @@
 {
   "name": "maka",
-  "version": "2.8.1",
+  "version": "2.8.3",
   "private": false,
-  "description": "Maka v2.8.1 — lightweight video game streaming platform for Windows. Cloud streaming for streamers on GeForce NOW, Xbox Cloud Gaming, Shadow PC, and Cloud Moon; PVP and competitive live streams to Twitch & YouTube (WHIP + open MAKA.relay).",
+  "description": "Maka v2.8.3 — lightweight video game streaming platform for Windows. Cloud streaming for streamers on GeForce NOW, Xbox Cloud Gaming, Shadow PC, and Cloud Moon; PVP and competitive live streams to Twitch & YouTube (WHIP + open MAKA.relay).",
   "keywords": [
     "maka",
     "game-streaming",
@@ -69,6 +69,7 @@
     "test:studio-wiring": "node --experimental-strip-types scripts/studio-wiring.test.ts",
     "test:encode-adapt": "node --experimental-strip-types scripts/encode-adapt.test.mjs",
     "test:encode-backpressure": "node --experimental-strip-types scripts/encode-backpressure.test.mjs",
+    "test:platform-metadata": "node --experimental-strip-types scripts/platform-metadata.test.mjs",
     "test:platform-viewers": "node --experimental-strip-types scripts/platform-viewers.test.mjs",
     "test:relay-live-stats": "node scripts/relay-live-stats.test.mjs",
     "test:qos-score": "node --experimental-strip-types scripts/qos-score.test.mjs",

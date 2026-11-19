@@ -1,16 +1,12 @@
 ﻿{
-  "arch": "x64",
-  "downloadPath": "/downloads/Maka-Setup-0.2.6.exe",
-  "platform": "win32",
-  "version": "0.2.6",
-  "includesRelay": true,
-  "artifact": "Maka-Setup-0.2.6.exe",
-  "sha256": "7765780fa7505a3fd2c5ac5423f391bb13c0fe3220ce30b4a73631b88e6fb35d",
-  "signed": false,
-  "signing": null,
-  "size": 200594644,
-  "productName": "Maka",
-  "releasedAt": "2026-11-11T22:06:29.624Z",
-  "releaseTag": "v0.2.6.2",
-  "githubRelease": "https://github.com/n0social/maka-streaming-software/releases/tag/v0.2.6.2"
+  "updated": "2025-11-19",
+  "downloadPath": "/downloads/Maka-Setup-2.8.3.exe",
+  "githubDownload": "https://github.com/n0social/maka-streaming-software/releases/download/v2.8.3/Maka-Setup-2.8.3.exe",
+  "version": "2.8.3",
+  "relayVersion": "0.1.1",
+  "artifact": "Maka-Setup-2.8.3.exe",
+  "sha256": "",
+  "sizeBytes": 0,
+  "releaseTag": "v2.8.3",
+  "githubRelease": "https://github.com/n0social/maka-streaming-software/releases/tag/v2.8.3"
 }

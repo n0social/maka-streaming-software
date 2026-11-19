@@ -1,8 +1,8 @@
 # Maka — lightweight video game streaming platform
 
-**Official v2.8.1 — cloud streaming for streamers on Windows.** Maka is free streaming software built for **cloud gamers** and **PVP / competitive live streams**: capture play from **NVIDIA GeForce NOW**, **Xbox Cloud Gaming**, **Shadow PC**, and **Cloud Moon**, then go live to **Twitch**, **YouTube**, or custom RTMP with a local **MAKA.relay** — less overhead than wiring up a full OBS stack first.
+**Official v2.8.3 — cloud streaming for streamers on Windows.** Maka is free streaming software built for **cloud gamers** and **PVP / competitive live streams**: capture play from **NVIDIA GeForce NOW**, **Xbox Cloud Gaming**, **Shadow PC**, and **Cloud Moon**, then go live to **Twitch**, **YouTube**, or custom RTMP with the bundled open **MAKA.relay** — less overhead than wiring up a full OBS stack first.
 
-**Site:** [makalive.stream](https://makalive.stream) · **Download:** [v2.8.1 release](https://github.com/n0social/maka-streaming-software/releases/tag/v2.8.1)
+**Site:** [makalive.stream](https://makalive.stream) · **Download:** [v2.8.3 release](https://github.com/n0social/maka-streaming-software/releases/tag/v2.8.3)
 
 
 ![Maka studio with a live game stream in the program monitor](docs/readme-hero.png)
@@ -13,11 +13,11 @@ Maka is **free streaming software** for Windows: a desktop **Electron studio** f
 
 ---
 
-## Get Maka (v2.8.1)
+## Get Maka (v2.8.3)
 
-The current Windows installer is **[v2.8.1](https://github.com/n0social/maka-streaming-software/releases/tag/v2.8.1)** (`Maka-Setup-2.8.1.exe`, app version **2.8.1**). It includes the 0.2.8 studio and separates game audio from desktop audio. The addon marketplace stays out of this build.
+The current Windows installer is **[v2.8.3](https://github.com/n0social/maka-streaming-software/releases/tag/v2.8.3)** (`Maka-Setup-2.8.3.exe`, app version **2.8.3**). It bundles **open MAKA.relay 0.1.1** (no separate relay download). The addon marketplace stays out of this build.
 
-`git checkout v2.8.1` matches the published build.
+`git checkout v2.8.3` matches the published build.
 
 ### Recent updates
 
@@ -32,7 +32,7 @@ The current Windows installer is **[v2.8.1](https://github.com/n0social/maka-str
 
 ### Option A — Download (Windows)
 
-1. Download **[Maka-Setup-2.8.1.exe](https://github.com/n0social/maka-streaming-software/releases/download/v2.8.1/Maka-Setup-2.8.1.exe)** from the [v2.8.1 release](https://github.com/n0social/maka-streaming-software/releases/tag/v2.8.1).
+1. Download **[Maka-Setup-2.8.3.exe](https://github.com/n0social/maka-streaming-software/releases/download/v2.8.3/Maka-Setup-2.8.3.exe)** from the [v2.8.3 release](https://github.com/n0social/maka-streaming-software/releases/tag/v2.8.3).
 2. Run the installer on **Windows 10 or 11** (x64).
 3. **Windows SmartScreen** may warn because the build is **unsigned** — that is expected until code signing is in place.
 
@@ -47,7 +47,7 @@ npm run prepare:relay
 npm run dev
 ```
 
-On Windows, `npm run dist` produces the NSIS installer. Use tag **`v2.8.1`** if you need a tree that exactly matches the published installer above.
+On Windows, `npm run dist` produces the NSIS installer. Use tag **`v2.8.3`** if you need a tree that exactly matches the published installer above.
 
 ### Browser pipeline test
 
@@ -129,7 +129,7 @@ Automatic reconnect with a **fatal-vs-blip** retry policy (ingest/key errors sto
 
 ## SmartScreen & trust
 
-The v2.8.1 installer is **unsigned**. SmartScreen may block or warn on first run. Only download from the official GitHub release linked above.
+The v2.8.3 installer is **unsigned**. SmartScreen may block or warn on first run. Only download from the official GitHub release linked above.
 
 ---
 
