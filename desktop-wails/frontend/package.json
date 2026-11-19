@@ -1,0 +1,8 @@
+{
+  "name": "makalight-frontend",
+  "private": true,
+  "scripts": {
+    "build": "npm run makalight:sync --prefix ../..",
+    "install": "node -e \"console.log('skip')\""
+  }
+}
