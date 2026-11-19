@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 /**
  * Production signed release pipeline.
- * 1. Sign relay (vendor) before packaging
- * 2. typecheck + build + verify + electron-builder (signs app when CSC_* set)
+ * 1. prepare:relay + typecheck + build + verify + electron-builder (signs app when CSC_* set)
  * 3. Verify signatures on outputs
  */
 import { existsSync } from 'node:fs'
@@ -44,17 +43,8 @@ if (!certOk) {
   process.exit(0)
 }
 
-const relayPath = ['MAKArelay.exe']
-  .map((name) => join(root, 'vendor', 'relay', name))
-  .find((path) => existsSync(path))
-if (relayPath) {
-  console.log('Signing relay before packaging…')
-  run('node', ['scripts/sign-windows.mjs', relayPath])
-} else {
-  console.warn('vendor/relay/MAKArelay.exe missing — run npm run fetch:relay first')
-}
-
 console.log('Building signed installer (electron-builder uses CSC_* )…')
+run('npm', ['run', 'prepare:relay'])
 run('npm', ['run', 'typecheck'])
 run('npm', ['run', 'build'])
 run('node', ['scripts/verify.mjs', '--offline'])

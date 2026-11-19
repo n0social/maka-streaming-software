@@ -79,4 +79,4 @@ Diagrams in Mermaid or Excalidraw. Charts from the CSV. Markdown compiled with P
 
 ## Relay 0.1.1
 
-Relay **0.1.1** is open source under `relay/` (WHIP + FFmpeg). Legacy `MAKArelay.exe` remains optional via `MAKA_USE_CLOSED_RELAY=1`. Platform title, description, and thumbnail are edited in `src/main/platform-metadata.ts`. RTMP stays the video path.
+Relay **0.1.1** is open source under `relay/` (WHIP + FFmpeg). The closed `MAKArelay.exe` sidecar is removed from the Electron app. Platform title, description, and thumbnail are edited in `src/main/platform-metadata.ts`. RTMP stays the video path.

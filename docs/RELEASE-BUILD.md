@@ -1,12 +1,12 @@
 # Release build — Windows installer
 
-Maka packages **only on Windows** (`electron-builder` + NSIS + bundled `MAKArelay.exe`). Linux/macOS dev machines can still run `npm run build` and `npm run verify:offline`, but not produce `Maka-Setup-*.exe`.
+Maka packages **only on Windows** (`electron-builder` + NSIS + bundled open `relay/`). Linux/macOS dev machines can still run `npm run build` and `npm run verify:offline`, but not produce `Maka-Setup-*.exe`.
 
 ## Local (Windows)
 
 ```bash
 npm ci
-npm run fetch:relay
+npm run prepare:relay
 npm run dist          # unsigned NSIS when CSC_* unset
 # or signed + optional GitHub publish:
 npm run dist:signed   # set CSC_LINK + CSC_KEY_PASSWORD; MAKA_PUBLISH=1 to publish

@@ -7,7 +7,7 @@
 
 ![Maka studio with a live game stream in the program monitor](docs/readme-hero.png)
 
-Maka is **free streaming software** for Windows: a desktop **Electron studio** for game capture, scenes, and **Go Live** without wiring up OBS first. A local **MAKA.relay** (`MAKArelay.exe`) on `127.0.0.1:38473` takes WHIP from the app, encodes with FFmpeg, and pushes **RTMP** to Twitch, YouTube, or a custom RTMP endpoint. The app looks in `%LOCALAPPDATA%\MAKArelay` first and still reads the older encoder folder because the current binary extracts there. Stream keys stay in relay RAM — not written to disk by the UI.
+Maka is **free streaming software** for Windows: a desktop **Electron studio** for game capture, scenes, and **Go Live** without wiring up OBS first. A local **open MAKA.relay** (`relay/`, port **38473**) takes WHIP from the app, encodes with FFmpeg, and pushes **RTMP** to Twitch, YouTube, or custom ingest. Stream keys stay in relay RAM — not written to disk by the UI.
 
 **Website:** [makalive.stream](https://makalive.stream)
 
@@ -43,18 +43,18 @@ git clone https://github.com/n0social/maka-streaming-software.git
 cd maka-streaming-software
 git checkout main
 npm install
-npm run fetch:relay
+npm run prepare:relay
 npm run dev
 ```
 
 On Windows, `npm run dist` produces the NSIS installer. Use tag **`v2.8.1`** if you need a tree that exactly matches the published installer above.
 
-### Browser pipeline test (no MAKArelay.exe download)
+### Browser pipeline test
 
-To exercise **WHIP → localhost relay → mock RTMP** in Chrome without the ~400 MB encoder binary, see **[docs/web-relay.md](docs/web-relay.md)**:
+To exercise **WHIP → localhost relay** in Chrome, see **[docs/web-relay.md](docs/web-relay.md)**:
 
 ```bash
-npm run dev:web-studio   # mock relay :38473 + static site :8765 → /stream/
+npm run dev:web-studio   # open relay :38473 + static site :8765 → /stream/
 ```
 
 Production preview: [makalive.stream/stream/](https://makalive.stream/stream/).
@@ -67,7 +67,7 @@ Production preview: [makalive.stream/stream/](https://makalive.stream/stream/).
 |--------|------|
 | **Studio** | Program monitor, display/window capture, webcam/mic, layers, destinations, Go Live |
 | **Browse** | Multi-tab Chromium pane (Twitch, YouTube Studio, chat) with optional chat pop-out |
-| **MAKA.relay** | Local encoder (`MAKArelay.exe`) on port **38473** — WHIP in, RTMP out to your platforms |
+| **MAKA.relay** | Open encoder (`relay/`) on port **38473** — WHIP in, RTMP out to your platforms |
 
 ---
 
@@ -89,7 +89,7 @@ Automatic reconnect with a **fatal-vs-blip** retry policy (ingest/key errors sto
 |---|----------|--------------|
 | **OS** | Windows 10/11 (x64) | Windows 10/11 recommended for `npm run dist` |
 | **Node.js** | Not required | **Node 22+** |
-| **Relay binary** | Bundled in installer | `npm run fetch:relay` (~400 MB into `vendor/relay`) |
+| **Relay** | Bundled in installer (`relay/`) | `npm run prepare:relay` then `npm run dev` |
 
 ---
 
@@ -112,7 +112,8 @@ Automatic reconnect with a **fatal-vs-blip** retry policy (ingest/key errors sto
 | `npm run dev` | Electron + Vite dev |
 | `npm run build` | Production build to `out/` |
 | `npm run preview` | Run built app |
-| `npm run fetch:relay` | Fetch relay binary |
+| `npm run relay:open` | Run open MAKA.relay on :38473 |
+| `npm run prepare:relay` | Install relay `node_modules` before `dist` |
 | `npm run verify` | Offline verification |
 | `npm run dist` | Windows installer via electron-builder |
 | `npm run dist:signed` | Signed release (needs `CSC_LINK` — see [docs/CODE-SIGNING.md](./docs/CODE-SIGNING.md)) |

@@ -1,4 +1,4 @@
-/** Encode profile resolution (matches studio relay-config + patch-installed-relay). */
+/** Encode profile resolution (matches studio relay-config). */
 
 const PROFILE_TABLE = {
   cloud720p30: { width: 1280, height: 720, fps: 30, videoBitrateKbps: 2500, bFrames: 0, preset: 'ultrafast' },

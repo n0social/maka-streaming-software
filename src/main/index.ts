@@ -1213,7 +1213,7 @@ function registerIpc(): void {
     const exe = relay.getExePath()
     const snap = relay.getSnapshot()
     checks.push({
-      name: 'relay-binary',
+      name: 'relay-entry',
       ok: !!(exe && existsSync(exe)),
       detail: exe,
     })

@@ -10,7 +10,7 @@ electron-builder-log.txt
 unpack-test
 vendor/relay/**
 !vendor/relay/README.md
-!vendor/relay/relay-manifest.json
+relay/node_modules/
 *.log
 .DS_Store
 Thumbs.db

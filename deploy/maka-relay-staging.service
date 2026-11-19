@@ -1,5 +1,5 @@
 [Unit]
-Description=MAKA staging mock relay (web-relay-dev.mjs)
+Description=MAKA staging open relay (relay/src/index.mjs)
 After=network-online.target
 Wants=network-online.target
 
@@ -9,7 +9,7 @@ WorkingDirectory=/opt/maka/maka-streaming-software
 Environment=NODE_ENV=production
 Environment=RELAY_HOST=127.0.0.1
 Environment=RELAY_PORT=38473
-ExecStart=/usr/bin/node scripts/web-relay-dev.mjs
+ExecStart=/usr/bin/node relay/src/index.mjs
 Restart=on-failure
 RestartSec=3
 

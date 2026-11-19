@@ -1,6 +1,6 @@
 # Web relay testing (browser copy of desktop pipeline)
 
-Test **capture → WHIP → local relay → (RTMP)** in the browser without downloading **MAKArelay.exe**. The desktop Electron studio uses the same HTTP contract documented here (`src/shared/maka.ts`, `src/renderer/relay-client.ts`, `src/renderer/whip.ts`).
+Test **capture → WHIP → local relay → (RTMP)** in the browser. The desktop Electron studio spawns the same open relay (`relay/`) and HTTP contract documented here (`src/shared/maka.ts`, `src/renderer/relay-client.ts`, `src/renderer/whip.ts`).
 
 Production site: [makalive.stream/stream/](https://makalive.stream/stream/) · alias [makalive.stream/studio-web/](https://makalive.stream/studio-web/).
 
@@ -15,7 +15,7 @@ npm run dev:web-studio
 
 This starts:
 
-1. **Mock MAKA.relay** on `http://127.0.0.1:38473` (`scripts/web-relay-dev.mjs`)
+1. **Open MAKA.relay** on `http://127.0.0.1:38473` (`relay/src/index.mjs`)
 2. **Static site** on `http://127.0.0.1:8765` (serves `site/`)
 
 Open **http://127.0.0.1:8765/stream/** — add webcam/screen, **Apply config**, **Go live**.
@@ -65,7 +65,7 @@ The Electron app rewrites `streamUrl` to local WHIP via `localizeRelayHealth()`.
 
 ### `POST /config` → `RelayConfigRequest`
 
-See `src/shared/relay-config.ts` / `buildRelayConfigRequest()`. Fields include `profile`, `bitrateMbps`, `maxBitrateMbps`, `rateControl` (`cbr`|`vbr`), `keyframeIntervalSec`, `bFrames`, `encoderPreset`, `twitchKey`, `youtubeKey`, `customRtmpUrl`, `customRtmpKey`, title/category, audio bitrates, encoder preferences. Profile `cloud720p30` is the low-CPU cap (2.5 Mbps, no B-frames, `ultrafast`). The studio may step the profile down while live when drops, RTT, or measured bitrate stay bad (`src/shared/encode-adapt.ts`). The unpacked v0.1.0 Node relay (`%LOCALAPPDATA%\\MAKArelay\\v0.1.0\\relay\\dist`) only stored `profile` and keys, rejected `/config` while live, and encoded 720p30 or 1080p60 presets. On relay start, Maka patches `state.js`, `encoder.js`, and `server.js` so `bitrateMbps`, audio bitrates, `videoEncoderPreference`, `encoderPreset`, `keyframeIntervalSec`, and `bFrames` rebuild ffmpeg, including a mid-live `/config`. The single-file `MAKArelay.exe` launcher is unchanged until it has extracted that Node build.
+See `src/shared/relay-config.ts` / `buildRelayConfigRequest()`. Fields include `profile`, `bitrateMbps`, `maxBitrateMbps`, `rateControl` (`cbr`|`vbr`), `keyframeIntervalSec`, `bFrames`, `encoderPreset`, `twitchKey`, `youtubeKey`, `customRtmpUrl`, `customRtmpKey`, title/category, audio bitrates, encoder preferences. Profile `cloud720p30` is the low-CPU cap (2.5 Mbps, no B-frames, `ultrafast`). The studio may step the profile down while live when drops, RTT, or measured bitrate stay bad (`src/shared/encode-adapt.ts`). Open relay `relay/src` honors encode fields and applies `/config` while live.
 
 ### `GET /status` → `RelayStatusResponse`
 
@@ -86,23 +86,13 @@ The program compositor skips paints when a draw takes longer than the encode fra
 
 Web studio (`site/stream/stream.js`) sends canvas-as-`gameplay`, optional webcam PiP, mic — same msid pattern as the app.
 
-## What is 1:1 vs mocked
+## RTMP on Windows vs CI
 
-| Piece | Dev mock (`web-relay-dev.mjs`) | Real MAKArelay.exe |
-| --- | --- | --- |
-| HTTP paths + JSON shapes | Yes | Yes |
-| `relayToken` + Bearer | Yes | Yes |
-| WHIP SDP exchange | Yes (werift peer) | Yes (FFmpeg ingest) |
-| RTMP to Twitch/YouTube | **Mocked** (console log only) | Yes |
-| FFmpeg flags / NVENC | No | Yes |
-| Tray / Windows install | No | Yes |
-| Display/window capture | Browser `getDisplayMedia` only | Electron + OS capture |
-
-Use the **mock relay** for UI and WHIP pipeline testing. Use **MAKArelay.exe** (or the Maka desktop app) to validate real RTMP ingest.
+On **Windows** with `FFMPEG_PATH` set, open relay pushes real RTMP. In CI / Linux, set `MAKA_RELAY_MOCK_RTMP=1` so FFmpeg is not required (WHIP + HTTP are still tested).
 
 ### Cloud gaming in the browser
 
-Services like **GeForce NOW**, Xbox Cloud Gaming, or other browser tabs can be the “gameplay” source: choose **Tab or window** in the stream UI (`getDisplayMedia`) and pick the cloud-gaming tab. The **mock relay** is enough to exercise config, scene layout, and the WHIP path end-to-end without sending RTMP. **Live** delivery to Twitch or YouTube still requires **MAKArelay.exe** (or another server-side encoder) because the dev mock only logs RTMP instead of pushing it. Tab capture may fail on DRM-protected video, and extra encode + capture latency is normal compared to a native desktop capture pipeline.
+Services like **GeForce NOW**, Xbox Cloud Gaming, or other browser tabs can be the gameplay source: choose **Tab or window** in the stream UI (`getDisplayMedia`) and pick the cloud-gaming tab. **Live** RTMP on Windows uses the same open relay as the Electron app.
 
 ## Architecture
 
@@ -114,16 +104,15 @@ flowchart LR
 
   Browser -->|"POST /config, /scene"| Relay
   Browser -->|"WHIP POST /whip"| Relay
-  Relay -->|"mock or FFmpeg"| RTMP
+  Relay -->|"FFmpeg"| RTMP
 ```
 
-Desktop flow is identical except capture runs inside Electron and the main process spawns `MAKArelay.exe` (`src/main/relay.ts`).
+Desktop flow is identical except capture runs inside Electron and the main process spawns `relay/src/index.mjs` (`src/main/relay.ts`).
 
 ## Related files
 
 - `site/stream/` — browser studio UI
 - `site/studio-web/` — redirect to `/stream/`
 - `relay/src/` — **open source** MAKA.relay 0.1.1 (`npm run relay:open`)
-- `scripts/web-relay-dev.mjs` — thin wrapper → `relay/src/index.mjs`
 - `scripts/web-studio-dev.mjs` — static site server
 - `scripts/web-relay-smoke.test.mjs` — HTTP smoke test

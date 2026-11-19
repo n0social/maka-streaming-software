@@ -74,7 +74,7 @@ const server = createServer(async (req, res) => {
 
 let relayChild = null
 if (withRelay) {
-  relayChild = spawn(process.execPath, ['scripts/web-relay-dev.mjs'], {
+  relayChild = spawn(process.execPath, ['relay/src/index.mjs'], {
     cwd: join(dirname(fileURLToPath(import.meta.url)), '..'),
     stdio: 'inherit',
   })
@@ -82,8 +82,8 @@ if (withRelay) {
 
 server.listen(PORT, HOST, () => {
   console.log(`Maka web studio static server → http://${HOST}:${PORT}/stream/`)
-  if (withRelay) console.log('(spawned scripts/web-relay-dev.mjs on :38473)')
-  else console.log('Start relay separately: npm run web:relay')
+  if (withRelay) console.log('(spawned relay/src/index.mjs on :38473)')
+  else console.log('Start relay separately: npm run relay:open')
 })
 
 function shutdown() {

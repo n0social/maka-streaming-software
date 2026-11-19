@@ -37,16 +37,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Cache relay binary
-        id: relay-cache
-        uses: actions/cache@v4
-        with:
-          path: vendor/relay
-          key: relay-v1-${{ hashFiles('vendor/relay/relay-manifest.json') }}
-
-      - name: Fetch relay binary
-        if: steps.relay-cache.outputs.cache-hit != 'true'
-        run: npm run fetch:relay
+      - name: Prepare open relay bundle
+        run: npm run prepare:relay
 
       - name: Build installer (unsigned when CSC_* unset)
         env:

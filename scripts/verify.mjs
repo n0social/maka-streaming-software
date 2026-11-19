@@ -1,29 +1,18 @@
 #!/usr/bin/env node
 /**
- * Offline verification for Maka and the local MAKA.relay binary.
+ * Offline verification for Maka and the open MAKA.relay source.
  * Usage: node scripts/verify.mjs [--offline]
  *
- * --offline  Skip live relay HTTP checks (build + binary only).
+ * --offline  Skip live relay HTTP checks (build + relay source only).
  */
-import { existsSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const offline = process.argv.includes('--offline')
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const exe = join(root, 'vendor', 'relay', 'MAKArelay.exe')
-const manifestPath = join(root, 'vendor', 'relay', 'relay-manifest.json')
-
-function readExpectedSize() {
-  try {
-    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
-    return Number(manifest.size || 0) || 394_267_438
-  } catch {
-    return 394_267_438
-  }
-}
-
-const expected = readExpectedSize()
+const relayEntry = join(root, 'relay', 'src', 'index.mjs')
+const relayVersion = join(root, 'relay', 'VERSION')
 
 const checks = []
 
@@ -32,13 +21,13 @@ function check(name, ok, detail) {
   console.log(`${ok ? 'OK  ' : 'FAIL'} ${name} — ${detail}`)
 }
 
+const version = existsSync(relayVersion)
+  ? readFileSync(relayVersion, 'utf8').trim()
+  : '?'
+
 check('build-main', existsSync(join(root, 'out/main/index.js')), 'out/main/index.js')
 check('build-ui', existsSync(join(root, 'out/renderer/app.html')), 'out/renderer/app.html')
-check(
-  'relay-binary',
-  existsSync(exe) && statSync(exe).size === expected,
-  existsSync(exe) ? `${statSync(exe).size} bytes` : 'missing',
-)
+check('relay-src', existsSync(relayEntry), `relay/src/index.mjs · v${version}`)
 
 if (offline) {
   check('relay-health', true, 'skipped (--offline)')
