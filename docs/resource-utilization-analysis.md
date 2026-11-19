@@ -28,7 +28,9 @@ Keep the HTML/CSS/TypeScript screens. Replace the Electron shell with a system w
 | Tauri | Rust | Windows WebView2, WebKit on macOS/Linux | Same pages. WebRTC comes from the OS webview. Installer no longer contains Chromium |
 | Wails | Go | Same OS webviews | Same pages. Windows and macOS WebRTC come from the system webview. Linux needs WebKitGTK built with WebRTC |
 
-Wails is the candidate for the duplicate app: a Go backend beside the existing pages, using WebView2 on Windows. Tauri is the other candidate if a Rust backend is a better fit. Neither has been built. Idle figures such as “30–50 MB” or “under 10 MB” are vendor claims, not measurements of Maka.
+**MakaLight** (`desktop-wails/`) is the flagship Wails app beside the existing renderer pages, using WebView2 on Windows. Electron builds stay frozen for comparison. Idle figures such as “30–50 MB” are vendor claims, not measurements of MakaLight.
+
+Harness (stub): [`benchmark/`](../benchmark/README.md). Full Windows sampling documented in [wails-migration-plan.md](./wails-migration-plan.md).
 
 What that shell does **not** fix by itself: the encode path. A webview that still sends WHIP and then FFmpeg still encodes. The lightweight studio only wins if the duplicate app also has one encode into RTMP.
 
@@ -40,7 +42,7 @@ Three downloadable stacks, same scene, same resolution, fps, bitrate, and encode
 | --- | --- |
 | OBS Studio | Native app, one composite, one encode, RTMP out |
 | Maka Electron | Bundled Chromium + Node, WebRTC hop, FFmpeg RTMP out |
-| Maka Wails (planned) | Go + OS webview, one encode, RTMP out |
+| MakaLight (Wails, flagship) | Go + WebView2, WHIP + open relay, RTMP out |
 
 ## How to measure (no numbers until this is run)
 

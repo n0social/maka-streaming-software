@@ -1,39 +1,54 @@
-# Maka Lite (Wails + WebView2)
+# MakaLight (flagship)
 
-**Control codebase** for proving lower resource use vs OBS. Reuses the web studio UI (`src/renderer/`) inside the OS WebView instead of bundling Chromium (Electron).
+Windows streaming studio: **Go + WebView2** + open [MAKA.relay](../relay/). Same studio UI as Maka Electron, without bundling Chromium.
 
-## Hypothesis
+**Migration plan:** [docs/wails-migration-plan.md](../docs/wails-migration-plan.md)
 
-| Stack | Expected win |
-| --- | --- |
-| Maka Electron | Bundled Chromium + Node + MAKArelay |
-| Maka Wails | WebView2 (shared OS engine) + Go backend + open MAKA.relay |
+Electron (`npm run dist`) is **not** actively developed here; it remains a **benchmark baseline**.
 
-Measure idle / streaming / in-game using [`docs/resource-utilization-analysis.md`](../docs/resource-utilization-analysis.md).
+## Status — 0.1.0 scaffold
 
-## Status
+- Wails app loads synced renderer from `frontend/dist`
+- `maka-bridge.js` → `go.main.App` (relay, settings, window, WHIP)
+- Capture / game audio: stubs (Phase 1)
+- No in-app browser
 
-Scaffold only. Next steps:
+## Dev (Windows)
 
-1. `wails init` → bind Go methods mirroring [`src/preload/index.ts`](../src/preload/index.ts).
-2. Windows capture (WGC/DXGI) + WASAPI game audio in Go.
-3. Launch open relay from [`relay/`](../relay/) or fold WHIP+FFmpeg into Go.
-4. Load built renderer assets (`out/renderer` or `site/stream` dev).
+Prerequisites: Go 1.22+, [Wails v2](https://wails.io/docs/gettingstarted/installation), WebView2, Node 20+.
 
-## Prerequisites (Windows)
+```bash
+# repo root
+npm ci
+npm run prepare:relay
+npm run makalight:bundle
 
-- Go 1.22+
-- [Wails v2](https://wails.io/docs/gettingstarted/installation)
-- WebView2 runtime (preinstalled on Windows 11)
+cd desktop-wails
+wails dev
+```
 
-## Planned layout
+Set `MAKA_REPO_ROOT` to the repo root if relay is not auto-discovered.
+
+## Build installer
+
+```bash
+npm run makalight:bundle
+cd desktop-wails
+wails build
+```
+
+## Layout
 
 ```
 desktop-wails/
-  main.go          # Wails app + lifecycle
-  internal/
-    capture/       # DXGI / WGC
-    relay/         # spawn relay/src or native WHIP
-    bridge/        # JS bindings (window.maka)
-  frontend/        # symlink or copy of studio bundle
+  main.go, app.go, embed.go
+  internal/relay/     # spawn open relay, WHIP HTTP
+  internal/settings/  # %AppData%/MakaLight/settings.json
+  frontend/
+    maka-bridge.js    # window.maka for WebView2
+    dist/             # npm run makalight:sync
 ```
+
+## Benchmarks
+
+See [benchmark/README.md](../benchmark/README.md) and [resource utilization analysis](../docs/resource-utilization-analysis.md).

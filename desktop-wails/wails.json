@@ -1,0 +1,22 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "MakaLight",
+  "outputfilename": "MakaLight",
+  "frontend:dir": "frontend/dist",
+  "frontend:install": "",
+  "frontend:build": "npm run makalight:sync --prefix ..",
+  "author": {
+    "name": "n0social",
+    "email": ""
+  },
+  "info": {
+    "companyName": "MAKA",
+    "productName": "MakaLight",
+    "productVersion": "0.1.0",
+    "copyright": "MIT",
+    "comments": "Lightweight streaming studio (WebView2 + Go)"
+  },
+  "nsisType": "multiple",
+  "obfuscated": false,
+  "wailsjsdir": "./frontend/wailsjs"
+}
