@@ -1,7 +1,6 @@
 import { ChildProcess, execFile, spawn } from 'node:child_process'
-import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs'
-import { createHash } from 'node:crypto'
-import { dirname, join } from 'node:path'
+import { existsSync } from 'node:fs'
+import { delimiter, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { app } from 'electron'
@@ -19,106 +18,81 @@ import {
 } from '../shared/maka'
 import type { RelaySnapshot } from '../shared/relay-snapshot'
 import { MAX_LIVE_RETRY_ATTEMPTS, liveRetryBackoffMs } from '../shared/live-retry'
-import { patchInstalledRelayDist } from './patch-installed-relay'
 import { recordDiagnostic } from './diagnostics'
 import { killProcessTree } from './process-tree'
 
 const execFileAsync = promisify(execFile)
 
-const RELAY_MIN_BYTES = 200_000_000
-const RELAY_EXE_NAMES = ['MAKArelay.exe'] as const
-/** v0.1.0 unpacks under MAKArelay. The previous folder name is still checked so an existing install launches. */
+/** Legacy closed relay images — killed on startup so port 38473 is free. */
+const LEGACY_RELAY_EXE_NAMES = ['MAKArelay.exe', 'TabcastRelay.exe'] as const
 export const RELAY_INSTALL_DIRS = ['MAKArelay', 'TabcastRelay'] as const
 const POLL_MS = 1500
 const MAX_AUTO_RESTARTS = MAX_LIVE_RETRY_ATTEMPTS
 
-type RelayManifest = {
-  size?: number
-  sha256?: string
-  version?: string
-}
+export const OPEN_RELAY_VERSION = '0.1.1'
 
 type Listener = (snapshot: RelaySnapshot) => void
 
-function vendorDir(): string {
+type DirectRelayLaunch = {
+  command: string
+  args: string[]
+  cwd: string
+  env: NodeJS.ProcessEnv
+  mode: 'direct'
+}
+
+export function openRelayEntry(): string | null {
+  const devEntry = join(
+    dirname(fileURLToPath(import.meta.url)),
+    '..',
+    '..',
+    'relay',
+    'src',
+    'index.mjs',
+  )
+  if (existsSync(devEntry)) return devEntry
   if (app.isPackaged) {
-    return join(process.resourcesPath, 'relay')
-  }
-  const here = dirname(fileURLToPath(import.meta.url))
-  return join(here, '..', '..', 'vendor', 'relay')
-}
-
-function readLocalManifest(): RelayManifest | null {
-  const path = join(vendorDir(), 'relay-manifest.json')
-  if (!existsSync(path)) return null
-  try {
-    return JSON.parse(readFileSync(path, 'utf8')) as RelayManifest
-  } catch {
-    return null
-  }
-}
-
-function relayIntegrityError(exe: string): string | null {
-  if (!existsSync(exe)) {
-    return `Relay binary missing. Run: npm run fetch:relay\nExpected: ${exe}`
-  }
-  const size = statSync(exe).size
-  const manifest = readLocalManifest()
-  const expected = manifest?.size ?? 0
-
-  if (expected > 0 && size < expected) {
-    const haveMb = (size / (1024 * 1024)).toFixed(0)
-    const needMb = (expected / (1024 * 1024)).toFixed(0)
-    return `Relay binary incomplete (${haveMb} / ${needMb} MB).\nRun: npm run fetch:relay -- --force`
-  }
-  if (size < RELAY_MIN_BYTES) {
-    const haveMb = (size / (1024 * 1024)).toFixed(0)
-    return `Relay binary looks truncated (~${haveMb} MB). Full build is ~376 MB.\nRun: npm run fetch:relay -- --force`
+    const bundled = join(process.resourcesPath, 'relay', 'src', 'index.mjs')
+    if (existsSync(bundled)) return bundled
   }
   return null
 }
 
-async function relaySha256Error(exe: string): Promise<string | null> {
-  const manifest = readLocalManifest()
-  const expected = manifest?.sha256?.toLowerCase()
-  if (!expected) return null
-
-  const digest = await new Promise<string>((resolve, reject) => {
-    const hash = createHash('sha256')
-    createReadStream(exe)
-      .on('data', (chunk) => hash.update(chunk))
-      .on('end', () => resolve(hash.digest('hex')))
-      .on('error', reject)
-  })
-
-  if (digest.toLowerCase() !== expected) {
-    return `Relay binary failed SHA-256 integrity check.\nRun: npm run fetch:relay -- --force`
+function resolveLaunch(): DirectRelayLaunch {
+  const entry = openRelayEntry()
+  if (!entry) {
+    throw new Error(
+      'Open MAKA.relay is missing from this install. Reinstall Maka or run from a repo with relay/src.',
+    )
   }
-  return null
-}
-
-export type { RelaySnapshot }
-
-function relayExeCandidates(): string[] {
-  const bundled = RELAY_EXE_NAMES.map((name) => join(vendorDir(), name))
-  const localApp = process.env.LOCALAPPDATA
-  const installed: string[] = []
-  if (localApp) {
-    for (const rootName of RELAY_INSTALL_DIRS) {
-      for (const name of RELAY_EXE_NAMES) {
-        installed.push(join(localApp, rootName, 'v0.1.0', name))
-        installed.push(join(localApp, rootName, name))
-      }
-    }
+  const relayRoot = dirname(dirname(entry))
+  const useElectronNode = app.isPackaged || process.versions.electron !== undefined
+  const nodePathCandidates = [
+    join(relayRoot, 'node_modules'),
+    join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'node_modules'),
+  ]
+  if (app.isPackaged) {
+    nodePathCandidates.push(join(process.resourcesPath, 'relay', 'node_modules'))
   }
-  return [...bundled, ...installed]
-}
-
-function resolveRelayExe(): string {
-  for (const candidate of relayExeCandidates()) {
-    if (!relayIntegrityError(candidate)) return candidate
+  const nodePath = nodePathCandidates.filter((p) => existsSync(p)).join(delimiter)
+  return {
+    command: useElectronNode ? process.execPath : 'node',
+    args: [entry],
+    cwd: relayRoot,
+    mode: 'direct',
+    env: {
+      ...process.env,
+      ...(useElectronNode ? { ELECTRON_RUN_AS_NODE: '1' } : {}),
+      ...(nodePath ? { NODE_PATH: nodePath } : {}),
+      MAKA_NO_OPEN: '1',
+      MAKA_STREAM_URL: RELAY_WHIP_URL,
+      MAKA_RELAY_ROOT: relayRoot,
+      RELAY_VERSION: OPEN_RELAY_VERSION,
+      TABCAST_NO_OPEN: '1',
+      TABCAST_STREAM_URL: RELAY_WHIP_URL,
+      TABCAST_RELAY_ROOT: relayRoot,
+    },
   }
-  return join(vendorDir(), RELAY_EXE_NAMES[0])
 }
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -163,7 +137,6 @@ async function killProcessImage(imageName: string): Promise<void> {
   }
 }
 
-/** Relay launcher spawns tray.ps1 via PowerShell; those survive taskkill of the exe. */
 async function killOrphanRelayTrays(): Promise<void> {
   if (process.platform !== 'win32') return
   try {
@@ -211,6 +184,8 @@ async function isRelayHealthy(): Promise<boolean> {
   }
 }
 
+export type { RelaySnapshot }
+
 export type OrphanRelayReport = {
   orphanCount: number
   totalCount: number
@@ -219,7 +194,7 @@ export type OrphanRelayReport = {
   portConflict: boolean
 }
 
-/** Relay processes not owned by this app's relay child. */
+/** Legacy MAKArelay.exe processes not owned by this app's relay child. */
 export async function detectOrphanRelayProcesses(
   ownedPid: number | null,
 ): Promise<OrphanRelayReport> {
@@ -233,7 +208,7 @@ export async function detectOrphanRelayProcesses(
   if (process.platform !== 'win32') return empty
 
   const pids: number[] = []
-  for (const image of RELAY_EXE_NAMES) {
+  for (const image of LEGACY_RELAY_EXE_NAMES) {
     try {
       const { stdout } = await execFileAsync(
         'tasklist',
@@ -279,128 +254,6 @@ export async function detectOrphanRelayProcesses(
   return empty
 }
 
-type DirectRelayLaunch = {
-  command: string
-  args: string[]
-  cwd: string
-  env: NodeJS.ProcessEnv
-  mode: 'direct' | 'launcher'
-}
-
-export const OPEN_RELAY_VERSION = '0.1.1'
-
-function openRelayEntry(): string | null {
-  const devEntry = join(
-    dirname(fileURLToPath(import.meta.url)),
-    '..',
-    '..',
-    'relay',
-    'src',
-    'index.mjs',
-  )
-  if (existsSync(devEntry)) return devEntry
-  if (app.isPackaged) {
-    const bundled = join(process.resourcesPath, 'relay-open', 'src', 'index.mjs')
-    if (existsSync(bundled)) return bundled
-  }
-  return null
-}
-
-function preferOpenRelay(): boolean {
-  if (process.env.MAKA_USE_CLOSED_RELAY === '1') return false
-  if (process.env.MAKA_USE_OPEN_RELAY === '1') return true
-  return !app.isPackaged
-}
-
-function resolveOpenRelayLaunch(): DirectRelayLaunch | null {
-  if (!preferOpenRelay()) return null
-  const entry = openRelayEntry()
-  if (!entry) return null
-  const relayRoot = dirname(dirname(entry))
-  const useElectronNode = app.isPackaged || process.versions.electron !== undefined
-  return {
-    command: useElectronNode ? process.execPath : 'node',
-    args: [entry],
-    cwd: relayRoot,
-    mode: 'direct',
-    env: {
-      ...process.env,
-      ...(useElectronNode ? { ELECTRON_RUN_AS_NODE: '1' } : {}),
-      MAKA_NO_OPEN: '1',
-      MAKA_STREAM_URL: RELAY_WHIP_URL,
-      MAKA_RELAY_ROOT: relayRoot,
-      RELAY_VERSION: OPEN_RELAY_VERSION,
-      TABCAST_NO_OPEN: '1',
-      TABCAST_STREAM_URL: RELAY_WHIP_URL,
-      TABCAST_RELAY_ROOT: relayRoot,
-    },
-  }
-}
-
-function patchInstalledRelayRoots(): { patched: string[]; skipped: string[] } {
-  const localApp = process.env.LOCALAPPDATA
-  const patched: string[] = []
-  const skipped: string[] = []
-  if (!localApp) return { patched, skipped }
-  for (const rootName of RELAY_INSTALL_DIRS) {
-    const dist = join(localApp, rootName, 'v0.1.0', 'relay', 'dist')
-    const result = patchInstalledRelayDist(dist)
-    patched.push(...result.patched)
-    skipped.push(...result.skipped)
-  }
-  return { patched, skipped }
-}
-
-/** Open source relay in-repo, unpacked Node relay, or MAKArelay.exe launcher. */
-function resolveLaunch(): DirectRelayLaunch {
-  const open = resolveOpenRelayLaunch()
-  if (open) return open
-
-  const localApp = process.env.LOCALAPPDATA
-  if (localApp) {
-    for (const rootName of RELAY_INSTALL_DIRS) {
-      const root = join(localApp, rootName, 'v0.1.0')
-      const node = join(root, 'runtime', 'node.exe')
-      const entry = join(root, 'relay', 'dist', 'index.js')
-      const ffmpeg = join(root, 'ffmpeg', 'bin', 'ffmpeg.exe')
-      const relayRoot = join(root, 'relay')
-      if (existsSync(node) && existsSync(entry)) {
-        return {
-          command: node,
-          args: [entry],
-          cwd: relayRoot,
-          mode: 'direct',
-          env: {
-            ...process.env,
-            MAKA_NO_OPEN: '1',
-            MAKA_STREAM_URL: RELAY_WHIP_URL,
-            MAKA_RELAY_ROOT: relayRoot,
-            TABCAST_NO_OPEN: '1',
-            TABCAST_STREAM_URL: RELAY_WHIP_URL,
-            TABCAST_RELAY_ROOT: relayRoot,
-            FFMPEG_PATH: existsSync(ffmpeg) ? ffmpeg : (process.env.FFMPEG_PATH ?? ''),
-          },
-        }
-      }
-    }
-  }
-
-  const exe = resolveRelayExe()
-  return {
-    command: exe,
-    args: [],
-    cwd: dirname(exe),
-    mode: 'launcher',
-    env: {
-      ...process.env,
-      MAKA_NO_OPEN: '1',
-      MAKA_STREAM_URL: RELAY_WHIP_URL,
-      TABCAST_NO_OPEN: '1',
-      TABCAST_STREAM_URL: RELAY_WHIP_URL,
-    },
-  }
-}
-
 async function terminateAllRelays(owned: ChildProcess | null): Promise<void> {
   await postRelayStop()
   await sleep(400)
@@ -408,7 +261,7 @@ async function terminateAllRelays(owned: ChildProcess | null): Promise<void> {
   if (owned?.pid) killProcessTree(owned.pid)
 
   await killOrphanRelayTrays()
-  for (const image of [...RELAY_EXE_NAMES, 'TabcastRelay.exe']) await killProcessImage(image)
+  for (const image of LEGACY_RELAY_EXE_NAMES) await killProcessImage(image)
   await killListenersOnPort(RELAY_DEFAULT_PORT)
   await killOrphanRelayTrays()
 
@@ -420,7 +273,7 @@ async function terminateAllRelays(owned: ChildProcess | null): Promise<void> {
     }
     await postRelayStop()
     await killOrphanRelayTrays()
-    for (const image of [...RELAY_EXE_NAMES, 'TabcastRelay.exe']) await killProcessImage(image)
+    for (const image of LEGACY_RELAY_EXE_NAMES) await killProcessImage(image)
     await killListenersOnPort(RELAY_DEFAULT_PORT)
     await sleep(350)
   }
@@ -450,8 +303,9 @@ export class RelayManager {
     return this.snapshot
   }
 
+  /** Open relay entry script (reveal in Explorer). */
   getExePath(): string {
-    return resolveRelayExe()
+    return openRelayEntry() ?? ''
   }
 
   subscribe(listener: Listener): () => void {
@@ -488,51 +342,26 @@ export class RelayManager {
   }
 
   private async startExclusive(reason: string): Promise<void> {
-    const launchPlan = resolveLaunch()
-    const encodePatch =
-      launchPlan.mode === 'direct' && openRelayEntry() && preferOpenRelay()
-        ? { patched: [] as string[], skipped: [] as string[] }
-        : patchInstalledRelayRoots()
-    if (encodePatch.patched.length) {
-      recordDiagnostic('info', 'relay.encode-patch', 'Installed relay now honors studio encode settings', undefined, {
-        files: encodePatch.patched,
+    let launch: DirectRelayLaunch
+    try {
+      launch = resolveLaunch()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      recordDiagnostic('error', 'relay.missing', message)
+      this.emit({
+        lifecycle: 'error',
+        error: message,
+        health: null,
+        status: null,
+        pid: null,
       })
-    }
-    const usingOpen = Boolean(resolveOpenRelayLaunch())
-    if (!usingOpen) {
-      const exe = resolveRelayExe()
-      const integrity = relayIntegrityError(exe)
-      if (integrity) {
-        recordDiagnostic('error', 'relay.integrity', integrity)
-        this.emit({
-          lifecycle: 'error',
-          error: integrity,
-          health: null,
-          status: null,
-          pid: null,
-        })
-        return
-      }
-
-      const shaError = await relaySha256Error(exe)
-      if (shaError) {
-        recordDiagnostic('error', 'relay.integrity', shaError)
-        this.emit({
-          lifecycle: 'error',
-          error: shaError,
-          health: null,
-          status: null,
-          pid: null,
-        })
-        return
-      }
+      return
     }
 
-    const launch = launchPlan
-    recordDiagnostic('info', 'relay.start', `Starting relay (${reason}, ${launch.mode})`, undefined, {
+    recordDiagnostic('info', 'relay.start', `Starting open relay (${reason})`, undefined, {
       restarts: this.restartCount,
       command: launch.command,
-      mode: launch.mode,
+      entry: launch.args[0],
     })
 
     this.emit({ lifecycle: 'starting', error: null })
@@ -556,10 +385,7 @@ export class RelayManager {
       recordDiagnostic('error', 'relay.spawn', 'Failed to spawn relay', err)
       this.emit({
         lifecycle: 'error',
-        error:
-          err instanceof Error
-            ? err.message
-            : 'Failed to spawn relay (is the binary still downloading?)',
+        error: err instanceof Error ? err.message : 'Failed to spawn relay',
         pid: null,
       })
       this.scheduleRestart('spawn-failed')
@@ -623,9 +449,8 @@ export class RelayManager {
         const health = localizeRelayHealth(await fetchJson<RelayHealth>(RELAY_HEALTH_PATH))
         this.healthFailStreak = 0
         this.restartCount = Math.max(0, this.restartCount - 1)
-        // Launcher mode always starts tray.ps1 — strip orphans so only the Maka tray remains.
         await killOrphanRelayTrays()
-        recordDiagnostic('info', 'relay.ready', `Relay ready v${health.version} (${launch.mode})`)
+        recordDiagnostic('info', 'relay.ready', `Relay ready v${health.version}`)
         this.emit({ lifecycle: 'ready', health, error: null })
         this.startPolling()
         return
@@ -659,7 +484,6 @@ export class RelayManager {
     this.stopping = false
   }
 
-  /** Latest `GET /health` (for WHIP/config auth — do not reuse stale renderer tokens). */
   async fetchHealthLive(): Promise<RelayHealth> {
     return localizeRelayHealth(await fetchJson<RelayHealth>(RELAY_HEALTH_PATH))
   }
@@ -764,7 +588,6 @@ export class RelayManager {
     }, delay)
   }
 
-  /** The relay is its own process group so quitting Maka can stop it and its children. */
   private watchChildUntilAppExits(child: ChildProcess): void {
     this.releaseExitKill?.()
     const pid = child.pid

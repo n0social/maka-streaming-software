@@ -1,6 +1,6 @@
 /**
  * Relay 0.1.1 — editable platform metadata.
- * The v0.1.0 MAKArelay.exe still encodes and pushes RTMP. This module is the
+ * Open MAKA.relay encodes and pushes RTMP. This module is the
  * part we can change: it tells Twitch and YouTube the title, game, description,
  * and (YouTube) thumbnail. RTMP does not do that.
  */

@@ -2,7 +2,7 @@
   "name": "maka",
   "version": "2.8.1",
   "private": false,
-  "description": "Maka v2.8.1 — lightweight video game streaming platform for Windows. Cloud streaming for streamers on GeForce NOW, Xbox Cloud Gaming, Shadow PC, and Cloud Moon; PVP and competitive live streams to Twitch & YouTube (WHIP + MAKArelay).",
+  "description": "Maka v2.8.1 — lightweight video game streaming platform for Windows. Cloud streaming for streamers on GeForce NOW, Xbox Cloud Gaming, Shadow PC, and Cloud Moon; PVP and competitive live streams to Twitch & YouTube (WHIP + open MAKA.relay).",
   "keywords": [
     "maka",
     "game-streaming",
@@ -48,29 +48,27 @@
     "preview": "electron-vite preview",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
-    "fetch:relay": "node scripts/fetch-relay.mjs",
+    "prepare:relay": "npm install --prefix relay --omit=dev",
     "fetch:release-backup": "node scripts/fetch-release-backup.mjs",
     "verify": "node scripts/verify.mjs",
     "verify:offline": "node scripts/verify.mjs --offline",
     "verify:addons": "node scripts/verify-addons.mjs --write-report",
     "export:marketplace": "node scripts/export-marketplace.mjs",
     "marketing": "python scripts/generate-marketing.py",
-    "dist": "npm run typecheck && npm run build && node scripts/verify.mjs --offline && electron-builder --win nsis",
+    "dist": "npm run prepare:relay && npm run typecheck && npm run build && node scripts/verify.mjs --offline && electron-builder --win nsis",
     "dist:dir": "npm run build && electron-builder --win dir",
     "dist:signed": "node scripts/dist-signed.mjs",
-    "dist:ci": "npm run typecheck && npm run build && node scripts/verify.mjs --offline && electron-builder --win nsis --publish always",
-    "sign:relay": "node scripts/sign-windows.mjs vendor/relay/MAKArelay.exe",
+    "dist:ci": "npm run prepare:relay && npm run typecheck && npm run build && node scripts/verify.mjs --offline && electron-builder --win nsis --publish always",
     "sign:verify": "node scripts/sign-windows.mjs --verify --all",
     "release:manifest": "node scripts/update-browser-manifest.mjs",
     "relay:open": "node relay/src/index.mjs",
-    "web:relay": "node scripts/web-relay-dev.mjs",
+    "web:relay": "node relay/src/index.mjs",
     "dev:web-studio": "node scripts/web-studio-dev.mjs --with-relay",
     "dev:web-studio:site": "node scripts/web-studio-dev.mjs",
     "test:web-relay": "node scripts/web-relay-smoke.test.mjs --spawn",
     "test:studio-wiring": "node --experimental-strip-types scripts/studio-wiring.test.ts",
     "test:encode-adapt": "node --experimental-strip-types scripts/encode-adapt.test.mjs",
     "test:encode-backpressure": "node --experimental-strip-types scripts/encode-backpressure.test.mjs",
-    "test:relay-encode-patch": "node --experimental-strip-types scripts/relay-encode-patch.test.mjs",
     "test:platform-viewers": "node --experimental-strip-types scripts/platform-viewers.test.mjs",
     "test:relay-live-stats": "node scripts/relay-live-stats.test.mjs",
     "test:qos-score": "node --experimental-strip-types scripts/qos-score.test.mjs",
@@ -124,18 +122,11 @@
     ],
     "extraResources": [
       {
-        "from": "vendor/relay",
+        "from": "relay",
         "to": "relay",
         "filter": [
-          "MAKArelay.exe",
-          "relay-manifest.json"
-        ]
-      },
-      {
-        "from": "relay",
-        "to": "relay-open",
-        "filter": [
           "src/**/*",
+          "node_modules/**/*",
           "package.json",
           "VERSION",
           "README.md"

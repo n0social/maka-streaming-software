@@ -1,9 +1,5 @@
-# Relay binary (large)
+# Deprecated
 
-Place `MAKArelay.exe` here via:
+The closed `MAKArelay.exe` sidecar is removed. MAKA.relay is built from source under [`relay/`](../relay/).
 
-```bash
-npm run fetch:relay
-```
-
-The binary is gitignored (~376MB). GitHub Releases should attach it for educators who skip the fetch step.
+Electron and the installer bundle `relay/` and launch `relay/src/index.mjs`.

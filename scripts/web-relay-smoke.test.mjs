@@ -6,7 +6,7 @@ const base = process.env.RELAY_BASE ?? 'http://127.0.0.1:38473'
 
 let child = null
 if (process.argv.includes('--spawn')) {
-  child = spawn(process.execPath, ['scripts/web-relay-dev.mjs'], { stdio: ['ignore', 'pipe', 'inherit'] })
+  child = spawn(process.execPath, ['relay/src/index.mjs'], { stdio: ['ignore', 'pipe', 'inherit'] })
   await sleep(800)
 }
 
