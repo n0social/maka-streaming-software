@@ -39,6 +39,7 @@ import { addonHasPermission, isValidAddonId, isValidCatalogId } from '../shared/
 import { PHONE_CAM_ADDON_ID } from '../shared/phone-pair'
 import { addonProfileBucket, normalizeEncodeProfileId } from '../shared/stream-encode-profiles'
 import { fetchPlatformViewers } from './platform-viewers'
+import { publishPlatformMetadata } from './platform-metadata'
 import { dropPercentFromCounts, redactSupportText, scoreQos } from '../shared/qos-score'
 
 // Windows hides Chromium's hardware video overlay when this window is not focused,
@@ -561,6 +562,31 @@ function registerIpc(): void {
       return relay.getSnapshot()
     }, relay.getSnapshot())
   })
+  ipcMain.handle('platform:publish-metadata', async (event) => {
+    if (!studioOk(event)) {
+      return {
+        version: '0.1.1',
+        twitch: { ok: false, message: 'Studio window required' },
+        youtube: { ok: false, message: 'Studio window required' },
+      }
+    }
+    const settings = loadSettings()
+    const report = await publishPlatformMetadata({
+      title: settings.streamTitle,
+      description: settings.streamDescription,
+      category: settings.streamCategory,
+      twitchToken: settings.twitchUserToken,
+      twitchClientId: settings.twitchClientId,
+      youtubeToken: settings.youtubeUserToken,
+    })
+    recordDiagnostic(
+      'info',
+      'relay.metadata',
+      `Relay ${report.version} metadata twitch=${report.twitch.ok} youtube=${report.youtube.ok} ${report.twitch.message}; ${report.youtube.message}`,
+    )
+    return report
+  })
+
   ipcMain.handle('platform:viewers', async (event, payload: unknown) => {
     if (!studioOk(event)) return { twitch: null, youtube: null }
     const body = payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : {}

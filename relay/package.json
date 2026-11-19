@@ -1,0 +1,18 @@
+{
+  "name": "maka-relay",
+  "version": "0.1.1",
+  "private": true,
+  "description": "Open MAKA.relay — WHIP ingest, FFmpeg RTMP out (replaces closed MAKArelay.exe when run from source).",
+  "type": "module",
+  "main": "src/index.mjs",
+  "scripts": {
+    "start": "node src/index.mjs",
+    "test:smoke": "node ../scripts/web-relay-smoke.test.mjs"
+  },
+  "engines": {
+    "node": ">=22.5"
+  },
+  "dependencies": {
+    "werift": "^0.25.2"
+  }
+}

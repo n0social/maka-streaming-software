@@ -54,6 +54,9 @@ export type AppSettings = {
   streamTitle: string
   streamCategory: string
   streamDescription: string
+  twitchUserToken: string
+  twitchClientId: string
+  youtubeUserToken: string
   streamChannel: string
   streamTwitchChatLink: string
   streamYoutubeChatLink: string
@@ -179,7 +182,11 @@ export type MakaBridge = {
     twitch: number | null
     youtube: number | null
   }>
-  getRelay: () => Promise<RelaySnapshot>
+  publishPlatformMetadata: () => Promise<{
+    version: string
+    twitch: { ok: boolean; message: string }
+    youtube: { ok: boolean; message: string }
+  }>
   startRelay: () => Promise<RelaySnapshot>
   stopRelay: () => Promise<RelaySnapshot>
   refreshRelay: () => Promise<RelaySnapshot>
@@ -319,6 +326,7 @@ export type MakaBridge = {
 const api: MakaBridge = {
   getPlatformViewers: (query) => ipcRenderer.invoke('platform:viewers', query),
   getRelay: () => ipcRenderer.invoke('relay:get'),
+  publishPlatformMetadata: () => ipcRenderer.invoke('platform:publish-metadata'),
   startRelay: () => ipcRenderer.invoke('relay:start'),
   stopRelay: () => ipcRenderer.invoke('relay:stop'),
   refreshRelay: () => ipcRenderer.invoke('relay:refresh'),

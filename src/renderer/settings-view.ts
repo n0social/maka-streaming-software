@@ -74,6 +74,12 @@ function applySettingsToForm(s: AppSettings): void {
   const folderInput = document.getElementById('set-recording-folder') as HTMLInputElement
   folderInput.value = s.recordingSaveFolder || ''
   folderInput.placeholder = s.recordingSaveFolder ? '' : 'Choose a folder…'
+  const twitchClient = document.getElementById('set-twitch-client-id') as HTMLInputElement | null
+  const twitchToken = document.getElementById('set-twitch-user-token') as HTMLInputElement | null
+  const youtubeToken = document.getElementById('set-youtube-user-token') as HTMLInputElement | null
+  if (twitchClient) twitchClient.value = s.twitchClientId || ''
+  if (twitchToken) twitchToken.value = s.twitchUserToken || ''
+  if (youtubeToken) youtubeToken.value = s.youtubeUserToken || ''
   const tab = s.settingsActiveTab
   if (isSettingsTabId(tab)) {
     setActiveSettingsTab(document.getElementById('settings-view') as HTMLElement, tab)

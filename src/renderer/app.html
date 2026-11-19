@@ -540,6 +540,16 @@
                 <p class="hint tight">
                   If the primary Twitch, YouTube, or custom ingest fails, the next reconnect publishes here. Leave blank to stay on the primary ingest.
                 </p>
+                <h3>Relay 0.1.1 account tokens</h3>
+                <p class="hint tight">
+                  RTMP only carries picture and sound. These tokens let relay 0.1.1 set the Twitch title and game, and the YouTube title, description, and thumbnail. Leave blank and the watch page stays the platform default.
+                </p>
+                <label class="field-label" for="set-twitch-client-id">Twitch client id</label>
+                <input id="set-twitch-client-id" class="key-input" type="text" autocomplete="off" spellcheck="false" />
+                <label class="field-label" for="set-twitch-user-token">Twitch user token</label>
+                <input id="set-twitch-user-token" class="key-input" type="password" autocomplete="off" spellcheck="false" />
+                <label class="field-label" for="set-youtube-user-token">YouTube user token</label>
+                <input id="set-youtube-user-token" class="key-input" type="password" autocomplete="off" spellcheck="false" />
                 <h3>Connection log</h3>
                 <p id="qos-score" class="hint tight">QoS —</p>
                 <button type="button" class="btn btn-ghost" id="btn-export-qos">Export QoS bundle</button>
