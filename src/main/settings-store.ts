@@ -72,6 +72,10 @@ export type AppSettings = {
   /** Failover RTMP target. Used when primary ingest fails. Empty string clears. */
   backupRtmpUrl: string
   backupRtmpKey: string
+  /** OAuth tokens for relay 0.1.1 platform metadata (RAM + settings file; user-provided). */
+  twitchUserToken: string
+  twitchClientId: string
+  youtubeUserToken: string
 }
 
 export type SavedBrowseTab = {

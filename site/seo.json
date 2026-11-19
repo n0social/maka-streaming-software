@@ -1,9 +1,9 @@
 {
   "siteName": "Maka",
   "siteUrl": "https://makalive.stream",
-  "githubRelease": "https://github.com/n0social/maka-streaming-software/releases/tag/v0.2.6.2",
-  "releaseTag": "v0.2.6.2",
-  "appVersion": "0.2.6",
+  "githubRelease": "https://github.com/n0social/maka-streaming-software/releases/tag/v2.8.3",
+  "releaseTag": "v2.8.3",
+  "appVersion": "2.8.3",
   "primaryImage": "https://makalive.stream/marketing/feature-graphic-1024x500.png",
   "downloadImage": "https://makalive.stream/marketing/download-now.png",
   "screenshotImage": "https://makalive.stream/marketing/screenshot-desktop-1280x800.png",
@@ -49,7 +49,7 @@
     "game capture Windows",
     "streamer tools",
     "first official working build",
-    "Maka v0.2.6.2"
+    "Maka v2.8.3"
   ],
   "globalDescription": "Maka v0.2.6.2 — first official lightweight game streaming platform for Windows. Go live from NVIDIA GeForce NOW, Xbox Cloud Gaming, Shadow PC, and Cloud Moon. Cloud streaming for streamers, PVP, and competitive gamers — local WHIP relay, less overhead than OBS.",
   "globalTitle": "Maka — lightweight cloud game streaming for streamers",

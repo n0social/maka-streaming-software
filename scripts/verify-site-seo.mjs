@@ -10,19 +10,19 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const seo = JSON.parse(readFileSync(join(root, 'site', 'seo.json'), 'utf8'))
 
 const pages = [
-  { file: 'site/index.html', mustInclude: ['GeForce NOW', 'Cloud Moon', 'v0.2.6.2', 'PVP'] },
-  { file: 'site/download.html', mustInclude: ['Shadow PC', 'Xbox Cloud Gaming', 'lightweight'] },
+  { file: 'site/index.html', mustInclude: ['MAKA', 'Download', 'Windows'] },
+  { file: 'site/download.html', mustInclude: ['Download', 'Windows', 'Maka'] },
   { file: 'site/stream/index.html', mustInclude: ['cloud', 'GeForce NOW'] },
   { file: 'site/preview/index.html', mustInclude: ['cloud', 'PVP'] },
 ]
 
-const requiredKeywords = [
+const streamVendorKeywords = [
   'GeForce NOW',
   'Xbox Cloud Gaming',
   'Shadow PC',
   'Cloud Moon',
   'PVP',
-  'cloud streaming',
+  'cloud gamer',
 ]
 
 let failed = 0
@@ -47,10 +47,10 @@ for (const { file, mustInclude } of pages) {
   }
 }
 
-const home = readFileSync(join(root, 'site/index.html'), 'utf8').toLowerCase()
-for (const kw of requiredKeywords) {
-  if (!home.includes(kw.toLowerCase())) {
-    console.error(`site/index.html: missing global keyword "${kw}"`)
+const streamHtml = readFileSync(join(root, 'site/stream/index.html'), 'utf8').toLowerCase()
+for (const kw of streamVendorKeywords) {
+  if (!streamHtml.includes(kw.toLowerCase())) {
+    console.error(`site/stream/index.html: missing vendor keyword "${kw}"`)
     failed++
   }
 }

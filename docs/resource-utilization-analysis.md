@@ -6,7 +6,7 @@ This note is the architecture and the measurement plan. It is not a benchmark. N
 
 ## What the downloadable app runs today
 
-Maka 2.8.1:
+Maka 2.8.3:
 
 1. Electron (Chromium + Node) draws the studio and any in-app browser tab.
 2. The studio sends video to MAKArelay on `127.0.0.1` with WebRTC (WHIP). Chromium encodes that hop.
