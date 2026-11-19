@@ -13,6 +13,19 @@ Electron (`npm run dist`) is **not** actively developed here; it remains a **ben
 - Capture / game audio: stubs (Phase 1)
 - No in-app browser
 
+## Cloud agent (Linux) — UI screenshots only
+
+The studio bundle can be previewed without WebView2:
+
+```bash
+npm run makalight:bundle
+npm run makalight:preview   # http://127.0.0.1:8765/
+```
+
+This serves `frontend/dist` with mocked `window.go` for layout checks. **Not** a substitute for Windows `wails dev` / capture / relay.
+
+Linux `wails build` in CI may fail on Ubuntu 24.04 (Wails wants `webkit2gtk-4.0`; the image ships 4.1). **Ship `MakaLight.exe` on Windows.**
+
 ## Dev (Windows)
 
 Prerequisites: Go 1.22+, [Wails v2](https://wails.io/docs/gettingstarted/installation), WebView2, Node 20+.

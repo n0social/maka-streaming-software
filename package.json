@@ -64,6 +64,7 @@
     "makalight:sync": "node scripts/sync-makalight-frontend.mjs",
     "makalight:bundle": "npm run build && npm run makalight:sync",
     "test:makalight-sync": "node scripts/sync-makalight-frontend.test.mjs",
+    "makalight:preview": "node scripts/makalight-preview-server.mjs",
     "relay:open": "node relay/src/index.mjs",
     "web:relay": "node relay/src/index.mjs",
     "dev:web-studio": "node scripts/web-studio-dev.mjs --with-relay",

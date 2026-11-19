@@ -3,8 +3,8 @@
   "name": "MakaLight",
   "outputfilename": "MakaLight",
   "frontend:dir": "frontend/dist",
-  "frontend:install": "",
-  "frontend:build": "npm run makalight:sync --prefix ..",
+  "frontend:install": "npm install --prefix ./frontend",
+  "frontend:build": "npm run build --prefix ./frontend",
   "author": {
     "name": "n0social",
     "email": ""
