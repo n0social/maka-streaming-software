@@ -4114,7 +4114,9 @@ function renderUpdateBanner(status: import('../preload/index').UpdateStatus): vo
     updateBannerText.textContent = 'Checking for updates…'
     updateBannerAction.hidden = true
   } else if (status.state === 'available') {
-    updateBannerText.textContent = `Update available${status.version ? `: v${status.version}` : ''}`
+    updateBannerText.textContent = status.version
+      ? `A new update is available: v${status.version}`
+      : 'A new update is available'
     updateBannerAction.textContent = 'Download'
     updateBannerAction.disabled = false
   } else if (status.state === 'downloading') {
@@ -4147,6 +4149,7 @@ updateBannerAction.addEventListener('click', () => {
 updateBannerDismiss.addEventListener('click', () => {
   updateBanner.hidden = true
   updateBanner.classList.add('hidden')
+  document.body.classList.remove('update-banner-visible')
 })
 
 window.maka.onUpdateStatus(renderUpdateBanner)
