@@ -62,6 +62,7 @@
     "sign:relay": "node scripts/sign-windows.mjs vendor/relay/MAKArelay.exe",
     "sign:verify": "node scripts/sign-windows.mjs --verify --all",
     "release:manifest": "node scripts/update-browser-manifest.mjs",
+    "relay:open": "node relay/src/index.mjs",
     "web:relay": "node scripts/web-relay-dev.mjs",
     "dev:web-studio": "node scripts/web-studio-dev.mjs --with-relay",
     "dev:web-studio:site": "node scripts/web-studio-dev.mjs",
@@ -128,6 +129,16 @@
         "filter": [
           "MAKArelay.exe",
           "relay-manifest.json"
+        ]
+      },
+      {
+        "from": "relay",
+        "to": "relay-open",
+        "filter": [
+          "src/**/*",
+          "package.json",
+          "VERSION",
+          "README.md"
         ]
       },
       {

@@ -79,6 +79,15 @@ export function coerceSettings(partial: unknown): Partial<AppSettings> {
   if (typeof p.streamDescription === 'string') {
     out.streamDescription = p.streamDescription.replace(/\r\n/g, '\n').slice(0, 200)
   }
+  if (typeof p.twitchUserToken === 'string') {
+    out.twitchUserToken = p.twitchUserToken.trim().slice(0, 2048)
+  }
+  if (typeof p.twitchClientId === 'string') {
+    out.twitchClientId = p.twitchClientId.trim().slice(0, 80)
+  }
+  if (typeof p.youtubeUserToken === 'string') {
+    out.youtubeUserToken = p.youtubeUserToken.trim().slice(0, 4096)
+  }
   if (typeof p.streamChannel === 'string') {
     out.streamChannel = p.streamChannel.trim().replace(/^@/, '').replace(/\s+/g, '').slice(0, 64)
   }

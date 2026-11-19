@@ -123,6 +123,7 @@ Desktop flow is identical except capture runs inside Electron and the main proce
 
 - `site/stream/` — browser studio UI
 - `site/studio-web/` — redirect to `/stream/`
-- `scripts/web-relay-dev.mjs` — dev relay
+- `relay/src/` — **open source** MAKA.relay 0.1.1 (`npm run relay:open`)
+- `scripts/web-relay-dev.mjs` — thin wrapper → `relay/src/index.mjs`
 - `scripts/web-studio-dev.mjs` — static site server
 - `scripts/web-relay-smoke.test.mjs` — HTTP smoke test

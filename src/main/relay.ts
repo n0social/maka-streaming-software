@@ -287,6 +287,56 @@ type DirectRelayLaunch = {
   mode: 'direct' | 'launcher'
 }
 
+export const OPEN_RELAY_VERSION = '0.1.1'
+
+function openRelayEntry(): string | null {
+  const devEntry = join(
+    dirname(fileURLToPath(import.meta.url)),
+    '..',
+    '..',
+    'relay',
+    'src',
+    'index.mjs',
+  )
+  if (existsSync(devEntry)) return devEntry
+  if (app.isPackaged) {
+    const bundled = join(process.resourcesPath, 'relay-open', 'src', 'index.mjs')
+    if (existsSync(bundled)) return bundled
+  }
+  return null
+}
+
+function preferOpenRelay(): boolean {
+  if (process.env.MAKA_USE_CLOSED_RELAY === '1') return false
+  if (process.env.MAKA_USE_OPEN_RELAY === '1') return true
+  return !app.isPackaged
+}
+
+function resolveOpenRelayLaunch(): DirectRelayLaunch | null {
+  if (!preferOpenRelay()) return null
+  const entry = openRelayEntry()
+  if (!entry) return null
+  const relayRoot = dirname(dirname(entry))
+  const useElectronNode = app.isPackaged || process.versions.electron !== undefined
+  return {
+    command: useElectronNode ? process.execPath : 'node',
+    args: [entry],
+    cwd: relayRoot,
+    mode: 'direct',
+    env: {
+      ...process.env,
+      ...(useElectronNode ? { ELECTRON_RUN_AS_NODE: '1' } : {}),
+      MAKA_NO_OPEN: '1',
+      MAKA_STREAM_URL: RELAY_WHIP_URL,
+      MAKA_RELAY_ROOT: relayRoot,
+      RELAY_VERSION: OPEN_RELAY_VERSION,
+      TABCAST_NO_OPEN: '1',
+      TABCAST_STREAM_URL: RELAY_WHIP_URL,
+      TABCAST_RELAY_ROOT: relayRoot,
+    },
+  }
+}
+
 function patchInstalledRelayRoots(): { patched: string[]; skipped: string[] } {
   const localApp = process.env.LOCALAPPDATA
   const patched: string[] = []
@@ -301,8 +351,11 @@ function patchInstalledRelayRoots(): { patched: string[]; skipped: string[] } {
   return { patched, skipped }
 }
 
-/** Prefer the unpacked Node relay under %LOCALAPPDATA%\MAKArelay, then the older MAKArelay folder. */
+/** Open source relay in-repo, unpacked Node relay, or MAKArelay.exe launcher. */
 function resolveLaunch(): DirectRelayLaunch {
+  const open = resolveOpenRelayLaunch()
+  if (open) return open
+
   const localApp = process.env.LOCALAPPDATA
   if (localApp) {
     for (const rootName of RELAY_INSTALL_DIRS) {
@@ -435,40 +488,47 @@ export class RelayManager {
   }
 
   private async startExclusive(reason: string): Promise<void> {
-    const encodePatch = patchInstalledRelayRoots()
+    const launchPlan = resolveLaunch()
+    const encodePatch =
+      launchPlan.mode === 'direct' && openRelayEntry() && preferOpenRelay()
+        ? { patched: [] as string[], skipped: [] as string[] }
+        : patchInstalledRelayRoots()
     if (encodePatch.patched.length) {
       recordDiagnostic('info', 'relay.encode-patch', 'Installed relay now honors studio encode settings', undefined, {
         files: encodePatch.patched,
       })
     }
-    const exe = resolveRelayExe()
-    const integrity = relayIntegrityError(exe)
-    if (integrity) {
-      recordDiagnostic('error', 'relay.integrity', integrity)
-      this.emit({
-        lifecycle: 'error',
-        error: integrity,
-        health: null,
-        status: null,
-        pid: null,
-      })
-      return
+    const usingOpen = Boolean(resolveOpenRelayLaunch())
+    if (!usingOpen) {
+      const exe = resolveRelayExe()
+      const integrity = relayIntegrityError(exe)
+      if (integrity) {
+        recordDiagnostic('error', 'relay.integrity', integrity)
+        this.emit({
+          lifecycle: 'error',
+          error: integrity,
+          health: null,
+          status: null,
+          pid: null,
+        })
+        return
+      }
+
+      const shaError = await relaySha256Error(exe)
+      if (shaError) {
+        recordDiagnostic('error', 'relay.integrity', shaError)
+        this.emit({
+          lifecycle: 'error',
+          error: shaError,
+          health: null,
+          status: null,
+          pid: null,
+        })
+        return
+      }
     }
 
-    const shaError = await relaySha256Error(exe)
-    if (shaError) {
-      recordDiagnostic('error', 'relay.integrity', shaError)
-      this.emit({
-        lifecycle: 'error',
-        error: shaError,
-        health: null,
-        status: null,
-        pid: null,
-      })
-      return
-    }
-
-    const launch = resolveLaunch()
+    const launch = launchPlan
     recordDiagnostic('info', 'relay.start', `Starting relay (${reason}, ${launch.mode})`, undefined, {
       restarts: this.restartCount,
       command: launch.command,
