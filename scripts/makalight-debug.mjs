@@ -14,7 +14,7 @@ const logPath =
   join(process.env.RUNNER_TEMP || tmpdir(), 'makalight-debug.log')
 
 function run(name, cmd, args, opts = {}) {
-  const useShell = opts.shell ?? (process.platform === 'win32' && cmd.startsWith('go'))
+  const useShell = opts.shell ?? process.platform === 'win32'
   const res = spawnSync(cmd, args, {
     cwd: root,
     encoding: 'utf8',

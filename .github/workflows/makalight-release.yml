@@ -48,11 +48,6 @@ jobs:
       - name: MakaLight debug
         run: npm run makalight:debug
 
-      - name: Go test (desktop-wails)
-        working-directory: desktop-wails
-        shell: bash
-        run: go test ./... -count=1
-
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.2
 
