@@ -119,7 +119,7 @@ function main() {
   const res = spawnSync(
     makensis,
     [`-DARG_WAILS_AMD64_BINARY=${relExe}`, 'project.nsi'],
-    { cwd: installerDir, stdio: 'inherit', shell: true },
+    { cwd: installerDir, stdio: 'inherit', shell: false, windowsVerbatimArguments: false },
   )
   if (res.status !== 0) {
     fail(`makensis exited ${res.status ?? 1}`)
