@@ -74,6 +74,24 @@ function resolveMakensis() {
   return 'makensis'
 }
 
+function ensureWailsToolsNsh() {
+  const dest = join(installerDir, 'wails_tools.nsh')
+  if (existsSync(dest)) return
+  const sources = [
+    join(homedir(), '.wails', 'nsis', 'wails_tools.nsh'),
+    join(process.env.LOCALAPPDATA || '', 'wails', 'nsis', 'wails_tools.nsh'),
+    join(process.env.APPDATA || '', 'wails', 'nsis', 'wails_tools.nsh'),
+  ]
+  for (const src of sources) {
+    if (src && existsSync(src)) {
+      copyFileSync(src, dest)
+      console.log('makalight-nsis: copied wails_tools.nsh from', src)
+      return
+    }
+  }
+  fail('wails_tools.nsh missing — run wails build (Wails NSIS templates) before rebuild')
+}
+
 function main() {
   if (process.platform !== 'win32') {
     console.log('makalight-nsis: skipped (not Windows)')
@@ -119,6 +137,7 @@ function main() {
   }
 
   const relExe = relative(installerDir, exe).replace(/\//g, '\\')
+  ensureWailsToolsNsh()
   const makensis = resolveMakensis()
   console.log('makalight-nsis: makensis →', makensis)
   try {
