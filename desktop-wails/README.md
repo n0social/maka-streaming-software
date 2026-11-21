@@ -7,12 +7,13 @@ Windows streaming studio: **Go + WebView2** + open [MAKA.relay](../relay/). Same
 
 Electron (`npm run dist`) is **not** actively developed here; it remains a **benchmark baseline**.
 
-## Status — 0.1.0 scaffold
+## Status — 0.1.0 (release track)
 
 - Wails app loads synced renderer from `frontend/dist`
-- `maka-bridge.js` → `go.main.App` (relay, settings, window, WHIP)
-- Capture / game audio: stubs (Phase 1)
+- `maka-bridge.js` → `go.main.App` (relay, WHIP, capture, audio, settings, diagnostics, …)
 - No in-app browser
+- Release: tag `makalight-v0.1.0` → [.github/workflows/makalight-release.yml](../.github/workflows/makalight-release.yml)
+- Pre-flight: `npm run makalight:debug` · [docs/makalight-release.md](../docs/makalight-release.md)
 
 ## Cloud agent (Linux) — UI screenshots only
 

@@ -95,6 +95,13 @@ func resolveRelayPaths() (entry, relayRoot, repoRoot string, err error) {
 		}
 	}
 	seen := map[string]bool{}
+	if exe, e := os.Executable(); e == nil {
+		exeRoot := filepath.Clean(filepath.Dir(exe))
+		entryPath := filepath.Join(exeRoot, "relay", "src", "index.mjs")
+		if st, err := os.Stat(entryPath); err == nil && !st.IsDir() {
+			return entryPath, filepath.Join(exeRoot, "relay"), exeRoot, nil
+		}
+	}
 	for _, root := range candidates {
 		root = filepath.Clean(root)
 		if seen[root] {
@@ -119,17 +126,14 @@ func (m *Manager) Start(ctx context.Context) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.entry == "" {
-		msg := "open MAKA.relay not found — run npm run prepare:relay and set MAKA_REPO_ROOT"
+		msg := "open MAKA.relay not found — reinstall MakaLight or set MAKA_REPO_ROOT"
 		m.snapshot = Snapshot{Lifecycle: "stopped", Error: msg}
 		return errors.New(msg)
 	}
 	if m.cmd != nil && m.cmd.Process != nil {
 		return m.refreshLocked(ctx)
 	}
-	node, err := exec.LookPath("node")
-	if err != nil {
-		return err
-	}
+	node := nodeBinForRelay()
 	cmd := exec.CommandContext(ctx, node, m.entry)
 	cmd.Dir = m.relayRoot
 	cmd.Env = append(os.Environ(),
@@ -360,4 +364,17 @@ func postJSON(ctx context.Context, client *http.Client, url string, body any) er
 	}
 	res.Body.Close()
 	return nil
+}
+
+func nodeBinForRelay() string {
+	if exe, err := os.Executable(); err == nil {
+		bundled := filepath.Join(filepath.Dir(exe), "node", "node.exe")
+		if st, e := os.Stat(bundled); e == nil && !st.IsDir() {
+			return bundled
+		}
+	}
+	if p, err := exec.LookPath("node"); err == nil {
+		return p
+	}
+	return "node"
 }
