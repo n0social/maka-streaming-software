@@ -3,8 +3,8 @@
   "name": "MakaLight",
   "outputfilename": "MakaLight",
   "frontend:dir": "frontend/dist",
-  "frontend:install": "node -e \"console.log('pre-bundled via npm run makalight:bundle')\"",
-  "frontend:build": "node -e \"console.log('pre-bundled via npm run makalight:bundle')\"",
+  "frontend:install": "npm install --prefix ./frontend",
+  "frontend:build": "npm run build --prefix ./frontend",
   "author": {
     "name": "n0social",
     "email": ""
@@ -12,7 +12,7 @@
   "info": {
     "companyName": "MAKA",
     "productName": "MakaLight",
-    "productVersion": "0.1.3",
+    "productVersion": "0.1.4",
     "copyright": "MIT",
     "comments": "Lightweight streaming studio (WebView2 + Go)"
   },

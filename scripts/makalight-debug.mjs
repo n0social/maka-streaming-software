@@ -5,20 +5,16 @@
 import { spawnSync } from 'node:child_process'
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
-import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const logPath =
-  process.env.MAKALIGHT_DEBUG_LOG ||
-  join(process.env.RUNNER_TEMP || tmpdir(), 'makalight-debug.log')
+const logPath = process.env.MAKALIGHT_DEBUG_LOG || '/opt/cursor/artifacts/makalight-debug.log'
 
 function run(name, cmd, args, opts = {}) {
-  const useShell = opts.shell ?? process.platform === 'win32'
   const res = spawnSync(cmd, args, {
     cwd: root,
     encoding: 'utf8',
-    shell: useShell,
+    shell: false,
     ...opts,
   })
   const block = [
@@ -65,9 +61,7 @@ try {
 }
 
 if (failed) {
-  console.error('makalight-debug: FAILED')
-  console.error(lines.join('\n'))
-  console.error(`log: ${logPath}`)
+  console.error('makalight-debug: FAILED (see log)')
   process.exit(1)
 }
 console.log('makalight-debug: ok')

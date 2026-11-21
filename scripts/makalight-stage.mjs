@@ -26,21 +26,22 @@ if (!existsSync(join(relaySrc, 'src', 'index.mjs'))) {
 rmSync(relayDest, { recursive: true, force: true })
 cpSync(relaySrc, relayDest, {
   recursive: true,
-  dereference: true,
-  filter: (src) => {
-    if (/[\\/]node_modules[\\/]\.cache([\\/]|$)/.test(src)) return false
-    // Windows npm can junction the monorepo root here — breaks NSIS File /r.
-    if (/[\\/]node_modules[\\/]maka([\\/]|$)/.test(src)) return false
-    return true
-  },
+  filter: (src) => !src.includes('node_modules\\.cache'),
 })
 
 const nodeStage = process.env.MAKA_NODE_STAGE
-if (nodeStage && existsSync(nodeStage)) {
+if (nodeStage) {
+  if (!existsSync(nodeStage)) {
+    console.error('MAKA_NODE_STAGE missing file:', nodeStage)
+    process.exit(1)
+  }
   const nodeDest = join(binDir, 'node')
   mkdirSync(nodeDest, { recursive: true })
   cpSync(nodeStage, join(nodeDest, 'node.exe'))
   console.log('staged node.exe')
+} else if (process.env.CI) {
+  console.error('CI build requires MAKA_NODE_STAGE (portable node.exe for relay)')
+  process.exit(1)
 }
 
 const version = JSON.parse(readFileSync(join(root, 'desktop-wails', 'wails.json'), 'utf8')).info

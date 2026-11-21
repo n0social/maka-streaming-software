@@ -56,17 +56,6 @@ function main() {
   }
 
   copyFileSync(bridgeSrc, join(destDir, 'maka-bridge.js'))
-
-  const wailsPath = join(root, 'desktop-wails', 'wails.json')
-  const productVersionPath = join(root, 'desktop-wails', 'internal', 'appmeta', 'product_version.txt')
-  if (existsSync(wailsPath)) {
-    const wails = JSON.parse(readFileSync(wailsPath, 'utf8'))
-    const ver = String(wails?.info?.productVersion ?? '').trim()
-    if (ver) {
-      writeFileSync(productVersionPath, `${ver}\n`, 'utf8')
-    }
-  }
-
   console.log(`MakaLight frontend synced (1:1 copy + bridge) → ${destDir}`)
 }
 

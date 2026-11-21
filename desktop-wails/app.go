@@ -53,10 +53,21 @@ func NewApp() (*App, error) {
 }
 
 
+func (a *App) emitRelaySnapshotOnce() {
+	if a.ctx == nil {
+		return
+	}
+	refreshCtx, cancel := context.WithTimeout(a.ctx, 4*time.Second)
+	_ = a.relay.Refresh(refreshCtx)
+	cancel()
+	wailsruntime.EventsEmit(a.ctx, "relay:update", a.relay.GetSnapshot())
+}
+
 func (a *App) emitRelayLoop() {
 	if a.ctx == nil {
 		return
 	}
+	a.emitRelaySnapshotOnce()
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 	for {
@@ -64,11 +75,7 @@ func (a *App) emitRelayLoop() {
 		case <-a.ctx.Done():
 			return
 		case <-ticker.C:
-			refreshCtx, cancel := context.WithTimeout(a.ctx, 4*time.Second)
-			_ = a.relay.Refresh(refreshCtx)
-			cancel()
-			snap := a.relay.GetSnapshot()
-			wailsruntime.EventsEmit(a.ctx, "relay:update", snap)
+			a.emitRelaySnapshotOnce()
 		}
 	}
 }
@@ -90,14 +97,7 @@ func (a *App) GetVersionInfo() VersionInfo {
 }
 
 func runtimeEnvironment() string {
-	switch runtime.GOOS {
-	case "windows":
-		return "win32"
-	case "darwin":
-		return "darwin"
-	default:
-		return runtime.GOOS
-	}
+	return runtime.GOOS
 }
 
 func (a *App) GetRelay() relay.Snapshot {

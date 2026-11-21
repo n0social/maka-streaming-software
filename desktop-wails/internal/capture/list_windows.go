@@ -16,10 +16,7 @@ var (
 	procIsWindowVisible  = user32.NewProc("IsWindowVisible")
 	procGetWindowTextW   = user32.NewProc("GetWindowTextW")
 	procGetWindowTextLen = user32.NewProc("GetWindowTextLengthW")
-	procGetSystemMetrics = user32.NewProc("GetSystemMetrics")
 )
-
-const smCMonitors = 80
 
 type windowEntry struct {
 	hwnd windows.HWND
@@ -48,8 +45,7 @@ func platformListSources() []Source {
 }
 
 func enumScreens() []string {
-	r, _, _ := procGetSystemMetrics.Call(smCMonitors)
-	n := int(r)
+	n := windows.GetSystemMetrics(windows.SM_CMONITORS)
 	if n < 1 {
 		n = 1
 	}

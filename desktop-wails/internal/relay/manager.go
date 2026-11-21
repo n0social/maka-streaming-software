@@ -124,16 +124,23 @@ func (m *Manager) GetSnapshot() Snapshot {
 
 func (m *Manager) Start(ctx context.Context) error {
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	if m.entry == "" {
-		msg := "open MAKA.relay not found — reinstall MakaLight or set MAKA_REPO_ROOT"
+		msg := "open MAKA.relay not found — reinstall with MakaLight-amd64-installer.exe (relay folder beside MakaLight.exe) or set MAKA_REPO_ROOT"
 		m.snapshot = Snapshot{Lifecycle: "stopped", Error: msg}
+		m.mu.Unlock()
 		return errors.New(msg)
 	}
 	if m.cmd != nil && m.cmd.Process != nil {
-		return m.refreshLocked(ctx)
+		err := m.refreshLocked(ctx)
+		m.mu.Unlock()
+		return err
 	}
-	node := nodeBinForRelay()
+	node, nodeErr := resolveNodeBin()
+	if nodeErr != nil {
+		m.snapshot = Snapshot{Lifecycle: "stopped", Error: nodeErr.Error()}
+		m.mu.Unlock()
+		return nodeErr
+	}
 	cmd := exec.CommandContext(ctx, node, m.entry)
 	cmd.Dir = m.relayRoot
 	cmd.Env = append(os.Environ(),
@@ -145,14 +152,17 @@ func (m *Manager) Start(ctx context.Context) error {
 	)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	configureRelayChildProcess(cmd)
 	if err := cmd.Start(); err != nil {
 		m.snapshot = Snapshot{Lifecycle: "stopped", Error: err.Error()}
+		m.mu.Unlock()
 		return err
 	}
 	m.cmd = cmd
 	pid := cmd.Process.Pid
 	m.snapshot = Snapshot{Lifecycle: "starting", Pid: pid}
 	go m.waitProcess(cmd)
+	m.mu.Unlock()
 	return m.pollUntilHealthy(ctx)
 }
 
@@ -229,12 +239,21 @@ func (m *Manager) refreshLocked(ctx context.Context) error {
 	return nil
 }
 
-func lifecycleFromRelayStatus(status any, processUp bool) string {
-	if !processUp {
-		return "stopped"
+func localizeRelayHealth(health any) any {
+	hmap, ok := health.(map[string]any)
+	if !ok {
+		return health
 	}
+	hmap["streamUrl"] = WhipURL
+	return hmap
+}
+
+func lifecycleFromRelayStatus(status any, processUp bool) string {
 	smap, ok := status.(map[string]any)
 	if !ok {
+		if processUp {
+			return "ready"
+		}
 		return "ready"
 	}
 	st, _ := smap["status"].(string)
@@ -255,25 +274,14 @@ func relayStatusError(status any) any {
 	if !ok {
 		return nil
 	}
-	if st, _ := smap["status"].(string); st == "error" {
-		if err, ok := smap["error"].(string); ok && err != "" {
-			return err
-		}
+	st, _ := smap["status"].(string)
+	if st != "error" {
+		return nil
+	}
+	if msg, ok := smap["error"].(string); ok && msg != "" {
+		return msg
 	}
 	return nil
-}
-
-func localizeRelayHealth(health any) any {
-	hmap, ok := health.(map[string]any)
-	if !ok {
-		return health
-	}
-	out := make(map[string]any, len(hmap)+1)
-	for k, v := range hmap {
-		out[k] = v
-	}
-	out["streamUrl"] = WhipURL
-	return out
 }
 
 func pidOrNil(cmd *exec.Cmd) any {
@@ -285,16 +293,33 @@ func pidOrNil(cmd *exec.Cmd) any {
 
 func (m *Manager) pollUntilHealthy(ctx context.Context) error {
 	deadline := time.Now().Add(20 * time.Second)
+	var lastErr error
 	for time.Now().Before(deadline) {
-		if err := m.refreshLocked(ctx); err == nil {
+		m.mu.Lock()
+		err := m.refreshLocked(ctx)
+		m.mu.Unlock()
+		if err == nil {
 			return nil
 		}
+		lastErr = err
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-time.After(pollInterval):
 		}
 	}
+	m.mu.Lock()
+	if m.cmd != nil {
+		msg := "relay health timeout"
+		if lastErr != nil {
+			msg = fmt.Sprintf("%s (%v)", msg, lastErr)
+		}
+		m.snapshot.Lifecycle = "starting"
+		if m.snapshot.Error == nil || m.snapshot.Error == "" {
+			m.snapshot.Error = msg
+		}
+	}
+	m.mu.Unlock()
 	return errors.New("relay health timeout")
 }
 
@@ -412,15 +437,41 @@ func postJSON(ctx context.Context, client *http.Client, url string, body any) er
 	return nil
 }
 
-func nodeBinForRelay() string {
+func resolveNodeBin() (string, error) {
 	if exe, err := os.Executable(); err == nil {
 		bundled := filepath.Join(filepath.Dir(exe), "node", "node.exe")
 		if st, e := os.Stat(bundled); e == nil && !st.IsDir() {
-			return bundled
+			return bundled, nil
 		}
 	}
-	if p, err := exec.LookPath("node"); err == nil {
+	for _, name := range []string{"node", "node.exe"} {
+		if p, err := exec.LookPath(name); err == nil {
+			return p, nil
+		}
+	}
+	return "", errors.New("Node.js runtime not found — reinstall MakaLight-amd64-installer.exe (includes node\\node.exe next to MakaLight.exe)")
+}
+
+func nodeBinForRelay() string {
+	if p, err := resolveNodeBin(); err == nil {
 		return p
 	}
 	return "node"
+}
+
+// LaunchContext surfaces install-layout hints for diagnostics (VerifySystem / support).
+func (m *Manager) LaunchContext() map[string]string {
+	out := map[string]string{
+		"entry":     m.entry,
+		"relayRoot": m.relayRoot,
+	}
+	if exe, err := os.Executable(); err == nil {
+		out["exeDir"] = filepath.Dir(exe)
+	}
+	if p, err := resolveNodeBin(); err == nil {
+		out["nodeBin"] = p
+	} else {
+		out["nodeError"] = err.Error()
+	}
+	return out
 }

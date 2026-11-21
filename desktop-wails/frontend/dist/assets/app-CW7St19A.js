@@ -3742,6 +3742,19 @@ const lifecycleCopy = {
   live: "LIVE",
   error: "Relay error"
 };
+function relayErrorPlain(error) {
+  if (error == null || error === "") return "";
+  return typeof error === "string" ? error : String(error);
+}
+function relayChipLabel(snapshot) {
+  const base = lifecycleCopy[snapshot.lifecycle] ?? "Relay ready";
+  const errText = relayErrorPlain(snapshot.error);
+  if (snapshot.lifecycle === "stopped" && errText) {
+    const short = errText.length > 80 ? `${errText.slice(0, 77)}…` : errText;
+    return `Relay offline — ${short}`;
+  }
+  return base;
+}
 function setDestError(message) {
   if (!message) {
     destError.hidden = true;
@@ -4472,8 +4485,9 @@ function liveReconnectStatusLine() {
 }
 function renderRelay(snapshot) {
   lastRelaySnapshot = snapshot;
+  const lifecycle = snapshot.lifecycle === "running" ? "ready" : snapshot.lifecycle;
   const live = isSessionLive();
-  const relayUiState = live && liveReconnecting ? "starting" : live && liveRecoveryExhausted ? "error" : snapshot.lifecycle;
+  const relayUiState = live && liveReconnecting ? "starting" : live && liveRecoveryExhausted ? "error" : lifecycle;
   relayChip.dataset.state = relayUiState;
   if (live && liveReconnecting) {
     relayLabel.textContent = liveReconnectStatusLine();
@@ -4481,25 +4495,28 @@ function renderRelay(snapshot) {
     const label = liveRecoveryReasonLabel(liveRecoveryReason ?? "relay:recover");
     relayLabel.textContent = liveRecoveryFatal ? `${label} — ingest rejected` : `${label} — reconnect failed`;
   } else {
-    relayLabel.textContent = lifecycleCopy[snapshot.lifecycle];
+    relayLabel.textContent = relayChipLabel({
+      ...snapshot,
+      lifecycle
+    });
   }
-  relayStatus.textContent = live && liveReconnecting ? "reconnecting" : snapshot.status?.status ?? snapshot.lifecycle;
+  relayStatus.textContent = live && liveReconnecting ? "reconnecting" : snapshot.status?.status ?? lifecycle;
   relayVersion.textContent = snapshot.health ? `v${snapshot.health.version}` : "—";
   renderPlatformStatus(snapshot);
   if (live && liveRecoveryExhausted) {
     relayError.hidden = false;
     const label = liveRecoveryReasonLabel(liveRecoveryReason ?? "relay:recover");
     relayError.textContent = liveRecoveryFatal ? `${label} — stream key or ingest rejected (auto-retry stopped).` : `${label} — could not restore the stream after ${MAX_LIVE_RETRY_ATTEMPTS} attempts.`;
-  } else if (snapshot.error && !(live && liveReconnecting)) {
+  } else if (relayErrorPlain(snapshot.error) && !(live && liveReconnecting)) {
     relayError.hidden = false;
-    relayError.textContent = snapshot.error;
+    relayError.textContent = relayErrorPlain(snapshot.error);
   } else if (!liveRecoveryExhausted) {
     relayError.hidden = true;
     relayError.textContent = "";
   }
   updateStudioStatusFooter(snapshot);
   if (snapshot.restarts && snapshot.restarts > 0 && snapshot.lifecycle !== "ready" && snapshot.lifecycle !== "live" && !(live && liveReconnecting)) {
-    relayLabel.textContent = `${lifecycleCopy[snapshot.lifecycle]} · r${snapshot.restarts}`;
+    relayLabel.textContent = `${relayChipLabel(snapshot)} · r${snapshot.restarts}`;
   }
   btnGoLive.dataset.live = live ? "1" : "0";
   btnGoLive.dataset.exhausted = liveRecoveryExhausted ? "1" : "0";
@@ -4834,9 +4851,6 @@ function recoveryReasonFromSnapshot(snapshot) {
 }
 function handleRelayLiveRecovery(snapshot) {
   renderRelay(snapshot);
-  if (snapshot.health && typeof snapshot.health === "object" && "version" in snapshot.health) {
-    void settingsView.refreshVersions();
-  }
   if (!relaySnapshotNeedsRecovery(snapshot)) return;
   const reason = recoveryReasonFromSnapshot(snapshot);
   const detail = snapshot.status?.error ?? snapshot.error ?? void 0;
@@ -5361,7 +5375,7 @@ async function refreshSourcePicker(kind) {
       return;
     }
     if (kind === "webcam") {
-      await refreshAvDevices();
+      await refreshAvDevices({ video: true });
       picker.innerHTML = "";
       appendPickerButton(picker, {
         label: "No camera",
@@ -5398,7 +5412,7 @@ async function refreshSourcePicker(kind) {
       return;
     }
     if (kind === "mic") {
-      await refreshAvDevices();
+      await refreshAvDevices({ audio: true });
       picker.innerHTML = "";
       appendPickerButton(picker, {
         label: "No microphone",
@@ -5863,12 +5877,30 @@ async function refreshSources() {
     }
   }
 }
-async function refreshAvDevices() {
-  try {
-    await navigator.mediaDevices.getUserMedia({ audio: true, video: true }).then((s) => {
-      stopStream(s);
-    }).catch(() => void 0);
-  } catch {
+async function refreshAvDevices(options = {}) {
+  const wantVideo = options.video === true;
+  const wantAudio = options.audio === true;
+  if (wantVideo || wantAudio) {
+    let devices2 = [];
+    try {
+      devices2 = await navigator.mediaDevices.enumerateDevices();
+    } catch {
+      devices2 = [];
+    }
+    const labeledVideo = devices2.some((d) => d.kind === "videoinput" && d.label);
+    const labeledAudio = devices2.some((d) => d.kind === "audioinput" && d.label);
+    const probeVideo = wantVideo && !labeledVideo;
+    const probeAudio = wantAudio && !labeledAudio;
+    if (probeVideo || probeAudio) {
+      try {
+        const constraints = {};
+        if (probeVideo) constraints.video = true;
+        if (probeAudio) constraints.audio = true;
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        stopStream(stream);
+      } catch {
+      }
+    }
   }
   const devices = await navigator.mediaDevices.enumerateDevices();
   const cams = devices.filter((d) => d.kind === "videoinput");
@@ -5950,7 +5982,7 @@ async function handlePhoneVideoAvailable() {
   if (camBefore && camBefore !== PHONE_CAMERA_DEVICE_VALUE) {
     pcCameraBeforePhone = camBefore;
   }
-  await refreshAvDevices();
+  await refreshAvDevices({ video: true, audio: false });
   const shouldUsePhone = preferPhoneCamera || camBefore === PHONE_CAMERA_DEVICE_VALUE || !camBefore;
   if (shouldUsePhone) {
     preferPhoneCamera = true;
@@ -5964,11 +5996,11 @@ async function handlePhoneAudioAvailable() {
   if (micBefore && micBefore !== PHONE_MIC_DEVICE_VALUE) {
     pcMicBeforePhone = micBefore;
   }
-  await refreshAvDevices();
+  await refreshAvDevices({ audio: true });
 }
 async function handlePhoneVideoLost() {
   const onPhoneCam = cameraSelect.value === PHONE_CAMERA_DEVICE_VALUE;
-  await refreshAvDevices();
+  await refreshAvDevices({ video: true });
   if (!onPhoneCam) {
     if (preferPhoneCamera) {
       await applyCamera();
@@ -5999,7 +6031,7 @@ async function handlePhoneVideoLost() {
 }
 async function handlePhoneAudioLost() {
   const onPhoneMic = micSelect.value === PHONE_MIC_DEVICE_VALUE;
-  await refreshAvDevices();
+  await refreshAvDevices({ audio: true });
   if (!onPhoneMic) return;
   const restore = pcMicBeforePhone;
   micSelect.value = restore && [...micSelect.options].some((o) => o.value === restore) ? restore : "";
@@ -6019,7 +6051,7 @@ function bindMicStream(stream) {
 async function handleMicTrackLost() {
   const onPhoneMic = micSelect.value === PHONE_MIC_DEVICE_VALUE;
   releaseMicStream();
-  await refreshAvDevices().catch(() => void 0);
+  await refreshAvDevices({ audio: true }).catch(() => void 0);
   if (onPhoneMic) {
     await handlePhoneAudioLost();
     return;
@@ -6832,7 +6864,9 @@ subscribePhoneTracks((snap) => {
   else if (!hasVideo && phoneVideoWasLive) void handlePhoneVideoLost();
   if (hasAudio && !phoneAudioWasLive) void handlePhoneAudioAvailable();
   else if (!hasAudio && phoneAudioWasLive) void handlePhoneAudioLost();
-  if (hasVideo || hasAudio) void refreshAvDevices();
+  if (hasVideo || hasAudio) {
+    void refreshAvDevices({ video: hasVideo, audio: hasAudio });
+  }
   phoneVideoWasLive = hasVideo;
   phoneAudioWasLive = hasAudio;
 });
@@ -8126,4 +8160,9 @@ syncOverlaySourceRow();
 refreshProgramPreviewLayout();
 updateGoLiveLabel(false);
 updateStreamInfo(false);
-void window.maka.getRelay().then(renderRelay);
+void window.maka.getRelay().then((snap) => {
+  renderRelay(snap);
+  if (snap.lifecycle === "stopped" && !snap.error) {
+    void window.maka.startRelay().then(renderRelay);
+  }
+});

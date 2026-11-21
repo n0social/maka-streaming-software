@@ -59,6 +59,9 @@ jobs:
       - name: QoS log and live retry tests
         run: npm run test:qos-log && npm run test:live-retry && npm run test:capture-health && npm run test:capture-fallback
 
+      - name: MakaLight sync and NSIS patch tests
+        run: npm run test:makalight-sync && npm run test:makalight-nsis && npm run test:studio-wiring
+
       - name: Build
         run: npm run build
 
