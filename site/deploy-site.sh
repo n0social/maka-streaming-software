@@ -70,7 +70,13 @@ curl -sk -o /dev/null -w "preview:%{http_code}\n" "https://127.0.0.1/preview/" -
 curl -sk -o /dev/null -w "legacy:%{http_code}\n" "https://127.0.0.1/legacy.html" -H "Host: ${SITE_HOST}"
 curl -sk -o /dev/null -w "stream:%{http_code}\n" "https://127.0.0.1/stream/" -H "Host: ${SITE_HOST}"
 curl -sk -o /dev/null -w "marketing:%{http_code}\n" "https://127.0.0.1/marketing/download-now.png" -H "Host: ${SITE_HOST}"
-curl -sk -o /dev/null -w "setup:%{http_code}\n" "https://127.0.0.1/downloads/Maka-Setup-0.2.6.exe" -H "Host: ${SITE_HOST}"
+curl -sk -o /dev/null -w "makalight:%{http_code}\n" "https://127.0.0.1/downloads/MakaLight-amd64-installer.exe" -H "Host: ${SITE_HOST}"
+dl_tag="$(curl -sk "https://127.0.0.1/download.html" -H "Host: ${SITE_HOST}" | grep -o 'makalight-v[0-9.]*' | head -1)"
+echo "download.html tag:${dl_tag}"
+if [[ "${dl_tag}" != "makalight-v0.1.3" ]]; then
+  echo "FAIL: download.html does not advertise makalight-v0.1.3" >&2
+  exit 1
+fi
 
 css_ct="$(curl -skI "https://127.0.0.1/maka.css?v=${CSS_BUILD}" -H "Host: ${SITE_HOST}" | awk -F': ' 'tolower($1)=="content-type"{print $2}' | tr -d '\r')"
 css_tmp="$(mktemp)"
