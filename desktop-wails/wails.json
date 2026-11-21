@@ -2,7 +2,7 @@
   "$schema": "https://wails.io/schemas/config.v2.json",
   "name": "MakaLight",
   "outputfilename": "MakaLight",
-  "frontend:dir": "frontend/dist",
+  "frontend:dir": ".",
   "frontend:install": "node -e \"console.log('pre-bundled via npm run makalight:bundle')\"",
   "frontend:build": "node -e \"console.log('pre-bundled via npm run makalight:bundle')\"",
   "author": {
