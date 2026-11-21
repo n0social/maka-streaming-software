@@ -75,6 +75,8 @@ jobs:
           cd desktop-wails
           wails build -clean -s -platform windows/amd64 -nopackage
           node ../scripts/makalight-stage.mjs build/bin
+          mkdir -p build/windows
+          cp ../resources/icons/icon.ico build/windows/icon.ico
           wails build -s -platform windows/amd64 -nsis -f
 
       - name: Rebuild NSIS installer with relay and Node bundle
