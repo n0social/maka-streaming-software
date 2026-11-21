@@ -1,6 +1,9 @@
 node_modules
 dist
+!desktop-wails/frontend/dist/
+!desktop-wails/frontend/dist/**
 out
+benchmark/runs/
 release
 dist-installer
 releases/backup/**/*.exe

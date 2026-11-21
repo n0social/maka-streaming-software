@@ -34,7 +34,9 @@ jobs:
         run: npm run test:encode-backpressure
 
       - name: Open relay smoke tests
-        run: MAKA_RELAY_MOCK_RTMP=1 npm run test:web-relay
+        env:
+          MAKA_RELAY_MOCK_RTMP: '1'
+        run: npm run test:web-relay
 
       - name: Platform metadata tests
         run: npm run test:platform-metadata

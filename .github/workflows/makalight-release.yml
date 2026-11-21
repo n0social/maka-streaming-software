@@ -1,0 +1,117 @@
+name: MakaLight release
+
+on:
+  push:
+    tags:
+      - 'makalight-v*'
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref to build (branch or tag), e.g. main
+        required: true
+        default: main
+      tag:
+        description: GitHub Release tag to publish (created if missing)
+        required: true
+        default: makalight-v0.1.0
+
+permissions:
+  contents: write
+
+jobs:
+  debug-and-build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.ref }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare open relay
+        run: npm run prepare:relay
+
+      - name: MakaLight debug
+        run: npm run makalight:debug
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.2
+
+      - name: Build MakaLight (NSIS)
+        shell: bash
+        run: |
+          export PATH="$PATH:$(go env GOPATH)/bin"
+          cd desktop-wails
+          wails build -clean -platform windows/amd64
+
+      - name: Download portable Node for relay
+        shell: bash
+        run: |
+          NODE_VER=22.16.0
+          curl -fsSL -o node.zip "https://nodejs.org/dist/v${NODE_VER}/node-v${NODE_VER}-win-x64.zip"
+          unzip -q node.zip
+          mkdir -p node-stage
+          cp "node-v${NODE_VER}-win-x64/node.exe" node-stage/node.exe
+          echo "MAKA_NODE_STAGE=${GITHUB_WORKSPACE}/node-stage/node.exe" >> "$GITHUB_ENV"
+
+      - name: Stage relay beside executable
+        run: node scripts/makalight-stage.mjs desktop-wails/build/bin
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: makalight-${{ github.run_number }}
+          path: |
+            desktop-wails/build/bin/**
+          if-no-files-found: error
+
+      - name: Resolve release tag
+        id: rel
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "name=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Release notes
+        shell: bash
+        run: |
+          TAG="${{ steps.rel.outputs.name }}"
+          NOTES=".github/RELEASE_NOTES_${TAG}.md"
+          if [ -f "$NOTES" ]; then
+            cp "$NOTES" release-notes.md
+          else
+            cp .github/RELEASE_NOTES_MAKALIGHT_TEMPLATE.md release-notes.md
+            sed -i "s/{{tag_name}}/${TAG}/g" release-notes.md
+            VER="${TAG#makalight-v}"
+            sed -i "s/{{version}}/${VER}/g" release-notes.md
+          fi
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.rel.outputs.name }}
+          name: MakaLight ${{ steps.rel.outputs.name }} — Windows
+          body_path: release-notes.md
+          files: |
+            desktop-wails/build/bin/MakaLight.exe
+            desktop-wails/build/bin/MakaLight-amd64-installer.exe
+            desktop-wails/build/bin/makalight-bundle.json
+          draft: false
+          generate_release_notes: false
