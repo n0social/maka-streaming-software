@@ -71,6 +71,9 @@ jobs:
       - name: Stage relay beside executable
         run: node scripts/makalight-stage.mjs desktop-wails/build/bin
 
+      - name: Rebuild NSIS installer with relay and Node bundle
+        run: node scripts/makalight-nsis.mjs desktop-wails/build/bin
+
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:

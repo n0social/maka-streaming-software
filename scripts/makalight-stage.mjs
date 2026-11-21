@@ -30,11 +30,18 @@ cpSync(relaySrc, relayDest, {
 })
 
 const nodeStage = process.env.MAKA_NODE_STAGE
-if (nodeStage && existsSync(nodeStage)) {
+if (nodeStage) {
+  if (!existsSync(nodeStage)) {
+    console.error('MAKA_NODE_STAGE missing file:', nodeStage)
+    process.exit(1)
+  }
   const nodeDest = join(binDir, 'node')
   mkdirSync(nodeDest, { recursive: true })
   cpSync(nodeStage, join(nodeDest, 'node.exe'))
   console.log('staged node.exe')
+} else if (process.env.CI) {
+  console.error('CI build requires MAKA_NODE_STAGE (portable node.exe for relay)')
+  process.exit(1)
 }
 
 const version = JSON.parse(readFileSync(join(root, 'desktop-wails', 'wails.json'), 'utf8')).info

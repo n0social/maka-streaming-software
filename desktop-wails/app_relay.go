@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/n0social/maka-streaming-software/desktop-wails/internal/diagnostics"
 	"github.com/n0social/maka-streaming-software/desktop-wails/internal/relay"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -39,8 +40,20 @@ func (a *App) autoStartRelay() {
 			}
 		}
 	}()
-	_ = a.StartRelay()
+	snap := a.StartRelay()
 	close(stopEmit)
+	a.emitRelaySnapshotOnce()
+	if snap.Lifecycle != "ready" && snap.Lifecycle != "live" {
+		msg := fmt.Sprint(snap.Error)
+		if msg == "" || msg == "<nil>" {
+			msg = fmt.Sprintf("relay lifecycle %q after auto-start", snap.Lifecycle)
+		}
+		detail := map[string]any{"lifecycle": snap.Lifecycle}
+		for k, v := range a.relay.LaunchContext() {
+			detail[k] = v
+		}
+		a.diag.Record(diagnostics.Level("error"), "relay.autostart", msg, "", detail)
+	}
 }
 
 func (a *App) shutdown(ctx context.Context) {
@@ -101,6 +114,20 @@ func (a *App) VerifySystem() map[string]any {
 		Name:   "relay-entry",
 		Ok:     entryOk,
 		Detail: entry,
+	})
+	launch := a.relay.LaunchContext()
+	nodeOk := launch["nodeBin"] != ""
+	nodeDetail := launch["nodeBin"]
+	if !nodeOk {
+		nodeDetail = launch["nodeError"]
+		if nodeDetail == "" {
+			nodeDetail = "node\\node.exe not found beside MakaLight.exe"
+		}
+	}
+	checks = append(checks, verifyCheck{
+		Name:   "relay-node",
+		Ok:     nodeOk,
+		Detail: nodeDetail,
 	})
 	checks = append(checks, verifyCheck{
 		Name:   "relay-binary",

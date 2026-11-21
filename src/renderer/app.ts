@@ -397,6 +397,16 @@ const lifecycleCopy: Record<RelaySnapshot['lifecycle'], string> = {
   error: 'Relay error',
 }
 
+function relayChipLabel(snapshot: RelaySnapshot): string {
+  const base = lifecycleCopy[snapshot.lifecycle] ?? 'Relay ready'
+  if (snapshot.lifecycle === 'stopped' && snapshot.error) {
+    const short =
+      snapshot.error.length > 80 ? `${snapshot.error.slice(0, 77)}…` : snapshot.error
+    return `Relay offline — ${short}`
+  }
+  return base
+}
+
 function setDestError(message: string | null): void {
   if (!message) {
     destError.hidden = true
@@ -1259,7 +1269,10 @@ function renderRelay(snapshot: RelaySnapshot): void {
       ? `${label} — ingest rejected`
       : `${label} — reconnect failed`
   } else {
-    relayLabel.textContent = lifecycleCopy[lifecycle]
+    relayLabel.textContent = relayChipLabel({
+      ...snapshot,
+      lifecycle,
+    })
   }
   relayStatus.textContent =
     live && liveReconnecting ? 'reconnecting' : (snapshot.status?.status ?? lifecycle)
@@ -1289,7 +1302,7 @@ function renderRelay(snapshot: RelaySnapshot): void {
     snapshot.lifecycle !== 'live' &&
     !(live && liveReconnecting)
   ) {
-    relayLabel.textContent = `${lifecycleCopy[snapshot.lifecycle]} · r${snapshot.restarts}`
+    relayLabel.textContent = `${relayChipLabel(snapshot)} · r${snapshot.restarts}`
   }
 
   btnGoLive.dataset.live = live ? '1' : '0'

@@ -3742,6 +3742,14 @@ const lifecycleCopy = {
   live: "LIVE",
   error: "Relay error"
 };
+function relayChipLabel(snapshot) {
+  const base = lifecycleCopy[snapshot.lifecycle] ?? "Relay ready";
+  if (snapshot.lifecycle === "stopped" && snapshot.error) {
+    const short = snapshot.error.length > 80 ? `${snapshot.error.slice(0, 77)}…` : snapshot.error;
+    return `Relay offline — ${short}`;
+  }
+  return base;
+}
 function setDestError(message) {
   if (!message) {
     destError.hidden = true;
@@ -4482,7 +4490,10 @@ function renderRelay(snapshot) {
     const label = liveRecoveryReasonLabel(liveRecoveryReason ?? "relay:recover");
     relayLabel.textContent = liveRecoveryFatal ? `${label} — ingest rejected` : `${label} — reconnect failed`;
   } else {
-    relayLabel.textContent = lifecycleCopy[lifecycle];
+    relayLabel.textContent = relayChipLabel({
+      ...snapshot,
+      lifecycle
+    });
   }
   relayStatus.textContent = live && liveReconnecting ? "reconnecting" : snapshot.status?.status ?? lifecycle;
   relayVersion.textContent = snapshot.health ? `v${snapshot.health.version}` : "—";
@@ -4500,7 +4511,7 @@ function renderRelay(snapshot) {
   }
   updateStudioStatusFooter(snapshot);
   if (snapshot.restarts && snapshot.restarts > 0 && snapshot.lifecycle !== "ready" && snapshot.lifecycle !== "live" && !(live && liveReconnecting)) {
-    relayLabel.textContent = `${lifecycleCopy[snapshot.lifecycle]} · r${snapshot.restarts}`;
+    relayLabel.textContent = `${relayChipLabel(snapshot)} · r${snapshot.restarts}`;
   }
   btnGoLive.dataset.live = live ? "1" : "0";
   btnGoLive.dataset.exhausted = liveRecoveryExhausted ? "1" : "0";

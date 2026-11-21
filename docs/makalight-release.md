@@ -33,7 +33,8 @@ You do **not** need a local Windows machine to ship; you need merge + one workfl
 1. `makalight:debug`
 2. `wails build` in `desktop-wails/`
 3. Stage `relay/` + portable `node.exe` into `build/bin/`
-4. Attach `MakaLight-amd64-installer.exe` + `MakaLight.exe` to GitHub Release
+4. **`node scripts/makalight-nsis.mjs`** — rebuild NSIS so the installer includes the staged bundle (Wails’ first `makensis` pass runs too early)
+5. Attach `MakaLight-amd64-installer.exe` + `MakaLight.exe` to GitHub Release
 
 ## Site
 
