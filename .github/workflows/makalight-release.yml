@@ -54,15 +54,16 @@ jobs:
       - name: Install NSIS (makensis for Wails + makalight-nsis rebuild)
         run: choco install nsis -y --no-progress
 
-      # Wails invokes makensis here; that first pass only ships MakaLight.exe (no relay/ yet).
-      - name: Build MakaLight (NSIS)
+      # exe, then -nsis -nopackage seeds build/windows/installer/* (no relay/ in bin yet).
+      - name: Build MakaLight (exe + NSIS templates)
         shell: bash
         run: |
           export PATH="/c/Program Files (x86)/NSIS:$(go env GOPATH)/bin:$PATH"
-          mkdir -p desktop-wails/build/windows
-          cp resources/icons/icon.ico desktop-wails/build/windows/icon.ico
           cd desktop-wails
-          wails build -clean -platform windows/amd64
+          wails build -clean -s -platform windows/amd64 -nopackage
+          mkdir -p build/windows
+          cp ../resources/icons/icon.ico build/windows/icon.ico
+          wails build -s -platform windows/amd64 -nsis -f -nopackage
 
       - name: Download portable Node for relay
         shell: bash
