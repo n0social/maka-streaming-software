@@ -4485,7 +4485,7 @@ function liveReconnectStatusLine() {
 }
 function renderRelay(snapshot) {
   lastRelaySnapshot = snapshot;
-  const lifecycle = snapshot.lifecycle === "running" ? "ready" : snapshot.lifecycle;
+  const lifecycle = snapshot.lifecycle;
   const live = isSessionLive();
   const relayUiState = live && liveReconnecting ? "starting" : live && liveRecoveryExhausted ? "error" : lifecycle;
   relayChip.dataset.state = relayUiState;
@@ -4851,6 +4851,9 @@ function recoveryReasonFromSnapshot(snapshot) {
 }
 function handleRelayLiveRecovery(snapshot) {
   renderRelay(snapshot);
+  if (snapshot.health && typeof snapshot.health === "object" && "version" in snapshot.health) {
+    void settingsView.refreshVersions();
+  }
   if (!relaySnapshotNeedsRecovery(snapshot)) return;
   const reason = recoveryReasonFromSnapshot(snapshot);
   const detail = snapshot.status?.error ?? snapshot.error ?? void 0;

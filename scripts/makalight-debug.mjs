@@ -29,8 +29,8 @@ function run(name, cmd, args, opts = {}) {
 
 const steps = [
   ['test:makalight-sync', 'npm', ['run', 'test:makalight-sync']],
-  ['verify:makalight-parity', 'npm', ['run', 'verify:makalight-parity']],
   ['makalight:bundle', 'npm', ['run', 'makalight:bundle']],
+  ['verify:makalight-parity', 'npm', ['run', 'verify:makalight-parity']],
   ['go-test', 'go', ['test', './...', '-count=1'], { cwd: join(root, 'desktop-wails') }],
   ['qos-score', 'npm', ['run', 'test:qos-score']],
   ['platform-viewers', 'npm', ['run', 'test:platform-viewers']],
