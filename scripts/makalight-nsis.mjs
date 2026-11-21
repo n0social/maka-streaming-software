@@ -10,7 +10,7 @@ import { existsSync, readFileSync, readdirSync, writeFileSync, statSync } from '
 import { homedir } from 'node:os'
 import { join, dirname, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { spawnSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { assertBundleBlock, patchProjectNsi } from './makalight-nsis-patch.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -116,13 +116,14 @@ function main() {
   const relExe = relative(installerDir, exe).replace(/\//g, '\\')
   const makensis = resolveMakensis()
   console.log('makalight-nsis: makensis →', makensis)
-  const res = spawnSync(
-    makensis,
-    [`-DARG_WAILS_AMD64_BINARY=${relExe}`, 'project.nsi'],
-    { cwd: installerDir, stdio: 'inherit', shell: false, windowsVerbatimArguments: false },
-  )
-  if (res.status !== 0) {
-    fail(`makensis exited ${res.status ?? 1}`)
+  try {
+    execFileSync(makensis, [`-DARG_WAILS_AMD64_BINARY=${relExe}`, 'project.nsi'], {
+      cwd: installerDir,
+      stdio: 'inherit',
+    })
+  } catch (e) {
+    const code = typeof e?.status === 'number' ? e.status : 1
+    fail(`makensis exited ${code}`)
   }
   const installer = join(binDir, 'MakaLight-amd64-installer.exe')
   if (!existsSync(installer)) {
