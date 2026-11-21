@@ -48,20 +48,11 @@ jobs:
       - name: MakaLight debug
         run: npm run makalight:debug
 
-      - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.2
-
-      - name: Install NSIS (system makensis for Wails -nsis seed)
+      - name: Install NSIS
         run: choco install nsis -y --no-progress
 
-      # Exe first, then a -nsis -nopackage pass seeds installer/*.nsh (wails_tools.nsh). Relay is staged before makalight-nsis rebuild.
-      - name: Build MakaLight (exe + NSIS templates)
-        shell: bash
-        run: |
-          export PATH="/c/Program Files (x86)/NSIS:$(go env GOPATH)/bin:$PATH"
-          cd desktop-wails
-          wails build -clean -s -platform windows/amd64 -nopackage
-          wails build -s -platform windows/amd64 -nsis -f -nopackage
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.2
 
       - name: Download portable Node for relay
         shell: bash
@@ -73,10 +64,18 @@ jobs:
           cp "node-v${NODE_VER}-win-x64/node.exe" node-stage/node.exe
           echo "MAKA_NODE_STAGE=${GITHUB_WORKSPACE}/node-stage/node.exe" >> "$GITHUB_ENV"
 
-      # Order is mandatory: stage relay + node into build/bin, then patch/rebuild NSIS (makalight-nsis.mjs).
-      # Do not publish or upload before the Rebuild NSIS step — the Wails-built installer is incomplete.
-      - name: Stage relay beside executable
-        run: node scripts/makalight-stage.mjs desktop-wails/build/bin
+      # Proven 0.1.3 order: exe → stage relay/node → wails -nsis (generates wails_tools.nsh + project.nsi).
+      # makalight-nsis.mjs then patches bundle lines and rebuilds so relay/ is never omitted.
+      - name: Build MakaLight (exe, stage bundle, NSIS seed)
+        shell: bash
+        run: |
+          export PATH="/c/Program Files (x86)/NSIS:$(go env GOPATH)/bin:$PATH"
+          mkdir -p desktop-wails/build/windows
+          cp resources/icons/icon.ico desktop-wails/build/windows/icon.ico
+          cd desktop-wails
+          wails build -clean -s -platform windows/amd64 -nopackage
+          node ../scripts/makalight-stage.mjs build/bin
+          wails build -s -platform windows/amd64 -nsis -f
 
       - name: Rebuild NSIS installer with relay and Node bundle
         run: node scripts/makalight-nsis.mjs desktop-wails/build/bin
