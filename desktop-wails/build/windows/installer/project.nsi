@@ -3,8 +3,17 @@ Unicode true
 ####
 ## MakaLight: bundle open MAKA.relay + portable Node beside the app (same layout as electron-builder extraResources).
 ## CI must run `makalight-stage.mjs` into build/bin before `wails build -nsis`.
+##
+## Add/Remove Programs: only installs via this NSIS EXE register (HKLM Uninstall key).
+## Loose MakaLight.exe from GitHub releases is portable and does not appear in Settings → Apps.
 ####
+
+; Per-machine install (HKLM Uninstall). Default UNINST_KEY_NAME = MAKA + MakaLight from wails.json.
+!define REQUEST_EXECUTION_LEVEL "admin"
+
 !include "wails_tools.nsh"
+
+InstallDirRegKey HKLM "${UNINST_KEY}" "InstallLocation"
 
 VIProductVersion "${INFO_PRODUCTVERSION}.0"
 VIFileVersion    "${INFO_PRODUCTVERSION}.0"
@@ -40,10 +49,11 @@ InstallDir "$PROGRAMFILES64\${INFO_COMPANYNAME}\${INFO_PRODUCTNAME}"
 ShowInstDetails show
 
 Function .onInit
+   SetRegView 64
    !insertmacro wails.checkArchitecture
 FunctionEnd
 
-Section
+Section "Install"
     !insertmacro wails.setShellContext
 
     !insertmacro wails.webview2runtime
@@ -65,6 +75,8 @@ Section
     !insertmacro wails.associateCustomProtocols
 
     !insertmacro wails.writeUninstaller
+    SetRegView 64
+    WriteRegStr HKLM "${UNINST_KEY}" "InstallLocation" "$INSTDIR"
 SectionEnd
 
 Section "uninstall"

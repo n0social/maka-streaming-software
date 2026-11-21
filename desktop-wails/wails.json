@@ -12,7 +12,7 @@
   "info": {
     "companyName": "MAKA",
     "productName": "MakaLight",
-    "productVersion": "0.1.2",
+    "productVersion": "0.1.3",
     "copyright": "MIT",
     "comments": "Lightweight streaming studio (WebView2 + Go)"
   },

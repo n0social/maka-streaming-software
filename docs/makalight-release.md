@@ -34,6 +34,23 @@ You do **not** need a local Windows machine to ship; you need merge + one workfl
 2. `wails build -nopackage` → stage `relay/` + `node/node.exe` → `wails build -nsis`
 3. Attach `MakaLight-amd64-installer.exe` (+ optional loose `MakaLight.exe`) to GitHub Release
 
+### Installer vs portable exe
+
+| Asset | Register in Add/Remove Programs? |
+| --- | --- |
+| `MakaLight-amd64-installer.exe` | **Yes** — writes `HKLM\…\Uninstall\MAKAMakaLight` |
+| `MakaLight.exe` (release asset) | **No** — run-from-folder portable; use for dev/ZIP layouts only |
+
+Ship the installer to end users. The loose exe is optional for advanced users who manage their own folder layout.
+
+### Windows validation (after install)
+
+1. Run `MakaLight-amd64-installer.exe` elevated (UAC).
+2. Settings → Apps → Installed apps: find **MakaLight** (publisher **MAKA**), version matches `wails.json` `productVersion`.
+3. Or **Programs and Features**: same entry; uninstall via Settings or `%ProgramFiles%\MAKA\MakaLight\uninstall.exe`.
+4. Registry check (Admin CMD):  
+   `reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\MAKAMakaLight" /v DisplayName`
+
 ## Site
 
 Update [`site/download.html`](../site/download.html) with the new tag URL, then deploy per [`docs/site-deploy.md`](site-deploy.md).
