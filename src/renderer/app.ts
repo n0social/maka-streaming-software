@@ -1240,13 +1240,15 @@ function liveReconnectStatusLine(): string {
 
 function renderRelay(snapshot: RelaySnapshot): void {
   lastRelaySnapshot = snapshot
+  const lifecycle =
+    snapshot.lifecycle === 'running' ? 'ready' : snapshot.lifecycle
   const live = isSessionLive()
   const relayUiState =
     live && liveReconnecting
       ? 'starting'
       : live && liveRecoveryExhausted
         ? 'error'
-        : snapshot.lifecycle
+        : lifecycle
 
   relayChip.dataset.state = relayUiState
   if (live && liveReconnecting) {
@@ -1257,10 +1259,10 @@ function renderRelay(snapshot: RelaySnapshot): void {
       ? `${label} — ingest rejected`
       : `${label} — reconnect failed`
   } else {
-    relayLabel.textContent = lifecycleCopy[snapshot.lifecycle]
+    relayLabel.textContent = lifecycleCopy[lifecycle]
   }
   relayStatus.textContent =
-    live && liveReconnecting ? 'reconnecting' : (snapshot.status?.status ?? snapshot.lifecycle)
+    live && liveReconnecting ? 'reconnecting' : (snapshot.status?.status ?? lifecycle)
   relayVersion.textContent = snapshot.health ? `v${snapshot.health.version}` : '—'
   renderPlatformStatus(snapshot)
 
@@ -5535,4 +5537,9 @@ refreshProgramPreviewLayout()
 updateGoLiveLabel(false)
 updateStreamInfo(false)
 
-void window.maka.getRelay().then(renderRelay)
+void window.maka.getRelay().then((snap) => {
+  renderRelay(snap)
+  if (snap.lifecycle === 'stopped' && !snap.error) {
+    void window.maka.startRelay().then(renderRelay)
+  }
+})

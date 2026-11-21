@@ -145,6 +145,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	configureRelayChildProcess(cmd)
 	if err := cmd.Start(); err != nil {
 		m.snapshot = Snapshot{Lifecycle: "stopped", Error: err.Error()}
 		return err
@@ -216,16 +217,60 @@ func (m *Manager) refreshLocked(ctx context.Context) error {
 		return err
 	}
 	status, _ := fetchJSON(ctx, m.client, BaseURL+StatusPath)
-	lifecycle := "ready"
-	if m.cmd != nil {
-		lifecycle = "running"
-	}
+	health = localizeRelayHealth(health)
+	lifecycle := lifecycleFromRelayStatus(status, m.cmd != nil)
+	snapErr := relayStatusError(status)
 	m.snapshot = Snapshot{
 		Lifecycle: lifecycle,
 		Health:    health,
 		Status:    status,
-		Error:     nil,
+		Error:     snapErr,
 		Pid:       pidOrNil(m.cmd),
+	}
+	return nil
+}
+
+func localizeRelayHealth(health any) any {
+	hmap, ok := health.(map[string]any)
+	if !ok {
+		return health
+	}
+	hmap["streamUrl"] = WhipURL
+	return hmap
+}
+
+func lifecycleFromRelayStatus(status any, processUp bool) string {
+	smap, ok := status.(map[string]any)
+	if !ok {
+		if processUp {
+			return "ready"
+		}
+		return "ready"
+	}
+	st, _ := smap["status"].(string)
+	switch st {
+	case "live":
+		return "live"
+	case "error":
+		return "error"
+	case "starting":
+		return "starting"
+	default:
+		return "ready"
+	}
+}
+
+func relayStatusError(status any) any {
+	smap, ok := status.(map[string]any)
+	if !ok {
+		return nil
+	}
+	st, _ := smap["status"].(string)
+	if st != "error" {
+		return nil
+	}
+	if msg, ok := smap["error"].(string); ok && msg != "" {
+		return msg
 	}
 	return nil
 }
