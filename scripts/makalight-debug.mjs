@@ -36,7 +36,12 @@ const steps = [
   ['test:makalight-sync', 'npm', ['run', 'test:makalight-sync']],
   ['makalight:bundle', 'npm', ['run', 'makalight:bundle']],
   ['verify:makalight-parity', 'npm', ['run', 'verify:makalight-parity']],
-  ['go-test', 'go', ['test', './...', '-count=1'], { cwd: join(root, 'desktop-wails') }],
+  [
+    'go-test',
+    'go',
+    ['test', './...', '-count=1', '-v'],
+    { cwd: join(root, 'desktop-wails'), shell: false },
+  ],
   ['qos-score', 'npm', ['run', 'test:qos-score']],
   ['platform-viewers', 'npm', ['run', 'test:platform-viewers']],
 ]
