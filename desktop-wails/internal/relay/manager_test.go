@@ -11,7 +11,7 @@ func TestResolveRelayPathsFromRepoRoot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	repoRoot := filepath.Clean(filepath.Join(wd, "..", ".."))
+	repoRoot := filepath.Clean(filepath.Join(wd, "..", "..", ".."))
 	t.Setenv("MAKA_REPO_ROOT", repoRoot)
 	entry, relayRoot, foundRoot, err := resolveRelayPaths()
 	if err != nil {

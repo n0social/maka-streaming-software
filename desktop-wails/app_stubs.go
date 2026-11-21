@@ -20,7 +20,6 @@ func (a *App) GetPlatformViewers(query map[string]any) map[string]any {
 	return map[string]any{"twitch": nil, "youtube": nil}
 }
 func (a *App) PublishPlatformMetadata() map[string]any { return map[string]any{} }
-func (a *App) RevealRelay() string                        { return "" }
 func (a *App) GetVcamCapability() map[string]any          { return map[string]any{"supported": false} }
 func (a *App) OpenVcamOutput()                              {}
 func (a *App) CloseVcamOutput()                             {}
@@ -48,7 +47,6 @@ func (a *App) ExportDiagnostics() string { return "" }
 func (a *App) ExportQosBundle(snapshot map[string]any) map[string]any {
 	return map[string]any{"ok": false}
 }
-func (a *App) VerifySystem() map[string]any { return map[string]any{} }
 func (a *App) PickSceneImageFile() map[string]any { return map[string]any{"canceled": true} }
 func (a *App) ReadSceneImageDataUrl(filePath string) any { return nil }
 func (a *App) SaveRecording(payload map[string]any) map[string]any { return map[string]any{"canceled": true} }

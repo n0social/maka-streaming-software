@@ -49,10 +49,6 @@ func NewApp() (*App, error) {
 	return app, nil
 }
 
-func (a *App) startup(ctx context.Context) {
-	a.ctx = ctx
-	go a.emitRelayLoop()
-}
 
 func (a *App) emitRelayLoop() {
 	if a.ctx == nil {
@@ -103,23 +99,30 @@ func (a *App) StartRelay() relay.Snapshot {
 		if s.Error == nil || s.Error == "" {
 			s.Error = err.Error()
 		}
+		a.emitRelaySnapshot()
 		return s
 	}
-	return a.relay.GetSnapshot()
+	s := a.relay.GetSnapshot()
+	a.emitRelaySnapshot()
+	return s
 }
 
 func (a *App) StopRelay() relay.Snapshot {
 	ctx, cancel := context.WithTimeout(a.ctx, 10*time.Second)
 	defer cancel()
 	_ = a.relay.Stop(ctx)
-	return a.relay.GetSnapshot()
+	s := a.relay.GetSnapshot()
+	a.emitRelaySnapshot()
+	return s
 }
 
 func (a *App) RefreshRelay() relay.Snapshot {
 	ctx, cancel := context.WithTimeout(a.ctx, 8*time.Second)
 	defer cancel()
 	_ = a.relay.Refresh(ctx)
-	return a.relay.GetSnapshot()
+	s := a.relay.GetSnapshot()
+	a.emitRelaySnapshot()
+	return s
 }
 
 type whipPublishPayload struct {

@@ -68,16 +68,31 @@ func NewManager() (*Manager, error) {
 	}, nil
 }
 
+func (m *Manager) EntryPath() string {
+	if m == nil {
+		return ""
+	}
+	return m.entry
+}
+
 func resolveRelayPaths() (entry, relayRoot, repoRoot string, err error) {
 	candidates := []string{}
 	if root := os.Getenv("MAKA_REPO_ROOT"); root != "" {
 		candidates = append(candidates, root)
 	}
 	if wd, e := os.Getwd(); e == nil {
-		candidates = append(candidates, wd, filepath.Join(wd, ".."))
+		dir := filepath.Clean(wd)
+		for i := 0; i < 8; i++ {
+			candidates = append(candidates, dir)
+			dir = filepath.Clean(filepath.Join(dir, ".."))
+		}
 	}
 	if exe, e := os.Executable(); e == nil {
-		candidates = append(candidates, filepath.Dir(exe), filepath.Join(filepath.Dir(exe), "..", ".."))
+		dir := filepath.Clean(filepath.Dir(exe))
+		for i := 0; i < 6; i++ {
+			candidates = append(candidates, dir)
+			dir = filepath.Clean(filepath.Join(dir, ".."))
+		}
 	}
 	seen := map[string]bool{}
 	for _, root := range candidates {
@@ -262,7 +277,8 @@ func (m *Manager) PublishWhip(ctx context.Context, offerSdp string) (answerSdp s
 	req.Header.Set("Content-Type", "application/sdp")
 	req.Header.Set("Accept", "application/sdp")
 	req.Header.Set("Authorization", "Bearer "+token)
-	res, err := m.client.Do(req)
+	whipClient := &http.Client{Timeout: 25 * time.Second}
+	res, err := whipClient.Do(req)
 	if err != nil {
 		return "", "", err
 	}
