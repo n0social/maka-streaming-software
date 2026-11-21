@@ -56,7 +56,7 @@ jobs:
         run: |
           export PATH="$PATH:$(go env GOPATH)/bin"
           cd desktop-wails
-          wails build -clean -platform windows/amd64
+          wails build -clean -s -platform windows/amd64
 
       - name: Download portable Node for relay
         shell: bash
