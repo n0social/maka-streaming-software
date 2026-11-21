@@ -119,6 +119,7 @@
     windowClose: () => bind('WindowClose'),
     openStream: () => bind('OpenStream'),
     openHome: () => bind('OpenHome'),
+    onShellStream: (cb) => eventsOn('shell:stream', cb),
     onPrepareQuit: (cb) => eventsOn('app:prepare-quit', cb),
     ackPrepareQuit: () => bind('AckPrepareQuit'),
     getUpdateStatus: () => bind('GetUpdateStatus'),

@@ -208,14 +208,15 @@ func (a *App) WindowClose() {
 }
 
 func (a *App) OpenExternal(url string) {
-	wailsruntime.BrowserOpenURL(a.ctx, url)
+	if a.ctx == nil {
+		return
+	}
+	allowed, ok := shellExternalURLAllowed(url)
+	if !ok {
+		return
+	}
+	wailsruntime.BrowserOpenURL(a.ctx, allowed)
 }
-
-func (a *App) OpenStream() {
-	wailsruntime.EventsEmit(a.ctx, "shell:stream")
-}
-
-func (a *App) OpenHome() {}
 
 // ListCaptureSources — ipc capture:list-sources (1:1 DTO).
 func (a *App) ListCaptureSources() []capture.Source {
