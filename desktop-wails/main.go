@@ -16,7 +16,7 @@ func main() {
 	}
 
 	err = wails.Run(&options.App{
-		Title:     "MakaLight",
+		Title:     "Maka",
 		Width:     1320,
 		Height:    860,
 		MinWidth:  1024,

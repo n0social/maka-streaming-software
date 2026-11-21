@@ -1,22 +1,20 @@
 /**
- * MakaLight — replaces Electron preload for Wails.
- * Implements a subset of MakaBridge; browser APIs are omitted (studio-only).
+ * 1:1 MakaBridge surface from src/preload/index.ts — binds to Wails go.main.App where implemented.
  */
 ;(function () {
   const go = () => window.go?.main?.App
   const rt = () => window.runtime
 
-  const rejected = (name) =>
-    Promise.reject(new Error(`MakaLight: ${name} not implemented yet`))
+  const rejectUnimplemented = (channel) =>
+    Promise.reject(new Error(`Unhandled studio bridge: ${channel}`))
 
   const noopUnsub = () => {}
 
-  const promisify = (fn) => {
-    if (!fn) return () => rejected('backend')
-    return (...args) => {
-      const result = fn.apply(go(), args)
-      return result && typeof result.then === 'function' ? result : Promise.resolve(result)
-    }
+  const bind = (method, ...args) => {
+    const app = go()
+    if (!app || typeof app[method] !== 'function') return rejectUnimplemented(method)
+    const out = app[method](...args)
+    return out && typeof out.then === 'function' ? out : Promise.resolve(out)
   }
 
   const eventsOn = (name, cb) => {
@@ -25,105 +23,105 @@
     return runtime.EventsOn(name, cb)
   }
 
-  window.maka = {
-    getVersionInfo: promisify(() => go()?.GetVersionInfo()),
-    getRelay: promisify(() => go()?.GetRelay()),
-    startRelay: promisify(() => go()?.StartRelay()),
-    stopRelay: promisify(() => go()?.StopRelay()),
-    refreshRelay: promisify(() => go()?.RefreshRelay()),
-    publishWhipOffer: (sdp, token) => promisify(() => go()?.PublishWhipOffer(sdp, token))(),
-    closeWhipResource: (resourceUrl, token) =>
-      promisify(() => go()?.CloseWhipResource({ resourceUrl, token }))().then(() => undefined),
+  const emptyBrowserState = () => ({
+    url: '',
+    title: '',
+    canGoBack: false,
+    canGoForward: false,
+  })
+
+  const api = {
+    getPlatformViewers: (query) => bind('GetPlatformViewers', query),
+    getRelay: () => bind('GetRelay'),
+    publishPlatformMetadata: () => bind('PublishPlatformMetadata'),
+    startRelay: () => bind('StartRelay'),
+    stopRelay: () => bind('StopRelay'),
+    refreshRelay: () => bind('RefreshRelay'),
+    publishWhipOffer: (sdp, relayToken) => bind('PublishWhipOffer', sdp, relayToken),
+    closeWhipResource: (resourceUrl, relayToken) =>
+      bind('CloseWhipResource', { resourceUrl, token: relayToken }).then(() => undefined),
     onRelayUpdate: (cb) => eventsOn('relay:update', cb),
-    getMode: promisify(() => go()?.GetMode()),
-    getWorkspaceMode: promisify(() => go()?.GetWorkspaceMode()),
-    setMode: promisify((mode) => go()?.SetMode(mode)),
-    exitSettingsMode: promisify(() => go()?.ExitSettingsMode()),
+    getMode: () => bind('GetMode'),
+    getWorkspaceMode: () => bind('GetWorkspaceMode'),
+    setMode: (mode) => bind('SetMode', mode),
+    exitSettingsMode: () => bind('ExitSettingsMode'),
+    getVersionInfo: () => bind('GetVersionInfo'),
+    getVcamCapability: () => bind('GetVcamCapability'),
+    openVcamOutput: () => bind('OpenVcamOutput'),
+    closeVcamOutput: () => bind('CloseVcamOutput'),
+    pushVcamFrame: (dataUrl) => bind('PushVcamFrame', dataUrl),
+    onVcamFrame: (cb) => eventsOn('vcam:frame', cb),
+    listGpuOptions: () => bind('ListGpuOptions'),
+    pickRecordingFolder: () => bind('PickRecordingFolder'),
     onMode: (cb) => eventsOn('app:mode', cb),
-    getSettings: promisify(() => go()?.GetSettings()),
-    setSettings: promisify((partial) => go()?.SetSettings(partial)),
-    listCaptureSources: promisify(() => go()?.ListCaptureSources()),
-    windowMinimize: promisify(() => go()?.WindowMinimize()),
-    windowMaximize: promisify(() => go()?.WindowMaximize()),
-    windowClose: promisify(() => go()?.WindowClose()),
-    openExternal: promisify((url) => go()?.OpenExternal(url)),
-    openStream: promisify(() => go()?.OpenStream()),
-    openHome: promisify(() => go()?.OpenHome()),
-
-    // Browser / Search tab — not in MakaLight (studio-only).
-    navigate: () => rejected('navigate'),
-    back: () => rejected('back'),
-    forward: () => rejected('forward'),
-    reload: () => rejected('reload'),
-    getBrowserState: () =>
-      Promise.resolve({ url: '', title: '', canGoBack: false, canGoForward: false }),
-    listTabs: () => Promise.resolve([]),
-    newTab: () => Promise.resolve(null),
-    activateTab: () => Promise.resolve([]),
-    closeTab: () => Promise.resolve([]),
-    openPinned: () => Promise.resolve([]),
-    popoutChat: () => Promise.resolve(),
-    getBrowseCaptureTarget: () => Promise.resolve(null),
-    setBrowseCaptureActive: () => Promise.resolve(false),
-    onNavigated: () => noopUnsub,
-    onTitle: () => noopUnsub,
-    onTabs: () => noopUnsub,
-
-    // Stubs — phased Go bindings.
-    getPlatformViewers: () => rejected('getPlatformViewers'),
-    publishPlatformMetadata: () => rejected('publishPlatformMetadata'),
-    revealRelay: () => rejected('revealRelay'),
-    startWindowAudio: () => rejected('startWindowAudio'),
-    stopWindowAudio: () => Promise.resolve(),
-    onWindowAudioPcm: () => noopUnsub,
-    setPreferredCaptureSource: () => Promise.resolve(),
-    listAddonPanels: () => Promise.resolve([]),
-    listMarketplace: () => Promise.resolve([]),
-    refreshMarketplace: () => Promise.resolve([]),
-    installAddon: () => rejected('installAddon'),
-    uninstallAddon: () => rejected('uninstallAddon'),
-    setAddonEnabled: () => rejected('setAddonEnabled'),
-    reloadAddons: () => Promise.resolve([]),
-    getAddonSettings: () => Promise.resolve({}),
-    setAddonSettings: () => Promise.resolve({}),
-    runAddonLiveEvents: () => Promise.resolve([]),
-    runAddonAction: () => rejected('runAddonAction'),
-    getAddonPreloadPath: () => Promise.resolve(''),
-    listDiagnostics: () => Promise.resolve([]),
-    recordDiagnostic: () => Promise.resolve(),
-    clearDiagnostics: () => Promise.resolve([]),
-    exportDiagnostics: () => rejected('exportDiagnostics'),
-    exportQosBundle: () => rejected('exportQosBundle'),
-    verifySystem: () => rejected('verifySystem'),
-    onDiagnostic: () => noopUnsub,
-    pickRecordingFolder: () => rejected('pickRecordingFolder'),
-    saveRecording: () => rejected('saveRecording'),
-    pickSceneImageFile: () => rejected('pickSceneImageFile'),
-    readSceneImageDataUrl: () => Promise.resolve(null),
-    listGpuOptions: () => Promise.resolve([]),
-    getVcamCapability: () => Promise.resolve({ supported: false }),
-    openVcamOutput: () => Promise.resolve(),
-    closeVcamOutput: () => Promise.resolve(),
-    pushVcamFrame: () => {},
-    onVcamFrame: () => noopUnsub,
-    getLayoutMetrics: () => Promise.resolve({ width: 0, height: 0 }),
-    onPrepareQuit: () => noopUnsub,
-    ackPrepareQuit: () => {},
-    getUpdateStatus: () =>
-      Promise.resolve({ status: 'idle', version: null, percent: null, error: null }),
-    checkForUpdates: () =>
-      Promise.resolve({ status: 'idle', version: null, percent: null, error: null }),
-    downloadUpdate: () =>
-      Promise.resolve({ status: 'idle', version: null, percent: null, error: null }),
-    installUpdate: () => Promise.resolve(),
-    onUpdateStatus: () => noopUnsub,
-    getPhonePair: () => rejected('getPhonePair'),
-    onPhonePairUpdate: () => noopUnsub,
-    onPhoneWebrtcOffer: () => noopUnsub,
-    onPhoneWebrtcReset: () => noopUnsub,
-    submitPhoneWebrtcAnswer: () => rejected('submitPhoneWebrtcAnswer'),
-    getPhoneWebRtcIceServers: () => Promise.resolve([]),
+    navigate: (url) => bind('BrowserNavigate', url),
+    back: () => bind('BrowserBack'),
+    forward: () => bind('BrowserForward'),
+    reload: () => bind('BrowserReload'),
+    getBrowserState: () => bind('BrowserState').catch(() => emptyBrowserState()),
+    onNavigated: (cb) => eventsOn('browser:navigated', cb),
+    onTitle: (cb) => eventsOn('browser:title', cb),
+    listCaptureSources: () => bind('ListCaptureSources'),
+    startWindowAudio: (sourceId) => bind('StartWindowAudio', sourceId),
+    stopWindowAudio: () => bind('StopWindowAudio'),
+    onWindowAudioPcm: (cb) => eventsOn('window-audio:pcm', cb),
+    setPreferredCaptureSource: (sourceId) => bind('SetPreferredCaptureSource', sourceId),
+    getBrowseCaptureTarget: () => bind('GetBrowseCaptureTarget'),
+    setBrowseCaptureActive: (active) => bind('SetBrowseCaptureActive', active),
+    listAddonPanels: () => bind('ListAddonPanels'),
+    listMarketplace: () => bind('ListMarketplace'),
+    refreshMarketplace: () => bind('RefreshMarketplace'),
+    installAddon: (catalogId) => bind('InstallAddon', catalogId),
+    uninstallAddon: (addonId) => bind('UninstallAddon', addonId),
+    setAddonEnabled: (addonId, enabled) => bind('SetAddonEnabled', addonId, enabled),
+    reloadAddons: () => bind('ReloadAddons'),
+    getAddonPreloadPath: () => bind('GetAddonPreloadPath'),
+    onAddonStudioToast: (cb) => eventsOn('addon-runtime:studio-toast', cb),
+    getAddonSettings: (addonId) => bind('GetAddonSettings', addonId),
+    setAddonSettings: (addonId, partial) => bind('SetAddonSettings', addonId, partial),
+    dispatchAddonLiveEvent: (event, ctx) => bind('DispatchAddonLiveEvent', event, ctx),
+    runAddonAction: (addonId, actionId, ctx) => bind('RunAddonAction', addonId, actionId, ctx),
+    revealRelay: () => bind('RevealRelay'),
+    listDiagnostics: () => bind('ListDiagnostics'),
+    recordDiagnostic: (event) => bind('RecordDiagnostic', event),
+    clearDiagnostics: () => bind('ClearDiagnostics'),
+    exportDiagnostics: () => bind('ExportDiagnostics'),
+    exportQosBundle: (snapshot) => bind('ExportQosBundle', snapshot),
+    verifySystem: () => bind('VerifySystem'),
+    onDiagnostic: (cb) => eventsOn('diagnostics:event', cb),
+    listTabs: () => bind('BrowserTabs'),
+    newTab: (url) => bind('BrowserNewTab', url),
+    activateTab: (id) => bind('BrowserActivateTab', id),
+    closeTab: (id) => bind('BrowserCloseTab', id),
+    openPinned: (presetId) => bind('BrowserOpenPinned', presetId),
+    onTabs: (cb) => eventsOn('browser:tabs', cb),
+    popoutChat: (url) => bind('BrowserPopoutChat', url),
+    getSettings: () => bind('GetSettings'),
+    setSettings: (partial) => bind('SetSettings', partial),
+    openExternal: (url) => bind('OpenExternal', url),
+    pickSceneImageFile: () => bind('PickSceneImageFile'),
+    readSceneImageDataUrl: (filePath) => bind('ReadSceneImageDataUrl', filePath),
+    saveRecording: (payload) => bind('SaveRecording', payload),
+    windowMinimize: () => bind('WindowMinimize'),
+    windowMaximize: () => bind('WindowMaximize'),
+    windowClose: () => bind('WindowClose'),
+    openStream: () => bind('OpenStream'),
+    openHome: () => bind('OpenHome'),
+    onPrepareQuit: (cb) => eventsOn('app:prepare-quit', cb),
+    ackPrepareQuit: () => bind('AckPrepareQuit'),
+    getUpdateStatus: () => bind('GetUpdateStatus'),
+    checkForUpdates: () => bind('CheckForUpdates'),
+    downloadUpdate: () => bind('DownloadUpdate'),
+    installUpdate: () => bind('InstallUpdate'),
+    onUpdateStatus: (cb) => eventsOn('app:update-status', cb),
+    getPhonePair: () => bind('GetPhonePair'),
+    onPhonePairUpdate: (cb) => eventsOn('phone-pair:update', cb),
+    onPhoneWebrtcOffer: (cb) => eventsOn('phone-pair:webrtc-offer', cb),
+    onPhoneWebrtcReset: (cb) => eventsOn('phone-pair:webrtc-reset', cb),
+    submitPhoneWebrtcAnswer: (answer) => bind('SubmitPhoneWebrtcAnswer', answer),
+    getPhoneWebRtcIceServers: () => bind('GetPhoneWebRtcIceServers'),
   }
 
-  document.documentElement.dataset.makalight = '1'
+  window.maka = api
+  window.tabcast = api
 })()

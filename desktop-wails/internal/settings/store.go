@@ -66,10 +66,11 @@ func NewStore() (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	storeDir := filepath.Join(dir, "store")
+	if err := os.MkdirAll(storeDir, 0o755); err != nil {
 		return nil, err
 	}
-	path := filepath.Join(dir, "settings.json")
+	path := filepath.Join(storeDir, "settings.json")
 	s := &Store{path: path, data: clone(DefaultSettings)}
 	if raw, err := os.ReadFile(path); err == nil {
 		var loaded map[string]any
@@ -81,14 +82,15 @@ func NewStore() (*Store, error) {
 }
 
 func configDir() (string, error) {
-	if dir := os.Getenv("MAKALIGHT_CONFIG_DIR"); dir != "" {
+	if dir := os.Getenv("MAKA_CONFIG_DIR"); dir != "" {
 		return dir, nil
 	}
 	config, err := os.UserConfigDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(config, "MakaLight"), nil
+	// Same layout as Electron app.getPath('userData') → productName "Maka"
+	return filepath.Join(config, "Maka"), nil
 }
 
 func clone(src map[string]any) map[string]any {

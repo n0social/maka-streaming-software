@@ -2,14 +2,21 @@ package main
 
 import (
 	"context"
+	"runtime"
 	"time"
 
+	"github.com/n0social/maka-streaming-software/desktop-wails/internal/appmeta"
 	"github.com/n0social/maka-streaming-software/desktop-wails/internal/relay"
 	"github.com/n0social/maka-streaming-software/desktop-wails/internal/settings"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-const makalightVersion = "0.1.0"
+// VersionInfo matches preload app:get-version-info / renderer settings-view.
+type VersionInfo struct {
+	AppVersion   string  `json:"appVersion"`
+	RelayVersion *string `json:"relayVersion"`
+	Platform     string  `json:"platform"`
+}
 
 // App exposes Go methods to the studio UI (window.maka bridge).
 type App struct {
@@ -52,19 +59,29 @@ func (a *App) emitRelayLoop() {
 			return
 		case <-ticker.C:
 			snap := a.relay.GetSnapshot()
-			runtime.EventsEmit(a.ctx, "relay:update", snap)
+			wailsruntime.EventsEmit(a.ctx, "relay:update", snap)
 		}
 	}
 }
 
-// GetVersionInfo matches preload app:get-version-info.
-func (a *App) GetVersionInfo() map[string]string {
-	return map[string]string{
-		"version":     makalightVersion,
-		"product":     "MakaLight",
-		"shell":       "wails",
-		"relayTarget": "open",
+// GetVersionInfo matches preload app:get-version-info (1:1 with Electron).
+func (a *App) GetVersionInfo() VersionInfo {
+	snap := a.relay.GetSnapshot()
+	var relayVer *string
+	if health, ok := snap.Health.(map[string]any); ok {
+		if v, ok := health["version"].(string); ok && v != "" {
+			relayVer = &v
+		}
 	}
+	return VersionInfo{
+		AppVersion:   appmeta.AppVersion(),
+		RelayVersion: relayVer,
+		Platform:     runtimeEnvironment(),
+	}
+}
+
+func runtimeEnvironment() string {
+	return runtime.GOOS
 }
 
 func (a *App) GetRelay() relay.Snapshot {
@@ -144,14 +161,14 @@ func (a *App) GetWorkspaceMode() string {
 func (a *App) SetMode(mode string) string {
 	if mode == "studio" || mode == "settings" {
 		a.appMode = mode
-		runtime.EventsEmit(a.ctx, "app:mode", mode)
+		wailsruntime.EventsEmit(a.ctx, "app:mode", mode)
 	}
 	return a.appMode
 }
 
 func (a *App) ExitSettingsMode() string {
 	a.appMode = "studio"
-	runtime.EventsEmit(a.ctx, "app:mode", a.appMode)
+	wailsruntime.EventsEmit(a.ctx, "app:mode", a.appMode)
 	return a.appMode
 }
 
@@ -168,24 +185,24 @@ func (a *App) SetSettings(partial map[string]any) map[string]any {
 }
 
 func (a *App) WindowMinimize() {
-	runtime.WindowMinimise(a.ctx)
+	wailsruntime.WindowMinimise(a.ctx)
 }
 
 func (a *App) WindowMaximize() bool {
-	runtime.WindowToggleMaximise(a.ctx)
+	wailsruntime.WindowToggleMaximise(a.ctx)
 	return false
 }
 
 func (a *App) WindowClose() {
-	runtime.Quit(a.ctx)
+	wailsruntime.Quit(a.ctx)
 }
 
 func (a *App) OpenExternal(url string) {
-	runtime.BrowserOpenURL(a.ctx, url)
+	wailsruntime.BrowserOpenURL(a.ctx, url)
 }
 
 func (a *App) OpenStream() {
-	runtime.EventsEmit(a.ctx, "shell:stream")
+	wailsruntime.EventsEmit(a.ctx, "shell:stream")
 }
 
 func (a *App) OpenHome() {}

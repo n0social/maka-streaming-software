@@ -22,7 +22,9 @@ npm run makalight:bundle
 npm run makalight:preview   # http://127.0.0.1:8765/
 ```
 
-This serves `frontend/dist` with mocked `window.go` for layout checks. **Not** a substitute for Windows `wails dev` / capture / relay.
+Preview mocks **Electron-shaped** `GetVersionInfo` / settings only for layout checks — same DOM as `out/renderer`. **Not** a substitute for Windows `wails dev`.
+
+After each bundle: `npm run verify:makalight-parity`.
 
 Linux `wails build` in CI may fail on Ubuntu 24.04 (Wails wants `webkit2gtk-4.0`; the image ships 4.1). **Ship `MakaLight.exe` on Windows.**
 

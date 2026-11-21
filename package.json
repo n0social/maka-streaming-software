@@ -62,6 +62,7 @@
     "sign:verify": "node scripts/sign-windows.mjs --verify --all",
     "release:manifest": "node scripts/update-browser-manifest.mjs",
     "makalight:sync": "node scripts/sync-makalight-frontend.mjs",
+    "verify:makalight-parity": "node scripts/verify-makalight-parity.mjs",
     "makalight:bundle": "npm run build && npm run makalight:sync",
     "test:makalight-sync": "node scripts/sync-makalight-frontend.test.mjs",
     "makalight:preview": "node scripts/makalight-preview-server.mjs",

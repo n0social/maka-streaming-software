@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * Copy electron-vite renderer build into MakaLight and strip in-app browser fluff from the bundle only.
- * Does not modify src/renderer/ (Electron stays frozen).
+ * 1:1 port rule: copy electron-vite renderer output verbatim.
+ * Only change allowed in app.html: inject maka-bridge.js before the module entry (Wails shell).
+ * Does not modify src/renderer/ or Electron.
  */
 import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -12,44 +13,19 @@ const srcDir = join(root, 'out', 'renderer')
 const destDir = join(root, 'desktop-wails', 'frontend', 'dist')
 const bridgeSrc = join(root, 'desktop-wails', 'frontend', 'maka-bridge.js')
 
-const REMOVE_IDS = [
-  'studio-source-browser',
-  'source-picker-browser',
-  'program-browser',
-  'layer-browser',
-  'btn-capture-browse',
-]
+const BRIDGE_TAG = '<script src="./maka-bridge.js"></script>'
 
-const REMOVE_SELECTORS = [
-  /<webview[\s\S]*?<\/webview>/gi,
-  /<webview[^>]*\/>/gi,
-]
-
-function patchAppHtml(html) {
-  let out = html
-  out = out.replace(/\sdata-mode="studio"/, ' data-mode="studio" data-makalight="1"')
-  for (const id of REMOVE_IDS) {
-    const re = new RegExp(`<[^>]+\\bid="${id}"[\\s\\S]*?>([\\s\\S]*?<\\/[^>]+>)?`, 'gi')
-    out = out.replace(re, '')
-    const re2 = new RegExp(`<[^>]+\\bid="${id}"[^>]*/>`, 'gi')
-    out = out.replace(re2, '')
-  }
-  for (const re of REMOVE_SELECTORS) {
-    out = out.replace(re, '')
-  }
-  if (!out.includes('maka-bridge.js')) {
-    out = out.replace(
-      /<script type="module" src="\.\/app\.js"><\/script>/,
-      '<script src="./maka-bridge.js"></script>\n    <script type="module" src="./app.js"></script>',
-    )
-    if (!out.includes('maka-bridge.js')) {
-      out = out.replace(
-        /<script type="module" src="\.\/app\.ts"><\/script>/,
-        '<script src="./maka-bridge.js"></script>\n    <script type="module" src="./app.js"></script>',
-      )
-    }
-  }
-  return out
+function injectBridge(html) {
+  if (html.includes('maka-bridge.js')) return html
+  const withJs = html.replace(
+    /(\s*)<script type="module" src="\.\/app\.js"><\/script>/,
+    `$1${BRIDGE_TAG}\n$1<script type="module" src="./app.js"></script>`,
+  )
+  if (withJs !== html) return withJs
+  return html.replace(
+    /(\s*)<script type="module" src="\.\/app\.ts"><\/script>/,
+    `$1${BRIDGE_TAG}\n$1<script type="module" src="./app.js"></script>`,
+  )
 }
 
 function main() {
@@ -68,12 +44,11 @@ function main() {
 
   const appHtml = join(destDir, 'app.html')
   if (existsSync(appHtml)) {
-    const html = readFileSync(appHtml, 'utf8')
-    writeFileSync(appHtml, patchAppHtml(html))
+    writeFileSync(appHtml, injectBridge(readFileSync(appHtml, 'utf8')))
   }
 
   copyFileSync(bridgeSrc, join(destDir, 'maka-bridge.js'))
-  console.log(`MakaLight frontend synced → ${destDir}`)
+  console.log(`MakaLight frontend synced (1:1 copy + bridge) → ${destDir}`)
 }
 
 main()

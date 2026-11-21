@@ -4,14 +4,29 @@
 
 See also: [resource utilization analysis](./resource-utilization-analysis.md), [desktop-wails/README.md](../desktop-wails/README.md).
 
+## 1:1 port rule (non-negotiable)
+
+| Layer | Rule |
+| --- | --- |
+| **Renderer** | Byte-identical to `npm run build` → `out/renderer/`, except `app.html` gains **one** `<script src="./maka-bridge.js">` line |
+| **DOM / copy** | No invented labels, attributes (`data-makalight`), or surgical HTML stripping in the sync pipeline |
+| **`window.maka`** | Same keys and call shapes as [`src/preload/index.ts`](../src/preload/index.ts) (+ `tabcast` alias) |
+| **`app:get-version-info`** | `{ appVersion, relayVersion, platform }` from root `package.json`, not a separate product version |
+| **Settings file** | `%AppData%/Maka/store/settings.json` (same path layout as Electron) |
+| **Shell** | Wails replaces Electron only; UI is not redesigned |
+
+Unimplemented IPC is ported incrementally in Go with **Electron-shaped** return values, not alternate UX.
+
+Verification: `npm run verify:makalight-parity` after `makalight:bundle`.
+
 ## Scope lock
 
 | In scope | Out of scope (now) |
 | --- | --- |
 | `desktop-wails/` Wails app, Go bridge, relay spawn | Editing Electron `src/main/`, `src/preload/` |
-| Frontend via `npm run makalight:bundle` | In-app browser / Search tab in **MakaLight** |
-| Open `relay/` sidecar | Porting Electron browse `WebContentsView` |
-| Benchmark harness under `benchmark/` | Addon marketplace in MakaLight Phase 1 |
+| Frontend via `npm run makalight:bundle` | reinterpreted studio UI |
+| Open `relay/` sidecar | — |
+| Benchmark harness under `benchmark/` | — |
 
 ## Architecture
 
@@ -39,7 +54,7 @@ flowchart LR
 ## Frontend sync (no Electron edits)
 
 1. `npm run build` — electron-vite renderer → `out/renderer/`
-2. `npm run makalight:sync` — copy to `desktop-wails/frontend/dist/`, inject `maka-bridge.js`, strip browser DOM from the **copy only** ([`scripts/sync-makalight-frontend.mjs`](../scripts/sync-makalight-frontend.mjs))
+2. `npm run makalight:sync` — 1:1 copy to `desktop-wails/frontend/dist/` + bridge inject ([`scripts/sync-makalight-frontend.mjs`](../scripts/sync-makalight-frontend.mjs))
 
 ## IPC → Go matrix (MakaLight targets)
 
