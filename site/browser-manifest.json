@@ -1,15 +1,15 @@
 ﻿{
   "updated": "2026-11-21",
   "downloadPath": "/downloads/MakaLight-amd64-installer.exe",
-  "githubDownload": "https://github.com/n0social/maka-streaming-software/releases/download/makalight-v0.1.3/MakaLight-amd64-installer.exe",
+  "githubDownload": "https://github.com/n0social/maka-streaming-software/releases/download/makalight-v0.1.4/MakaLight-amd64-installer.exe",
   "version": "0.1.3",
   "productName": "MakaLight",
   "relayVersion": "0.1.1",
   "artifact": "MakaLight-amd64-installer.exe",
   "sha256": "",
   "sizeBytes": 0,
-  "releaseTag": "makalight-v0.1.3",
-  "githubRelease": "https://github.com/n0social/maka-streaming-software/releases/tag/makalight-v0.1.3",
+  "releaseTag": "makalight-v0.1.4",
+  "githubRelease": "https://github.com/n0social/maka-streaming-software/releases/tag/makalight-v0.1.4",
   "legacyElectron": {
     "version": "2.8.3",
     "artifact": "Maka-Setup-2.8.3.exe",

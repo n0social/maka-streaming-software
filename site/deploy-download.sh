@@ -7,7 +7,7 @@ WEB_ROOT="${WEB_ROOT:-/opt/maka/web}"
 UPLOAD_DIR="${UPLOAD_DIR:-/tmp/maka-upload}"
 SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
 INSTALLER_NAME="${INSTALLER_NAME:-MakaLight-amd64-installer.exe}"
-RELEASE_TAG="${RELEASE_TAG:-makalight-v0.1.3}"
+RELEASE_TAG="${RELEASE_TAG:-makalight-v0.1.4}"
 
 echo "Fixing web permissions..."
 chmod 755 "${WEB_ROOT}"

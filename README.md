@@ -2,7 +2,7 @@
 
 **Official v2.8.3 — cloud streaming for streamers on Windows.** Maka is free streaming software built for **cloud gamers** and **PVP / competitive live streams**: capture play from **NVIDIA GeForce NOW**, **Xbox Cloud Gaming**, **Shadow PC**, and **Cloud Moon**, then go live to **Twitch**, **YouTube**, or custom RTMP with the bundled open **MAKA.relay** — less overhead than wiring up a full OBS stack first.
 
-**Site:** [makalive.stream](https://makalive.stream) · **Download (flagship):** [MakaLight 0.1.3](https://makalive.stream/download.html) · **Legacy Electron:** [v2.8.3](https://github.com/n0social/maka-streaming-software/releases/tag/v2.8.3)
+**Site:** [makalive.stream](https://makalive.stream) · **Download (flagship):** [MakaLight 0.1.4](https://makalive.stream/download.html) · **Legacy Electron:** [v2.8.3](https://github.com/n0social/maka-streaming-software/releases/tag/v2.8.3)
 
 
 ![Maka studio with a live game stream in the program monitor](docs/readme-hero.png)
@@ -13,11 +13,11 @@ Maka is **free streaming software** for Windows: a desktop **Electron studio** f
 
 ---
 
-## Get MakaLight (0.1.3 — flagship)
+## Get MakaLight (0.1.4 — flagship)
 
-The current **MakaLight** Windows installer is **[makalight-v0.1.3](https://github.com/n0social/maka-streaming-software/releases/tag/makalight-v0.1.3)**:
+The current **MakaLight** Windows installer is **[makalight-v0.1.4](https://github.com/n0social/maka-streaming-software/releases/tag/makalight-v0.1.4)**:
 
-- **[MakaLight-amd64-installer.exe](https://github.com/n0social/maka-streaming-software/releases/download/makalight-v0.1.3/MakaLight-amd64-installer.exe)** (NSIS — registers in Settings → Apps)
+- **[MakaLight-amd64-installer.exe](https://github.com/n0social/maka-streaming-software/releases/download/makalight-v0.1.4/MakaLight-amd64-installer.exe)** (NSIS — registers in Settings → Apps)
 - Landing page: **[makalive.stream/download.html](https://makalive.stream/download.html)**
 
 See [desktop-wails/README.md](desktop-wails/README.md) and [docs/makalight-release.md](docs/makalight-release.md).

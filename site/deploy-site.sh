@@ -73,8 +73,8 @@ curl -sk -o /dev/null -w "marketing:%{http_code}\n" "https://127.0.0.1/marketing
 curl -sk -o /dev/null -w "makalight:%{http_code}\n" "https://127.0.0.1/downloads/MakaLight-amd64-installer.exe" -H "Host: ${SITE_HOST}"
 dl_tag="$(curl -sk "https://127.0.0.1/download.html" -H "Host: ${SITE_HOST}" | grep -o 'makalight-v[0-9.]*' | head -1)"
 echo "download.html tag:${dl_tag}"
-if [[ "${dl_tag}" != "makalight-v0.1.3" ]]; then
-  echo "FAIL: download.html does not advertise makalight-v0.1.3" >&2
+if [[ "${dl_tag}" != "makalight-v0.1.4" ]]; then
+  echo "FAIL: download.html does not advertise makalight-v0.1.4" >&2
   exit 1
 fi
 

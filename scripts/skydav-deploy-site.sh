@@ -31,7 +31,7 @@ curl -sI "https://${SITE_HOST}/maka.css?v=dc6d036" | grep -iE '^(HTTP|content-ty
 curl -s "https://${SITE_HOST}/" | grep -o 'maka.css?v=[^"]*' | head -1 || true
 
 if [[ "${SKYDAV_SYNC_RELEASE:-1}" != "0" ]]; then
-  RELEASE_TAG="${RELEASE_TAG:-makalight-v0.1.3}" \
+  RELEASE_TAG="${RELEASE_TAG:-makalight-v0.1.4}" \
   SETUP_NAME="${SETUP_NAME:-MakaLight-amd64-installer.exe}" \
   bash "${ROOT}/scripts/skydav-sync-release-assets.sh"
 fi

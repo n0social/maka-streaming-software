@@ -22,9 +22,9 @@ Or CI (recommended — **this is your Windows installer factory**):
 
 1. GitHub → **Actions** → **MakaLight release** → **Run workflow**
 2. `ref`: `main` (after merge)
-3. `tag`: `makalight-v0.1.0`
+3. `tag`: `makalight-v0.1.4`
 
-Or push tag **`makalight-v0.1.0`** to `main` after merge (same workflow on `push: tags: makalight-v*`).
+Or push tag **`makalight-v0.1.4`** to `main` after merge (same workflow on `push: tags: makalight-v*`).
 
 Workflow: [`.github/workflows/makalight-release.yml`](../.github/workflows/makalight-release.yml) — runs on **`windows-latest`**, runs `makalight:debug`, `wails build`, stages `relay/` + portable Node, uploads **NSIS installer** to GitHub Releases.
 
