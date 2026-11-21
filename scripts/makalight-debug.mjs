@@ -53,12 +53,16 @@ if (process.env.MAKA_RELAY_INTEGRATION === '1') {
 const lines = [`MakaLight debug ${new Date().toISOString()}`, '']
 let failed = false
 let failedStep = ''
+let failedBlock = ''
 for (const [name, cmd, args, opts] of steps) {
   const { ok, block, name: stepName } = run(name, cmd, args, opts)
   lines.push(block, '')
   if (!ok) {
     failed = true
-    if (!failedStep) failedStep = stepName
+    if (!failedStep) {
+      failedStep = stepName
+      failedBlock = block
+    }
   }
 }
 
@@ -72,6 +76,13 @@ try {
 if (failed) {
   console.error(`makalight-debug: FAILED at step "${failedStep}" (see log)`)
   console.error(`log: ${logPath}`)
+  const failBlock = lines.find((l) => l.startsWith(`=== ${failedStep} ===`))
+  if (failBlock) {
+    const start = lines.indexOf(failBlock)
+    let end = start + 1
+    while (end < lines.length && lines[end] !== '') end++
+    console.error(lines.slice(start, end).join('\n'))
+  }
   process.exit(1)
 }
 console.log('makalight-debug: ok')
