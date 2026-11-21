@@ -97,10 +97,26 @@ function findFileInDir(dir, name, depth) {
   return ''
 }
 
+function wailsModuleToolsNsh() {
+  const res = spawnSync(
+    'go',
+    ['list', '-m', '-f', '{{.Dir}}', 'github.com/wailsapp/wails/v2'],
+    { cwd: join(root, 'desktop-wails'), encoding: 'utf8' },
+  )
+  if (res.status !== 0 || !res.stdout.trim()) return ''
+  const candidate = join(
+    res.stdout.trim(),
+    'pkg/buildassets/build/windows/installer/wails_tools.nsh',
+  )
+  return existsSync(candidate) ? candidate : ''
+}
+
 function ensureWailsToolsNsh() {
   const dest = join(installerDir, 'wails_tools.nsh')
   if (existsSync(dest)) return
+  const fromModule = wailsModuleToolsNsh()
   const sources = [
+    fromModule,
     join(installerDir, 'wails_tools.nsh'),
     join(homedir(), '.wails', 'nsis', 'wails_tools.nsh'),
     join(process.env.LOCALAPPDATA || '', 'wails', 'nsis', 'wails_tools.nsh'),
