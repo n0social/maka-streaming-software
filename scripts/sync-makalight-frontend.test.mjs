@@ -12,7 +12,7 @@ const bridge = join(root, 'desktop-wails', 'frontend', 'maka-bridge.js')
 const sampleHtml = `<!doctype html>
 <html><body data-mode="studio">
 <div id="studio-source-browser">Overlay</div>
-<script type="module" src="./app.js"></script>
+<script type="module" crossorigin src="./assets/app-test_hash.js"></script>
 </body></html>`
 
 mkdirSync(fixtureAssets, { recursive: true })
@@ -24,6 +24,7 @@ execFileSync('node', ['scripts/sync-makalight-frontend.mjs'], { cwd: root, stdio
 
 const distHtml = readFileSync(join(root, 'desktop-wails', 'frontend', 'dist', 'app.html'), 'utf8')
 assert.ok(distHtml.includes('maka-bridge.js'))
+assert.ok(readFileSync(join(root, 'desktop-wails', 'frontend', 'dist', 'index.html'), 'utf8').includes('maka-bridge.js'))
 assert.ok(distHtml.includes('studio-source-browser'), '1:1 copy must keep Electron DOM')
 assert.ok(!distHtml.includes('data-makalight'))
 

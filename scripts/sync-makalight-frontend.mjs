@@ -17,6 +17,11 @@ const BRIDGE_TAG = '<script src="./maka-bridge.js"></script>'
 
 function injectBridge(html) {
   if (html.includes('maka-bridge.js')) return html
+  const injected = html.replace(
+    /(\n)(\s*)(<script type="module"[^>]*src="\.\/assets\/[^"]+"><\/script>)/,
+    `$1$2${BRIDGE_TAG}$1$2$3`,
+  )
+  if (injected !== html) return injected
   const withJs = html.replace(
     /(\s*)<script type="module" src="\.\/app\.js"><\/script>/,
     `$1${BRIDGE_TAG}\n$1<script type="module" src="./app.js"></script>`,
@@ -44,7 +49,10 @@ function main() {
 
   const appHtml = join(destDir, 'app.html')
   if (existsSync(appHtml)) {
-    writeFileSync(appHtml, injectBridge(readFileSync(appHtml, 'utf8')))
+    const html = injectBridge(readFileSync(appHtml, 'utf8'))
+    writeFileSync(appHtml, html)
+    // Wails asset server requires index.html at the embed root.
+    writeFileSync(join(destDir, 'index.html'), html)
   }
 
   copyFileSync(bridgeSrc, join(destDir, 'maka-bridge.js'))

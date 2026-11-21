@@ -29,8 +29,7 @@ function walk(dir) {
 }
 
 function stripBridgeInjection(html) {
-  return html
-    .replace(/\s*<script src="\.\/maka-bridge\.js"><\/script>\n?/g, '')
+  return html.replace(/\n[ \t]*<script src="\.\/maka-bridge\.js"><\/script>/g, '')
 }
 
 function main() {
@@ -42,7 +41,9 @@ function main() {
   const srcFiles = new Set(walk(src).map((p) => relative(src, p)))
   const distFiles = new Set(walk(dist).map((p) => relative(dist, p)))
 
-  const extra = [...distFiles].filter((f) => f !== 'maka-bridge.js' && !srcFiles.has(f))
+  const extra = [...distFiles].filter(
+    (f) => f !== 'maka-bridge.js' && f !== 'index.html' && !srcFiles.has(f),
+  )
   const missing = [...srcFiles].filter((f) => !distFiles.has(f))
 
   if (extra.length || missing.length) {
@@ -69,6 +70,15 @@ function main() {
 
   if (!existsSync(join(dist, 'maka-bridge.js'))) {
     console.error('Missing dist/maka-bridge.js')
+    ok = false
+  }
+
+  const indexHtml = join(dist, 'index.html')
+  if (!existsSync(indexHtml)) {
+    console.error('Missing dist/index.html (Wails entry)')
+    ok = false
+  } else if (stripBridgeInjection(readFileSync(indexHtml, 'utf8')) !== stripBridgeInjection(readFileSync(join(dist, 'app.html'), 'utf8'))) {
+    console.error('index.html must mirror app.html')
     ok = false
   }
 
