@@ -64,15 +64,14 @@ jobs:
           cp "node-v${NODE_VER}-win-x64/node.exe" node-stage/node.exe
           echo "MAKA_NODE_STAGE=${GITHUB_WORKSPACE}/node-stage/node.exe" >> "$GITHUB_ENV"
 
-      - name: Build MakaLight (NSIS)
+      - name: Build MakaLight (NSIS bundle)
         shell: bash
         run: |
-          export PATH="$PATH:$(go env GOPATH)/bin"
+          export PATH="/c/Program Files (x86)/NSIS:$(go env GOPATH)/bin:$PATH"
           cd desktop-wails
-          wails build -clean -s -platform windows/amd64 -nsis
-
-      - name: Stage relay beside executable
-        run: node scripts/makalight-stage.mjs desktop-wails/build/bin
+          wails build -clean -s -platform windows/amd64 -nopackage
+          node ../scripts/makalight-stage.mjs build/bin
+          wails build -s -platform windows/amd64 -nsis -f
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4

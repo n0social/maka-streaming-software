@@ -26,14 +26,13 @@ Or CI (recommended — **this is your Windows installer factory**):
 
 Or push tag **`makalight-v0.1.0`** to `main` after merge (same workflow on `push: tags: makalight-v*`).
 
-Workflow: [`.github/workflows/makalight-release.yml`](../.github/workflows/makalight-release.yml) — runs on **`windows-latest`**, runs `makalight:debug`, `wails build`, stages `relay/` + portable Node, uploads **NSIS installer** to GitHub Releases.
+Workflow: [`.github/workflows/makalight-release.yml`](../.github/workflows/makalight-release.yml) — runs on **`windows-latest`**, runs `makalight:debug`, builds the exe, stages `relay/` + portable Node into `build/bin`, then **`wails build -nsis`** so **`MakaLight-amd64-installer.exe` ships exe + relay + node** (custom [`desktop-wails/build/windows/installer/project.nsi`](../desktop-wails/build/windows/installer/project.nsi)).
 
 You do **not** need a local Windows machine to ship; you need merge + one workflow run (or tag push).
 
 1. `makalight:debug`
-2. `wails build` in `desktop-wails/`
-3. Stage `relay/` + portable `node.exe` into `build/bin/`
-4. Attach `MakaLight-amd64-installer.exe` + `MakaLight.exe` to GitHub Release
+2. `wails build -nopackage` → stage `relay/` + `node/node.exe` → `wails build -nsis`
+3. Attach `MakaLight-amd64-installer.exe` (+ optional loose `MakaLight.exe`) to GitHub Release
 
 ## Site
 

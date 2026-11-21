@@ -5,7 +5,9 @@
 ## Download
 
 **[MakaLight-amd64-installer.exe](https://github.com/n0social/maka-streaming-software/releases/download/{{tag_name}}/MakaLight-amd64-installer.exe)** (NSIS)  
-Portable: **[MakaLight.exe](https://github.com/n0social/maka-streaming-software/releases/download/{{tag_name}}/MakaLight.exe)** + `relay/` folder from the release assets (use the installer for a normal setup).
+The NSIS installer includes **MakaLight.exe**, **open MAKA.relay** (`relay/`), and **node.exe** under the install directory (same idea as Maka Electron’s bundled relay).
+
+Optional portable: **[MakaLight.exe](https://github.com/n0social/maka-streaming-software/releases/download/{{tag_name}}/MakaLight.exe)** only if you also copy `relay/` + `node/` beside it.
 
 Mirror after site deploy: `https://makalive.stream/downloads/MakaLight-amd64-installer.exe`
 
