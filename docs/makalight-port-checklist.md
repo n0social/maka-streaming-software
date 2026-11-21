@@ -11,8 +11,11 @@ One handler group per step. After each step: run **Debug** commands, tick the bo
 | 5 | Recording / scene IPC | done (dialogs + file I/O) | [`makalight-debug-step-5-recording.md`](makalight-debug-step-5-recording.md) |
 | 6 | Platform metadata + viewers | done (Twitch/YouTube HTTP) | [`makalight-debug-step-6-platform.md`](makalight-debug-step-6-platform.md) |
 | 7 | Diagnostics + QoS | done (store, export, score) | [`makalight-debug-step-7-diagnostics.md`](makalight-debug-step-7-diagnostics.md) |
-| 8 | Browser + browse capture (1:1 Electron) | **next** | — |
-| 9 | Addons + marketplace | pending | — |
-| 10 | Updates + phone-pair | pending | — |
+| — | `browser:*`, browse capture | **not ported** (deprecated in Electron; stubs only) | [`wails-migration-plan.md`](wails-migration-plan.md) § IPC matrix |
+| 8 | Addons + marketplace | **next** | — |
+| 9 | Updates (`app:update-*`) | pending | — |
+| 10 | Phone-pair / WebRTC | pending | — |
 
-Reference: Electron [`src/main/index.ts`](../src/main/index.ts), bridge [`src/preload/index.ts`](../src/preload/index.ts).
+**Browser:** MakaLight does not ship an in-app browser or Search tab. The synced renderer may still contain dormant DOM from Electron; `app_stubs.go` + `maka-bridge` keep `browser:*` / `getBrowseCaptureTarget` as empty no-ops so the studio bundle does not crash. Do **not** add a port step for browser IPC.
+
+Reference: Electron [`src/main/index.ts`](../src/main/index.ts), bridge [`src/preload/index.ts`](../src/preload/index.ts). Product scope: [`wails-migration-plan.md`](wails-migration-plan.md).
