@@ -16,10 +16,6 @@ func (a *App) BrowserPopoutChat(url string)      {}
 func (a *App) GetBrowseCaptureTarget() any       { return nil }
 func (a *App) SetBrowseCaptureActive(active bool) bool { return false }
 
-func (a *App) GetPlatformViewers(query map[string]any) map[string]any {
-	return map[string]any{"twitch": nil, "youtube": nil}
-}
-func (a *App) PublishPlatformMetadata() map[string]any { return map[string]any{} }
 func (a *App) GetVcamCapability() map[string]any          { return map[string]any{"supported": false} }
 func (a *App) OpenVcamOutput()                              {}
 func (a *App) CloseVcamOutput()                             {}
