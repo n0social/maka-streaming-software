@@ -90,7 +90,7 @@ func (a *App) GetVersionInfo() VersionInfo {
 		}
 	}
 	return VersionInfo{
-		AppVersion:   appmeta.AppVersion(),
+		AppVersion:   appmeta.MakaLightProductVersion(),
 		RelayVersion: relayVer,
 		Platform:     runtimeEnvironment(),
 	}
