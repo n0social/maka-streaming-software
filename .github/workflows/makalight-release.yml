@@ -6,8 +6,12 @@ on:
       - 'makalight-v*'
   workflow_dispatch:
     inputs:
+      ref:
+        description: Git ref to build (branch or tag), e.g. main
+        required: true
+        default: main
       tag:
-        description: Release tag (e.g. makalight-v0.1.0)
+        description: GitHub Release tag to publish (created if missing)
         required: true
         default: makalight-v0.1.0
 
@@ -21,7 +25,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.ref }}
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

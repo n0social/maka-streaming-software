@@ -18,9 +18,17 @@ Log default: `/opt/cursor/artifacts/makalight-debug.log` (override with `MAKALIG
 npm run makalight:package
 ```
 
-Or CI: push tag **`makalight-v0.1.0`** or run workflow **MakaLight release** with that tag.
+Or CI (recommended — **this is your Windows installer factory**):
 
-Workflow: [`.github/workflows/makalight-release.yml`](../.github/workflows/makalight-release.yml)
+1. GitHub → **Actions** → **MakaLight release** → **Run workflow**
+2. `ref`: `main` (after merge)
+3. `tag`: `makalight-v0.1.0`
+
+Or push tag **`makalight-v0.1.0`** to `main` after merge (same workflow on `push: tags: makalight-v*`).
+
+Workflow: [`.github/workflows/makalight-release.yml`](../.github/workflows/makalight-release.yml) — runs on **`windows-latest`**, runs `makalight:debug`, `wails build`, stages `relay/` + portable Node, uploads **NSIS installer** to GitHub Releases.
+
+You do **not** need a local Windows machine to ship; you need merge + one workflow run (or tag push).
 
 1. `makalight:debug`
 2. `wails build` in `desktop-wails/`
