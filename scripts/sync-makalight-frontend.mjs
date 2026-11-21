@@ -9,8 +9,8 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const srcDir = join(root, 'out', 'renderer')
-const destDir = join(root, 'desktop-wails', 'frontend', 'dist')
+const srcDir = process.env.MAKA_RENDERER_SRC || join(root, 'out', 'renderer')
+const destDir = process.env.MAKA_WAILS_DIST || join(root, 'desktop-wails', 'frontend', 'dist')
 const bridgeSrc = join(root, 'desktop-wails', 'frontend', 'maka-bridge.js')
 
 const BRIDGE_TAG = '<script src="./maka-bridge.js"></script>'
