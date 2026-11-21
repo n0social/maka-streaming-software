@@ -25,7 +25,6 @@ func (a *App) OpenVcamOutput()                              {}
 func (a *App) CloseVcamOutput()                             {}
 func (a *App) PushVcamFrame(dataUrl string)               {}
 func (a *App) ListGpuOptions() []any                        { return []any{} }
-func (a *App) PickRecordingFolder() map[string]any        { return map[string]any{"canceled": true} }
 func (a *App) ListAddonPanels() []any                       { return []any{} }
 func (a *App) ListMarketplace() []any                       { return []any{} }
 func (a *App) RefreshMarketplace()                        {}
@@ -47,9 +46,6 @@ func (a *App) ExportDiagnostics() string { return "" }
 func (a *App) ExportQosBundle(snapshot map[string]any) map[string]any {
 	return map[string]any{"ok": false}
 }
-func (a *App) PickSceneImageFile() map[string]any { return map[string]any{"canceled": true} }
-func (a *App) ReadSceneImageDataUrl(filePath string) any { return nil }
-func (a *App) SaveRecording(payload map[string]any) map[string]any { return map[string]any{"canceled": true} }
 func (a *App) AckPrepareQuit() {}
 func (a *App) GetUpdateStatus() map[string]any {
 	return map[string]any{"status": "idle", "version": nil, "percent": nil, "error": nil}
