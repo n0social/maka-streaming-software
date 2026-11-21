@@ -26,7 +26,13 @@ if (!existsSync(join(relaySrc, 'src', 'index.mjs'))) {
 rmSync(relayDest, { recursive: true, force: true })
 cpSync(relaySrc, relayDest, {
   recursive: true,
-  filter: (src) => !src.includes('node_modules\\.cache'),
+  dereference: true,
+  filter: (src) => {
+    if (/[\\/]node_modules[\\/]\.cache([\\/]|$)/.test(src)) return false
+    // Windows npm can junction the monorepo root here — breaks NSIS File /r.
+    if (/[\\/]node_modules[\\/]maka([\\/]|$)/.test(src)) return false
+    return true
+  },
 })
 
 const nodeStage = process.env.MAKA_NODE_STAGE
