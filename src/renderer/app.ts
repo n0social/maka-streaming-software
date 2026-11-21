@@ -2302,7 +2302,7 @@ async function refreshSourcePicker(kind: SourceKind): Promise<void> {
     }
 
     if (kind === 'webcam') {
-      await refreshAvDevices()
+      await refreshAvDevices({ video: true })
       picker.innerHTML = ''
       appendPickerButton(picker, {
         label: 'No camera',
@@ -2340,7 +2340,7 @@ async function refreshSourcePicker(kind: SourceKind): Promise<void> {
     }
 
     if (kind === 'mic') {
-      await refreshAvDevices()
+      await refreshAvDevices({ audio: true })
       picker.innerHTML = ''
       appendPickerButton(picker, {
         label: 'No microphone',
@@ -2844,16 +2844,39 @@ async function refreshSources(): Promise<void> {
   }
 }
 
-async function refreshAvDevices(): Promise<void> {
-  try {
-    await navigator.mediaDevices
-      .getUserMedia({ audio: true, video: true })
-      .then((s) => {
-        stopStream(s)
-      })
-      .catch(() => undefined)
-  } catch {
-    // ignore
+type RefreshAvDeviceOptions = {
+  /** Prompt for camera access only when labels are needed (e.g. webcam picker). */
+  video?: boolean
+  /** Prompt for mic access only when labels are needed (e.g. mic picker). */
+  audio?: boolean
+}
+
+async function refreshAvDevices(options: RefreshAvDeviceOptions = {}): Promise<void> {
+  const wantVideo = options.video === true
+  const wantAudio = options.audio === true
+
+  if (wantVideo || wantAudio) {
+    let devices: MediaDeviceInfo[] = []
+    try {
+      devices = await navigator.mediaDevices.enumerateDevices()
+    } catch {
+      devices = []
+    }
+    const labeledVideo = devices.some((d) => d.kind === 'videoinput' && d.label)
+    const labeledAudio = devices.some((d) => d.kind === 'audioinput' && d.label)
+    const probeVideo = wantVideo && !labeledVideo
+    const probeAudio = wantAudio && !labeledAudio
+    if (probeVideo || probeAudio) {
+      try {
+        const constraints: MediaStreamConstraints = {}
+        if (probeVideo) constraints.video = true
+        if (probeAudio) constraints.audio = true
+        const stream = await navigator.mediaDevices.getUserMedia(constraints)
+        stopStream(stream)
+      } catch {
+        // ignore — enumerateDevices still works (labels may stay empty)
+      }
+    }
   }
 
   const devices = await navigator.mediaDevices.enumerateDevices()
@@ -2953,7 +2976,7 @@ async function handlePhoneVideoAvailable(): Promise<void> {
     pcCameraBeforePhone = camBefore
   }
 
-  await refreshAvDevices()
+  await refreshAvDevices({ video: true, audio: false })
 
   const shouldUsePhone =
     preferPhoneCamera ||
@@ -2974,13 +2997,13 @@ async function handlePhoneAudioAvailable(): Promise<void> {
     pcMicBeforePhone = micBefore
   }
 
-  await refreshAvDevices()
+  await refreshAvDevices({ audio: true })
 }
 
 async function handlePhoneVideoLost(): Promise<void> {
   const onPhoneCam = cameraSelect.value === PHONE_CAMERA_DEVICE_VALUE
 
-  await refreshAvDevices()
+  await refreshAvDevices({ video: true })
 
   if (!onPhoneCam) {
     if (preferPhoneCamera) {
@@ -3018,7 +3041,7 @@ async function handlePhoneVideoLost(): Promise<void> {
 async function handlePhoneAudioLost(): Promise<void> {
   const onPhoneMic = micSelect.value === PHONE_MIC_DEVICE_VALUE
 
-  await refreshAvDevices()
+  await refreshAvDevices({ audio: true })
 
   if (!onPhoneMic) return
 
@@ -3052,7 +3075,7 @@ function bindMicStream(stream: MediaStream): void {
 async function handleCameraTrackLost(): Promise<void> {
   const onPhoneCam = cameraSelect.value === PHONE_CAMERA_DEVICE_VALUE
   releaseCameraStream()
-  await refreshAvDevices().catch(() => undefined)
+  await refreshAvDevices({ video: true }).catch(() => undefined)
 
   if (onPhoneCam) {
     await handlePhoneVideoLost()
@@ -3076,7 +3099,7 @@ async function handleCameraTrackLost(): Promise<void> {
 async function handleMicTrackLost(): Promise<void> {
   const onPhoneMic = micSelect.value === PHONE_MIC_DEVICE_VALUE
   releaseMicStream()
-  await refreshAvDevices().catch(() => undefined)
+  await refreshAvDevices({ audio: true }).catch(() => undefined)
 
   if (onPhoneMic) {
     await handlePhoneAudioLost()
@@ -4022,7 +4045,9 @@ subscribePhoneTracks((snap) => {
   if (hasAudio && !phoneAudioWasLive) void handlePhoneAudioAvailable()
   else if (!hasAudio && phoneAudioWasLive) void handlePhoneAudioLost()
 
-  if (hasVideo || hasAudio) void refreshAvDevices()
+  if (hasVideo || hasAudio) {
+    void refreshAvDevices({ video: hasVideo, audio: hasAudio })
+  }
 
   phoneVideoWasLive = hasVideo
   phoneAudioWasLive = hasAudio

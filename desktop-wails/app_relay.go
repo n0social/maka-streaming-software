@@ -24,11 +24,23 @@ func (a *App) autoStartRelay() {
 	if a.ctx == nil {
 		return
 	}
-	time.Sleep(400 * time.Millisecond)
-	runCtx, cancel := context.WithTimeout(a.ctx, 30*time.Second)
-	defer cancel()
-	_ = a.relay.Start(runCtx)
-	a.emitRelaySnapshot()
+	// Let the webview subscribe to relay:update before we auto-start (matches Electron ordering).
+	time.Sleep(300 * time.Millisecond)
+	stopEmit := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(500 * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-stopEmit:
+				return
+			case <-ticker.C:
+				a.emitRelaySnapshotOnce()
+			}
+		}
+	}()
+	_ = a.StartRelay()
+	close(stopEmit)
 }
 
 func (a *App) shutdown(ctx context.Context) {
