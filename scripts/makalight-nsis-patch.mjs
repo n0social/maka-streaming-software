@@ -27,7 +27,7 @@ export function assertBundleBlock(nsi) {
 }
 
 /**
- * Insert relay/node bundle after the first `File "…exe"` line (idempotent).
+ * Insert relay/node bundle after Wails ships the app (idempotent).
  * @param {string} nsi
  * @returns {{ nsi: string, patched: boolean }}
  */
@@ -37,11 +37,17 @@ export function patchProjectNsi(nsi) {
     return { nsi, patched: false }
   }
   const block = bundleBlock()
-  const fileLine = /(\r?\n)(\ {2,}File\s+"[^"]+\.exe"\s*\r?\n)/m
-  if (!fileLine.test(nsi)) {
-    throw new Error('could not patch project.nsi — no File *.exe line (run wails build first)')
+  const anchors = [
+    /(\r?\n)(\ {2,}!insertmacro wails\.files\s*\r?\n)/m,
+    /(\r?\n)(\ {2,}File\s+"[^"]+\.exe"\s*\r?\n)/m,
+  ]
+  for (const anchor of anchors) {
+    if (!anchor.test(nsi)) continue
+    const next = nsi.replace(anchor, `$1$2${block}`)
+    assertBundleBlock(next)
+    return { nsi: next, patched: true }
   }
-  const next = nsi.replace(fileLine, `$1$2${block}`)
-  assertBundleBlock(next)
-  return { nsi: next, patched: true }
+  throw new Error(
+    'could not patch project.nsi — no wails.files or File *.exe anchor (run wails build -nsis first)',
+  )
 }

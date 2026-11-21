@@ -18,11 +18,20 @@ const again = patchProjectNsi(nsi)
 assert.equal(again.patched, false)
 assert.equal(again.nsi, nsi)
 
+const wailsStyle = `Section "Install"
+  SetOutPath $INSTDIR
+  !insertmacro wails.files
+SectionEnd
+`
+const wailsPatch = patchProjectNsi(wailsStyle)
+assert.equal(wailsPatch.patched, true)
+assert.ok(wailsPatch.nsi.includes(MARKER))
+
 try {
   patchProjectNsi('Section\n  SetOutPath $INSTDIR\n')
-  assert.fail('expected patch failure without exe File line')
+  assert.fail('expected patch failure without anchor')
 } catch (e) {
-  assert.match(String(e.message), /File \*\.exe/)
+  assert.match(String(e.message), /wails\.files/)
 }
 
 try {
