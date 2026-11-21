@@ -5,8 +5,8 @@ One handler group per step. After each step: run **Debug** commands, tick the bo
 | Step | IPC / Go methods | Status | Debug |
 | --- | --- | --- | --- |
 | 1 | `capture:list-sources`, `capture:set-preferred` | done (Win32 list; Linux `[]`) | [`makalight-debug-step-1-capture.md`](makalight-debug-step-1-capture.md) |
-| 2 | `window-audio:start/stop`, `window-audio:pcm` | **next** | — |
-| 3 | Relay + WHIP e2e on Windows (`wails dev`) | pending | — |
+| 2 | `window-audio:start/stop`, `window-audio:pcm` | done (loopback-capture worker) | [`makalight-debug-step-2-audio.md`](makalight-debug-step-2-audio.md) |
+| 3 | Relay + WHIP e2e on Windows (`wails dev`) | **next** | — |
 | 4 | `shell:open-stream`, intro flow | pending | — |
 | 5 | Recording / scene IPC | pending | — |
 | 6 | Platform metadata + viewers | pending | — |

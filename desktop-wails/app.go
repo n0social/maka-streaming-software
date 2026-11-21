@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/n0social/maka-streaming-software/desktop-wails/internal/appmeta"
+	"github.com/n0social/maka-streaming-software/desktop-wails/internal/audio"
 	"github.com/n0social/maka-streaming-software/desktop-wails/internal/capture"
 	"github.com/n0social/maka-streaming-software/desktop-wails/internal/relay"
 	"github.com/n0social/maka-streaming-software/desktop-wails/internal/settings"
@@ -25,6 +26,7 @@ type App struct {
 	relay    *relay.Manager
 	settings *settings.Store
 	capture  *capture.Service
+	winAudio *audio.WindowService
 	appMode  string
 }
 
@@ -37,12 +39,14 @@ func NewApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{
+	app := &App{
 		relay:    rm,
 		settings: store,
 		capture:  capture.NewService(),
 		appMode:  "studio",
-	}, nil
+	}
+	app.winAudio = audio.NewWindowService(app.emitWindowAudioPcm)
+	return app, nil
 }
 
 func (a *App) startup(ctx context.Context) {
@@ -218,4 +222,21 @@ func (a *App) ListCaptureSources() []capture.Source {
 // SetPreferredCaptureSource — ipc capture:set-preferred.
 func (a *App) SetPreferredCaptureSource(sourceID string) {
 	a.capture.SetPreferred(sourceID)
+}
+
+func (a *App) emitWindowAudioPcm(ev audio.PcmEvent) {
+	if a.ctx == nil {
+		return
+	}
+	wailsruntime.EventsEmit(a.ctx, "window-audio:pcm", ev)
+}
+
+// StartWindowAudio — ipc window-audio:start.
+func (a *App) StartWindowAudio(sourceID string) audio.StartResult {
+	return a.winAudio.Start(sourceID)
+}
+
+// StopWindowAudio — ipc window-audio:stop.
+func (a *App) StopWindowAudio() {
+	a.winAudio.Stop()
 }

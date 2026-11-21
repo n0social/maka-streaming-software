@@ -64,7 +64,19 @@
     listCaptureSources: () => bind('ListCaptureSources'),
     startWindowAudio: (sourceId) => bind('StartWindowAudio', sourceId),
     stopWindowAudio: () => bind('StopWindowAudio'),
-    onWindowAudioPcm: (cb) => eventsOn('window-audio:pcm', cb),
+    onWindowAudioPcm: (cb) =>
+      eventsOn('window-audio:pcm', (payload) => {
+        if (!payload || typeof payload !== 'object') return
+        let pcm = payload.pcm
+        if (typeof pcm === 'string') {
+          const bin = atob(pcm)
+          pcm = new Uint8Array(bin.length)
+          for (let i = 0; i < bin.length; i++) pcm[i] = bin.charCodeAt(i)
+        } else if (Array.isArray(pcm)) {
+          pcm = Uint8Array.from(pcm)
+        }
+        cb(payload.session, pcm)
+      }),
     setPreferredCaptureSource: (sourceId) => bind('SetPreferredCaptureSource', sourceId),
     getBrowseCaptureTarget: () => bind('GetBrowseCaptureTarget'),
     setBrowseCaptureActive: (active) => bind('SetBrowseCaptureActive', active),

@@ -21,8 +21,6 @@ func (a *App) GetPlatformViewers(query map[string]any) map[string]any {
 }
 func (a *App) PublishPlatformMetadata() map[string]any { return map[string]any{} }
 func (a *App) RevealRelay() string                        { return "" }
-func (a *App) StartWindowAudio(sourceId string) error     { return nil }
-func (a *App) StopWindowAudio()                           {}
 func (a *App) GetVcamCapability() map[string]any          { return map[string]any{"supported": false} }
 func (a *App) OpenVcamOutput()                              {}
 func (a *App) CloseVcamOutput()                             {}
