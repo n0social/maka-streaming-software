@@ -10,8 +10,8 @@ One handler group per step. After each step: run **Debug** commands, tick the bo
 | 4 | `shell:open-stream`, intro flow | done (focus, home URL, settings) | [`makalight-debug-step-4-shell.md`](makalight-debug-step-4-shell.md) |
 | 5 | Recording / scene IPC | done (dialogs + file I/O) | [`makalight-debug-step-5-recording.md`](makalight-debug-step-5-recording.md) |
 | 6 | Platform metadata + viewers | done (Twitch/YouTube HTTP) | [`makalight-debug-step-6-platform.md`](makalight-debug-step-6-platform.md) |
-| 7 | Diagnostics + QoS | **next** | — |
-| 8 | Browser + browse capture (1:1 Electron) | pending | — |
+| 7 | Diagnostics + QoS | done (store, export, score) | [`makalight-debug-step-7-diagnostics.md`](makalight-debug-step-7-diagnostics.md) |
+| 8 | Browser + browse capture (1:1 Electron) | **next** | — |
 | 9 | Addons + marketplace | pending | — |
 | 10 | Updates + phone-pair | pending | — |
 

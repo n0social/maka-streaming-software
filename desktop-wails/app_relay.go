@@ -157,6 +157,6 @@ func (a *App) VerifySystem() map[string]any {
 		"ok":          ok,
 		"checks":      outChecks,
 		"snapshot":    snap,
-		"diagnostics": []any{},
+		"diagnostics": a.diag.Recent(20),
 	}
 }

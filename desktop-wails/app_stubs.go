@@ -35,13 +35,6 @@ func (a *App) DispatchAddonLiveEvent(event map[string]any, ctx map[string]any) [
 func (a *App) RunAddonAction(addonId, actionId string, ctx map[string]any) map[string]any {
 	return map[string]any{"ok": false}
 }
-func (a *App) ListDiagnostics() []any   { return []any{} }
-func (a *App) RecordDiagnostic(event map[string]any) {}
-func (a *App) ClearDiagnostics() []any { return []any{} }
-func (a *App) ExportDiagnostics() string { return "" }
-func (a *App) ExportQosBundle(snapshot map[string]any) map[string]any {
-	return map[string]any{"ok": false}
-}
 func (a *App) AckPrepareQuit() {}
 func (a *App) GetUpdateStatus() map[string]any {
 	return map[string]any{"status": "idle", "version": nil, "percent": nil, "error": nil}

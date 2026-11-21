@@ -8,6 +8,7 @@ import (
 	"github.com/n0social/maka-streaming-software/desktop-wails/internal/appmeta"
 	"github.com/n0social/maka-streaming-software/desktop-wails/internal/audio"
 	"github.com/n0social/maka-streaming-software/desktop-wails/internal/capture"
+	"github.com/n0social/maka-streaming-software/desktop-wails/internal/diagnostics"
 	"github.com/n0social/maka-streaming-software/desktop-wails/internal/relay"
 	"github.com/n0social/maka-streaming-software/desktop-wails/internal/settings"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -27,6 +28,7 @@ type App struct {
 	settings *settings.Store
 	capture  *capture.Service
 	winAudio *audio.WindowService
+	diag     *diagnostics.Store
 	appMode  string
 }
 
@@ -46,6 +48,7 @@ func NewApp() (*App, error) {
 		appMode:  "studio",
 	}
 	app.winAudio = audio.NewWindowService(app.emitWindowAudioPcm)
+	app.diag = diagnostics.NewStore(app.emitDiagnostic)
 	return app, nil
 }
 
