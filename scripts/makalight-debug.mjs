@@ -5,16 +5,20 @@
 import { spawnSync } from 'node:child_process'
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
+import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const logPath = process.env.MAKALIGHT_DEBUG_LOG || '/opt/cursor/artifacts/makalight-debug.log'
+const logPath =
+  process.env.MAKALIGHT_DEBUG_LOG ||
+  join(process.env.RUNNER_TEMP || tmpdir(), 'makalight-debug.log')
 
 function run(name, cmd, args, opts = {}) {
+  const useShell = opts.shell ?? process.platform === 'win32'
   const res = spawnSync(cmd, args, {
     cwd: root,
     encoding: 'utf8',
-    shell: false,
+    shell: useShell,
     ...opts,
   })
   const block = [
@@ -24,7 +28,7 @@ function run(name, cmd, args, opts = {}) {
     res.stdout || '',
     res.stderr || '',
   ].join('\n')
-  return { ok: res.status === 0, block }
+  return { ok: res.status === 0, block, name }
 }
 
 const steps = [
@@ -47,10 +51,14 @@ if (process.env.MAKA_RELAY_INTEGRATION === '1') {
 
 const lines = [`MakaLight debug ${new Date().toISOString()}`, '']
 let failed = false
+let failedStep = ''
 for (const [name, cmd, args, opts] of steps) {
-  const { ok, block } = run(name, cmd, args, opts)
+  const { ok, block, name: stepName } = run(name, cmd, args, opts)
   lines.push(block, '')
-  if (!ok) failed = true
+  if (!ok) {
+    failed = true
+    if (!failedStep) failedStep = stepName
+  }
 }
 
 try {
@@ -61,7 +69,8 @@ try {
 }
 
 if (failed) {
-  console.error('makalight-debug: FAILED (see log)')
+  console.error(`makalight-debug: FAILED at step "${failedStep}" (see log)`)
+  console.error(`log: ${logPath}`)
   process.exit(1)
 }
 console.log('makalight-debug: ok')
