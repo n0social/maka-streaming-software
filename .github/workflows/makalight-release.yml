@@ -74,13 +74,23 @@ jobs:
       - name: Stage relay beside executable
         run: node scripts/makalight-stage.mjs desktop-wails/build/bin
 
-      - name: Ensure NSIS (makensis) on PATH
+      - name: Resolve Wails makensis for NSIS rebuild
+        id: wails_nsis
         shell: pwsh
         run: |
-          choco install nsis -y --no-progress
-          Add-Content -Path $env:GITHUB_PATH -Value 'C:\Program Files (x86)\NSIS'
+          $roots = @("$env:LOCALAPPDATA\wails", "$env:USERPROFILE\.wails")
+          $mk = $null
+          foreach ($root in $roots) {
+            if (-not (Test-Path $root)) { continue }
+            $mk = Get-ChildItem -Path $root -Recurse -Filter makensis.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($mk) { break }
+          }
+          if (-not $mk) { throw "makensis.exe not found under Wails cache after wails build" }
+          "makensis=$($mk.FullName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
       - name: Rebuild NSIS installer with relay and Node bundle
+        env:
+          MAKENSIS: ${{ steps.wails_nsis.outputs.makensis }}
         run: node scripts/makalight-nsis.mjs desktop-wails/build/bin
 
       - name: Upload installer artifact

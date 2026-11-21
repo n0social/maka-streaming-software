@@ -6,7 +6,7 @@
  * Prerequisite: `wails build` on Windows (generates build/windows/installer/project.nsi + wails_tools.nsh).
  * Usage: node scripts/makalight-nsis.mjs [path-to-build-bin]
  */
-import { existsSync, readFileSync, readdirSync, writeFileSync, statSync } from 'node:fs'
+import { copyFileSync, existsSync, readFileSync, readdirSync, writeFileSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, dirname, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -48,23 +48,24 @@ function findMakensisInDir(dir, depth) {
 
 function resolveMakensis() {
   if (process.env.MAKENSIS) return process.env.MAKENSIS
-  const fixed = [
-    join(process.env.ProgramFiles || 'C:\\Program Files', 'NSIS', 'makensis.exe'),
-    join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'NSIS', 'makensis.exe'),
-    join(homedir(), '.wails', 'nsis', 'makensis.exe'),
-    join(process.env.LOCALAPPDATA || '', 'wails', 'nsis', 'makensis.exe'),
-    join(process.env.APPDATA || '', 'wails', 'nsis', 'makensis.exe'),
-  ]
-  for (const p of fixed) {
-    if (p && existsSync(p)) return p
-  }
+  // Wails-downloaded makensis must run second pass (finds wails_tools.nsh); avoid unrelated NSIS installs first.
   for (const scanRoot of [
     join(homedir(), '.wails'),
     join(process.env.LOCALAPPDATA || '', 'wails'),
     join(root, 'desktop-wails', 'build'),
   ]) {
-    const hit = findMakensisInDir(scanRoot, 5)
+    const hit = findMakensisInDir(scanRoot, 6)
     if (hit) return hit
+  }
+  const fixed = [
+    join(homedir(), '.wails', 'nsis', 'makensis.exe'),
+    join(process.env.LOCALAPPDATA || '', 'wails', 'nsis', 'makensis.exe'),
+    join(process.env.APPDATA || '', 'wails', 'nsis', 'makensis.exe'),
+    join(process.env.ProgramFiles || 'C:\\Program Files', 'NSIS', 'makensis.exe'),
+    join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'NSIS', 'makensis.exe'),
+  ]
+  for (const p of fixed) {
+    if (p && existsSync(p)) return p
   }
   const where = spawnSync('where', ['makensis'], { encoding: 'utf8', shell: true })
   if (where.status === 0 && where.stdout.trim()) {
@@ -80,6 +81,10 @@ function main() {
   }
   if (!existsSync(projectNsi)) {
     fail(`missing ${projectNsi} — run wails build first`)
+  }
+  const wailsTools = join(installerDir, 'wails_tools.nsh')
+  if (!existsSync(wailsTools)) {
+    fail(`missing ${wailsTools} — run wails build first`)
   }
   const relay = join(binDir, 'relay', 'src', 'index.mjs')
   const nodeExe = join(binDir, 'node', 'node.exe')
