@@ -1255,8 +1255,7 @@ function liveReconnectStatusLine(): string {
 
 function renderRelay(snapshot: RelaySnapshot): void {
   lastRelaySnapshot = snapshot
-  const lifecycle =
-    snapshot.lifecycle === 'running' ? 'ready' : snapshot.lifecycle
+  const lifecycle = snapshot.lifecycle
   const live = isSessionLive()
   const relayUiState =
     live && liveReconnecting
