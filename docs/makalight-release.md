@@ -22,9 +22,9 @@ Or CI (recommended — **this is your Windows installer factory**):
 
 1. GitHub → **Actions** → **MakaLight release** → **Run workflow**
 2. `ref`: `main` (after merge)
-3. `tag`: `makalight-v0.1.0`
+3. `tag`: `makalight-v0.1.3` (match `desktop-wails/wails.json` `productVersion`)
 
-Or push tag **`makalight-v0.1.0`** to `main` after merge (same workflow on `push: tags: makalight-v*`).
+Or push tag **`makalight-v0.1.3`** to `main` after merge (same workflow on `push: tags: makalight-v*`).
 
 Workflow: [`.github/workflows/makalight-release.yml`](../.github/workflows/makalight-release.yml) — runs on **`windows-latest`**, runs `makalight:debug`, builds the exe, stages `relay/` + portable Node into `build/bin`, then **`wails build -nsis`** so **`MakaLight-amd64-installer.exe` ships exe + relay + node** (custom [`desktop-wails/build/windows/installer/project.nsi`](../desktop-wails/build/windows/installer/project.nsi)).
 
@@ -53,6 +53,8 @@ Ship the installer to end users. The loose exe is optional for advanced users wh
 
 ## Site
 
-Update [`site/download.html`](../site/download.html) with the new tag URL, then deploy per [`docs/site-deploy.md`](site-deploy.md).
+Update [`site/download.html`](../site/download.html) with the new tag URL (installer **and** release-notes links must match — 0.1.2 briefly pointed release notes at `makalight-v0.1.1`), then deploy per [`docs/site-deploy.md`](site-deploy.md).
 
-Copy installer to origin: `/opt/maka/web/downloads/MakaLight-amd64-installer.exe` (same pattern as `Maka-Setup-*.exe`).
+Copy installer to origin: `/opt/maka/web/downloads/MakaLight-amd64-installer.exe` (same pattern as `Maka-Setup-*.exe`). Ensure [`site/maka-downloads.conf`](../site/maka-downloads.conf) is installed on nginx so the mirror serves `application/octet-stream`, not SPA HTML.
+
+From a machine with SSH: `bash scripts/skydav-deploy-site.sh` (syncs `site/` and downloads `makalight-v0.1.3` by default).

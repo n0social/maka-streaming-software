@@ -5,8 +5,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 HOST_ALIAS="${SKYDAV_SSH_HOST_ALIAS:-skydav-droplet}"
 WEB_ROOT="${SKYDAV_WEB_ROOT:-/opt/maka/web}"
-RELEASE_TAG="${RELEASE_TAG:-v0.2.6.2}"
-SETUP_NAME="${SETUP_NAME:-Maka-Setup-0.2.6.exe}"
+RELEASE_TAG="${RELEASE_TAG:-makalight-v0.1.3}"
+SETUP_NAME="${SETUP_NAME:-MakaLight-amd64-installer.exe}"
 REPO="${GITHUB_REPO:-n0social/maka-streaming-software}"
 STAGING="${TMPDIR:-/tmp}/maka-release-${RELEASE_TAG}"
 

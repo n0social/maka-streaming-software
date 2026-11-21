@@ -76,4 +76,5 @@ Publishes:
 - `/stream/` — Legacy SPA web studio
 - `/marketing/*` — Icons, feature graphic, download badges
 - `/downloads/MAKArelay.exe` — encoder download (`MAKArelay.exe`)
-- `/downloads/Maka-Setup-0.2.5.exe` — current Windows installer
+- `/downloads/MakaLight-amd64-installer.exe` — current **MakaLight** Windows installer (tag `makalight-v0.1.3`)
+- `/download.html` — download landing (must match GitHub tag in repo before deploy)
