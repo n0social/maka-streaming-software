@@ -74,22 +74,54 @@ function resolveMakensis() {
   return 'makensis'
 }
 
+function findFileInDir(dir, name, depth) {
+  if (depth < 0 || !existsSync(dir)) return ''
+  const direct = join(dir, name)
+  if (existsSync(direct)) return direct
+  let entries
+  try {
+    entries = readdirSync(dir)
+  } catch {
+    return ''
+  }
+  for (const entry of entries) {
+    const p = join(dir, entry)
+    try {
+      if (!statSync(p).isDirectory()) continue
+    } catch {
+      continue
+    }
+    const hit = findFileInDir(p, name, depth - 1)
+    if (hit) return hit
+  }
+  return ''
+}
+
 function ensureWailsToolsNsh() {
   const dest = join(installerDir, 'wails_tools.nsh')
   if (existsSync(dest)) return
   const sources = [
+    join(installerDir, 'wails_tools.nsh'),
     join(homedir(), '.wails', 'nsis', 'wails_tools.nsh'),
     join(process.env.LOCALAPPDATA || '', 'wails', 'nsis', 'wails_tools.nsh'),
     join(process.env.APPDATA || '', 'wails', 'nsis', 'wails_tools.nsh'),
   ]
+  for (const scanRoot of [
+    join(homedir(), '.wails'),
+    join(process.env.LOCALAPPDATA || '', 'wails'),
+    join(root, 'desktop-wails', 'build'),
+  ]) {
+    const hit = findFileInDir(scanRoot, 'wails_tools.nsh', 6)
+    if (hit) sources.push(hit)
+  }
   for (const src of sources) {
-    if (src && existsSync(src)) {
+    if (src && src !== dest && existsSync(src)) {
       copyFileSync(src, dest)
-      console.log('makalight-nsis: copied wails_tools.nsh from', src)
+      console.log('makalight-nsis: staged wails_tools.nsh from', src)
       return
     }
   }
-  fail('wails_tools.nsh missing — run wails build (Wails NSIS templates) before rebuild')
+  fail('wails_tools.nsh missing — run `wails build -nsis -f` before rebuild')
 }
 
 function main() {
@@ -100,10 +132,7 @@ function main() {
   if (!existsSync(projectNsi)) {
     fail(`missing ${projectNsi} — run wails build first`)
   }
-  const wailsTools = join(installerDir, 'wails_tools.nsh')
-  if (!existsSync(wailsTools)) {
-    fail(`missing ${wailsTools} — run wails build first`)
-  }
+  ensureWailsToolsNsh()
   const relay = join(binDir, 'relay', 'src', 'index.mjs')
   const nodeExe = join(binDir, 'node', 'node.exe')
   if (!existsSync(relay)) {
@@ -137,7 +166,6 @@ function main() {
   }
 
   const relExe = relative(installerDir, exe).replace(/\//g, '\\')
-  ensureWailsToolsNsh()
   const makensis = resolveMakensis()
   console.log('makalight-nsis: makensis →', makensis)
   try {
