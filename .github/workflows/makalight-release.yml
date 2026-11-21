@@ -51,6 +51,7 @@ jobs:
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.2
 
+      # Wails invokes makensis here; that first pass only ships MakaLight.exe (no relay/ yet).
       - name: Build MakaLight (NSIS)
         shell: bash
         run: |
@@ -68,6 +69,8 @@ jobs:
           cp "node-v${NODE_VER}-win-x64/node.exe" node-stage/node.exe
           echo "MAKA_NODE_STAGE=${GITHUB_WORKSPACE}/node-stage/node.exe" >> "$GITHUB_ENV"
 
+      # Order is mandatory: stage relay + node into build/bin, then patch/rebuild NSIS (makalight-nsis.mjs).
+      # Do not publish or upload before the Rebuild NSIS step — the Wails-built installer is incomplete.
       - name: Stage relay beside executable
         run: node scripts/makalight-stage.mjs desktop-wails/build/bin
 

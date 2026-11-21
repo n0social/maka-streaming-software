@@ -397,11 +397,16 @@ const lifecycleCopy: Record<RelaySnapshot['lifecycle'], string> = {
   error: 'Relay error',
 }
 
+function relayErrorPlain(error: RelaySnapshot['error']): string {
+  if (error == null || error === '') return ''
+  return typeof error === 'string' ? error : String(error)
+}
+
 function relayChipLabel(snapshot: RelaySnapshot): string {
   const base = lifecycleCopy[snapshot.lifecycle] ?? 'Relay ready'
-  if (snapshot.lifecycle === 'stopped' && snapshot.error) {
-    const short =
-      snapshot.error.length > 80 ? `${snapshot.error.slice(0, 77)}…` : snapshot.error
+  const errText = relayErrorPlain(snapshot.error)
+  if (snapshot.lifecycle === 'stopped' && errText) {
+    const short = errText.length > 80 ? `${errText.slice(0, 77)}…` : errText
     return `Relay offline — ${short}`
   }
   return base
@@ -1285,9 +1290,9 @@ function renderRelay(snapshot: RelaySnapshot): void {
     relayError.textContent = liveRecoveryFatal
       ? `${label} — stream key or ingest rejected (auto-retry stopped).`
       : `${label} — could not restore the stream after ${MAX_LIVE_RETRY_ATTEMPTS} attempts.`
-  } else if (snapshot.error && !(live && liveReconnecting)) {
+  } else if (relayErrorPlain(snapshot.error) && !(live && liveReconnecting)) {
     relayError.hidden = false
-    relayError.textContent = snapshot.error
+    relayError.textContent = relayErrorPlain(snapshot.error)
   } else if (!liveRecoveryExhausted) {
     relayError.hidden = true
     relayError.textContent = ''

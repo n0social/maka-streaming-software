@@ -29,8 +29,7 @@ function walk(dir) {
 }
 
 function stripBridgeInjection(html) {
-  return html
-    .replace(/\s*<script src="\.\/maka-bridge\.js"><\/script>\n?/g, '')
+  return html.replace(/\n\s*<script src="\.\/maka-bridge\.js"><\/script>/g, '')
 }
 
 function main() {
@@ -42,7 +41,8 @@ function main() {
   const srcFiles = new Set(walk(src).map((p) => relative(src, p)))
   const distFiles = new Set(walk(dist).map((p) => relative(dist, p)))
 
-  const extra = [...distFiles].filter((f) => f !== 'maka-bridge.js' && !srcFiles.has(f))
+  const distOnlyOk = new Set(['maka-bridge.js', 'index.html'])
+  const extra = [...distFiles].filter((f) => !distOnlyOk.has(f) && !srcFiles.has(f))
   const missing = [...srcFiles].filter((f) => !distFiles.has(f))
 
   if (extra.length || missing.length) {

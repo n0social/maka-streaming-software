@@ -65,6 +65,7 @@
     "verify:makalight-parity": "node scripts/verify-makalight-parity.mjs",
     "makalight:bundle": "npm run build && npm run makalight:sync",
     "test:makalight-sync": "node scripts/sync-makalight-frontend.test.mjs",
+    "test:makalight-nsis": "node scripts/makalight-nsis.test.mjs",
     "makalight:preview": "node scripts/makalight-preview-server.mjs",
     "makalight:debug": "node scripts/makalight-debug.mjs",
     "makalight:stage": "node scripts/makalight-stage.mjs",

@@ -22,6 +22,26 @@ func TestLifecycleFromRelayStatus(t *testing.T) {
 	}
 }
 
+func TestLifecycleFromRelayStatusNeverRunning(t *testing.T) {
+	t.Parallel()
+	statuses := []any{
+		nil,
+		map[string]any{"status": "live"},
+		map[string]any{"status": "error"},
+		map[string]any{"status": "starting"},
+		map[string]any{"status": "idle"},
+		map[string]any{"status": "running"},
+	}
+	for _, st := range statuses {
+		for _, processUp := range []bool{true, false} {
+			got := lifecycleFromRelayStatus(st, processUp)
+			if got == "running" {
+				t.Fatalf("legacy lifecycle %q for status %#v process=%v", got, st, processUp)
+			}
+		}
+	}
+}
+
 func TestLocalizeRelayHealth(t *testing.T) {
 	t.Parallel()
 	out := localizeRelayHealth(map[string]any{
