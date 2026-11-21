@@ -2,7 +2,8 @@
 
 Windows streaming studio: **Go + WebView2** + open [MAKA.relay](../relay/). Same studio UI as Maka Electron, without bundling Chromium.
 
-**Migration plan:** [docs/wails-migration-plan.md](../docs/wails-migration-plan.md)
+**Migration plan:** [docs/wails-migration-plan.md](../docs/wails-migration-plan.md)  
+**Port checklist (step-by-step):** [docs/makalight-port-checklist.md](../docs/makalight-port-checklist.md)
 
 Electron (`npm run dist`) is **not** actively developed here; it remains a **benchmark baseline**.
 

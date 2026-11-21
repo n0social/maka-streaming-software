@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/n0social/maka-streaming-software/desktop-wails/internal/appmeta"
+	"github.com/n0social/maka-streaming-software/desktop-wails/internal/capture"
 	"github.com/n0social/maka-streaming-software/desktop-wails/internal/relay"
 	"github.com/n0social/maka-streaming-software/desktop-wails/internal/settings"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -20,10 +21,11 @@ type VersionInfo struct {
 
 // App exposes Go methods to the studio UI (window.maka bridge).
 type App struct {
-	ctx    context.Context
-	relay  *relay.Manager
+	ctx      context.Context
+	relay    *relay.Manager
 	settings *settings.Store
-	appMode string
+	capture  *capture.Service
+	appMode  string
 }
 
 func NewApp() (*App, error) {
@@ -38,6 +40,7 @@ func NewApp() (*App, error) {
 	return &App{
 		relay:    rm,
 		settings: store,
+		capture:  capture.NewService(),
 		appMode:  "studio",
 	}, nil
 }
@@ -207,7 +210,12 @@ func (a *App) OpenStream() {
 
 func (a *App) OpenHome() {}
 
-// ListCaptureSources — Phase 1 capture; stub until WGC/DXGI bridge lands.
-func (a *App) ListCaptureSources() []map[string]string {
-	return []map[string]string{}
+// ListCaptureSources — ipc capture:list-sources (1:1 DTO).
+func (a *App) ListCaptureSources() []capture.Source {
+	return a.capture.List()
+}
+
+// SetPreferredCaptureSource — ipc capture:set-preferred.
+func (a *App) SetPreferredCaptureSource(sourceID string) {
+	a.capture.SetPreferred(sourceID)
 }
