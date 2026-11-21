@@ -48,6 +48,9 @@ jobs:
       - name: MakaLight debug
         run: npm run makalight:debug
 
+      - name: Install NSIS
+        run: choco install nsis -y --no-progress
+
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.2
 
