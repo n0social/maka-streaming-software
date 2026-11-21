@@ -74,6 +74,12 @@ jobs:
       - name: Stage relay beside executable
         run: node scripts/makalight-stage.mjs desktop-wails/build/bin
 
+      - name: Ensure NSIS (makensis) on PATH
+        shell: pwsh
+        run: |
+          choco install nsis -y --no-progress
+          Add-Content -Path $env:GITHUB_PATH -Value 'C:\Program Files (x86)\NSIS'
+
       - name: Rebuild NSIS installer with relay and Node bundle
         run: node scripts/makalight-nsis.mjs desktop-wails/build/bin
 

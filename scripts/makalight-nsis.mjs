@@ -6,7 +6,8 @@
  * Prerequisite: `wails build` on Windows (generates build/windows/installer/project.nsi + wails_tools.nsh).
  * Usage: node scripts/makalight-nsis.mjs [path-to-build-bin]
  */
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, writeFileSync, statSync } from 'node:fs'
+import { homedir } from 'node:os'
 import { join, dirname, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
@@ -20,6 +21,56 @@ const projectNsi = join(installerDir, 'project.nsi')
 function fail(msg) {
   console.error('makalight-nsis: ERROR:', msg)
   process.exit(1)
+}
+
+function findMakensisInDir(dir, depth) {
+  if (depth < 0 || !existsSync(dir)) return ''
+  const base = join(dir, 'makensis.exe')
+  if (existsSync(base)) return base
+  let entries
+  try {
+    entries = readdirSync(dir)
+  } catch {
+    return ''
+  }
+  for (const name of entries) {
+    const p = join(dir, name)
+    try {
+      if (!statSync(p).isDirectory()) continue
+    } catch {
+      continue
+    }
+    const hit = findMakensisInDir(p, depth - 1)
+    if (hit) return hit
+  }
+  return ''
+}
+
+function resolveMakensis() {
+  if (process.env.MAKENSIS) return process.env.MAKENSIS
+  const fixed = [
+    join(process.env.ProgramFiles || 'C:\\Program Files', 'NSIS', 'makensis.exe'),
+    join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'NSIS', 'makensis.exe'),
+    join(homedir(), '.wails', 'nsis', 'makensis.exe'),
+    join(process.env.LOCALAPPDATA || '', 'wails', 'nsis', 'makensis.exe'),
+    join(process.env.APPDATA || '', 'wails', 'nsis', 'makensis.exe'),
+  ]
+  for (const p of fixed) {
+    if (p && existsSync(p)) return p
+  }
+  for (const scanRoot of [
+    join(homedir(), '.wails'),
+    join(process.env.LOCALAPPDATA || '', 'wails'),
+    join(root, 'desktop-wails', 'build'),
+  ]) {
+    const hit = findMakensisInDir(scanRoot, 5)
+    if (hit) return hit
+  }
+  const where = spawnSync('where', ['makensis'], { encoding: 'utf8', shell: true })
+  if (where.status === 0 && where.stdout.trim()) {
+    return where.stdout.trim().split(/\r?\n/)[0].trim()
+  }
+  return 'makensis'
 }
 
 function main() {
@@ -63,8 +114,10 @@ function main() {
   }
 
   const relExe = relative(installerDir, exe).replace(/\//g, '\\')
+  const makensis = resolveMakensis()
+  console.log('makalight-nsis: makensis →', makensis)
   const res = spawnSync(
-    'makensis',
+    makensis,
     [`-DARG_WAILS_AMD64_BINARY=${relExe}`, 'project.nsi'],
     { cwd: installerDir, stdio: 'inherit', shell: true },
   )
