@@ -3,8 +3,8 @@
   "name": "MakaLight",
   "outputfilename": "MakaLight",
   "frontend:dir": ".",
-  "frontend:install": "node -e \"console.log('pre-bundled via npm run makalight:bundle')\"",
-  "frontend:build": "node -e \"console.log('pre-bundled via npm run makalight:bundle')\"",
+  "frontend:install": "echo pre-bundled-dist",
+  "frontend:build": "echo pre-bundled-dist",
   "author": {
     "name": "n0social",
     "email": ""
