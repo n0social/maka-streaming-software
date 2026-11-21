@@ -12,7 +12,7 @@ var (
 	version string
 )
 
-// AppVersion reads the root package.json version (same label as Electron app.getVersion()).
+// AppVersion is kept for diagnostics; studio UI should use MakaLightProductVersion().
 func AppVersion() string {
 	once.Do(func() {
 		version = readPackageVersion()

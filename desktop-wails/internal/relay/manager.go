@@ -216,18 +216,64 @@ func (m *Manager) refreshLocked(ctx context.Context) error {
 		return err
 	}
 	status, _ := fetchJSON(ctx, m.client, BaseURL+StatusPath)
-	lifecycle := "ready"
-	if m.cmd != nil {
-		lifecycle = "running"
-	}
+	health = localizeRelayHealth(health)
+	lifecycle := lifecycleFromRelayStatus(status, m.cmd != nil)
+	snapErr := relayStatusError(status)
 	m.snapshot = Snapshot{
 		Lifecycle: lifecycle,
 		Health:    health,
 		Status:    status,
-		Error:     nil,
+		Error:     snapErr,
 		Pid:       pidOrNil(m.cmd),
 	}
 	return nil
+}
+
+func lifecycleFromRelayStatus(status any, processUp bool) string {
+	if !processUp {
+		return "stopped"
+	}
+	smap, ok := status.(map[string]any)
+	if !ok {
+		return "ready"
+	}
+	st, _ := smap["status"].(string)
+	switch st {
+	case "live":
+		return "live"
+	case "error":
+		return "error"
+	case "starting":
+		return "starting"
+	default:
+		return "ready"
+	}
+}
+
+func relayStatusError(status any) any {
+	smap, ok := status.(map[string]any)
+	if !ok {
+		return nil
+	}
+	if st, _ := smap["status"].(string); st == "error" {
+		if err, ok := smap["error"].(string); ok && err != "" {
+			return err
+		}
+	}
+	return nil
+}
+
+func localizeRelayHealth(health any) any {
+	hmap, ok := health.(map[string]any)
+	if !ok {
+		return health
+	}
+	out := make(map[string]any, len(hmap)+1)
+	for k, v := range hmap {
+		out[k] = v
+	}
+	out["streamUrl"] = WhipURL
+	return out
 }
 
 func pidOrNil(cmd *exec.Cmd) any {

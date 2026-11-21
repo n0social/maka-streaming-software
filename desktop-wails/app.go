@@ -64,6 +64,9 @@ func (a *App) emitRelayLoop() {
 		case <-a.ctx.Done():
 			return
 		case <-ticker.C:
+			refreshCtx, cancel := context.WithTimeout(a.ctx, 4*time.Second)
+			_ = a.relay.Refresh(refreshCtx)
+			cancel()
 			snap := a.relay.GetSnapshot()
 			wailsruntime.EventsEmit(a.ctx, "relay:update", snap)
 		}
@@ -80,14 +83,21 @@ func (a *App) GetVersionInfo() VersionInfo {
 		}
 	}
 	return VersionInfo{
-		AppVersion:   appmeta.AppVersion(),
+		AppVersion:   appmeta.MakaLightProductVersion(),
 		RelayVersion: relayVer,
 		Platform:     runtimeEnvironment(),
 	}
 }
 
 func runtimeEnvironment() string {
-	return runtime.GOOS
+	switch runtime.GOOS {
+	case "windows":
+		return "win32"
+	case "darwin":
+		return "darwin"
+	default:
+		return runtime.GOOS
+	}
 }
 
 func (a *App) GetRelay() relay.Snapshot {
